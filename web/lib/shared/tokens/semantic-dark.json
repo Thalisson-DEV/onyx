@@ -117,7 +117,7 @@
       "type": "color"
     },
     "background-tint-00": {
-      "value": "{grey-100}",
+      "value": "{vale-norte-neutral-98}",
       "type": "color"
     },
     "background-tint-01": {
@@ -205,15 +205,15 @@
       "type": "color"
     },
     "theme-primary-06": {
-      "value": "{onyx-chrome-00}",
+      "value": "{vale-norte-green-05}",
       "type": "color"
     },
     "theme-primary-05": {
-      "value": "{onyx-chrome-10}",
+      "value": "{vale-norte-green-10}",
       "type": "color"
     },
     "theme-primary-04": {
-      "value": "{onyx-chrome-20}",
+      "value": "{vale-norte-green-20}",
       "type": "color"
     },
     "theme-gradient-05": {
@@ -257,19 +257,19 @@
       "type": "color"
     },
     "theme-amber-05": {
-      "value": "{neon-amber}",
+      "value": "{vale-norte-gold-40}",
       "type": "color"
     },
     "theme-amber-04": {
-      "value": "{neon-amber-60}",
+      "value": "{vale-norte-gold-50}",
       "type": "color"
     },
     "theme-amber-02": {
-      "value": "{neon-amber-80}",
+      "value": "{vale-norte-gold-80}",
       "type": "color"
     },
     "theme-amber-01": {
-      "value": "{neon-amber-90}",
+      "value": "{vale-norte-gold-90}",
       "type": "color"
     },
     "theme-yellow-05": {
@@ -449,31 +449,31 @@
       "type": "color"
     },
     "action-selection-06": {
-      "value": "{blue-40}",
+      "value": "{vale-norte-green-80}",
       "type": "color"
     },
     "action-selection-05": {
-      "value": "{blue-50}",
+      "value": "{vale-norte-green-60}",
       "type": "color"
     },
     "action-selection-04": {
-      "value": "{blue-60}",
+      "value": "{vale-norte-green-50}",
       "type": "color"
     },
     "action-selection-03": {
-      "value": "{blue-80}",
+      "value": "{vale-norte-green-20}",
       "type": "color"
     },
     "action-selection-02": {
-      "value": "{blue-85}",
+      "value": "{vale-norte-green-85}",
       "type": "color"
     },
     "action-selection-01": {
-      "value": "{blue-90}",
+      "value": "{vale-norte-green-90}",
       "type": "color"
     },
     "action-selection-00": {
-      "value": "{blue-95}",
+      "value": "{vale-norte-green-95}",
       "type": "color"
     },
     "action-danger-06": {
@@ -501,7 +501,7 @@
       "type": "color"
     },
     "action-text-link-05": {
-      "value": "{blue-45}",
+      "value": "{vale-norte-green-40}",
       "type": "color"
     },
     "action-text-danger-05": {
@@ -549,7 +549,7 @@
       "type": "color"
     },
     "highlight-accent": {
-      "value": "{neon-magenta-a60}",
+      "value": "{vale-norte-gold-a30}",
       "type": "color"
     },
     "shadow-01": {

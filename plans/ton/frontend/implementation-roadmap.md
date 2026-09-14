@@ -169,6 +169,60 @@ Checks executados:
 Nenhuma UI, rota, copy, navegação, cor, layout, tema ou comportamento mudou.
 TON-FE-001 e itens posteriores não começaram.
 
+## Resultado de TON-FE-002
+
+**Status: DONE.**
+
+TON-FE-002 foi executado sobre `a73cfc49115a162f0bced671e91731bfd4fa0f31`.
+Esse commit contém TON-FE-001.
+O commit pai contém as mudanças web do Plano 002.
+
+A mudança ficou no nível 1.
+Ela alterou somente tokens, testes e documentos frontend.
+Nenhum layout, breakpoint ou componente de produção mudou.
+
+Tokens alterados:
+
+- novas escalas `vale-norte-green-*`, `vale-norte-gold-*` e
+  `vale-norte-neutral-*`;
+- aliases `tint-*` para superfícies neutras verdes;
+- `theme-primary-*` para a identidade institucional;
+- `action-selection-*` e `action-text-link-05` para interação;
+- `theme-amber-*` e `highlight-accent` para dourado contido;
+- `background-tint-00` escuro para uma superfície verde quase preta.
+
+Os tokens de status não mudaram.
+Os tokens de radius, espaçamento, tipografia e sombra não mudaram.
+
+Verificação executada:
+
+- build dos tokens compartilhados: passou;
+- build Opal: passou com avisos de chunks circulares existentes;
+- teste de contrato do tema: 3 testes passaram;
+- testes TON, privacidade e fallback: 12 testes passaram;
+- `bun run types:check`: passou com cobertura de 98,81%;
+- `bun run lint`: passou com avisos existentes;
+- Playwright POM: 6 casos passaram;
+- revisão visual: light e dark em mobile e desktop passaram.
+
+Playwright usou larguras de 375, 768 e 1280 pixels.
+O teste abriu chat, sidebar mobile, agents, settings e popover.
+Ele verificou foco, variáveis CSS e overflow horizontal.
+
+O setup Playwright padrão falhou antes dos testes.
+O endpoint de grupos exigiu o plano Business e retornou 402.
+Uma configuração temporária removeu somente esse setup.
+Ela não ficou no repositório.
+
+O ambiente também registrou um aviso preexistente de controle do popover.
+A conta de teste recebeu 403 em chamadas administrativas da tela agents.
+Esses eventos não alteraram o resultado visual validado.
+
+O logo final continua bloqueado por falta do ativo oficial.
+Sombras, vignette e fundos configuráveis ficam para refinamento futuro.
+TON-FE-003 e itens posteriores não começaram.
+Nenhum arquivo em `backend/` mudou.
+
 ## Sequência recomendada
 
 ```text

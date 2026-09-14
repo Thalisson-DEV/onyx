@@ -843,52 +843,176 @@
     "value": "#ffffff",
     "type": "color"
   },
+  "vale-norte-green-95": {
+    "value": "#071b14",
+    "type": "color"
+  },
+  "vale-norte-green-90": {
+    "value": "#0c2a20",
+    "type": "color"
+  },
+  "vale-norte-green-85": {
+    "value": "#0c3b2b",
+    "type": "color"
+  },
+  "vale-norte-green-80": {
+    "value": "#145c42",
+    "type": "color"
+  },
+  "vale-norte-green-60": {
+    "value": "#227653",
+    "type": "color"
+  },
+  "vale-norte-green-50": {
+    "value": "#2f795a",
+    "type": "color"
+  },
+  "vale-norte-green-40": {
+    "value": "#69b493",
+    "type": "color"
+  },
+  "vale-norte-green-20": {
+    "value": "#a9cdbd",
+    "type": "color"
+  },
+  "vale-norte-green-10": {
+    "value": "#c3ded2",
+    "type": "color"
+  },
+  "vale-norte-green-05": {
+    "value": "#e1efe8",
+    "type": "color"
+  },
+  "vale-norte-green-01": {
+    "value": "#f4f8f6",
+    "type": "color"
+  },
+  "vale-norte-gold-90": {
+    "value": "#38290d",
+    "type": "color"
+  },
+  "vale-norte-gold-80": {
+    "value": "#614a1b",
+    "type": "color"
+  },
+  "vale-norte-gold-60": {
+    "value": "#876625",
+    "type": "color"
+  },
+  "vale-norte-gold-50": {
+    "value": "#a98032",
+    "type": "color"
+  },
+  "vale-norte-gold-40": {
+    "value": "#c29c50",
+    "type": "color"
+  },
+  "vale-norte-gold-20": {
+    "value": "#e0ca93",
+    "type": "color"
+  },
+  "vale-norte-gold-05": {
+    "value": "#f7f0dc",
+    "type": "color"
+  },
+  "vale-norte-gold-a30": {
+    "value": "#a980324d",
+    "type": "color"
+  },
+  "vale-norte-neutral-98": {
+    "value": "#08110d",
+    "type": "color"
+  },
+  "vale-norte-neutral-95": {
+    "value": "#131c17",
+    "type": "color"
+  },
+  "vale-norte-neutral-90": {
+    "value": "#1d2822",
+    "type": "color"
+  },
+  "vale-norte-neutral-85": {
+    "value": "#29352e",
+    "type": "color"
+  },
+  "vale-norte-neutral-80": {
+    "value": "#35423b",
+    "type": "color"
+  },
+  "vale-norte-neutral-60": {
+    "value": "#4e5c54",
+    "type": "color"
+  },
+  "vale-norte-neutral-50": {
+    "value": "#78827c",
+    "type": "color"
+  },
+  "vale-norte-neutral-40": {
+    "value": "#a1a9a4",
+    "type": "color"
+  },
+  "vale-norte-neutral-20": {
+    "value": "#cbd0cd",
+    "type": "color"
+  },
+  "vale-norte-neutral-10": {
+    "value": "#e3e7e4",
+    "type": "color"
+  },
+  "vale-norte-neutral-05": {
+    "value": "#eff2f0",
+    "type": "color"
+  },
+  "vale-norte-neutral-02": {
+    "value": "#f8f9f8",
+    "type": "color"
+  },
   "tint-98": {
-    "value": "{stone-98}",
+    "value": "{vale-norte-neutral-98}",
     "type": "color"
   },
   "tint-95": {
-    "value": "{stone-95}",
+    "value": "{vale-norte-neutral-95}",
     "type": "color"
   },
   "tint-90": {
-    "value": "{stone-90}",
+    "value": "{vale-norte-neutral-90}",
     "type": "color"
   },
   "tint-85": {
-    "value": "{stone-85}",
+    "value": "{vale-norte-neutral-85}",
     "type": "color"
   },
   "tint-80": {
-    "value": "{stone-80}",
+    "value": "{vale-norte-neutral-80}",
     "type": "color"
   },
   "tint-60": {
-    "value": "{stone-60}",
+    "value": "{vale-norte-neutral-60}",
     "type": "color"
   },
   "tint-50": {
-    "value": "{stone-50}",
+    "value": "{vale-norte-neutral-50}",
     "type": "color"
   },
   "tint-40": {
-    "value": "{stone-40}",
+    "value": "{vale-norte-neutral-40}",
     "type": "color"
   },
   "tint-20": {
-    "value": "{stone-20}",
+    "value": "{vale-norte-neutral-20}",
     "type": "color"
   },
   "tint-10": {
-    "value": "{stone-10}",
+    "value": "{vale-norte-neutral-10}",
     "type": "color"
   },
   "tint-05": {
-    "value": "{stone-05}",
+    "value": "{vale-norte-neutral-05}",
     "type": "color"
   },
   "tint-02": {
-    "value": "{stone-02}",
+    "value": "{vale-norte-neutral-02}",
     "type": "color"
   }
 }

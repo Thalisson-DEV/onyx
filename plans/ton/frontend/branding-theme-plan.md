@@ -149,3 +149,76 @@ settings e auth, em light e dark. Ferramentas e regras estão em
 - Rebranding de connectors não altera identificadores de source, APIs ou
   permissões.
 - Dourado deve permanecer acento, não substituir estados de sucesso/erro.
+
+## Mapeamento aplicado por TON-FE-002
+
+TON-FE-002 aplicou a paleta na arquitetura de tokens compartilhados.
+Nenhum componente React recebeu cor direta.
+
+### Paleta Vale Norte
+
+| Grupo | Valores principais | Papel |
+|---|---|---|
+| Verde | `#0c3b2b`, `#145c42`, `#227653`, `#2f795a` | Ação, foco e identidade. |
+| Verde suave | `#69b493`, `#a9cdbd`, `#c3ded2`, `#e1efe8` | Links escuros, hover e selected. |
+| Neutro verde | `#08110d` até `#f8f9f8` | Superfícies `background-tint-*`. |
+| Dourado | `#876625`, `#a98032`, `#c29c50`, `#f7f0dc` | Acento e tema amber. |
+
+Os aliases `tint-*` agora usam neutros Vale Norte.
+O mapeamento preserva texto, borda e superfície como papéis separados.
+
+### Mapeamento light
+
+- `theme-primary-*` usa verde institucional profundo.
+- `action-selection-*` usa a escala verde Vale Norte.
+- `action-text-link-05` usa `vale-norte-green-80`.
+- `theme-amber-*` usa a escala dourada.
+- `highlight-accent` usa dourado com 30% de opacidade.
+
+### Mapeamento dark
+
+- `theme-primary-*` usa verdes claros com texto invertido escuro.
+- `action-selection-*` usa verdes profundos com texto branco.
+- `action-text-link-05` usa verde suave sobre superfície escura.
+- `background-tint-00` usa `#08110d`, sem preto puro na superfície principal.
+- `theme-amber-*` usa dourado sem brilho neon.
+
+### Decisões de contraste
+
+O teste de tokens mede os pares usados pelos controles Opal.
+Texto normal exige contraste 4,5:1.
+Foco e limites interativos exigem contraste 3:1.
+
+Os menores resultados medidos foram:
+
+- 4,66:1 para dourado em superfície dourada clara;
+- 5,25:1 para ação verde escura com texto branco;
+- 7,09:1 para link verde no tema escuro;
+- 3,45:1 para foco verde contra a superfície escura principal.
+
+Success, warning, danger e info mantêm as cores semânticas anteriores.
+Disabled continua usando os tokens neutros do sistema.
+
+### Validação visual e responsiva
+
+Playwright validou `375x812`, `768x1024` e `1280x720`.
+Cada largura passou nos temas light e dark.
+
+O teste cobriu chat, composer, sidebar, agents, settings e popover.
+Não houve overflow horizontal.
+O foco voltou ao composer após fechar a sidebar mobile.
+As variáveis CSS geradas corresponderam aos tokens rastreados.
+
+As capturas ficaram em `web/output/screenshots/` para revisão local.
+Esses arquivos são artefatos ignorados e não entram no repositório.
+
+### Refinamentos adiados
+
+- Revisar sombras do composer e de cards em uma tarefa visual futura.
+- Revisar vignette e fundos configuráveis de `AppChrome` depois.
+- Preservar elevação de dialogs, menus e popovers.
+- Revisar ilustrações com fundo próprio quando houver ativo final.
+
+O logo final ainda não existe.
+O fallback configurável continua sem alteração.
+Links upstream e superfícies SaaS continuam fora deste item.

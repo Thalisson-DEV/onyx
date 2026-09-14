@@ -1,5 +1,7 @@
 export const IS_DEV = process.env.NODE_ENV === "development";
 
+export const PRODUCT_NAME = "TON";
+
 export const TON_WEB_ONLY = process.env.TON_WEB_ONLY?.toLowerCase() !== "false";
 export const TON_EXTERNAL_TELEMETRY_ENABLED = !TON_WEB_ONLY;
 

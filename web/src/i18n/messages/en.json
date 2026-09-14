@@ -1,4 +1,10 @@
 {
+  "product": {
+    "metadata": {
+      "description": "Operational Intelligence and Controllership for Vale Norte Construtora.",
+      "title": "TON"
+    }
+  },
   "accountPopover": {
     "accountFallback": {
       "label": "Account"

@@ -21,7 +21,7 @@ jest.mock("next/navigation", () => ({
 const mockUseSWR = useSWR as jest.MockedFunction<typeof useSWR>;
 const mockUsePathname = usePathname as jest.MockedFunction<typeof usePathname>;
 
-function swrResult(overrides: { error?: Error } = {}) {
+function swrResult(overrides: { data?: unknown; error?: Error } = {}) {
   return {
     data: undefined,
     error: undefined,
@@ -62,7 +62,7 @@ describe("useSettings enterprise-settings 404 handling", () => {
     const { result } = renderHook(() => useSettings());
     expect(result.current.error).toBeUndefined();
     expect(result.current.enterprise).toBeNull();
-    expect(result.current.appName).toBe("Onyx");
+    expect(result.current.appName).toBe("TON");
     expect(result.current.logoUrl).toBeNull();
     expect(enterpriseRetryPolicy()(missing)).toBe(false);
   });
@@ -73,6 +73,16 @@ describe("useSettings enterprise-settings 404 handling", () => {
     const { result } = renderHook(() => useSettings());
     expect(result.current.error).toBeUndefined();
     expect(result.current.enterprise).toBeNull();
+  });
+
+  test("an enterprise application name overrides the TON fallback", () => {
+    mockUseSWR.mockImplementation((key) =>
+      key === SWR_KEYS.enterpriseSettings
+        ? swrResult({ data: { application_name: "Vale Norte" } })
+        : swrResult()
+    );
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.appName).toBe("Vale Norte");
   });
 
   test("other enterprise-settings failures still surface and retry", () => {

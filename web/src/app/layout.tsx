@@ -27,7 +27,7 @@ import ProductGatingWrapper from "@/providers/ProductGatingWrapper";
 import SWRConfigProvider from "@/providers/SWRConfigProvider";
 import { NextIntlClientProvider } from "next-intl";
 import OpalStringsBridge from "@/i18n/OpalStringsBridge";
-import { getLocale, getMessages } from "next-intl/server";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { cookies } from "next/headers";
 import { htmlDirForLocale, messageLocale, type HtmlDir } from "@/i18n/config";
@@ -61,7 +61,12 @@ const dmMono = DM_Mono({
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { icons: await generateFaviconMetadata() };
+  const t = await getTranslations("product.metadata");
+  return {
+    title: t("title"),
+    description: t("description"),
+    icons: await generateFaviconMetadata(),
+  };
 }
 
 interface LayoutProps {

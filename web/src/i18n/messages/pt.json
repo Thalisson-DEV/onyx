@@ -1,4 +1,10 @@
 {
+  "product": {
+    "metadata": {
+      "description": "Inteligência Operacional e Controladoria para a Vale Norte Construtora.",
+      "title": "TON"
+    }
+  },
   "accountPopover": {
     "accountFallback": {
       "label": "Conta"

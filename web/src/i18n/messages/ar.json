@@ -1,4 +1,10 @@
 {
+  "product": {
+    "metadata": {
+      "description": "الذكاء التشغيلي والرقابة الإدارية لشركة Vale Norte Construtora.",
+      "title": "TON"
+    }
+  },
   "accountPopover": {
     "accountFallback": {
       "label": "الحساب"

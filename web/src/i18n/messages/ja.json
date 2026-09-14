@@ -1,4 +1,10 @@
 {
+  "product": {
+    "metadata": {
+      "description": "Vale Norte Construtora向けの業務インテリジェンスと管理会計。",
+      "title": "TON"
+    }
+  },
   "accountPopover": {
     "accountFallback": {
       "label": "アカウント"

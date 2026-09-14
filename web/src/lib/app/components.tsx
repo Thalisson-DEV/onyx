@@ -23,9 +23,9 @@ export interface LogoProps {
 export function Logo({ folded, size, className, onyxBranded }: LogoProps) {
   const t = useTranslations("common");
   const resolvedSize = size ?? DEFAULT_LOGO_SIZE_PX;
-  const { enterprise, logoUrl } = useSettings();
+  const { appName, enterprise, logoUrl } = useSettings();
   const logoDisplayStyle = enterprise?.logo_display_style;
-  const applicationName = enterprise?.application_name;
+  const applicationName = enterprise?.application_name?.trim() || appName;
 
   if (onyxBranded) {
     return folded ? (

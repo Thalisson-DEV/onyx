@@ -1,4 +1,10 @@
 {
+  "product": {
+    "metadata": {
+      "description": "Vale Norte Construtora를 위한 운영 인텔리전스 및 관리 회계.",
+      "title": "TON"
+    }
+  },
   "accountPopover": {
     "accountFallback": {
       "label": "계정"

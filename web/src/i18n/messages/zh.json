@@ -1,4 +1,10 @@
 {
+  "product": {
+    "metadata": {
+      "description": "面向 Vale Norte Construtora 的运营智能与管理会计。",
+      "title": "TON"
+    }
+  },
   "accountPopover": {
     "accountFallback": {
       "label": "账户"

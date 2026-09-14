@@ -8,6 +8,7 @@ import {
 import {
   CUSTOM_ANALYTICS_ENABLED,
   HOST_URL,
+  PRODUCT_NAME,
   SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED,
 } from "@/lib/constants";
 import { fetchSS } from "@/lib/utilsSS";
@@ -130,7 +131,7 @@ export async function fetchSettingsSS(): Promise<CombinedSettings | null> {
       customAnalyticsScript,
       webVersion: settings.version ?? getWebVersion(),
       webDomain: HOST_URL,
-      appName: enterpriseSettings?.application_name?.trim() || "Onyx",
+      appName: enterpriseSettings?.application_name?.trim() || PRODUCT_NAME,
     };
   } catch (error) {
     console.error("fetchSettingsSS exception: ", error);

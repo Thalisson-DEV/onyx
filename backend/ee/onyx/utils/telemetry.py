@@ -1,10 +1,14 @@
+import uuid
 from typing import Any
 
 from ee.onyx.utils.posthog_client import posthog
+from onyx.configs.app_configs import TON_EXTERNAL_TELEMETRY_MODE, TON_WEB_ONLY
 from onyx.utils.client_ip import current_client_ip
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
+
+_TON_POSTHOG_FIELDS = frozenset({"action", "latency", "status", "version"})
 
 
 def _with_client_ip(
@@ -32,14 +36,19 @@ def event_telemetry(
     properties: dict[str, Any] | None = None,
 ) -> None:
     """Capture and send an event to PostHog, flushing immediately."""
-    if not posthog:
+    if not posthog or (TON_WEB_ONLY and TON_EXTERNAL_TELEMETRY_MODE == "off"):
         return
 
-    enriched = _with_client_ip(properties)
-    # Log the pre-enrichment properties so the real client IP (PII) never
-    # reaches the application log aggregator. PostHog itself still receives
-    # the enriched payload via the capture call below.
-    logger.info("Capturing PostHog event: %s %s %s", distinct_id, event, properties)
+    if TON_WEB_ONLY:
+        distinct_id = str(uuid.uuid5(uuid.NAMESPACE_URL, distinct_id))
+        enriched = {
+            key: value
+            for key, value in (properties or {}).items()
+            if key in _TON_POSTHOG_FIELDS
+        }
+    else:
+        enriched = _with_client_ip(properties)
+    logger.info("Capturing PostHog event: %s", event)
     try:
         posthog.capture(distinct_id, event, enriched)
         posthog.flush()
@@ -52,7 +61,7 @@ def identify_user(
     properties: dict[str, Any] | None = None,
 ) -> None:
     """Create/update a PostHog person profile, flushing immediately."""
-    if not posthog:
+    if not posthog or TON_WEB_ONLY:
         return
 
     enriched = _with_client_ip(properties)

@@ -40,7 +40,7 @@ immutability, interpretation, integration and web-only removal decisions.
 | D-012 | Final snapshots cannot be silently mutated. | Decided | Corrections require an explicit new revision and audit event. |
 | D-013 | Temporary files use explicit scope and no-index/no-retrieval/no-report policy where required. | Decided | Prevents leakage into knowledge and reports. |
 | D-014 | Scheduled TON work uses AnalysisSchedule/AnalysisRun, internal timeout, business retry, expiry, crash sweeper and overlap/misfire policy. | Decided | Existing Craft task has `acks_late=False`, catches exceptions and has no retry. |
-| D-015 | External telemetry is off by default; traces are metadata-only by default. | Recommended; security approval required | Vale Norte privacy requirement. |
+| D-015 | External telemetry is off by default; traces are metadata-only by default. | Decided; implemented by Plan 002 | Vale Norte privacy requirement and Plan 002 acceptance tests. |
 | D-016 | Deployment credentials are externally injected; existing environments rotate credentials. | P0 hardening decision | Current compose/template contains default credential fallbacks. |
 | D-017 | Preserve OpenSearch, FileStore, PostgreSQL, Redis, Celery, permissions and active shared APIs. | Decided | They are G-class removal risks. |
 | D-018 | LangGraph is not introduced without a measured native limitation. | Recommended | Native Deep Research/ToolCall/parallel runner exists. |
@@ -80,7 +80,8 @@ treatment, threshold or correction:
 4. Approve HR, finance, contract and fleet access roles and masking.
 5. Approve retention for temporary files, persistent files, evidence, source
    snapshots and reports.
-6. Approve the exact TON configuration names after searching existing env flags.
+6. Resolved by Plan 002: use `TON_WEB_ONLY`, `TON_EXTERNAL_TELEMETRY_MODE`
+   and `TON_TRACE_CONTENT_MODE`.
 7. Approve which SaaS surfaces are replaced versus hidden for the deployment.
 8. Reconcile the report's conflicting totals and budget coverage before source
    snapshots can support production rules.

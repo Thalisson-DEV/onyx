@@ -4,6 +4,7 @@ import {
   SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED,
   SERVER_SIDE_ONLY__AUTH_COOKIE_NAME,
 } from "./lib/constants";
+import { safeLoginReturnPath } from "./lib/ton/privacy";
 
 // Route prefixes that never allow anonymous access, so we fast-fail at the edge
 // when no auth cookie is present. "/app" is intentionally excluded: it allows
@@ -139,9 +140,14 @@ export async function proxy(request: NextRequest) {
     // edge gate for these routes (the server-side role checks reject it anyway).
     if (!authCookie) {
       const loginUrl = new URL("/auth/login", request.url);
-      // Preserve full URL including query params and hash for deep linking
-      const fullPath = pathname + request.nextUrl.search + request.nextUrl.hash;
-      loginUrl.searchParams.set("next", fullPath);
+      loginUrl.searchParams.set(
+        "next",
+        safeLoginReturnPath(
+          pathname,
+          request.nextUrl.search,
+          request.nextUrl.hash
+        )
+      );
       return withSecurityHeaders(NextResponse.redirect(loginUrl));
     }
   }

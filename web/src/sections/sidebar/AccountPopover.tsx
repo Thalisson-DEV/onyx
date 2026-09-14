@@ -35,6 +35,7 @@ import { useNotificationSummary } from "@/hooks/useNotifications";
 import { SvgOnyxLogo } from "@opal/logos";
 import { markdown } from "@opal/utils";
 import { useTranslations } from "next-intl";
+import { safeLoginReturnPath } from "@/lib/ton/privacy";
 
 interface SettingsPopoverProps {
   onUserSettingsClick: () => void;
@@ -60,9 +61,10 @@ function SettingsPopover({
   const showLogin = isAnonymousUser;
 
   const handleLogin = () => {
-    const currentUrl = `${pathname}${
-      searchParams?.toString() ? `?${searchParams.toString()}` : ""
-    }`;
+    const currentUrl = safeLoginReturnPath(
+      pathname,
+      searchParams?.toString() ?? ""
+    );
     const encodedRedirect = encodeURIComponent(currentUrl);
     router.push(`/auth/login?next=${encodedRedirect}`);
   };
@@ -77,9 +79,10 @@ function SettingsPopover({
           return;
         }
 
-        const currentUrl = `${pathname}${
-          searchParams?.toString() ? `?${searchParams.toString()}` : ""
-        }`;
+        const currentUrl = safeLoginReturnPath(
+          pathname,
+          searchParams?.toString() ?? ""
+        );
 
         const encodedRedirect = encodeURIComponent(currentUrl);
 

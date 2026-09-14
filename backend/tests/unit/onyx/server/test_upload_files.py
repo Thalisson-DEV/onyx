@@ -1,10 +1,9 @@
 import io
 import zipfile
 from unittest.mock import MagicMock, patch
-from zipfile import BadZipFile
 
 import pytest
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from starlette.datastructures import Headers
 
 from onyx.configs.constants import FileOrigin
@@ -87,8 +86,10 @@ def test_upload_invalid_zip_with_unzip_false_raises(
 
     bad_zip = _make_upload_file(b"not a zip", "bad.zip", "application/zip")
 
-    with pytest.raises(BadZipFile):
+    with pytest.raises(HTTPException) as exc_info:
         upload_files([bad_zip], FileOrigin.CONNECTOR, unzip=False)
+
+    assert exc_info.value.status_code == 400
 
 
 @patch("onyx.server.documents.connector.get_default_file_store")

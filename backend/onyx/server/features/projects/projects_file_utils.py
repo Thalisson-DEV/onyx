@@ -1,4 +1,6 @@
 from math import ceil
+from tempfile import SpooledTemporaryFile
+from typing import BinaryIO, cast
 
 from fastapi import UploadFile
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -57,15 +59,28 @@ def get_upload_size_bytes(upload: UploadFile) -> int | None:
 
 
 def is_upload_too_large(upload: UploadFile, max_bytes: int) -> bool:
-    """Return True when upload size is known and exceeds max_bytes."""
+    """Return True when the upload exceeds max_bytes.
+
+    Buffer unknown-size streams with a bounded read. This keeps accepted streams
+    readable and prevents a non-seekable stream from bypassing the limit.
+    """
     size_bytes = get_upload_size_bytes(upload)
-    if size_bytes is None:
-        logger.warning(
-            "Could not determine upload size; skipping size-limit check for '%s'",
-            get_safe_filename(upload),
-        )
-        return False
-    return size_bytes > max_bytes
+    if size_bytes is not None:
+        return size_bytes > max_bytes
+
+    buffered_file = SpooledTemporaryFile(max_size=max_bytes)
+    total_bytes = 0
+    while total_bytes <= max_bytes:
+        chunk = upload.file.read(min(1024 * 1024, max_bytes + 1 - total_bytes))
+        if not chunk:
+            break
+        buffered_file.write(chunk)
+        total_bytes += len(chunk)
+
+    buffered_file.seek(0)
+    upload.file = cast(BinaryIO, buffered_file)
+    upload.size = total_bytes
+    return total_bytes > max_bytes
 
 
 # Guard against extremely large images

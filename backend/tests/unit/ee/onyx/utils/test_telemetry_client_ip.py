@@ -2,8 +2,15 @@
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from ee.onyx.utils import telemetry as ee_telemetry
 from onyx.utils import client_ip as client_ip_mod
+
+
+@pytest.fixture(autouse=True)
+def _use_standard_telemetry_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(ee_telemetry, "TON_WEB_ONLY", False)
 
 
 def test_event_telemetry_reads_client_ip_from_contextvar(monkeypatch):

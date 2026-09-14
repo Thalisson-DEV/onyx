@@ -6,7 +6,12 @@ from typing import Any
 
 import requests
 
-from onyx.configs.app_configs import DISABLE_TELEMETRY, ENTERPRISE_EDITION_ENABLED
+from onyx.configs.app_configs import (
+    DISABLE_TELEMETRY,
+    ENTERPRISE_EDITION_ENABLED,
+    TON_EXTERNAL_TELEMETRY_MODE,
+    TON_WEB_ONLY,
+)
 from onyx.configs.constants import (
     KV_CUSTOMER_UUID_KEY,
     KV_INSTANCE_DOMAIN_KEY,
@@ -34,6 +39,16 @@ _CACHED_INSTANCE_DOMAIN: str | None = None
 # Cap each telemetry POST so a slow or unreachable endpoint cannot pin a sender
 # thread indefinitely and let threads accumulate.
 _TELEMETRY_POST_TIMEOUT_SECONDS = 5
+_TON_TELEMETRY_FIELDS = frozenset(
+    {
+        "action",
+        "function",
+        "latency",
+        "record_count",
+        "status",
+        "version",
+    }
+)
 
 
 class RecordType(str, Enum):
@@ -48,6 +63,10 @@ class RecordType(str, Enum):
     PERMISSION_SYNC_PROGRESS = "permission_sync_progress"
     PERMISSION_SYNC_COMPLETE = "permission_sync_complete"
     INDEX_ATTEMPT_STATUS = "index_attempt_status"
+
+
+def redact_ton_telemetry_data(data: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in data.items() if key in _TON_TELEMETRY_FIELDS}
 
 
 def _get_or_generate_customer_id_mt(tenant_id: str) -> str:
@@ -103,10 +122,11 @@ def optional_telemetry(
 ) -> bool | None:
     """Fire-and-forget by default. With blocking=True, sends in the current
     thread and returns whether the POST succeeded."""
-    if DISABLE_TELEMETRY:
+    if DISABLE_TELEMETRY or (TON_WEB_ONLY and TON_EXTERNAL_TELEMETRY_MODE == "off"):
         return False if blocking else None
 
     tenant_id = tenant_id or get_current_tenant_id()
+    telemetry_data = redact_ton_telemetry_data(data) if TON_WEB_ONLY else data
 
     try:
 
@@ -118,15 +138,15 @@ def optional_telemetry(
                     else get_or_generate_uuid()
                 )
                 payload = {
-                    "data": data,
+                    "data": telemetry_data,
                     "record": record_type,
                     # If None then it's a flow that doesn't include a user
                     # For cases where the User itself is None, a string is provided instead
-                    "user_id": user_id,
+                    "user_id": None if TON_WEB_ONLY else user_id,
                     "customer_uuid": customer_uuid,
                     "is_cloud": MULTI_TENANT,
                 }
-                if ENTERPRISE_EDITION_ENABLED:
+                if ENTERPRISE_EDITION_ENABLED and not TON_WEB_ONLY:
                     payload["instance_domain"] = _get_or_generate_instance_domain()
                 response = requests.post(
                     _DANSWER_TELEMETRY_ENDPOINT,
@@ -163,7 +183,7 @@ def mt_cloud_telemetry(
     event: MilestoneRecordType,
     properties: dict[str, Any] | None = None,
 ) -> None:
-    if not MULTI_TENANT:
+    if not MULTI_TENANT or (TON_WEB_ONLY and TON_EXTERNAL_TELEMETRY_MODE == "off"):
         return
 
     # Automatically include tenant_id in properties
@@ -207,7 +227,7 @@ def mt_cloud_identify_user(
     tenant_id: str | None = None,
 ) -> None:
     """Create/update a Cloud PostHog user profile and link any anonymous session."""
-    if not MULTI_TENANT:
+    if not MULTI_TENANT or TON_WEB_ONLY:
         return
 
     if request:

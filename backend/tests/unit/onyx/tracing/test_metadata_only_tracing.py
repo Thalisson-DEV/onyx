@@ -57,6 +57,12 @@ def test_metadata_only_trace_removes_generation_content() -> None:
                 output=[{"role": "assistant", "content": "private response"}],
                 reasoning="private reasoning",
                 model="claude-sonnet",
+                model_config={
+                    "model_provider": "anthropic",
+                    "flow": "chat",
+                    "api_key": "private-key",
+                    "base_url": "https://private-model.example.com",
+                },
                 tools=[{"name": "private_tool"}],
                 request_params={"private": "parameter"},
             )
@@ -77,6 +83,10 @@ def test_metadata_only_trace_removes_generation_content() -> None:
     assert span.span_data.reasoning is None
     assert span.span_data.tools is None
     assert span.span_data.request_params is None
+    assert span.span_data.model_config == {
+        "model_provider": "anthropic",
+        "flow": "chat",
+    }
     assert span.span_data.usage == {"input_tokens": 5, "output_tokens": 2}
 
 

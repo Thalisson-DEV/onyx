@@ -40,6 +40,7 @@ from onyx.tools.tool_implementations.search.search_tool import SearchTool
 from onyx.tools.tool_implementations.web_search.web_search_tool import WebSearchTool
 from onyx.tracing.framework.create import function_span
 from onyx.tracing.framework.spans import SpanError
+from onyx.tracing.framework.traces import TraceContentMode
 from onyx.utils.logger import setup_logger
 from onyx.utils.threadpool_concurrency import run_functions_tuples_in_parallel
 
@@ -136,14 +137,17 @@ def _safe_run_single_tool(
     tool_response: ToolResponse | None = None
 
     with function_span(tool.name) as span_fn:
-        span_fn.span_data.input = str(tool_call.tool_args)
+        capture_content = span_fn.content_mode == TraceContentMode.FULL
+        if capture_content:
+            span_fn.span_data.input = str(tool_call.tool_args)
         try:
             tool_response = tool.run(
                 placement=tool_call.placement,
                 override_kwargs=override_kwargs,
                 **tool_call.tool_args,
             )
-            span_fn.span_data.output = tool_response.llm_facing_response
+            if capture_content:
+                span_fn.span_data.output = tool_response.llm_facing_response
         except ToolCallException as e:
             # ToolCallException is an expected error from tool execution
             # Use llm_facing_message which is specifically designed for LLM consumption
@@ -154,19 +158,22 @@ def _safe_run_single_tool(
                     error=e.llm_facing_message
                 ),
             )
-            _error_tracing.attach_error_to_current_span(
-                SpanError(
-                    message="Tool call error (expected)",
-                    data={
-                        "tool_name": tool.name,
-                        "tool_call_id": tool_call.tool_call_id,
+            error_data: dict[str, Any] = {
+                "tool_name": tool.name,
+                "tool_call_id": tool_call.tool_call_id,
+                "error_type": "ToolCallException",
+            }
+            if capture_content:
+                error_data.update(
+                    {
                         "tool_args": tool_call.tool_args,
                         "error": str(e),
                         "llm_facing_message": e.llm_facing_message,
                         "stack_trace": traceback.format_exc(),
-                        "error_type": "ToolCallException",
-                    },
+                    }
                 )
+            _error_tracing.attach_error_to_current_span(
+                SpanError(message="Tool call error (expected)", data=error_data)
             )
         except ToolExecutionException as e:
             # Unexpected error during tool execution
@@ -175,18 +182,21 @@ def _safe_run_single_tool(
                 rich_response=None,
                 llm_facing_response=GENERIC_TOOL_ERROR_MESSAGE.format(error=str(e)),
             )
-            _error_tracing.attach_error_to_current_span(
-                SpanError(
-                    message="Tool execution error (unexpected)",
-                    data={
-                        "tool_name": tool.name,
-                        "tool_call_id": tool_call.tool_call_id,
+            error_data = {
+                "tool_name": tool.name,
+                "tool_call_id": tool_call.tool_call_id,
+                "error_type": type(e).__name__,
+            }
+            if capture_content:
+                error_data.update(
+                    {
                         "tool_args": tool_call.tool_args,
                         "error": str(e),
                         "stack_trace": traceback.format_exc(),
-                        "error_type": type(e).__name__,
-                    },
+                    }
                 )
+            _error_tracing.attach_error_to_current_span(
+                SpanError(message="Tool execution error (unexpected)", data=error_data)
             )
             if e.emit_error_packet:
                 tool.emitter.emit(
@@ -202,18 +212,21 @@ def _safe_run_single_tool(
                 rich_response=None,
                 llm_facing_response=GENERIC_TOOL_ERROR_MESSAGE.format(error=str(e)),
             )
-            _error_tracing.attach_error_to_current_span(
-                SpanError(
-                    message="Tool execution error (unexpected)",
-                    data={
-                        "tool_name": tool.name,
-                        "tool_call_id": tool_call.tool_call_id,
+            error_data = {
+                "tool_name": tool.name,
+                "tool_call_id": tool_call.tool_call_id,
+                "error_type": type(e).__name__,
+            }
+            if capture_content:
+                error_data.update(
+                    {
                         "tool_args": tool_call.tool_args,
                         "error": str(e),
                         "stack_trace": traceback.format_exc(),
-                        "error_type": type(e).__name__,
-                    },
+                    }
                 )
+            _error_tracing.attach_error_to_current_span(
+                SpanError(message="Tool execution error (unexpected)", data=error_data)
             )
 
     # Emit SectionEnd after tool completes (success or failure)

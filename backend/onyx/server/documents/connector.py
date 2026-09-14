@@ -5,6 +5,7 @@ import os
 import zipfile
 from datetime import datetime
 from io import BytesIO
+from pathlib import PurePosixPath
 from typing import Any, cast
 
 from fastapi import (
@@ -36,6 +37,12 @@ from onyx.background.celery.versioned_apps.client import app as client_app
 from onyx.configs.app_configs import (
     EMAIL_CONFIGURED,
     ENABLED_CONNECTOR_TYPES,
+    MAX_ZIP_COMPRESSION_RATIO,
+    MAX_ZIP_ENTRIES,
+    MAX_ZIP_EXPANDED_SIZE_BYTES,
+    MAX_ZIP_FILENAME_LENGTH,
+    MAX_ZIP_MEMBER_SIZE_BYTES,
+    MAX_ZIP_PATH_DEPTH,
     MOCK_CONNECTOR_FILE_PATH,
 )
 from onyx.configs.constants import (
@@ -296,6 +303,79 @@ def is_zip_file(file: UploadFile) -> bool:
     )
 
 
+def _validate_zip_member_name(filename: str) -> None:
+    normalized_name = filename.replace("\\", "/")
+    path = PurePosixPath(normalized_name)
+    if (
+        not normalized_name
+        or len(normalized_name) > MAX_ZIP_FILENAME_LENGTH
+        or path.is_absolute()
+        or ".." in path.parts
+        or "\x00" in normalized_name
+    ):
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "ZIP contains an unsafe path")
+    if len(path.parts) > MAX_ZIP_PATH_DEPTH:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            "ZIP member exceeds the allowed path depth",
+        )
+
+
+def validate_zip_archive(zf: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
+    """Validate archive metadata before any member content is read."""
+    members = zf.infolist()
+    if len(members) > MAX_ZIP_ENTRIES:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "ZIP contains too many files")
+
+    expanded_size = 0
+    for member in members:
+        _validate_zip_member_name(member.filename)
+        if member.is_dir():
+            continue
+        if member.file_size > MAX_ZIP_MEMBER_SIZE_BYTES:
+            raise OnyxError(
+                OnyxErrorCode.PAYLOAD_TOO_LARGE,
+                "ZIP member exceeds the allowed size",
+            )
+
+        expanded_size += member.file_size
+        if expanded_size > MAX_ZIP_EXPANDED_SIZE_BYTES:
+            raise OnyxError(
+                OnyxErrorCode.PAYLOAD_TOO_LARGE,
+                "ZIP exceeds the allowed expanded size",
+            )
+
+        compressed_size = max(member.compress_size, 1)
+        if member.file_size / compressed_size > MAX_ZIP_COMPRESSION_RATIO:
+            raise OnyxError(
+                OnyxErrorCode.INVALID_INPUT,
+                "ZIP member exceeds the allowed compression ratio",
+            )
+
+    return members
+
+
+def _read_bounded_zip_member(
+    zf: zipfile.ZipFile,
+    member: zipfile.ZipInfo,
+    remaining_archive_bytes: int,
+) -> bytes:
+    read_limit = min(MAX_ZIP_MEMBER_SIZE_BYTES, remaining_archive_bytes)
+    content = bytearray()
+    with zf.open(member, "r") as member_file:
+        while len(content) <= read_limit:
+            chunk = member_file.read(min(1024 * 1024, read_limit + 1 - len(content)))
+            if not chunk:
+                break
+            content.extend(chunk)
+    if len(content) > read_limit:
+        raise OnyxError(
+            OnyxErrorCode.PAYLOAD_TOO_LARGE,
+            "ZIP exceeds the allowed expanded size",
+        )
+    return bytes(content)
+
+
 def upload_files(
     files: list[UploadFile],
     file_origin: FileOrigin = FileOrigin.CONNECTOR,
@@ -324,31 +404,40 @@ def upload_files(
 
                 # Validate the zip by opening it (catches corrupt/non-zip files)
                 with zipfile.ZipFile(file.file, "r") as zf:
+                    zip_members = validate_zip_archive(zf)
                     if unzip:
                         zip_metadata_file_id = save_zip_metadata_to_file_store(
                             zf, file_store
                         )
-                        for file_info in zf.namelist():
-                            if zf.getinfo(file_info).is_dir():
+                        expanded_bytes_read = 0
+                        for file_info in zip_members:
+                            if file_info.is_dir():
                                 continue
 
-                            if not should_process_file(file_info):
+                            if not should_process_file(file_info.filename):
                                 continue
 
-                            sub_file_bytes = zf.read(file_info)
+                            sub_file_bytes = _read_bounded_zip_member(
+                                zf,
+                                file_info,
+                                MAX_ZIP_EXPANDED_SIZE_BYTES - expanded_bytes_read,
+                            )
+                            expanded_bytes_read += len(sub_file_bytes)
 
-                            mime_type, __ = mimetypes.guess_type(file_info)
+                            mime_type, __ = mimetypes.guess_type(file_info.filename)
                             if mime_type is None:
                                 mime_type = "application/octet-stream"
 
                             file_id = file_store.save_file(
                                 content=BytesIO(sub_file_bytes),
-                                display_name=os.path.basename(file_info),
+                                display_name=os.path.basename(file_info.filename),
                                 file_origin=file_origin,
                                 file_type=mime_type,
                             )
                             deduped_file_paths.append(file_id)
-                            deduped_file_names.append(os.path.basename(file_info))
+                            deduped_file_names.append(
+                                os.path.basename(file_info.filename)
+                            )
                         continue
 
                 # Store the zip as-is (unzip=False)
@@ -372,7 +461,7 @@ def upload_files(
             deduped_file_paths.append(file_id)
             deduped_file_names.append(file.filename)
 
-    except ValueError as e:
+    except (ValueError, zipfile.BadZipFile, zipfile.LargeZipFile) as e:
         raise HTTPException(status_code=400, detail=str(e))
     return FileUploadResponse(
         file_paths=deduped_file_paths,

@@ -1,5 +1,8 @@
 export const IS_DEV = process.env.NODE_ENV === "development";
 
+export const TON_WEB_ONLY = process.env.TON_WEB_ONLY?.toLowerCase() !== "false";
+export const TON_EXTERNAL_TELEMETRY_ENABLED = !TON_WEB_ONLY;
+
 export const HOST_URL = process.env.WEB_DOMAIN || "http://localhost:3000";
 
 export const INTERNAL_URL = process.env.INTERNAL_URL || "http://localhost:8080";

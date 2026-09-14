@@ -17,24 +17,28 @@ export function initPostHog(key: string, host?: string | null): void {
     capture_pageview: false,
     cross_subdomain_cookie: false,
     session_recording: {
-      // Sensitive inputs should use data-ph-no-capture attribute
-      maskAllInputs: false,
+      maskAllInputs: true,
     },
   });
 }
 
 interface PHProviderProps {
   children: React.ReactNode;
+  externalTelemetryEnabled: boolean;
 }
 
-export function PHProvider({ children }: PHProviderProps) {
+export function PHProvider({
+  children,
+  externalTelemetryEnabled,
+}: PHProviderProps) {
   useEffect(() => {
+    if (!externalTelemetryEnabled) return;
     // Build-time key (Onyx Cloud); otherwise PostHogRuntimeInitializer handles it.
     const buildTimeKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
     if (buildTimeKey) {
       initPostHog(buildTimeKey, process.env.NEXT_PUBLIC_POSTHOG_HOST);
     }
-  }, []);
+  }, [externalTelemetryEnabled]);
 
   return <PostHogProvider client={posthog}>{children}</PostHogProvider>;
 }

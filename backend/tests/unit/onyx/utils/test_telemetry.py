@@ -1,8 +1,15 @@
 from typing import Any
 from unittest.mock import Mock
 
+import pytest
+
 from onyx.configs.constants import MilestoneRecordType
 from onyx.utils import telemetry as telemetry_utils
+
+
+@pytest.fixture(autouse=True)
+def _use_standard_telemetry_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(telemetry_utils, "TON_WEB_ONLY", False)
 
 
 class CloudIdentifyHarness:

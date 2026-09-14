@@ -1,7 +1,11 @@
 import "./globals.css";
 
 import type { Metadata } from "next";
-import { GTM_ENABLED, MODAL_ROOT_ID } from "@/lib/constants";
+import {
+  GTM_ENABLED,
+  MODAL_ROOT_ID,
+  TON_EXTERNAL_TELEMETRY_ENABLED,
+} from "@/lib/constants";
 import { generateFaviconMetadata } from "@/lib/app/svcSS";
 import AppProvider from "@/providers/AppProvider";
 import { PHProvider } from "./providers";
@@ -134,7 +138,7 @@ export default async function Layout({ children }: LayoutProps) {
           }}
         />
 
-        {GTM_ENABLED && (
+        {TON_EXTERNAL_TELEMETRY_ENABLED && GTM_ENABLED && (
           <Script
             id="google-tag-manager"
             strategy="afterInteractive"
@@ -165,15 +169,21 @@ export default async function Layout({ children }: LayoutProps) {
               >
                 <div className="text-text min-h-screen bg-background">
                   <TooltipProvider>
-                    <PHProvider>
+                    <PHProvider
+                      externalTelemetryEnabled={TON_EXTERNAL_TELEMETRY_ENABLED}
+                    >
                       <SWRConfigProvider>
                         <AppHealthBanner />
                         <BannerQueue />
                         <AuthenticationShell>
                           <AppProvider>
-                            <PostHogRuntimeInitializer />
-                            <CustomAnalyticsScript />
-                            <PostHogPageTracker />
+                            {TON_EXTERNAL_TELEMETRY_ENABLED && (
+                              <>
+                                <PostHogRuntimeInitializer />
+                                <CustomAnalyticsScript />
+                                <PostHogPageTracker />
+                              </>
+                            )}
                             <div
                               id={MODAL_ROOT_ID}
                               className="h-screen w-screen"
@@ -182,7 +192,7 @@ export default async function Layout({ children }: LayoutProps) {
                                 {children}
                               </ProductGatingWrapper>
                             </div>
-                            <WebVitals />
+                            {TON_EXTERNAL_TELEMETRY_ENABLED && <WebVitals />}
                             {process.env.NEXT_PUBLIC_ENABLE_STATS ===
                               "true" && <StatsOverlayLoader />}
                           </AppProvider>

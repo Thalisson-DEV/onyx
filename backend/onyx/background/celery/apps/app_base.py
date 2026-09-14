@@ -38,6 +38,7 @@ from onyx.configs.app_configs import (
     DISABLE_VECTOR_DB,
     ENABLE_OPENSEARCH_INDEXING_FOR_ONYX,
     ONYX_DISABLE_VESPA,
+    TON_WEB_ONLY,
 )
 from onyx.configs.constants import ONYX_CLOUD_CELERY_TASK_PREFIX, OnyxRedisLocks
 from onyx.db.engine.sql_engine import get_sqlalchemy_engine
@@ -75,6 +76,7 @@ from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 logger = setup_logger()
 
 task_logger = get_task_logger(__name__)
+TENANT_ID_HEADER = "onyx_tenant_id"
 
 if SENTRY_DSN:
     from onyx.configs.sentry import init_sentry
@@ -113,30 +115,44 @@ class TenantAwareTask(Task):
     abstract = True  # So Celery knows not to register this as a real task.
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        # Grab tenant_id from the kwargs, or fallback to default if missing.
-        tenant_id = kwargs.get("tenant_id", None) or POSTGRES_DEFAULT_SCHEMA
+        supplied_tenant_id = kwargs.get("tenant_id")
+        if TON_WEB_ONLY and (
+            not isinstance(supplied_tenant_id, str) or not supplied_tenant_id
+        ):
+            raise ValueError("TON task requires tenant_id")
 
-        # Set the context var
-        CURRENT_TENANT_ID_CONTEXTVAR.set(tenant_id)
+        tenant_id = supplied_tenant_id or POSTGRES_DEFAULT_SCHEMA
+        published_tenant_id = (self.request.headers or {}).get(TENANT_ID_HEADER)
+        if (
+            TON_WEB_ONLY
+            and published_tenant_id is not None
+            and published_tenant_id != tenant_id
+        ):
+            raise ValueError("TON task tenant context does not match tenant_id")
+
+        tenant_token = CURRENT_TENANT_ID_CONTEXTVAR.set(tenant_id)
 
         # Actually run the task now
         try:
             return super().__call__(*args, **kwargs)
         finally:
-            # Clear or reset after the task runs
-            # so it does not leak into any subsequent tasks on the same worker process
-            CURRENT_TENANT_ID_CONTEXTVAR.set(None)
+            CURRENT_TENANT_ID_CONTEXTVAR.reset(tenant_token)
 
 
 @before_task_publish.connect
 def on_before_task_publish(
     headers: dict[str, Any] | None = None,
+    body: tuple[Any, dict[str, Any], Any] | None = None,
     **kwargs: Any,  # noqa: ARG001
 ) -> None:
     """Stamp the current wall-clock time into the task message headers so that
     workers can compute queue wait time (time between publish and execution)."""
     if headers is not None:
         headers["enqueued_at"] = time.time()
+        task_kwargs = body[1] if body else {}
+        tenant_id = task_kwargs.get("tenant_id")
+        if isinstance(tenant_id, str) and tenant_id:
+            headers[TENANT_ID_HEADER] = tenant_id
 
 
 @task_prerun.connect
@@ -196,11 +212,17 @@ def on_task_postrun(
         return
 
     # Get tenant_id directly from kwargs- each celery task has a tenant_id kwarg
-    if not kwargs:
+    if (
+        not kwargs
+        or not isinstance(kwargs.get("tenant_id"), str)
+        or not kwargs["tenant_id"]
+    ):
         logger.error("Task %s (ID: %s) is missing kwargs", task.name, task_id)
+        if TON_WEB_ONLY:
+            return
         tenant_id = POSTGRES_DEFAULT_SCHEMA
     else:
-        tenant_id = cast(str, kwargs.get("tenant_id", POSTGRES_DEFAULT_SCHEMA))
+        tenant_id = cast(str, kwargs["tenant_id"])
 
     task_logger.debug(
         "Task %s (ID: %s) completed with state: %s %s",
@@ -280,7 +302,13 @@ def on_task_revoked(
         return
 
     request_kwargs = getattr(request, "kwargs", None) or {}  # ods: ignore[getattr]
-    tenant_id = cast(str, request_kwargs.get("tenant_id", POSTGRES_DEFAULT_SCHEMA))
+    supplied_tenant_id = request_kwargs.get("tenant_id")
+    if not isinstance(supplied_tenant_id, str) or not supplied_tenant_id:
+        if TON_WEB_ONLY:
+            logger.error("Revoked TON task %s is missing tenant_id", task_id)
+            return
+        supplied_tenant_id = POSTGRES_DEFAULT_SCHEMA
+    tenant_id = supplied_tenant_id
 
     r = get_redis_client(tenant_id=tenant_id)
     r.srem(DOCUMENT_SYNC_TASKSET_KEY, task_id)
@@ -663,7 +691,9 @@ def reset_tenant_id(
     **other_kwargs: Any,  # noqa: ARG001
 ) -> None:
     """Signal handler to reset tenant ID in context var after task ends."""
-    CURRENT_TENANT_ID_CONTEXTVAR.set(POSTGRES_DEFAULT_SCHEMA)
+    CURRENT_TENANT_ID_CONTEXTVAR.set(
+        None if TON_WEB_ONLY or MULTI_TENANT else POSTGRES_DEFAULT_SCHEMA
+    )
 
 
 def wait_for_document_index_or_shutdown() -> None:

@@ -83,19 +83,17 @@ def test_get_upload_size_bytes_logs_warning_when_stream_size_unavailable(
     assert "non_seekable.txt" in caplog.text
 
 
-def test_is_upload_too_large_logs_warning_when_size_unknown(
+def test_is_upload_too_large_buffers_content_when_size_unknown(
     monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
     upload = _make_upload("size_unknown.txt", size=1)
     monkeypatch.setattr(utils, "get_upload_size_bytes", lambda _upload: None)
 
-    caplog.set_level("WARNING")
     is_too_large = utils.is_upload_too_large(upload, max_bytes=100)
 
     assert is_too_large is False
-    assert "Could not determine upload size; skipping size-limit check" in caplog.text
-    assert "size_unknown.txt" in caplog.text
+    assert upload.size == 1
+    assert upload.file.read() == b"x"
 
 
 def test_categorize_uploaded_files_accepts_size_under_limit(

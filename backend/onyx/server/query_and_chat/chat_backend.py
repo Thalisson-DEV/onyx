@@ -148,11 +148,24 @@ from onyx.tracing.framework.create import ChatTraceMetadata, ensure_trace
 from onyx.utils.headers import get_custom_tool_additional_request_headers
 from onyx.utils.logger import setup_logger
 from onyx.utils.telemetry import mt_cloud_telemetry
-from shared_configs.contextvars import get_current_tenant_id
+from shared_configs.contextvars import ONYX_REQUEST_ID_CONTEXTVAR, get_current_tenant_id
 
 logger = setup_logger()
 
 router = APIRouter(prefix="/chat")
+
+PUBLIC_STREAM_ERROR_MESSAGE = "An internal error occurred."
+
+
+def get_public_stream_error() -> str:
+    payload = {
+        "error": PUBLIC_STREAM_ERROR_MESSAGE,
+        "error_code": OnyxErrorCode.INTERNAL_ERROR.code,
+    }
+    request_id = ONYX_REQUEST_ID_CONTEXTVAR.get()
+    if request_id:
+        payload["request_id"] = request_id
+    return json.dumps(payload)
 
 
 def _get_available_tokens_for_persona(
@@ -858,9 +871,9 @@ def handle_send_chat_message(
                     mcp_headers=chat_message_req.mcp_headers,
                 ):
                     yield get_json_line(obj.model_dump())
-            except Exception as e:
+            except Exception:
                 logger.exception("Error in multi-model streaming")
-                yield json.dumps({"error": str(e)})
+                yield get_public_stream_error()
 
         return StreamingResponse(
             multi_model_stream_generator(), media_type="text/event-stream"
@@ -934,9 +947,9 @@ def handle_send_chat_message(
             ):
                 yield get_json_line(obj.model_dump())
 
-        except Exception as e:
+        except Exception:
             logger.exception("Error in chat message streaming")
-            yield json.dumps({"error": str(e)})
+            yield get_public_stream_error()
 
         finally:
             logger.debug("Stream generator finished")

@@ -36,7 +36,7 @@ cleanup. Domain schema and production rules must wait for the decisions in
 | Plan | Result | Depends on | Status |
 |---|---|---|---|
 | 001 | Evidence baseline, web contract inventory and named test specs | none | DONE |
-| 002 | Tenant, upload, error, trace and telemetry boundaries | 001 | TODO |
+| 002 | Tenant, upload, error, trace and telemetry boundaries | 001 | DONE |
 | 003 | Rule/analysis/Finding/Occurrence/Report contract and migrations | 001, 002, decision approval | TODO |
 | 004 | File lifecycle, ingestion, knowledge and quality hooks | 001, 002, 003 | TODO |
 | 005 | Specialist agents and native supervisor extension | 002, 003, 004 | TODO |

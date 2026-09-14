@@ -32,6 +32,18 @@ def _non_negative_int_env(name: str, default: int) -> int:
 #####
 # App Configs
 #####
+TON_WEB_ONLY = os.environ.get("TON_WEB_ONLY", "true").lower() != "false"
+
+TON_EXTERNAL_TELEMETRY_MODE = os.environ.get(
+    "TON_EXTERNAL_TELEMETRY_MODE", "off"
+).lower()
+if TON_EXTERNAL_TELEMETRY_MODE not in {"off", "metadata"}:
+    raise ValueError("TON_EXTERNAL_TELEMETRY_MODE must be 'off' or 'metadata'")
+
+TON_TRACE_CONTENT_MODE = os.environ.get("TON_TRACE_CONTENT_MODE", "metadata").lower()
+if TON_TRACE_CONTENT_MODE not in {"metadata", "full"}:
+    raise ValueError("TON_TRACE_CONTENT_MODE must be 'metadata' or 'full'")
+
 APP_HOST = "0.0.0.0"  # noqa: S104 — server bind address; intentional default for containerized deployment
 APP_PORT = 8080
 # API_PREFIX is used to prepend a base path for all API routes
@@ -61,6 +73,17 @@ BLURB_SIZE = 128  # Number Encoder Tokens included in the chunk blurb
 # Hard ceiling for the admin-configurable file upload size (in MB).
 # Self-hosted customers can raise or lower this via the environment variable.
 MAX_ALLOWED_UPLOAD_SIZE_MB = _non_negative_int_env("MAX_ALLOWED_UPLOAD_SIZE_MB", 250)
+
+MAX_ZIP_ENTRIES = _non_negative_int_env("MAX_ZIP_ENTRIES", 1000)
+MAX_ZIP_EXPANDED_SIZE_BYTES = _non_negative_int_env(
+    "MAX_ZIP_EXPANDED_SIZE_BYTES", MAX_ALLOWED_UPLOAD_SIZE_MB * 1024 * 1024
+)
+MAX_ZIP_MEMBER_SIZE_BYTES = _non_negative_int_env(
+    "MAX_ZIP_MEMBER_SIZE_BYTES", 100 * 1024 * 1024
+)
+MAX_ZIP_COMPRESSION_RATIO = _non_negative_int_env("MAX_ZIP_COMPRESSION_RATIO", 100)
+MAX_ZIP_PATH_DEPTH = _non_negative_int_env("MAX_ZIP_PATH_DEPTH", 10)
+MAX_ZIP_FILENAME_LENGTH = _non_negative_int_env("MAX_ZIP_FILENAME_LENGTH", 255)
 
 # Default fallback for the per-user file upload size limit (in MB) when no
 # admin-configured value exists.  Clamped to MAX_ALLOWED_UPLOAD_SIZE_MB at

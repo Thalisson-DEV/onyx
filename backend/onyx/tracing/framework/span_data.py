@@ -200,3 +200,9 @@ class GenerationSpanData(SpanData):
         self._reasoning = None
         self._tools = None
         self._request_params = None
+        if self.model_config is not None:
+            self.model_config = {
+                key: value
+                for key, value in self.model_config.items()
+                if key in {"flow", "model_provider"}
+            }

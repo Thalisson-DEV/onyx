@@ -4,7 +4,10 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { OnSubmitProps } from "@/hooks/useChatController";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
-import { SUBMIT_MESSAGE_TYPES } from "@/lib/extension/constants";
+import {
+  isTrustedExtensionPageChange,
+  trustedExtensionSearchParams,
+} from "@/lib/ton/privacy";
 import { useAvailableSources } from "@/lib/connectors/hooks";
 import { useDocumentSets } from "@/lib/hooks/useDocumentSets";
 import { useProjectsContext } from "@/lib/projects/providers";
@@ -135,9 +138,19 @@ export function useSendChatMessageFromURL({
   // The extension navigating the embedded page without a reload.
   useEffect(() => {
     function onPageChange(event: MessageEvent) {
-      if (event.data.type !== SUBMIT_MESSAGE_TYPES.PAGE_CHANGE) return;
+      if (
+        !isTrustedExtensionPageChange(
+          event,
+          window.parent,
+          window.location.origin
+        )
+      ) {
+        return;
+      }
       try {
-        send(new URL(event.data.href).searchParams.toString());
+        send(
+          trustedExtensionSearchParams(event.data.href, window.location.origin)
+        );
       } catch (error) {
         console.error("Error parsing URL:", error);
       }

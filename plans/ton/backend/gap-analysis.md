@@ -96,6 +96,10 @@ They must stay visible until the underlying artifacts are reconciled:
 
 ## Findings
 
+Plan 002 closed SECURITY-01 through SECURITY-05 and PRIVACY-01/02. SECURITY-06
+remains assigned to Plan 005. SECURITY-07 remains assigned to Plan 007. Plan 002
+did not change domain schema, agent routing or deployment artifacts.
+
 ### [SECURITY-01] Redact content-bearing traces
 
 - **Evidence**: `backend/onyx/tools/tool_runner.py:138-218` attaches tool

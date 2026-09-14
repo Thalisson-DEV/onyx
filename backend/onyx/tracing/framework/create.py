@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
+from onyx.configs.app_configs import TON_TRACE_CONTENT_MODE, TON_WEB_ONLY
 from onyx.utils.logger import setup_logger
 from shared_configs.contextvars import get_current_tenant_id
 
@@ -20,6 +21,12 @@ if TYPE_CHECKING:
 logger = setup_logger(__name__)
 
 
+def _default_trace_content_mode() -> TraceContentMode:
+    if TON_WEB_ONLY and TON_TRACE_CONTENT_MODE == "metadata":
+        return TraceContentMode.METADATA_ONLY
+    return TraceContentMode.FULL
+
+
 class ChatTraceMetadata(BaseModel):
     tenant_id: str = Field(default_factory=get_current_tenant_id)
     chat_session_id: str | None = None
@@ -32,7 +39,7 @@ def trace(
     group_id: str | None = None,
     metadata: dict[str, Any] | None = None,
     disabled: bool = False,
-    content_mode: TraceContentMode = TraceContentMode.FULL,
+    content_mode: TraceContentMode | None = None,
 ) -> Trace:
     """
     Create a new trace. The trace will not be started automatically; you should either use
@@ -68,7 +75,7 @@ def trace(
         trace_id=trace_id,
         group_id=group_id,
         metadata=metadata,
-        content_mode=content_mode,
+        content_mode=content_mode or _default_trace_content_mode(),
         disabled=disabled,
     )
 
@@ -80,7 +87,7 @@ def ensure_trace(
     group_id: str | None = None,
     metadata: dict[str, Any] | None = None,
     disabled: bool = False,
-    content_mode: TraceContentMode = TraceContentMode.FULL,
+    content_mode: TraceContentMode | None = None,
 ) -> Iterator[Trace | None]:
     """
     Ensure a trace exists. If a trace is already active, reuse it.

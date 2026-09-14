@@ -1,0 +1,773 @@
+﻿VALE NORTE CONSTRUTORA  ·  Relatório de Inconsistências  ·  Jan–Abr/2026  ·  Reunião Financeiro 15/06/2026
+
+
+
+
+VALE NORTE CONSTRUTORA LTDA
+RELATÓRIO DE INCONSISTÊNCIAS OPERACIONAIS E FINANCEIRAS
+Período: Janeiro a Abril de 2026  ·  Base: Banco de Dados Fluxo de Caixa + DRE Ferrari
+Elaborado para: Reunião Financeiro · 15/06/2026
+Participantes: Ferrari · Miriam · Jailson · Controladoria
+
+
+Controladoria  ·  Núcleo Controller Serviços Administrativos
+________________
+
+
+RESUMO EXECUTIVO
+Este relatório consolida as inconsistências identificadas no período de janeiro a abril de 2026 na Vale Norte Construtora Ltda, a partir da análise cruzada do banco de dados de fluxo de caixa (5.191 lançamentos, 7 unidades) e da DRE elaborada pelo Ferrari. Os achados estão organizados em duas dimensões: (1) inconsistências de dados e lançamentos — erros que distorcem o resultado e dificultam a reconciliação; e (2) falhas de processo — gaps de rotina que geram retrabalho, atrasos e riscos de controle. A reunião do Financeiro de 15/06/2026 é o marco para deliberação sobre as ações corretivas.
+
+
+Categoria
+	Qtd. / Impacto
+	Prioridade
+	Inconsistências de lançamento (dados)
+	9 tipos identificados
+	🔴 ALTA
+	Parcelamentos tributários lançados indevidamente no resultado
+	R$ 90,9MM — Abr/2026
+	🔴 ALTA
+	Impostos s/Faturamento com Valor Final zerado
+	139 lanç. / R$ 9,6MM
+	🔴 ALTA
+	Mútuos internos e Chácara classificados como Desp. Diversas
+	R$ 4,2MM no período
+	🔴 ALTA
+	Plano de contas das unidades — atrasos e lançamentos errados
+	Todas as unidades
+	🔴 ALTA
+	Contas a pagar chegando incompletas / em cima do prazo
+	Retrabalho sistemático
+	🔴 ALTA
+	Locações sem padronização: competência, controle e rateio
+	R$ 5,4MM acumulado
+	🟠 MÉDIA
+	Fundo Fixo e prestação de contas de viagem não lançados
+	Gastos invisíveis
+	🟠 MÉDIA
+	Fornecedores novos sem cadastro — pagamentos represados
+	Gargalo operacional
+	🟠 MÉDIA
+	Valores duplicados sem estorno comprovado
+	A quantificar
+	🔴 ALTA
+	Extrato bancário x NG: saldos não batem / conciliação manual
+	Risco de fraude/erro
+	🔴 ALTA
+	Dotações desatualizadas — DRE sem comparativo orçado vs. realizado
+	6 de 7 unidades
+	🟠 MÉDIA
+	
+
+________________
+
+
+1. INCONSISTÊNCIAS DE DADOS E LANÇAMENTOS
+As inconsistências abaixo foram identificadas no banco de dados de fluxo de caixa (arquivo Banco_de_Dados_Vale_Norte_2.xlsm) e na DRE do Ferrari, cruzados com os contratos ativos. Cada item apresenta a evidência, o impacto e a ação requerida.
+
+
+1.1  Parcelamentos Tributários — R$ 90,9MM lançados no resultado de Abril/2026
+Em abril/2026, foram lançados 7 registros na natureza PARCELAMENTOS com total de R$ 90.882.225,05 referentes a Termos de Transação Tributária Federal (Transação Previdenciária e Demais Débitos — documentos nº 15844373 a 15844378 e 15853327). Esses valores representam o saldo total consolidado dos acordos de adesão ao programa, não desembolsos efetivos do período.
+
+
+Documento
+	Natureza do Acordo
+	Valor Registrado
+	15844373
+	Transação Previdenciária – Demais Débitos
+	(R$ 16.145.051,78)
+	15844374
+	Transação Demais Débitos
+	(R$ 24.578.911,27)
+	15844375
+	Transação Dívida Previdenciária
+	(R$ 11.519.805,77)
+	15844376
+	Transação Demais Débitos
+	(R$ 21.788.889,08)
+	15844377
+	Transação Demais Débitos
+	(R$ 7.773.626,58)
+	15844378
+	Transação Dívida Não Previdenciária
+	(R$ 671.025,56)
+	15853327
+	Transação Demais Débitos
+	(R$ 8.400.395,59)
+	TOTAL
+	Saldo total dos acordos — não é saída de caixa do período
+	(R$ 90.877.705,65)
+	
+
+⚠  Ação: Excluir integralmente da DRE periódica. Lançar apenas a parcela mensal efetivamente paga (R$ 4.519,42 em abril). Registrar o saldo total como passivo tributário renegociado no Balanço. Confirmar valor e cronograma de parcelas com o jurídico/tributário.
+
+
+1.2  Impostos s/Faturamento com Valor Final zerado — R$ 9,6MM
+Foram identificados 139 lançamentos de natureza IMPOSTOS S/FATURAMENTO e TAXAS E CONTINGÊNCIAS com Valor Movimento negativo, porém Valor Final igual a zero. As retenções (IRPJ, INSS, ISS, PIS, COFINS) foram deduzidas no campo do faturamento mas não transitam para o resultado do grupo de impostos.
+
+
+Natureza
+	Qtd.
+	Valor Movimento (retido)
+	Valor Final
+	Diferença
+	IMPOSTOS S/FATURAMENTO
+	99
+	(R$ 8.304.644,97)
+	R$ 0,00
+	Retido no ato do faturamento
+	TAXAS E CONTINGÊNCIAS
+	40
+	(R$ 1.264.813,99)
+	R$ 0,00
+	Retido no ato do faturamento
+	TOTAL
+	139
+	(R$ 9.569.458,96)
+	R$ 0,00
+	—
+	
+
+⚠  Ação — Miriam/Financeiro: Confirmar com o ERP (NG/Keevo) se esses valores estão sendo integrados no Valor Imposto Retido do faturamento. Se sim, a DRE deve mostrar explicitamente a dedução da Receita Bruta. Se não, há lançamentos em aberto a regularizar.
+
+
+1.3  Mútuos Internos e Chácara — Classificados Indevidamente como Despesas Diversas
+Transferências intercompany para Castellu Construtora, Cidade Universitária e Controller, além de despesas do projeto Chácara São Judas, estão classificadas como DESPESAS DIVERSAS — atravessando o resultado operacional como se fossem custos do contrato. O total no período foi de R$ 4.210.513,16.
+
+
+Origem
+	Jan/26
+	Fev/26
+	Mar/26
+	Abr/26
+	Total
+	Mútuos Internos (diversas)
+	(R$ 154.814,00)
+	(R$ 155.756,00)
+	(R$ 142.531,00)
+	(R$ 335.291,00)
+	(R$ 788.392,00)
+	Mútuo Castellu Construtora
+	(R$ 400.000,00)
+	(R$ 100.000,00)
+	(R$ 240.000,00)
+	(R$ 200.042,00)
+	(R$ 940.042,00)
+	Mútuo Cidade Universitária
+	(R$ 218.934,00)
+	(R$ 459.198,00)
+	(R$ 183.074,00)
+	(R$ 326.175,00)
+	(R$ 1.187.381,00)
+	Chácara São Judas (P)
+	(R$ 396.890,00)
+	(R$ 321.228,00)
+	(R$ 273.344,00)
+	(R$ 303.235,00)
+	(R$ 1.294.697,00)
+	TOTAL
+	(R$ 1.170.638,00)
+	(R$ 1.036.182,00)
+	(R$ 838.950,00)
+	(R$ 1.164.743,00)
+	(R$ 4.210.513,00)
+	
+
+⚠  Ação — Controladoria: Reclassificar mútuos para conta de Ativo/Passivo Mútuo no Balanço. Despesas da Chácara que representam investimento devem ir para Ativo em Formação. Sem reclassificação, o resultado 2026 está R$ 4,2MM mais negativo do que o operacional real.
+
+
+1.4  Despesas Jurídicas e Engenharia — Salto de 554% em Jan+Fev/2026
+As despesas com consultoria e engenharia saltaram de R$ 72.500 em Jan+Fev/2025 para R$ 473.827 no mesmo período de 2026, com concentração de R$ 323.682 em 'consultoria' para Itabirito — fornecedor identificado apenas como 'FORNECEDOR ____'. Todos os fornecedores da DRE do Ferrari estão mascarados, impossibilitando auditoria.
+
+
+Unidade
+	Tipo
+	Fornecedor
+	Valor Jan+Fev/26
+	ITABIRITO/MG
+	Prestador de Serviço de Consultoria
+	FORNECEDOR ____
+	(R$ 323.682,00)
+	ITABIRITO/MG
+	Prestador de Serviço de Engenharia
+	FORNECEDOR ____
+	(R$ 24.371,00)
+	JUAZEIRO DO NORTE/CE
+	Prestador de Serviço
+	FORNECEDOR ____
+	(R$ 60.000,00)
+	MOSSORÓ/RN
+	Honorários Advocatícios
+	ESCRITÓRIO ____
+	(R$ 30.000,00)
+	TOLEDO/PR
+	Prestador de Serviço de Engenharia
+	FORNECEDOR ____
+	(R$ 35.499,00)
+	TOTAL
+	
+
+	
+
+	(R$ 473.827,00)
+	
+
+⚠  Ação — Ferrari/Financeiro: Solicitar identificação de todos os fornecedores mascarados na DRE. Sem identificação, nenhuma auditoria é possível. Especificamente, R$ 323.682 em consultoria de Itabirito (unidade com apenas 4 meses) devem ter justificativa e contrato vinculado.
+
+
+1.5  Encargos Sociais — Ratio de 62% sobre Folha (esperado 35–45%)
+Em Jan+Fev/2026, os Encargos Sociais totalizaram R$ 2.936.450, representando 62% da Folha de Pagamento (R$ 4.733.535). O ratio esperado para o regime CLT com FGTS e INSS patronal é de 35% a 45%. A divergência sugere que verbas rescisórias, FGTS multa e/ou INSS retido do empregado estão sendo somados ao grupo de encargos, duplicando parte dos custos.
+
+
+Unidade
+	Folha Jan+Fev/26
+	Encargos Jan+Fev/26
+	Ratio Apurado
+	Esperado
+	MOSSORÓ/RN
+	(R$ 2.238.645,00)
+	(R$ 1.119.722,00)
+	50,0%
+	35–45%
+	JUAZEIRO DO NORTE/CE
+	(R$ 1.726.532,00)
+	(R$ 1.062.840,00)
+	61,6%
+	35–45%
+	ITABIRITO/MG
+	(R$ 513.206,00)
+	(R$ 351.789,00)
+	68,5%
+	35–45%
+	TOLEDO/PR
+	(R$ 506.152,00)
+	(R$ 292.832,00)
+	57,9%
+	35–45%
+	TOTAL
+	(R$ 4.733.535,00)
+	(R$ 2.936.450,00)
+	62,0%
+	35–45%
+	
+
+⚠  Ação — Ferrari/DP: Auditar a composição da conta Encargos Sociais e verificar se FGTS multa, INSS retido e verbas rescisórias estão sendo lançados separadamente da Folha ou acumulados neste grupo. O custo de pessoal aparente pode estar inflado em ~R$ 1,5MM por trimestre.
+
+
+1.6  Queda Brusca de Receita em Mossoró — Abril/2026
+Mossoró/RN, o maior contrato (R$ 4,5MM/mês), registrou receita de apenas R$ 447.016 em abril/2026, contra média de R$ 3.474.174 nos três meses anteriores — queda de 87%. Os custos operacionais da unidade permaneceram em patamar normal (~R$ 2,2MM), gerando resultado fortemente negativo no mês.
+
+
+Mês
+	Receita Mossoró
+	Variação
+	Observação
+	Jan/26
+	R$ 3.171.543,00
+	Base
+	Nível normal
+	Fev/26
+	R$ 3.517.865,00
+	+10,9%
+	Nível normal
+	Mar/26
+	R$ 3.733.314,00
+	+6,1%
+	Nível normal
+	Abr/26
+	R$ 447.016,00
+	-88,0%
+	⚠ QUEDA ABRUPTA — NF pendente ou suspensão?
+	
+
+⚠  Ação — Ferrari/Financeiro: Verificar se há NF de Mossoró pendente de emissão em abril/26, ou se houve suspensão/glosa contratual. Confirmar com a gestora Daniely Bezerra. Impacto: resultado de abril está distorcido em aproximadamente R$ 3MM.
+
+
+1.7  Despesas Financeiras Atípicas — Fevereiro e Março/2026
+As despesas financeiras saltaram de R$ 45.646 (janeiro) para R$ 446.272 em fevereiro (aumento de 878%), retornando ao patamar normal em abril. Em março, registrou-se R$ 1.296.657 em Financiamento — provavelmente encargos de contratos de crédito — sem identificação do contrato vinculado.
+
+
+Natureza
+	Jan/26
+	Fev/26
+	Mar/26
+	Abr/26
+	Acumulado
+	Despesas Financeiras
+	(R$ 45.646,00)
+	(R$ 446.272,00)
+	(R$ 46.593,00)
+	(R$ 46.017,00)
+	(R$ 584.528,00)
+	Financiamento
+	R$ 0
+	R$ 0
+	(R$ 1.296.657,00)
+	(R$ 5.000,00)
+	(R$ 1.301.657,00)
+	TOTAL
+	(R$ 45.646,00)
+	(R$ 446.272,00)
+	(R$ 1.343.250,00)
+	(R$ 51.017,00)
+	(R$ 1.886.185,00)
+	
+
+⚠  Ação — Miriam/Tesouraria: Identificar no extrato bancário a origem dos R$ 446K de fev/26. Verificar se são multas de parcelamento tributário, encargos de IOF ou lançamentos em data errada. O financiamento de R$ 1,3MM de mar/26 deve ser vinculado ao contrato de crédito correspondente.
+
+
+1.8  Itabirito — Receita triplicou em Abril/2026
+Itabirito registrou receita de R$ 3.975.430 em abril/26 — praticamente o triplo da média de R$ 1.214.150 dos três meses anteriores. Pode ser medição retroativa acumulada, apostilamento ou aditivo, mas sem confirmação o dado distorce a análise de tendência.
+
+
+⚠  Ação — Ferrari: Confirmar com o gestor Igo Peixoto se há NF com competência retroativa, quitação de parcelas acumuladas ou aditivo de valor que justifique o salto. Documentar e registrar a justificativa no sistema.
+
+
+________________
+
+
+2. FALHAS DE PROCESSO — PAUTA DA REUNIÃO FINANCEIRO (15/06/2026)
+Esta seção formaliza os pontos levantados na reunião do setor Financeiro realizada em 15/06/2026, estruturando cada problema com causa-raiz, impacto e proposta de solução. Os responsáveis estão identificados por nome.
+
+
+2.1  Plano de Contas das Unidades — Atraso e Erros de Lançamento
+DIAGNÓSTICO
+As unidades operacionais estão enviando os lançamentos do plano de contas com atraso (acumulados no fechamento do mês) e com erros que exigem reabertura de recibos e retrabalho no sistema NG/Keevo. O problema tem três dimensões:
+
+
+Dimensão do Problema
+	Causa Identificada
+	Consequência
+	Envio acumulado no final do mês
+	Falta de rotina semanal; unidades lançam quando lembram
+	Fechamento mensal atrasado; Financeiro não tem visão antecipada dos custos
+	Erros de classificação contábil
+	Falta de treinamento no NG/Keevo; pessoal de campo não tem perfil financeiro
+	Retrabalho: cancelamento de recibo, estorno, reclassificação — consome +2h por ocorrência
+	NF não incluída no recibo
+	Recibo lançado antes da NF chegar; unidade não retorna para vincular
+	Recibo sem NF: inválido fiscalmente; exige reabertura manual
+	Previsões e contratos lançados; NFs geradas não lançadas
+	Unidades priorizam o que conhecem (contratos) e ignoram os demais documentos
+	DRE incompleta; saldo do NG não reflete caixa real
+	
+
+PROPOSTA DE SOLUÇÃO — Protocolo de Lançamento Semanal
+É mais eficiente distribuir os lançamentos ao longo do mês do que concentrá-los no fechamento. A analogia é direta: 10 lançamentos por semana, 4 semanas = 40 lançamentos sem sobrecarga e sem erro; 40 lançamentos em 1 dia = pressão, distração e erro sistemático.
+
+
+Etapa
+	Descrição
+	Prazo
+	Responsável
+	1
+	Lançar no NG todas as entradas e saídas da semana anterior (NFs, recibos, vínculos)
+	Toda segunda-feira
+	Gestor de cada unidade
+	2
+	Conferir NF vinculada antes de salvar o recibo — nunca salvar sem o documento
+	No ato do lançamento
+	Gestor / ADM local
+	3
+	Lançamento encerrado até dia 25 de cada mês — sem exceção
+	Dia 25 mensal
+	Gestores + Cláudia (controle)
+	4
+	Treinamento NG/Keevo: classificação de natureza, vínculo de NF, Fundo Fixo e locações
+	Julho/2026
+	Cláudia / Controladoria
+	5
+	Dashboard semanal de lançamentos pendentes por unidade — visibilidade em tempo real
+	Agosto/2026
+	Controladoria / Erik
+	
+
+→  Decisão solicitada: Aprovar a obrigatoriedade do lançamento semanal com prazo máximo dia 25. Definir sanção para unidades que atrasarem (ex.: bloqueio de adiantamentos).
+
+
+2.2  Contas a Pagar — Chegam Incompletas e em Cima do Prazo
+DIAGNÓSTICO
+As unidades acumulam notas fiscais durante o mês e as enviam de uma vez, próximo ao vencimento, sem conferência prévia. O Financeiro recebe o pacote incompleto (faltam dados de fornecedor, competência, rateio de veículo) e precisa solicitar complementação — perdendo o prazo de pagamento ou pagando sem informação completa, gerando risco de duplicidade.
+
+
+Problema
+	Impacto Operacional
+	Risco
+	NFs enviadas sem conferência
+	Financeiro revisa o que a unidade deveria ter revisado
+	Multa de mora; pagamento duplicado por reenvio
+	Fornecedor não cadastrado no NG
+	Lançamento represado; pagamento bloqueado
+	Atraso sistêmico; fornecedor insatisfeito
+	Sem informação de competência nas locações
+	Lançado na data de pagamento, não na competência do serviço
+	DRE mostra custo no mês errado; distorce análise
+	Rateio de custo de veículo/caminhão não informado
+	Financeiro não sabe para qual unidade ratear
+	Custo lançado errado ou ficando em ADM Central
+	
+
+PROPOSTA DE SOLUÇÃO — Checklist de Contas a Pagar
+Cada unidade deve enviar as NFs com antecedência mínima de 5 dias úteis do vencimento, acompanhadas de um checklist padrão:
+
+
+Item obrigatório no envio
+	Como preencher
+	1. NF ou recibo escaneado legível
+	Enviar em PDF/JPG, não foto de celular
+	2. Nome e CNPJ/CPF do fornecedor
+	Se novo, abrir solicitação de cadastro com 7 dias de antecedência
+	3. Competência do serviço (mês/ano)
+	Ex.: 'Locação referente a Março/2026'
+	4. Unidade / centro de custo de destino
+	Ex.: 'Mossoro-RN — Retroescavadeira KHZ6326'
+	5. Para locações de veículos: placa e destino
+	Ex.: 'Caminhão MXO2H66 — operação Mossoró Norte'
+	6. Confirmação de que é pagamento novo (não duplicado)
+	Gestor assina/carimba digitalmente antes de enviar
+	
+
+→  Decisão solicitada: Aprovar o checklist de Contas a Pagar como requisito obrigatório para processamento. NFs enviadas sem os campos obrigatórios serão devolvidas para a unidade, e o prazo de vencimento será responsabilidade do gestor.
+
+
+2.3  Locações de Veículos e Equipamentos — Padronização e Controle
+DIAGNÓSTICO
+As locações representaram R$ 5.444.710 acumulados em Jan–Abr/2026 — a segunda maior despesa operacional. Há três falhas sistêmicas: (1) falta de padronização no lançamento (competência errada ou ausente); (2) sem relatório consolidado de veículos e equipamentos locados por unidade; (3) sem controle de rateio quando o mesmo veículo serve a mais de uma unidade.
+
+
+Unidade
+	Locação Jan–Abr/26
+	% da Receita
+	Problema Identificado
+	MOSSORÓ/RN
+	(R$ 2.203.232,00)
+	24,7%
+	Competência ausente em vários lançamentos
+	JUAZEIRO DO NORTE/CE
+	(R$ 1.427.208,00)
+	14,5%
+	Locações de dez/25 pagas em jan/26 e lançadas na data de pgto
+	ADM. CENTRAL
+	(R$ 836.341,00)
+	—
+	Veículos (Movida) sem identificação de qual unidade usou
+	ITABIRITO/MG
+	(R$ 631.355,00)
+	8,3%
+	Docs duplicados: mesma NF vinculada a fornecedores distintos
+	
+
+PROPOSTA DE SOLUÇÃO
+Ação
+	Detalhe
+	Responsável
+	Prazo
+	A
+	Padronizar o histórico de locação: incluir sempre a competência. Modelo: '[Tipo] [Placa/ID] — Competência [Mês/Ano] — [Unidade]'
+	Financeiro/Cláudia
+	Julho/2026
+	B
+	Criar relatório mensal de veículos e equipamentos locados por unidade, com placa, fornecedor, valor, período e destino
+	Jailson / Gestores
+	Agosto/2026
+	C
+	Informar ao Financeiro o destino de cada veículo compartilhado antes do fechamento mensal, para rateio correto de custos
+	Gestores / Jailson
+	Imediato
+	D
+	Fazer planejamento anual de locações e conciliação por veículo/contrato — evitar locações por fora do planejado
+	Jailson / Controladoria
+	Set/2026
+	
+
+→  Decisão solicitada: Aprovar o modelo padronizado de histórico de locação e a obrigatoriedade do relatório mensal de frota locada antes de dia 5 de cada mês.
+
+
+2.4  Fundo Fixo e Prestação de Contas de Viagem — Não Lançados
+As unidades não estão lançando os gastos do Fundo Fixo e as despesas de viagem no sistema. O envio está ocorrendo de forma esporádica, sem frequência definida, gerando gastos invisíveis na DRE e saldo irreal no Fundo Fixo.
+
+
+Problema
+	Impacto na DRE
+	Solução Proposta
+	Fundo Fixo não prestado semanalmente
+	Despesas operacionais subestimadas; saldo do Fundo inflado artificialmente
+	Prestação de contas toda sexta-feira, via formulário padrão no NG
+	NFs de viagem não vinculadas no sistema
+	Reembolsos lançados sem comprovante fiscal; risco trabalhista e fiscal
+	Gestor envia NF/recibo + destino + justificativa em até 48h após o retorno
+	Não há separação entre adiantamento e prestação
+	Financeiro não controla saldo em aberto por funcionário
+	Criar controle de saldo pendente por CPF no NG, com bloqueio automático de novo adiantamento se houver prestação aberta > 7 dias
+	
+
+→  Decisão solicitada: Definir prazo máximo para prestação de contas de viagem (proposta: 5 dias úteis após o retorno) e Fundo Fixo (proposta: toda sexta-feira). Aprovar bloqueio de novo adiantamento para quem tiver prestação em aberto.
+
+
+2.5  Valores Duplicados — Acompanhamento e Comprovação de Estorno
+Foram identificados pagamentos com número de documento idêntico atribuídos a fornecedores distintos, especialmente em locações de Mossoró (ex.: documento '6600012026' com 3 fornecedores diferentes; '9500012026' com 6 fornecedores). O Financeiro precisa de processo formal para identificar, comprovar e registrar o estorno.
+
+
+Etapa do Processo
+	Descrição
+	Responsável
+	1
+	Miriam levanta extrato bancário detalhado e identifica pagamentos duplicados (mesmo valor, mesmo favorecido, datas próximas)
+	Miriam / Tesouraria
+	2
+	Gestor da unidade confirma por escrito se o pagamento é legítimo ou duplicidade, em até 48h
+	Gestor da unidade
+	3
+	Se duplicidade confirmada: solicitar devolução ao fornecedor e lançar estorno no NG no mesmo mês
+	Miriam + Financeiro
+	4
+	Registrar no relatório mensal de controle todos os estornos realizados, com evidência (extrato bancário + comunicação do fornecedor)
+	Cláudia / Controladoria
+	
+
+→  Decisão solicitada: Miriam providenciar extrato bancário detalhado de Jan–Abr/2026 de todas as contas para cruzamento com o NG. Identificar e quantificar os valores duplicados até 30/06/2026.
+
+
+________________
+
+
+3. CONCILIAÇÃO BANCÁRIA — DIVERGÊNCIAS E AUTOMAÇÃO
+3.1  Saldos Bancários Não Batem com o NG
+Miriam identificou inconsistências entre o extrato bancário e o saldo registrado no NG/Keevo em algumas contas. As possíveis causas são: lançamentos no NG sem confirmação de débito bancário, lançamentos bancários não registrados no NG, ou transferências intercompany não espelhadas em ambas as pontas.
+
+
+Causa Provável
+	Como Investigar
+	Responsável
+	Lançamento no NG sem saída bancária real
+	Cruzar relatório de pagamentos do NG com extrato do banco — linha a linha
+	Miriam + Sirley
+	Débito bancário sem lançamento no NG
+	Buscar no extrato todos os débitos sem contrapartida no NG
+	Miriam
+	Transferência intercompany lançada em só uma ponta
+	Verificar mútuos internos: valor debitado de uma conta deve ser creditado em outra
+	Sirley + Controladoria
+	Data de compensação diferente da data de lançamento
+	Comparar data de lançamento no NG com data de compensação no extrato
+	Miriam
+	
+
+→  Decisão solicitada: Miriam providenciar extrato DETALHADO (com número de transação e CNPJ do favorecido) de todas as contas de Jan–Abr/2026. Realizar conciliação conta a conta, identificando as divergências por tipo e por mês.
+
+
+3.2  Proposta de Automação — Conciliação e Pagamentos em Remessa
+A conciliação bancária manual é o principal gargalo do fechamento mensal. A proposta é implantar duas automações no curto prazo:
+
+
+Automação
+	O que resolve
+	Ferramenta Sugerida
+	Prazo
+	Conciliação bancária automática
+	Importa o extrato do banco e cruza automaticamente com os lançamentos do NG, destacando as diferenças
+	API do banco + NG/Keevo ou Power Automate
+	Set/2026
+	Pagamentos em remessa (arquivo CNAB)
+	Elimina pagamentos manuais um a um; envia lote de boletos/PIX ao banco de uma vez, reduzindo erro e tempo
+	Módulo de remessa do NG/Keevo ou integração bancária
+	Ago/2026
+	
+
+→  Decisão solicitada: Aprovar levantamento técnico junto ao NG/Keevo sobre API de conciliação e envio de remessa CNAB. Miriam e Erik avaliam viabilidade técnica até 30/06/2026.
+
+
+3.3  Acesso Bancário — Usuários e Cadastros Pendentes
+Existem usuários estranhos cadastrados nos sistemas bancários que precisam ser removidos para segurança. Paralelamente, Cláudia precisa ser cadastrada nos bancos para dar suporte a Sirley em momentos de ausência.
+
+
+Ação
+	Detalhe
+	Responsável
+	Prazo
+	A
+	Revisar lista de usuários de todos os portais bancários e excluir acessos de ex-funcionários ou usuários não autorizados
+	Miriam + Tássio (autorização)
+	Imediato
+	B
+	Cadastrar Cláudia nos portais bancários com perfil de suporte (visualização + pagamento com dupla aprovação)
+	Miriam + Tássio
+	Julho/2026
+	
+
+________________
+
+
+4. DOTAÇÕES, COMBUSTÍVEL E CRÉDITO DE FORNECEDORES
+4.1  Dotações Desatualizadas — Jailson
+A DRE do Ferrari não possui coluna de Dotação Orçada preenchida para 2026 em 5 das 7 unidades. Sem o orçado, é impossível aferir desvio, controlar tendência ou emitir alerta antecipado de estouro de custos. Toledo é a única com dotação 2026 registrada — e já projeta déficit de R$ 1,39MM.
+
+
+Unidade
+	Dotação 2026
+	Status
+	Ação Jailson
+	MOSSORÓ/RN
+	Somente repactuação 2024 arquivada
+	⚠ Desatualizada
+	Atualizar dotação completa 2026 com os valores do 2º Aditivo
+	JUAZEIRO DO NORTE/CE
+	Dotação licitação disponível; 12 meses atualizado
+	✔ Parcial
+	Atualizar com valores do 2º Aditivo (Jun/2026)
+	ITABIRITO/MG
+	Dotação da licitação; 12 meses PENDENTE
+	⚠ Pendente
+	Elaborar dotação 12 meses para inclusão na DRE
+	TOLEDO/PR
+	R$ 9.740.259 anual (2026)
+	✔ OK
+	Monitorar — déficit projetado de R$ 1,39MM
+	SENTO-SÉ/BA
+	Dotação da licitação; 12 meses PENDENTE
+	⚠ Pendente
+	Elaborar urgente — contrato vence Jul/2026
+	JUAZEIRO/BA
+	Somente a partir de Abr/2027
+	Em curso
+	Confirmar quando dotação de implantação estará disponível
+	PALOTINA/PR
+	Somente a partir de Jun/2027
+	Em curso
+	Preparar dotação de implantação antes de Jun/2026
+	
+
+→  Decisão solicitada — Jailson: Entregar as dotações atualizadas de Mossoró, Itabirito e Sento-Sé até 30/06/2026 para inclusão na DRE a partir do fechamento de junho. Esses dados são o único parâmetro objetivo para medir desvio.
+
+
+4.2  Crédito de Combustível — Postos com Negociação
+Não há no sistema registro consolidado de quais postos de combustível têm negociação de crédito/desconto com a Vale Norte, como funciona cada acordo (limite de crédito, prazo, desconto por litro ou por volume) e se os caminhões estão abastecendo nos postos corretos.
+
+
+O combustível é a 3ª maior despesa operacional: R$ 2.797.074 acumulados em Jan–Abr/2026. Uma variação de 5% por escolha de posto representa ~R$ 140.000/ano. Sem controle, as unidades abastecem onde é conveniente, não onde há negociação.
+
+
+Ação
+	Detalhe
+	Responsável
+	Prazo
+	A
+	Levantar todos os postos com contrato/negociação ativa por unidade — nome, CNPJ, desconto, prazo de crédito, limite mensal
+	Jailson + Gestores
+	Julho/2026
+	B
+	Criar planilha/relatório de controle de combustível por veículo: placa, abastecimento, litros, valor, posto e motorista
+	Gestores
+	Agosto/2026
+	C
+	Comunicar aos motoristas os postos credenciados e criar rotina de conferência mensal do crédito disponível vs. consumido
+	Jailson / Gestores
+	Agosto/2026
+	
+
+________________
+
+
+5. PLANO DE AÇÃO CONSOLIDADO — DECISÕES DA REUNIÃO 15/06/2026
+A tabela abaixo consolida todas as ações deliberadas, com responsável nomeado, prazo e critério de conclusão. As ações de prioridade 🔴 devem ser iniciadas imediatamente.
+
+
+#
+	Ação
+	Responsável
+	Prazo
+	Prio.
+	AÇÕES IMEDIATAS — Até 30/Jun/2026
+	1
+	Excluir parcelamentos tributários (R$ 90,9MM) da DRE — lançar só a parcela mensal efetiva
+	Ferrari + Controladoria
+	Imediato
+	🔴
+	2
+	Miriam: providenciar extrato bancário detalhado Jan–Abr/2026 (todas as contas) e cruzar com NG
+	Miriam
+	30/Jun
+	🔴
+	3
+	Excluir usuários estranhos dos portais bancários; cadastrar Cláudia com perfil de suporte
+	Miriam + Tássio
+	Imediato
+	🔴
+	4
+	Identificar e quantificar valores duplicados em Mossoro; documentar estornos
+	Miriam + Gestores
+	30/Jun
+	🔴
+	5
+	Investigar queda de receita de Mossoró em Abr/26 (R$ 447K vs. média R$ 3,5MM) — NF pendente?
+	Ferrari + Daniely B.
+	Imediato
+	🔴
+	6
+	Identificar origem dos R$ 446K em desp. financeiras de Fev/26 e R$ 1,3MM Financiamento Mar/26
+	Miriam + Financeiro
+	30/Jun
+	🔴
+	AÇÕES DE JULHO/2026
+	7
+	Implantar rotina semanal de lançamentos nas unidades + treinamento NG/Keevo
+	Cláudia + Controladoria
+	Julho/2026
+	🟠
+	8
+	Aprovar checklist de Contas a Pagar e comunicar às unidades como requisito obrigatório
+	Ferrari + Gestores
+	Julho/2026
+	🟠
+	9
+	Padronizar histórico de locações: competência, placa e destino obrigatórios
+	Financeiro/Cláudia
+	Julho/2026
+	🟠
+	10
+	Jailson: entregar dotações de Mossoró, Itabirito e Sento-Sé para inclusão na DRE
+	Jailson
+	30/Jul
+	🟠
+	11
+	Reclassificar mútuos internos e Chácara: sair de Despesas Diversas para contas do Balanço
+	Controladoria + Contabilidade
+	Julho/2026
+	🟠
+	12
+	Levantar postos com negociação de combustível por unidade; comunicar motoristas
+	Jailson + Gestores
+	31/Jul
+	🟡
+	AÇÕES DE AGOSTO/2026 EM DIANTE
+	13
+	Miriam + Erik: levantamento técnico de automação de conciliação bancária e remessa CNAB
+	Miriam + Erik
+	Ago/2026
+	🟡
+	14
+	Criar relatório mensal de frota locada por unidade (placa, fornecedor, valor, período)
+	Jailson + Gestores
+	Ago/2026
+	🟡
+	15
+	Identificar e nomear todos os fornecedores mascarados na DRE do Ferrari
+	Ferrari
+	Ago/2026
+	🟡
+	16
+	Definir regras de prestação de contas de Fundo Fixo (semanal) e viagem (5 dias úteis)
+	Ferrari + Gestores
+	Ago/2026
+	🟡
+	
+
+
+
+Petrolina – PE, 15 de Junho de 2026
+
+
+__________________________________________________________
+Controladoria — Núcleo Controller Serviços Administrativos Ltda
+Documento elaborado para a Reunião do Setor Financeiro — 15/06/2026  ·  Uso interno
+Núcleo Controller Serviços Administrativos  ·  Uso interno  ·  Pág.  /

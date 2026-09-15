@@ -47,26 +47,76 @@ export class TonThemePage {
         ? {
             primary: "#145c42",
             action: "#145c42",
+            card: "#ffffff",
             surface: "#f8f9f8",
+            sidebar: "#eff2f0",
+            elevated: "#e3e7e4",
+            field: "#ffffff",
+            border: "#e6e6e6",
           }
         : {
             primary: "#c3ded2",
-            action: "#227653",
-            surface: "#131c17",
+            action: "#2f795a",
+            card: "#18231d",
+            surface: "#27332c",
+            sidebar: "#344139",
+            elevated: "#414f47",
+            field: "#0b1410",
+            border: "#44524a",
           };
 
     await expect
       .poll(() =>
         this.page.evaluate(() => {
           const styles = getComputedStyle(document.documentElement);
+          // The production CSS pipeline minifies #ffffff to #fff, so expand short
+          // hex before comparing against the token values.
+          const read = (name: string): string => {
+            const value = styles.getPropertyValue(name).trim().toLowerCase();
+            return /^#[0-9a-f]{3}$/.test(value)
+              ? "#" +
+                  value
+                    .slice(1)
+                    .split("")
+                    .map((c) => c + c)
+                    .join("")
+              : value;
+          };
           return {
-            primary: styles.getPropertyValue("--theme-primary-05").trim(),
-            action: styles.getPropertyValue("--action-selection-05").trim(),
-            surface: styles.getPropertyValue("--background-tint-01").trim(),
+            primary: read("--theme-primary-05"),
+            action: read("--action-selection-05"),
+            card: read("--background-tint-00"),
+            surface: read("--background-tint-01"),
+            sidebar: read("--background-tint-02"),
+            elevated: read("--background-tint-03"),
+            field: read("--background-neutral-00"),
+            border: read("--border-01"),
           };
         })
       )
       .toEqual(expected);
+  }
+
+  /**
+   * The rendered surfaces must actually differ, not just the variables. This
+   * catches a component that paints a surface outside the token system.
+   */
+  async expectDistinctRenderedSurfaces(): Promise<void> {
+    const painted = await this.page.evaluate(() => {
+      const read = (selector: string): string | null => {
+        const element = document.querySelector(selector);
+        return element ? getComputedStyle(element).backgroundColor : null;
+      };
+      return {
+        body: getComputedStyle(document.body).backgroundColor,
+        sidebar:
+          read(".opal-sidebar-root__column") ??
+          read(".opal-sidebar-root__overlay"),
+      };
+    });
+
+    expect(painted.sidebar).not.toBeNull();
+    expect(painted.sidebar).not.toBe(painted.body);
   }
 
   async expectComposerFocus(): Promise<void> {

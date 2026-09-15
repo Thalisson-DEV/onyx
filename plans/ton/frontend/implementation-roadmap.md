@@ -223,6 +223,73 @@ Sombras, vignette e fundos configuráveis ficam para refinamento futuro.
 TON-FE-003 e itens posteriores não começaram.
 Nenhum arquivo em `backend/` mudou.
 
+### Refinamento de contraste no tema escuro
+
+**Status: DONE.** Nível 1. Somente tokens, testes e este documento mudaram.
+
+O tema escuro tinha camadas semânticas muito próximas em luminância.
+O conteúdo normal parecia desabilitado.
+O refinamento separou as camadas e manteve a paleta, o Opal e a arquitetura.
+
+Escada de superfícies escuras, do mais profundo ao mais claro:
+
+| Token | Papel | Antes | Depois |
+|---|---|---|---|
+| `background-neutral-00` | campo do composer e dos inputs | `#000000` | `#0b1410` |
+| `background-tint-00` | card, superfície recolhida, item selecionado | `#08110d` | `#18231d` |
+| `background-tint-01` | fundo da aplicação | `#131c17` | `#27332c` |
+| `background-tint-02` | sidebar e hover geral | `#1d2822` | `#344139` |
+| `background-tint-03` | superfície elevada e hover de navegação | `#29352e` | `#414f47` |
+| `background-tint-04` | anel de foco interno dos inputs | `#35423b` | `#56655d` |
+
+Cada passo agora tem ao menos 1,15 de contraste.
+Nenhuma superfície usa preto puro.
+`background-neutral-01` a `-04` seguem a mesma escala verde-neutra.
+
+Texto escuro: `text-04` foi para 90%, `text-03` para 70% e `text-02` para 55%.
+`text-05` e `text-01` não mudaram, então desabilitado continua o mais fraco.
+
+Bordas escuras trocaram cinza por verde-neutro.
+`border-01` subiu de 1,04 para 1,60 contra o fundo da aplicação.
+`border-04` e `border-05` mantêm o foco acima de 3:1.
+
+Estados: `action-selection-05` virou `vale-norte-green-50` e `-04` virou
+`vale-norte-green-45`. `action-selection-01` virou `vale-norte-green-92`.
+A linha selecionada passou de 1,13 para 1,24 contra o fundo.
+O hover sobre a linha selecionada passou de 1,01 para 1,52.
+
+`background-code-01` perdeu o hex fixo cinza e usa `vale-norte-neutral-97`.
+
+Novos primitivos: `vale-norte-neutral-99/97/93/88/83/82/76/74`,
+`vale-norte-green-92`, `vale-norte-green-45` e os aliases `tint-97/93/88/83/76`.
+O tema claro não referencia nenhum deles.
+
+Verificação executada:
+
+- build dos tokens compartilhados: passou;
+- build Opal: passou com os avisos de chunks circulares existentes;
+- contrato do tema e hierarquia escura: 10 testes passaram;
+- `bun run types:check`: passou com cobertura de 98,81%;
+- `bun run lint`: passou com avisos existentes;
+- `oxfmt` nos arquivos TS alterados: passou;
+- Playwright em 375, 768 e 1280 pixels no escuro: 3 casos passaram.
+
+O Playwright validou chat, composer, sidebar, cards, agents, settings e popover.
+Ele mediu a escada de superfícies no DOM real, não apenas nas variáveis.
+
+O setup padrão do Playwright continua falhando antes dos testes.
+O endpoint de grupos exige o plano Business e retorna 402.
+Uma configuração temporária removeu somente esse setup e não ficou no repositório.
+
+O `web_server` local roda uma imagem pronta sem montagem do repositório.
+Ele não serve o CSS reconstruído.
+A validação injetou o `tokens.css` gerado na aplicação em execução.
+
+O tema claro não mudou.
+Os valores claros resolvidos continuam idênticos e estão fixados em teste.
+Nenhum componente, layout, tipografia, espaçamento ou raio mudou.
+Nenhum arquivo em `backend/` mudou.
+
 ## Sequência recomendada
 
 ```text

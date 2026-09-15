@@ -26,15 +26,18 @@ for (const theme of THEMES) {
         await tonTheme.expectMobileSidebarInteraction();
       } else if (viewport.width >= 912) {
         await tonTheme.expectDesktopSidebar();
+        await tonTheme.expectDistinctRenderedSurfaces();
       }
 
       await tonTheme.capture(`ton-${theme}-${viewport.name}-chat`);
 
       await tonTheme.gotoAgents();
       await tonTheme.expectNoHorizontalOverflow();
+      await tonTheme.capture(`ton-${theme}-${viewport.name}-agents`);
 
       await tonTheme.gotoSettings();
       await tonTheme.expectNoHorizontalOverflow();
+      await tonTheme.capture(`ton-${theme}-${viewport.name}-settings`);
       await tonTheme.expectSettingsPopover();
     });
   }

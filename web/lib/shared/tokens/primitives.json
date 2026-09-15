@@ -847,6 +847,10 @@
     "value": "#071b14",
     "type": "color"
   },
+  "vale-norte-green-92": {
+    "value": "#0a2519",
+    "type": "color"
+  },
   "vale-norte-green-90": {
     "value": "#0c2a20",
     "type": "color"
@@ -865,6 +869,10 @@
   },
   "vale-norte-green-50": {
     "value": "#2f795a",
+    "type": "color"
+  },
+  "vale-norte-green-45": {
+    "value": "#338460",
     "type": "color"
   },
   "vale-norte-green-40": {
@@ -919,24 +927,56 @@
     "value": "#a980324d",
     "type": "color"
   },
+  "vale-norte-neutral-99": {
+    "value": "#0b1410",
+    "type": "color"
+  },
   "vale-norte-neutral-98": {
     "value": "#08110d",
+    "type": "color"
+  },
+  "vale-norte-neutral-97": {
+    "value": "#18231d",
     "type": "color"
   },
   "vale-norte-neutral-95": {
     "value": "#131c17",
     "type": "color"
   },
+  "vale-norte-neutral-93": {
+    "value": "#27332c",
+    "type": "color"
+  },
   "vale-norte-neutral-90": {
     "value": "#1d2822",
+    "type": "color"
+  },
+  "vale-norte-neutral-88": {
+    "value": "#344139",
     "type": "color"
   },
   "vale-norte-neutral-85": {
     "value": "#29352e",
     "type": "color"
   },
+  "vale-norte-neutral-83": {
+    "value": "#414f47",
+    "type": "color"
+  },
+  "vale-norte-neutral-82": {
+    "value": "#44524a",
+    "type": "color"
+  },
   "vale-norte-neutral-80": {
     "value": "#35423b",
+    "type": "color"
+  },
+  "vale-norte-neutral-76": {
+    "value": "#56655d",
+    "type": "color"
+  },
+  "vale-norte-neutral-74": {
+    "value": "#5b6a62",
     "type": "color"
   },
   "vale-norte-neutral-60": {
@@ -971,20 +1011,40 @@
     "value": "{vale-norte-neutral-98}",
     "type": "color"
   },
+  "tint-97": {
+    "value": "{vale-norte-neutral-97}",
+    "type": "color"
+  },
   "tint-95": {
     "value": "{vale-norte-neutral-95}",
+    "type": "color"
+  },
+  "tint-93": {
+    "value": "{vale-norte-neutral-93}",
     "type": "color"
   },
   "tint-90": {
     "value": "{vale-norte-neutral-90}",
     "type": "color"
   },
+  "tint-88": {
+    "value": "{vale-norte-neutral-88}",
+    "type": "color"
+  },
   "tint-85": {
     "value": "{vale-norte-neutral-85}",
     "type": "color"
   },
+  "tint-83": {
+    "value": "{vale-norte-neutral-83}",
+    "type": "color"
+  },
   "tint-80": {
     "value": "{vale-norte-neutral-80}",
+    "type": "color"
+  },
+  "tint-76": {
+    "value": "{vale-norte-neutral-76}",
     "type": "color"
   },
   "tint-60": {

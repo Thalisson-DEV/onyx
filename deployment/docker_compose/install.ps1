@@ -179,10 +179,20 @@ function Get-EnvFileValue {
 }
 
 function New-SecureSecret {
-    $bytes = New-Object byte[] 32
+    param([int]$ByteCount = 32)
+    $bytes = New-Object byte[] $ByteCount
     $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
     $rng.GetBytes($bytes); $rng.Dispose()
     return ($bytes | ForEach-Object { $_.ToString("x2") }) -join ''
+}
+
+# OpenSearch rejects OPENSEARCH_INITIAL_ADMIN_PASSWORD unless it has at least 8
+# characters with an upper-case letter, a lower-case letter, a digit and a
+# special character. A hex string has neither an upper-case letter nor a special
+# character, so a fixed suffix supplies both; entropy comes from the 32 hex
+# characters in front of it.
+function New-OpenSearchPassword {
+    return (New-SecureSecret -ByteCount 16) + "Aa1!"
 }
 
 # ── Docker Compose ───────────────────────────────────────────────────────────
@@ -996,8 +1006,22 @@ function Main {
         Set-EnvFileValue -Path $envFile -Key "IMAGE_TAG" -Value $version
         Print-Success "IMAGE_TAG set to $version"
         if ($script:LiteMode) { Set-EnvFileValue -Path $envFile -Key "COMPOSE_PROFILES" -Value "" }
+        # env.template ships every credential empty so no install can inherit a
+        # published default. Compose names the missing variable and refuses to
+        # start, so each one has to be generated here.
         Set-EnvFileValue -Path $envFile -Key "USER_AUTH_SECRET" -Value "`"$(New-SecureSecret)`""
-        Print-Success "Generated secure USER_AUTH_SECRET"
+        Set-EnvFileValue -Path $envFile -Key "ENCRYPTION_KEY_SECRET" -Value (New-SecureSecret) -Uncomment
+        Set-EnvFileValue -Path $envFile -Key "POSTGRES_PASSWORD" -Value (New-SecureSecret)
+        Set-EnvFileValue -Path $envFile -Key "OPENSEARCH_ADMIN_PASSWORD" -Value (New-OpenSearchPassword)
+        # The application authenticates to MinIO with its root credentials, so
+        # the S3_AWS_* pair has to match MINIO_ROOT_*.
+        $objectStoreUser = New-SecureSecret -ByteCount 16
+        $objectStorePassword = New-SecureSecret
+        Set-EnvFileValue -Path $envFile -Key "MINIO_ROOT_USER" -Value $objectStoreUser
+        Set-EnvFileValue -Path $envFile -Key "MINIO_ROOT_PASSWORD" -Value $objectStorePassword
+        Set-EnvFileValue -Path $envFile -Key "S3_AWS_ACCESS_KEY_ID" -Value $objectStoreUser
+        Set-EnvFileValue -Path $envFile -Key "S3_AWS_SECRET_ACCESS_KEY" -Value $objectStorePassword
+        Print-Success "Generated auth, encryption, database, search and object-storage credentials"
         if ($script:IncludeCraftMode) {
             Set-EnvFileValue -Path $envFile -Key "ENABLE_CRAFT" -Value "true" -Uncomment
             Print-Success "Onyx Craft enabled"

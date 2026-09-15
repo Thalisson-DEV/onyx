@@ -37,9 +37,14 @@ services:
     environment:
       # Auth Settings
       - AUTH_TYPE=${AUTH_TYPE:-oidc}
+      # Wraps every encrypted column (connector credentials, provider API keys,
+      # bot tokens). Without it those columns are written as plaintext bytes, so
+      # a production deployment must supply one. Rotating it needs
+      # `python -m onyx.db.rotate_encryption_key` with the previous key.
+      - ENCRYPTION_KEY_SECRET=${ENCRYPTION_KEY_SECRET:?required - set ENCRYPTION_KEY_SECRET in .env or inject it from your secret store}
       - POSTGRES_HOST=${POSTGRES_HOST:-relational_db}
       - OPENSEARCH_HOST=${OPENSEARCH_HOST:-opensearch}
-      - OPENSEARCH_ADMIN_PASSWORD=${OPENSEARCH_ADMIN_PASSWORD:-StrongPassword123!}
+      - OPENSEARCH_ADMIN_PASSWORD=${OPENSEARCH_ADMIN_PASSWORD:?required - set OPENSEARCH_ADMIN_PASSWORD in .env or inject it from your secret store}
       - REDIS_HOST=${REDIS_HOST:-cache}
       - MODEL_SERVER_HOST=${MODEL_SERVER_HOST:-inference_model_server}
       - CODE_INTERPRETER_BASE_URL=${CODE_INTERPRETER_BASE_URL:-http://code-interpreter:8000}
@@ -49,8 +54,8 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY-}
       # MinIO configuration
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-http://minio:9000}
-      - S3_AWS_ACCESS_KEY_ID=${S3_AWS_ACCESS_KEY_ID:?set a strong value in .env, not minioadmin}
-      - S3_AWS_SECRET_ACCESS_KEY=${S3_AWS_SECRET_ACCESS_KEY:?set a strong value in .env, not minioadmin}
+      - S3_AWS_ACCESS_KEY_ID=${S3_AWS_ACCESS_KEY_ID:?required - set S3_AWS_ACCESS_KEY_ID in .env or inject it from your secret store}
+      - S3_AWS_SECRET_ACCESS_KEY=${S3_AWS_SECRET_ACCESS_KEY:?required - set S3_AWS_SECRET_ACCESS_KEY in .env or inject it from your secret store}
     # Uncomment the line below to use if IAM_AUTH is true and you are using iam auth for postgres
     # volumes:
     #   - ./bundle.pem:/app/bundle.pem:ro
@@ -114,9 +119,12 @@ services:
     restart: unless-stopped
     environment:
       - AUTH_TYPE=${AUTH_TYPE:-oidc}
+      # Workers read and write the same encrypted columns as the API server, so
+      # they need the identical key. See the api_server note above.
+      - ENCRYPTION_KEY_SECRET=${ENCRYPTION_KEY_SECRET:?required - set ENCRYPTION_KEY_SECRET in .env or inject it from your secret store}
       - POSTGRES_HOST=${POSTGRES_HOST:-relational_db}
       - OPENSEARCH_HOST=${OPENSEARCH_HOST:-opensearch}
-      - OPENSEARCH_ADMIN_PASSWORD=${OPENSEARCH_ADMIN_PASSWORD:-StrongPassword123!}
+      - OPENSEARCH_ADMIN_PASSWORD=${OPENSEARCH_ADMIN_PASSWORD:?required - set OPENSEARCH_ADMIN_PASSWORD in .env or inject it from your secret store}
       - REDIS_HOST=${REDIS_HOST:-cache}
       - MODEL_SERVER_HOST=${MODEL_SERVER_HOST:-inference_model_server}
       - INDEXING_MODEL_SERVER_HOST=${INDEXING_MODEL_SERVER_HOST:-indexing_model_server}
@@ -126,8 +134,8 @@ services:
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY-}
       # MinIO configuration
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-http://minio:9000}
-      - S3_AWS_ACCESS_KEY_ID=${S3_AWS_ACCESS_KEY_ID:?set a strong value in .env, not minioadmin}
-      - S3_AWS_SECRET_ACCESS_KEY=${S3_AWS_SECRET_ACCESS_KEY:?set a strong value in .env, not minioadmin}
+      - S3_AWS_ACCESS_KEY_ID=${S3_AWS_ACCESS_KEY_ID:?required - set S3_AWS_ACCESS_KEY_ID in .env or inject it from your secret store}
+      - S3_AWS_SECRET_ACCESS_KEY=${S3_AWS_SECRET_ACCESS_KEY:?required - set S3_AWS_SECRET_ACCESS_KEY in .env or inject it from your secret store}
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
       - DISCORD_BOT_INVOKE_CHAR=${DISCORD_BOT_INVOKE_CHAR:-!}
       # API Server connection for Discord bot message processing
@@ -360,7 +368,11 @@ services:
       # We need discovery.type=single-node so that OpenSearch doesn't try
       # forming a cluster and waiting for other nodes to become live.
       - discovery.type=single-node
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_ADMIN_PASSWORD:-StrongPassword123!}
+      # Bootstrap password for the built-in admin user. Required: no default is
+      # shipped, so a deployment cannot inherit a published credential. It must
+      # satisfy the OpenSearch strength rules (>= 8 chars with an upper-case, a
+      # lower-case, a digit and a special character).
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_ADMIN_PASSWORD:?required - set OPENSEARCH_ADMIN_PASSWORD in .env or inject it from your secret store}
       # This and the JVM config below come from the example in https://docs.opensearch.org/latest/install-and-configure/install-opensearch/docker/
       # We do this to avoid unstable performance from page swaps.
       - bootstrap.memory_lock=true # Disable JVM heap memory swapping.
@@ -461,8 +473,11 @@ services:
     image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1@sha256:13582eff79c6605a2d315bdd0e70164142ea7e98fc8411e9e10d089502a6d883
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set a strong value in .env, not minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set a strong value in .env, not minioadmin}
+      # Root credentials for the object store. Required: no default is shipped,
+      # so a deployment cannot inherit a published credential. Keep them equal
+      # to the S3_AWS_* pair the application uses.
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?required - set MINIO_ROOT_USER in .env or inject it from your secret store}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?required - set MINIO_ROOT_PASSWORD in .env or inject it from your secret store}
       MINIO_DEFAULT_BUCKETS: ${S3_FILE_STORE_BUCKET_NAME:-onyx-file-store-bucket}
     volumes:
       - minio_data:/data

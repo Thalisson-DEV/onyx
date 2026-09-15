@@ -41,7 +41,7 @@ cleanup. Domain schema and production rules must wait for the decisions in
 | 004 | File lifecycle, ingestion, knowledge and quality hooks | 001, 002, 003 | TODO |
 | 005 | Specialist agents and native supervisor extension | 002, 003, 004 | TODO |
 | 006 | Reports, alerts, administration and scheduled processing | 001, 002, 003, 004, 005 | TODO |
-| 007 | Deployment credential hardening and generated artifact sync | 001, 002 | TODO |
+| 007 | Deployment credential hardening and generated artifact sync | 001, 002 | PARTIAL: credentials and artifact sync DONE; provider-secret encryption blocked on Plan 003 |
 | 008 | Web-only product surface and shared-contract gate | 001, 002, 006, 007 | TODO |
 | 009 | Telegram channel adapter | 002, 005, 006 | BLOCKED: channel contract unavailable |
 

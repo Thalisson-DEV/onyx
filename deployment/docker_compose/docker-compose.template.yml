@@ -22,7 +22,9 @@
 # 1. SECURITY HARDENING:
 #    - Remove all port exposures except nginx (80/443)
 #    - Comment out ports for: api_server, relational_db, cache, minio
-#    - Set strong MinIO/S3 credentials (MINIO_ROOT_* + S3_AWS_*), not minioadmin
+#    - Credentials have no defaults. Inject POSTGRES_PASSWORD,
+#      OPENSEARCH_ADMIN_PASSWORD, MINIO_ROOT_* and S3_AWS_* from .env or your
+#      secret store; compose refuses to start when one is missing.
 #
 # 2. SSL/TLS SETUP:
 #    - Uncomment the certbot service (see below)
@@ -93,11 +95,18 @@ services:
       # Auth Settings
       #!value prod,no-letsencrypt: - AUTH_TYPE=${AUTH_TYPE:-oidc}
       - AUTH_TYPE=${AUTH_TYPE:-basic}
+      #!for prod,no-letsencrypt
+      # Wraps every encrypted column (connector credentials, provider API keys,
+      # bot tokens). Without it those columns are written as plaintext bytes, so
+      # a production deployment must supply one. Rotating it needs
+      # `python -m onyx.db.rotate_encryption_key` with the previous key.
+      - ENCRYPTION_KEY_SECRET=${ENCRYPTION_KEY_SECRET:?required - set ENCRYPTION_KEY_SECRET in .env or inject it from your secret store}
+      #!endfor
       #!only default
       - FILE_STORE_BACKEND=${FILE_STORE_BACKEND:-s3}
       - POSTGRES_HOST=${POSTGRES_HOST:-relational_db}
       - OPENSEARCH_HOST=${OPENSEARCH_HOST:-opensearch}
-      - OPENSEARCH_ADMIN_PASSWORD=${OPENSEARCH_ADMIN_PASSWORD:-StrongPassword123!}
+      - OPENSEARCH_ADMIN_PASSWORD=${OPENSEARCH_ADMIN_PASSWORD:?required - set OPENSEARCH_ADMIN_PASSWORD in .env or inject it from your secret store}
       - REDIS_HOST=${REDIS_HOST:-cache}
       - MODEL_SERVER_HOST=${MODEL_SERVER_HOST:-inference_model_server}
       - CODE_INTERPRETER_BASE_URL=${CODE_INTERPRETER_BASE_URL:-http://code-interpreter:8000}
@@ -109,10 +118,8 @@ services:
       # MinIO configuration
       #!endfor
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-http://minio:9000}
-      #!value prod,no-letsencrypt: - S3_AWS_ACCESS_KEY_ID=${S3_AWS_ACCESS_KEY_ID:?set a strong value in .env, not minioadmin}
-      - S3_AWS_ACCESS_KEY_ID=${S3_AWS_ACCESS_KEY_ID:-minioadmin}
-      #!value prod,no-letsencrypt: - S3_AWS_SECRET_ACCESS_KEY=${S3_AWS_SECRET_ACCESS_KEY:?set a strong value in .env, not minioadmin}
-      - S3_AWS_SECRET_ACCESS_KEY=${S3_AWS_SECRET_ACCESS_KEY:-minioadmin}
+      - S3_AWS_ACCESS_KEY_ID=${S3_AWS_ACCESS_KEY_ID:?required - set S3_AWS_ACCESS_KEY_ID in .env or inject it from your secret store}
+      - S3_AWS_SECRET_ACCESS_KEY=${S3_AWS_SECRET_ACCESS_KEY:?required - set S3_AWS_SECRET_ACCESS_KEY in .env or inject it from your secret store}
       #!for default
       # Onyx Craft configuration (disabled by default, set ENABLE_CRAFT=true in .env to enable)
       # Use --include-craft with install script, or manually set in .env file
@@ -183,12 +190,15 @@ services:
     environment:
       #!for prod,no-letsencrypt
       - AUTH_TYPE=${AUTH_TYPE:-oidc}
+      # Workers read and write the same encrypted columns as the API server, so
+      # they need the identical key. See the api_server note above.
+      - ENCRYPTION_KEY_SECRET=${ENCRYPTION_KEY_SECRET:?required - set ENCRYPTION_KEY_SECRET in .env or inject it from your secret store}
       #!endfor
       #!only default
       - FILE_STORE_BACKEND=${FILE_STORE_BACKEND:-s3}
       - POSTGRES_HOST=${POSTGRES_HOST:-relational_db}
       - OPENSEARCH_HOST=${OPENSEARCH_HOST:-opensearch}
-      - OPENSEARCH_ADMIN_PASSWORD=${OPENSEARCH_ADMIN_PASSWORD:-StrongPassword123!}
+      - OPENSEARCH_ADMIN_PASSWORD=${OPENSEARCH_ADMIN_PASSWORD:?required - set OPENSEARCH_ADMIN_PASSWORD in .env or inject it from your secret store}
       - REDIS_HOST=${REDIS_HOST:-cache}
       - MODEL_SERVER_HOST=${MODEL_SERVER_HOST:-inference_model_server}
       - INDEXING_MODEL_SERVER_HOST=${INDEXING_MODEL_SERVER_HOST:-indexing_model_server}
@@ -200,10 +210,8 @@ services:
       # MinIO configuration
       #!endfor
       - S3_ENDPOINT_URL=${S3_ENDPOINT_URL:-http://minio:9000}
-      #!value prod,no-letsencrypt: - S3_AWS_ACCESS_KEY_ID=${S3_AWS_ACCESS_KEY_ID:?set a strong value in .env, not minioadmin}
-      - S3_AWS_ACCESS_KEY_ID=${S3_AWS_ACCESS_KEY_ID:-minioadmin}
-      #!value prod,no-letsencrypt: - S3_AWS_SECRET_ACCESS_KEY=${S3_AWS_SECRET_ACCESS_KEY:?set a strong value in .env, not minioadmin}
-      - S3_AWS_SECRET_ACCESS_KEY=${S3_AWS_SECRET_ACCESS_KEY:-minioadmin}
+      - S3_AWS_ACCESS_KEY_ID=${S3_AWS_ACCESS_KEY_ID:?required - set S3_AWS_ACCESS_KEY_ID in .env or inject it from your secret store}
+      - S3_AWS_SECRET_ACCESS_KEY=${S3_AWS_SECRET_ACCESS_KEY:?required - set S3_AWS_SECRET_ACCESS_KEY in .env or inject it from your secret store}
       - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
       - DISCORD_BOT_INVOKE_CHAR=${DISCORD_BOT_INVOKE_CHAR:-!}
       # API Server connection for Discord bot message processing
@@ -435,10 +443,12 @@ services:
         required: false
     restart: unless-stopped
     #!for default
-    # PRODUCTION: Override the defaults by passing in the environment variables
+    # POSTGRES_PASSWORD is required: no default is shipped, so a deployment
+    # cannot inherit a published credential. The value is read once, when the
+    # db_volume is initialised; changing it later needs an ALTER ROLE.
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-password}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?required - set POSTGRES_PASSWORD in .env or inject it from your secret store}
     # DEV: To expose ports, either:
     # 1. Use docker-compose.dev.yml: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --wait
     # 2. Uncomment the ports below
@@ -472,7 +482,11 @@ services:
       # We need discovery.type=single-node so that OpenSearch doesn't try
       # forming a cluster and waiting for other nodes to become live.
       - discovery.type=single-node
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_ADMIN_PASSWORD:-StrongPassword123!}
+      # Bootstrap password for the built-in admin user. Required: no default is
+      # shipped, so a deployment cannot inherit a published credential. It must
+      # satisfy the OpenSearch strength rules (>= 8 chars with an upper-case, a
+      # lower-case, a digit and a special character).
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_ADMIN_PASSWORD:?required - set OPENSEARCH_ADMIN_PASSWORD in .env or inject it from your secret store}
       # This and the JVM config below come from the example in https://docs.opensearch.org/latest/install-and-configure/install-opensearch/docker/
       # We do this to avoid unstable performance from page swaps.
       - bootstrap.memory_lock=true # Disable JVM heap memory swapping.
@@ -641,10 +655,11 @@ services:
         required: false
     #!endfor
     environment:
-      #!value prod,no-letsencrypt: MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set a strong value in .env, not minioadmin}
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      #!value prod,no-letsencrypt: MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set a strong value in .env, not minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      # Root credentials for the object store. Required: no default is shipped,
+      # so a deployment cannot inherit a published credential. Keep them equal
+      # to the S3_AWS_* pair the application uses.
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?required - set MINIO_ROOT_USER in .env or inject it from your secret store}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?required - set MINIO_ROOT_PASSWORD in .env or inject it from your secret store}
       #!only default
       # Note: we've seen the default bucket creation logic not work in some cases
       MINIO_DEFAULT_BUCKETS: ${S3_FILE_STORE_BUCKET_NAME:-onyx-file-store-bucket}

@@ -97,8 +97,12 @@ They must stay visible until the underlying artifacts are reconciled:
 ## Findings
 
 Plan 002 closed SECURITY-01 through SECURITY-05 and PRIVACY-01/02. SECURITY-06
-remains assigned to Plan 005. SECURITY-07 remains assigned to Plan 007. Plan 002
-did not change domain schema, agent routing or deployment artifacts.
+remains assigned to Plan 005. Plan 002 did not change domain schema, agent
+routing or deployment artifacts.
+
+Plan 007 closed SECURITY-07 and opened SECURITY-08, which it analysed and
+deferred rather than fixed. SECURITY-08 needs a migration and is blocked on Plan
+003 readiness.
 
 ### [SECURITY-01] Redact content-bearing traces
 
@@ -164,17 +168,46 @@ did not change domain schema, agent routing or deployment artifacts.
 
 ### [SECURITY-07] Remove deployment credential fallbacks
 
-- **Evidence**: credential environment fallbacks are present in
+- **Status**: CLOSED by Plan 007 at commit `80e76cfb12`.
+- **Evidence**: credential environment fallbacks were present in
   `deployment/docker_compose/docker-compose.yml:81-93,530-531` and the source
   template at `deployment/docker_compose/docker-compose.template.yml:100-115,640-643`.
+  The env templates also committed database and object-storage passwords.
 - **Impact**: default credentials can expose search or object storage when
   deployments copy development settings.
 - **Effort**: M.
 - **Risk**: CRITICAL.
 - **Confidence**: HIGH.
-- **Fix sketch**: require external injection in every deploy profile, rotate
-  existing credentials, and add a non-secret configuration scan. Never print
-  the values.
+- **Resolution**: every owned compose variant now declares its credentials with
+  `${NAME:?...}`, so a missing value is a configuration failure that names the
+  variable and starts nothing. The env templates ship the keys with no value, and
+  both guided installers generate them. Operational rotation is documented in
+  `007-deployment-hardening.md`; no value was read or printed.
+- **Follow-up**: application-level defaults still exist at
+  `backend/onyx/configs/app_configs.py:470,637`. No compose path reaches them, but
+  a process started outside compose can. Tracked as a remaining risk in Plan 007.
+
+### [SECURITY-08] Encrypt LLM provider `custom_config` at rest
+
+- **Status**: OPEN. Raised by the capability audit, analysed by Plan 007,
+  deferred with a named prerequisite. Not fixed.
+- **Evidence**: `backend/onyx/db/models.py:3624-3626` stores `custom_config` as
+  plain `postgresql.JSONB()` while the sibling `api_key` at `:3617-3619` uses
+  `EncryptedString()`. The dict holds AWS Bedrock keys, Vertex service-account
+  JSON and LM Studio bearer tokens. `VoiceProvider.custom_config` at `:3809-3812`
+  has the same defect.
+- **Impact**: provider credentials are readable by anything with database access.
+  API masking (`_mask_provider_credentials`) is presentation, not encryption.
+- **Effort**: M.
+- **Risk**: HIGH.
+- **Confidence**: HIGH.
+- **Blocker**: the fix needs a `jsonb` → `bytea` migration plus an
+  application-level data rewrite, and the live database still references unknown
+  Alembic revision `6e8f0a2b1c35`. Plan 007 must not author migration-bearing
+  changes.
+- **Fix sketch**: reuse `EncryptedJson`; see TON-SEC-007-A in
+  `007-deployment-hardening.md` for the full design, reader list and test list.
+  Depends on Plan 003 readiness.
 
 ### [PRIVACY-01] Make telemetry and browser analytics opt-in
 

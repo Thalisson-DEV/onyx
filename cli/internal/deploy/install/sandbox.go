@@ -49,6 +49,16 @@ func randomHex(n int) string {
 	return hex.EncodeToString(buf)
 }
 
+// randomOpenSearchPassword returns a random password that satisfies
+// OpenSearch's strength rules for OPENSEARCH_INITIAL_ADMIN_PASSWORD: at least 8
+// characters with an upper-case letter, a lower-case letter, a digit and a
+// special character. randomHex alone is rejected because it has neither an
+// upper-case letter nor a special character, so a fixed suffix supplies both.
+// Entropy comes from the 32 hex characters in front of it.
+func randomOpenSearchPassword() string {
+	return randomHex(16) + "Aa1!"
+}
+
 // craftSecurityWarning is printed when Craft is enabled with the docker
 // sandbox backend (ported verbatim from install.sh).
 const craftSecurityWarning = `⚠  Craft + docker backend: api_server and background bind-mount

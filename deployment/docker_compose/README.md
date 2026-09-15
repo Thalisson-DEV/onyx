@@ -3,7 +3,8 @@
 To set up Onyx there are several options, Onyx supports the following for deployment:
 1. Quick guided install via the install.sh script
 2. Pulling the repo and running `docker compose up -d` from the deployment/docker_compose directory
-  - Note, it is recommended to copy over the env.template file to .env and edit the necessary values
+  - Copy env.template to .env and fill in the values. The keys marked REQUIRED have no default, so
+    Docker Compose refuses to start until you set them. Each one has a generation command next to it.
 3. For large scale deployments leveraging Kubernetes, there are two options, Helm or Terraform.
 
 This README focuses on the easiest guided deployment which is via install.sh.
@@ -94,6 +95,16 @@ The Docker Compose files try to look for a .env file in the same directory. The 
 from a file called env.template. Feel free to edit the .env file to customize your deployment. The most
 important / common changed values are located near the top of the file. Later `onyx-cli deploy` runs
 keep your edits.
+
+No credential has a default. The installer generates the required ones on a fresh install
+(authentication, at-rest encryption, database, search, and object storage) and leaves them alone on
+later runs. If you write .env by hand, set every key marked REQUIRED in env.template: Docker Compose
+stops and names any variable that is still missing, and nothing starts with a published default.
+
+Two values are read only once, when their data volume is first created: `POSTGRES_PASSWORD` and
+`OPENSEARCH_ADMIN_PASSWORD`. Changing them later needs a matching change inside the service, not just
+in .env. `ENCRYPTION_KEY_SECRET` wraps stored credentials; rotating it needs
+`python -m onyx.db.rotate_encryption_key` with the previous key.
 
 IMAGE_TAG is the version of Onyx to run. It is recommended to leave it as latest to get all updates with each redeployment.
 

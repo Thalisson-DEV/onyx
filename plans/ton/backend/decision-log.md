@@ -41,7 +41,11 @@ immutability, interpretation, integration and web-only removal decisions.
 | D-013 | Temporary files use explicit scope and no-index/no-retrieval/no-report policy where required. | Decided | Prevents leakage into knowledge and reports. |
 | D-014 | Scheduled TON work uses AnalysisSchedule/AnalysisRun, internal timeout, business retry, expiry, crash sweeper and overlap/misfire policy. | Decided | Existing Craft task has `acks_late=False`, catches exceptions and has no retry. |
 | D-015 | External telemetry is off by default; traces are metadata-only by default. | Decided; implemented by Plan 002 | Vale Norte privacy requirement and Plan 002 acceptance tests. |
-| D-016 | Deployment credentials are externally injected; existing environments rotate credentials. | P0 hardening decision | Current compose/template contains default credential fallbacks. |
+| D-016 | Deployment credentials are externally injected; existing environments rotate credentials. | Decided; implemented by Plan 007 | Every owned compose variant now declares credentials as required; env templates ship no values; rotation is documented in `007-deployment-hardening.md`. |
+| D-022 | `ENABLE_PAID_ENTERPRISE_EDITION_FEATURES` stays unset/false and `LICENSE_ENFORCEMENT_ENABLED` stays at its default in every deployment artifact. | Decided; enforced by Plan 007 tests | The paid flag without a license gates the whole application; the enforcement default keeps the EE tree loaded, which computes group-aware document access. |
+| D-023 | The production compose variants require `ENCRYPTION_KEY_SECRET`; the development variant does not. | Decided; implemented by Plan 007 | Without the key every encrypted column is written as plaintext bytes. The development boundary is asserted explicitly so it cannot widen silently. |
+| D-024 | Model weights keep controlled first-boot download. Private deployments point `HF_ENDPOINT` at an approved mirror or pre-seed the cache volumes. | Decided | `docker-compose.airgap-test.yml` already demonstrates the mechanism; the model server is not redesigned. |
+| D-025 | `LLMProvider.custom_config` encryption at rest is deferred, not fixed. | BLOCKED on Plan 003 readiness | Needs a `jsonb` → `bytea` migration plus a data rewrite while the live database still references unknown revision `6e8f0a2b1c35`. Design recorded as TON-SEC-007-A. |
 | D-017 | Preserve OpenSearch, FileStore, PostgreSQL, Redis, Celery, permissions and active shared APIs. | Decided | They are G-class removal risks. |
 | D-018 | LangGraph is not introduced without a measured native limitation. | Recommended | Native Deep Research/ToolCall/parallel runner exists. |
 | D-019 | The Vale Norte report is a domain-evidence input, not an executable rule catalog. | Decided | Report is present under `plans/`; source validation and owner approval remain required. |
@@ -83,6 +87,9 @@ treatment, threshold or correction:
 6. Resolved by Plan 002: use `TON_WEB_ONLY`, `TON_EXTERNAL_TELEMETRY_MODE`
    and `TON_TRACE_CONTENT_MODE`.
 7. Approve which SaaS surfaces are replaced versus hidden for the deployment.
+7a. Approve the encryption-key lifecycle before TON-SEC-007-A: who holds
+    `ENCRYPTION_KEY_SECRET`, where it is stored, and the rotation window. The
+    migration must refuse to run without it.
 8. Reconcile the report's conflicting totals and budget coverage before source
    snapshots can support production rules.
 9. Resolve the travel settlement proposal (48 hours versus five business days)

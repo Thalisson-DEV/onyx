@@ -234,10 +234,29 @@ func TestRunInstallFreshLiteNoPrompt(t *testing.T) {
 	if Var(envStr, "IMAGE_TAG") != "edge" {
 		t.Errorf("IMAGE_TAG = %q", Var(envStr, "IMAGE_TAG"))
 	}
-	for _, key := range []string{"MINIO_ROOT_USER", "MINIO_ROOT_PASSWORD", "S3_AWS_ACCESS_KEY_ID", "S3_AWS_SECRET_ACCESS_KEY"} {
-		if v := Var(envStr, key); v == "minioadmin" || v == "" {
-			t.Errorf("%s not randomized: %q", key, v)
+	// Every credential the compose files mark as required has to be generated:
+	// env.template ships them empty, so an ungenerated one makes compose refuse
+	// to start. "minioadmin" and "password" are the published defaults that used
+	// to ship in the template and must never come back.
+	for _, key := range []string{
+		"MINIO_ROOT_USER", "MINIO_ROOT_PASSWORD",
+		"S3_AWS_ACCESS_KEY_ID", "S3_AWS_SECRET_ACCESS_KEY",
+		"POSTGRES_PASSWORD", "OPENSEARCH_ADMIN_PASSWORD", "ENCRYPTION_KEY_SECRET",
+	} {
+		switch v := Var(envStr, key); v {
+		case "":
+			t.Errorf("%s not generated", key)
+		case "minioadmin", "password", "StrongPassword123!":
+			t.Errorf("%s left on a published default", key)
 		}
+	}
+	// OpenSearch rejects a password without an upper-case letter, a digit and a
+	// special character, so a bare hex string would fail at first boot.
+	osPassword := Var(envStr, "OPENSEARCH_ADMIN_PASSWORD")
+	if !strings.ContainsAny(osPassword, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") ||
+		!strings.ContainsAny(osPassword, "0123456789") ||
+		!strings.ContainsAny(osPassword, "!@#$%^&*()-_=+") {
+		t.Errorf("OPENSEARCH_ADMIN_PASSWORD does not meet the OpenSearch strength rules")
 	}
 	if len(Var(envStr, "USER_AUTH_SECRET")) != 64 {
 		t.Errorf("USER_AUTH_SECRET not generated: %q", Var(envStr, "USER_AUTH_SECRET"))

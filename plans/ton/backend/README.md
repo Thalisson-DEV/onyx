@@ -21,7 +21,7 @@ slice. Status values are `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED (reason)`, or
 | 004 | [File lifecycle and knowledge ingestion](004-files-knowledge-ingestion.md) | P1 | L | 001, 002, 003 | TODO |
 | 005 | [Authorized agents and orchestration](005-agents-orchestration.md) | P1 | L | 001, 002, 003, 004 | TODO |
 | 006 | [Reports, schedules, alerts, and administration](006-reports-schedules-admin.md) | P1 | L | 001, 002, 003, 004, 005 | TODO |
-| 007 | [Deployment credential hardening](007-deployment-hardening.md) | P0 | M | 001, 002 | TODO |
+| 007 | [Deployment credential hardening](007-deployment-hardening.md) | P0 | M | 001, 002 | PARTIAL (provider-secret encryption blocked on Plan 003) |
 | 008 | [Web-only product surface](008-web-only-product.md) | P1 | M | 001, 002, 006, 007 | TODO |
 | 009 | [Telegram channel adapter](009-telegram-channel-adapter.md) | P1 | M | 002, 005, 006 | BLOCKED (channel contract unavailable) |
 

@@ -837,7 +837,13 @@ func (in *installer) createFreshEnv(envPath, tag string) (string, int, error) {
 		env = SetVar(env, "FILE_STORE_BACKEND", "postgres")
 	}
 
+	// env.template ships every credential empty so no install can inherit a
+	// published default. Compose names the missing variable and refuses to
+	// start, so each one has to be generated here.
 	env = SetVar(env, "USER_AUTH_SECRET", `"`+randomHex(32)+`"`)
+	env = SetVarUncomment(env, "ENCRYPTION_KEY_SECRET", randomHex(32))
+	env = SetVar(env, "POSTGRES_PASSWORD", randomHex(32))
+	env = SetVar(env, "OPENSEARCH_ADMIN_PASSWORD", randomOpenSearchPassword())
 	minioAccessKey, minioSecretKey := randomHex(16), randomHex(32)
 	env = SetVar(env, "MINIO_ROOT_USER", minioAccessKey)
 	env = SetVar(env, "MINIO_ROOT_PASSWORD", minioSecretKey)
@@ -859,7 +865,7 @@ func (in *installer) createFreshEnv(envPath, tag string) (string, int, error) {
 	if err := os.WriteFile(envPath, []byte(env), 0600); err != nil {
 		return "", 0, fmt.Errorf("failed to write .env: %w", err)
 	}
-	in.successf(".env created (auth secret and MinIO credentials generated) — customize it any time")
+	in.successf(".env created (auth, encryption, database, search and object-storage credentials generated) — customize it any time")
 	return tag, hostPort, nil
 }
 

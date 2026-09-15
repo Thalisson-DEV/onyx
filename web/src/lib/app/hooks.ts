@@ -2,19 +2,28 @@
 
 import { useLayoutEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAppPosition } from "@/lib/position/hooks";
 import { useSettings } from "@/lib/settings/hooks";
-import { APP_SLOGAN } from "@/lib/constants";
 import useChatSessions from "@/hooks/useChatSessions";
 import { useCurrentSessionPersonaId } from "@/app/app/stores/useChatSessionStore";
 import { useActiveAgent, useAgents } from "@/lib/agents/hooks";
 import { SEARCH_TOOL_ID, WEB_SEARCH_TOOL_ID } from "@/lib/tools/constants";
 
+/**
+ * Footer disclaimer. A configured enterprise disclaimer wins. Otherwise the
+ * product identity line, built from the existing settings version — no separate
+ * versioning system and no upstream product or marketing link.
+ */
 export function useCustomFooterContent(): string {
+  const t = useTranslations("product");
   const settings = useSettings();
   return (
     settings.enterprise?.custom_lower_disclaimer_content ||
-    `[Onyx ${settings.version ?? "dev"}](https://www.onyx.app/) - ${APP_SLOGAN}`
+    t("footer.text", {
+      appName: settings.appName,
+      version: settings.version ?? "dev",
+    })
   );
 }
 

@@ -73,3 +73,75 @@ para usuários TON comuns e confirmar a política de papel antes de mudar rotas.
    decisão de chave deixa tradução obsoleta.
 4. Trocar links upstream somente após existirem destinos Vale Norte de suporte/docs;
    caso contrário, usar copy neutra em vez de link morto.
+
+## Disposição final — TON-FE-003
+
+**Status: DONE.** Executado sobre `d49ea04e09eb726ad7cea330c038dbd1e3685546`.
+Nível 0–2. Nenhum arquivo em `backend/` mudou.
+
+A política de superfície vive em `web/src/lib/ton/product-surface.ts`. São quatro
+constantes: `SHOW_UPSTREAM_ATTRIBUTION`, `SHOW_UPSTREAM_LINKS`,
+`SHOW_COMMERCE_SURFACES` e `SHOW_BUILDER_PRODUCT_ENTRY`. Todas são `false`.
+
+Elas são constantes, não variáveis de ambiente. Um `process.env` sem prefixo
+`NEXT_PUBLIC_` resolve para `undefined` no bundle do cliente, então a política
+divergiria entre servidor e cliente. Virar uma constante restaura a superfície
+upstream correspondente.
+
+### Matriz de disposição
+
+Legenda de visibilidade: **N** = usuário TON comum, **A** = administrador.
+
+| Superfície | Papel atual | Decisão final | N | A | Capacidade preservada? | Dependência Plano 008? | Cobertura de teste |
+|---|---|---|---|---|---|---|---|
+| Atribuição "Powered by Onyx" (`lib/app/components.tsx`) | Tagline upstream sob o logo da sidebar | REPLACE CLIENT COPY — não renderiza | oculto | oculto | Sim: env toggle e `hide_onyx_branding` intactos | Não | RTL `ton-product-surface`; Playwright `product-surface`, `appearance_theme_settings` |
+| Rodapé do app (`lib/app/hooks.ts`, `constants.ts`) | `[Onyx x.y.z](onyx.app) - Open Source AI Platform` | REPLACE CLIENT COPY — `product.footer.text` com `appName` e `settings.version` | TON | TON | Sim: `custom_lower_disclaimer_content` tem precedência | Não | RTL; Playwright `expectProductFooter` |
+| `APP_SLOGAN` | Constante do slogan upstream | REMOVE — sem outro consumidor | n/a | n/a | n/a | Não | RTL (ausência em `constants.ts`) |
+| Versão no menu da conta (`AccountPopover.tsx`) | `[Onyx x.y.z](docs.onyx.app/changelog)` + `SvgOnyxLogo` | REPLACE CLIENT COPY — `product.version.label`, sem link nem logo upstream | TON | TON | Sim: versão vem de `/api/settings` | Não | RTL; Playwright `expectNoUpstreamLinks` |
+| Help & FAQ no menu da conta | Link para `docs.onyx.app` | HIDE FROM NORMAL USER — `SHOW_UPSTREAM_LINKS` | oculto | oculto | Sim: `custom_help_link_url` continua renderizando | Não | RTL; Playwright |
+| Apêndice de suporte no toast (`AppProvider.tsx`) | String inglesa fixa com `discord.gg` | HIDE FROM NORMAL USER | oculto | oculto | Sim: `NEXT_PUBLIC_INCLUDE_ERROR_POPUP_SUPPORT_LINK` intacto | Não | RTL |
+| Wordmark upstream em erro (`ErrorPageLayout.tsx`) | `OnyxLogoTypeIcon` do legado `src/components/` | REPLACE CLIENT COPY — usa `Logo` configurável | TON | TON | Sim: respeita `logoUrl` e `application_name` | Não | RTL |
+| Docs upstream em erro de config (`ErrorPage.tsx`) | Link `docs.onyx.app` com UTM | HIDE FROM NORMAL USER — variante `adminHintInternal` | oculto | oculto | Sim: `DOCS_BASE_URL` intacto | Não | RTL |
+| Comunidade Discord em erro/acesso restrito | `needHelp.text` com `<discordLink>` | HIDE FROM NORMAL USER — variante `needHelpInternal` | oculto | oculto | Sim | Não | RTL |
+| Banner de lembrete de pagamento (`AdminChrome.tsx`) | Banner de fim de trial → `/admin/billing` | REMOVE CLIENT-FACING SURFACE | oculto | oculto | Sim: `application_status` e `ApplicationStatus` intactos | Sim — política de trial é do servidor | RTL; Playwright `expectNoCommerceNavigation` |
+| Navegação `upgradePlan` (`admin-sidebar-utils.ts`) | Item de sidebar quando `!hasSubscription` | REMOVE CLIENT-FACING ROUTE da navegação | oculto | oculto | Sim: `hasSubscription` continua alimentando gates | Sim — gating de tier | RTL `buildItems`; Playwright |
+| Entrada `Plans & Billing` (`admin-routes.ts` `BILLING`) | Item de sidebar quando `hasSubscription` | HIDE FROM NAV — rota, permissão e `matchAdminRoute` preservados | oculto | oculto na nav; rota direta permanece | Sim: rota e página intactas | Sim — autorização de rota direta | RTL `visibleWhen`; Playwright |
+| Tooltip de upsell por tier (`AdminSidebar.tsx`) | "Enterprise version of Onyx" com link para billing | REPLACE CLIENT COPY — `capabilityUnavailable.tooltip`, sem plano nem link | n/a | copy neutra | Sim: `requiredTier` e `tierAtLeast` intactos | Sim — enforcement de tier | RTL (tooltip e itens desabilitados) |
+| Upsell de token de acesso (`SettingsPage.tsx`) | "Upgrade Plan" → `/admin/billing` | REPLACE CLIENT COPY — `apiKeys.unavailable.description`, sem botão | copy neutra | copy neutra | Sim: `useTierAtLeast` intacto | Sim | RTL; Playwright em `/app/settings/general` |
+| Subtítulo do login (`auth.login.welcomeSubtitle`) | "Your open source AI platform for work" | REPLACE CLIENT COPY — tagline TON | TON | TON | Sim: `custom_login_subtitle` tem precedência | Não | RTL |
+| Copy de onboarding (`nameStep`, `llmStep`, `finalStep`) | "What should Onyx call you?", "self-hosted models", "Enable Onyx to search" | REPLACE CLIENT COPY — neutra | copy neutra | copy neutra | Sim: nenhum passo removido | Não | RTL |
+| Onboarding de provider LLM (`OnboardingFlow.tsx`) | Passos Name/LLM/Final | KEEP ADMIN-ONLY — já era: o ramo `isAdmin` hospeda os passos; o comum só vê `NonAdminStep` | só nome de exibição | setup completo | Sim: nada removido | Não | RTL (contrato do ramo `isAdmin`) |
+| Entrada Craft na sidebar do app (`AppSidebar.tsx`) | `SidebarTab` + intro animada sob `onyx_craft_enabled` | HIDE FROM NORMAL USER | oculto | oculto | Sim: rotas `/craft/*`, páginas admin e `onyx_craft_available` intactos | Sim — autorização de rota direta `/craft/*` | RTL; Playwright `expectNoBuilderProductEntry` |
+| Craft no painel admin (`CRAFT_ACCESS`, `CRAFT_APPS`, `CRAFT_PREFERENCES`) | Configuração de acesso, apps e preferências | KEEP ADMIN-ONLY — sem mudança | oculto | visível quando `onyx_craft_available` | Sim | Não | RTL (`visibleWhen` continua `true`) |
+| Copy cloud/self-hosted e link de preço em `IndexSettingsPage` | Abas de provider e link de preço do provider | KEEP ADMIN-ONLY — sem mudança | oculto | visível | Sim | Não | Fora do escopo desta rodada |
+| Badges "Business Plan"/"Enterprise Plan" (`lib/tier-badge.ts`) | Marca o limite de capacidade em duas telas admin | KEEP ADMIN-ONLY — preservado deliberadamente | oculto | visível | Sim | Sim — o vocabulário de tier depende do Plano 008 | RTL (mecanismo de tier preservado) |
+| Recuperação de licença/assinatura (`AccessRestrictedPage.tsx`) | Ressubscrição, seat limit e ativação de licença | KEEP para operador; copy neutralizada | só quando o servidor bloqueia | visível | Sim: `useLicense`, `/api/tenants/*` intactos | Sim — o bloqueio é do servidor | RTL (`SHOW_UPSTREAM_LINKS` presente) |
+| Hooks de billing/licença (`useBillingInformation`, `useLicense`) | Estado de assinatura e licença | KEEP AS-IS | n/a | n/a | Sim | Sim | Nenhuma mudança |
+| Cadastro cloud (`auth/signup`), tenant, impersonate | Ramo multi-tenant | DEFER — já desligado por `NEXT_PUBLIC_CLOUD_ENABLED=false` | oculto | oculto | Sim | Sim — política de tenant | Nenhuma mudança de código |
+| Uso e custo de modelo (`/app/settings/usage`) | Visão operacional de uso | KEEP AS-IS | visível | visível | Sim | Não | Nenhuma mudança |
+
+### Superfícies deliberadamente preservadas
+
+Auth, SSO, senha, redirects e o comportamento seguro de redirect do Plano 002.
+RBAC, permissões, capacidades e `tierAtLeast`. Usuários, grupos, SCIM.
+Personas/agentes, projetos, arquivos, conectores, federação, indexação,
+document sets, configuração de modelos e gateway, MCP e OpenAPI actions, bots,
+hooks, segurança, tracing, export de logs, analytics, query history, tema admin.
+Toda a infraestrutura de licença e billing continua no código.
+
+### Dependências registradas para o Backend Plano 008
+
+1. **Autorização de rota direta.** `/admin/billing`, `/ee/admin/billing` e
+   `/craft/*` saíram da navegação, não do roteamento. O servidor precisa negar
+   acesso direto quando o papel não autorizar.
+2. **Enforcement de tier.** `requiredTier`, `tierAtLeast` e `hasSubscription`
+   continuam decidindo capacidade em runtime. Só o Plano 008 pode dizer o que
+   pode ser removido ou substituído no servidor.
+3. **Política de trial e lembrete de pagamento.** `ApplicationStatus.PAYMENT_REMINDER`
+   continua sendo emitido pelo servidor; o frontend apenas não o apresenta.
+4. **Bloqueio por licença/assento.** `GATED_ACCESS` e `SEAT_LIMIT_EXCEEDED`
+   continuam vindo do servidor e ainda renderizam a página de acesso restrito.
+5. **Vocabulário de plano no servidor.** `Tier.COMMUNITY/BUSINESS/ENTERPRISE`
+   é contrato de API. Renomear é decisão do Plano 008.
+6. **Onboarding cloud e tenant.** Ramos multi-tenant seguem controlados por
+   `NEXT_PUBLIC_CLOUD_ENABLED` e por settings do servidor.

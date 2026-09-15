@@ -313,22 +313,24 @@ test.describe("Appearance Theme Settings @exclusive", () => {
     await themePage.clearCustomHelpLinkLabel();
   });
 
-  test("Hide Onyx Branding toggle removes the 'Powered by Onyx' tagline", async ({
+  // TON-FE-003 removed upstream attribution from the product, so the tagline
+  // never renders. The Hide Branding setting still round-trips; only its
+  // visible effect is already applied. Restore this assertion if
+  // SHOW_UPSTREAM_ATTRIBUTION is turned back on.
+  test("the sidebar never shows upstream attribution, whatever the branding toggle says", async ({
     page,
   }) => {
     const themePage = new AppearanceThemePage(page);
 
-    // The sidebar's "Powered by Onyx" tagline only renders alongside an
-    // application name (the Logo's logo_and_name fall-through path), so
-    // first set a name and save a baseline that we can then assert against.
+    // An application name is what would trigger the Logo's logo_and_name
+    // fall-through path, the only place the tagline ever rendered.
     await themePage.setApplicationName(TEST_VALUES.applicationName);
     const baselineResponse = await themePage.saveAndWaitForPut();
     expect(baselineResponse.status()).toBe(200);
     await themePage.expectSaveSuccessToast();
     await themePage.reloadAndWaitForForm();
 
-    // Sanity: tagline now visible alongside the application name
-    await themePage.expectPoweredByOnyxVisible();
+    await themePage.expectPoweredByOnyxAbsent();
 
     await themePage.toggleHideBranding();
 
@@ -336,8 +338,6 @@ test.describe("Appearance Theme Settings @exclusive", () => {
     expect(response.status()).toBe(200);
     await themePage.expectSaveSuccessToast();
 
-    // Reload to read the persisted setting fresh — the sidebar then re-
-    // renders the Logo without the tagline.
     await themePage.reloadAndWaitForForm();
     await themePage.expectPoweredByOnyxAbsent();
   });

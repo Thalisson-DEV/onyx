@@ -3,6 +3,12 @@
     "metadata": {
       "description": "Vale Norte Construtora向けの業務インテリジェンスと管理会計。",
       "title": "TON"
+    },
+    "footer": {
+      "text": "{appName} {version} — オペレーショナルインテリジェンスとコントローリング"
+    },
+    "version": {
+      "label": "{appName} {version}"
     }
   },
   "accountPopover": {
@@ -787,9 +793,7 @@
         "messaging": {
           "label": "メッセージング"
         },
-        "other": {
-          "label": "その他"
-        },
+        "other": { "label": "その他" },
         "sales": {
           "label": "営業"
         },
@@ -5822,7 +5826,9 @@
         "kgDocumentClassification": {
           "label": "ナレッジグラフ分類"
         },
-        "other": { "label": "その他" },
+        "other": {
+          "label": "その他"
+        },
         "unattributed": { "label": "未帰属" }
       },
       "filters": {
@@ -9015,7 +9021,7 @@
         "title": "{appName} へようこそ"
       },
       "welcomeSubtitle": {
-        "text": "仕事のためのオープンソース AI プラットフォーム"
+        "text": "オペレーショナルインテリジェンスとコントローリング"
       },
       "workEmailField": {
         "label": "職場のメールアドレス"
@@ -10964,10 +10970,10 @@
           "title": "アクセスが制限されています"
         },
         "licenseLapse": {
-          "description": "ライセンスの失効により、Onyxへのアクセスが一時的に停止されています。"
+          "description": "ライセンスが失効したため、アクセスを一時的に停止しています。"
         },
         "licenseRequired": {
-          "description": "Onyxの使用にはライセンスが必要です。データは保護されており、ライセンスが有効化されると利用できるようになります。"
+          "description": "このアプリケーションの利用にはライセンスが必要です。データは保護されており、ライセンス有効化後に利用できます。"
         },
         "logoutButton": {
           "label": "ログアウト"
@@ -10979,7 +10985,7 @@
           "description": "はじめるには、システム管理者に連絡してライセンスを取得してください。"
         },
         "renewLicense": {
-          "description": "アクセスを回復してOnyxを引き続き使用するには、システム管理者に連絡してライセンスを更新してください。"
+          "description": "アクセスを回復するには、システム管理者にライセンス更新を依頼してください。"
         },
         "resubscribeButton": {
           "label": "再購読",
@@ -10998,10 +11004,10 @@
           "description": "組織がライセンスされたシート数を超過しています（{used}ユーザー / {seats}シート）。ユーザー数を減らすか、ライセンスをアップグレードするまでアクセスは制限されます。"
         },
         "subscriptionLapse": {
-          "description": "サブスクリプションの失効により、Onyxへのアクセスが一時的に停止されています。"
+          "description": "サブスクリプションが失効したため、アクセスを一時的に停止しています。"
         },
         "updatePayment": {
-          "description": "アクセスを回復してOnyxの強力な機能を引き続きご利用いただくには、お支払い情報を更新してください。"
+          "description": "アクセスを回復するには、支払い情報を更新してください。"
         }
       },
       "configError": {
@@ -11009,8 +11015,11 @@
           "text": "管理者の方は、正しい設定手順について<docsLink>ドキュメント</docsLink>をご確認ください。ユーザーの方は、管理者にお問い合わせください。"
         },
         "heading": {
-          "description": "Onyxの設定の読み込みに問題が発生したようです。設定の問題またはセットアップが未完了であることが原因の可能性があります。",
+          "description": "アプリケーション設定の読み込みで問題が発生しました。設定の問題か、セットアップが未完了の可能性があります。",
           "title": "問題が発生しました"
+        },
+        "adminHintInternal": {
+          "text": "管理者の場合はアプリケーション設定を確認してください。ユーザーの場合は管理者にお問い合わせください。"
         }
       },
       "maintenance": {
@@ -11018,7 +11027,7 @@
           "description": "ご不便をおかけして申し訳ありません。しばらくお待ちください。"
         },
         "checkBack": {
-          "description": "Onyxは現在メンテナンス中です。数分後にもう一度お試しください。"
+          "description": "アプリケーションはメンテナンス中です。数分後に再度お試しください。"
         },
         "heading": {
           "title": "メンテナンス中"
@@ -11026,6 +11035,9 @@
       },
       "needHelp": {
         "text": "サポートが必要ですか？<discordLink>Discordコミュニティ</discordLink>にご参加ください。"
+      },
+      "needHelpInternal": {
+        "text": "サポートが必要ですか？システム管理者にお問い合わせください。"
       }
     },
     "errors": {
@@ -12662,7 +12674,7 @@
         "button": {
           "label": "ウェブ検索"
         },
-        "description": "Onyx がインターネットで情報を検索できるようにします。",
+        "description": "エージェントがインターネットで情報を検索できるようにします。",
         "title": "ウェブ検索プロバイダーを選択"
       }
     },
@@ -12682,7 +12694,7 @@
         "subtitle": "LiteLLM 互換 API",
         "title": "カスタム LLM プロバイダー"
       },
-      "description": "Onyx はセルフホストのモデルと主要なプロバイダーの両方に対応しています。",
+      "description": "このインストールで使用するモデルプロバイダーを設定します。",
       "edit": {
         "ariaLabel": "LLM プロバイダーを編集"
       },
@@ -12705,7 +12717,7 @@
       "input": {
         "placeholder": "お名前"
       },
-      "title": "Onyx はあなたを何と呼べばよいですか？"
+      "title": "お名前をどのように表示しますか？"
     },
     "nonAdminStep": {
       "confirmation": {
@@ -12970,6 +12982,9 @@
       "upsell": {
         "description": "アクセストークンの利用には有効な有料プランが必要です。",
         "upgradeButton": "プランをアップグレード"
+      },
+      "unavailable": {
+        "description": "アクセストークンはこのインストールでは有効になっていません。"
       }
     },
     "appearance": {
@@ -13462,6 +13477,9 @@
       },
       "searchInput": {
         "placeholder": "検索..."
+      },
+      "capabilityUnavailable": {
+        "tooltip": "この機能はこのインストールでは有効になっていません。"
       }
     },
     "appSidebar": {

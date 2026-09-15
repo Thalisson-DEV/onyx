@@ -34,9 +34,13 @@ import { SidebarStateProvider, ToastProvider } from "@opal/layouts";
 import { AppBackgroundProvider } from "@/providers/AppBackgroundProvider";
 import { QueryControllerProvider } from "@/providers/QueryControllerProvider";
 import { NEXT_PUBLIC_INCLUDE_ERROR_POPUP_SUPPORT_LINK } from "@/lib/constants";
+import { SHOW_UPSTREAM_LINKS } from "@/lib/ton/product-surface";
 import { FullWidthChatProvider } from "@/providers/FullWidthChatProvider";
 import { IncognitoProvider } from "@/providers/IncognitoProvider";
 import { UnsavedChangesNavigationProvider } from "@/providers/UnsavedChangesNavigationProvider";
+
+const UPSTREAM_SUPPORT_APPENDIX =
+  "Need help? Join our community at https://discord.gg/4NA5SbzrWb for support!";
 
 interface SidebarPersistenceProviderProps {
   children: React.ReactNode;
@@ -85,10 +89,14 @@ export default function AppProvider({ children }: AppProviderProps) {
                   <FullWidthChatProvider>
                     <IncognitoProvider>
                       <UnsavedChangesNavigationProvider>
+                        {/* The upstream community channel is not a TON support
+                            path, so the appendix stays empty. The env toggle
+                            remains for deployments that restore it. */}
                         <ToastProvider
                           errorAppendix={
+                            SHOW_UPSTREAM_LINKS &&
                             NEXT_PUBLIC_INCLUDE_ERROR_POPUP_SUPPORT_LINK
-                              ? "Need help? Join our community at https://discord.gg/4NA5SbzrWb for support!"
+                              ? UPSTREAM_SUPPORT_APPENDIX
                               : undefined
                           }
                         >

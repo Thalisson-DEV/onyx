@@ -6,6 +6,7 @@ import {
   DEFAULT_LOGO_SIZE_PX,
   NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED,
 } from "@/lib/constants";
+import { SHOW_UPSTREAM_ATTRIBUTION } from "@/lib/ton/product-surface";
 import { cn } from "@opal/utils";
 import Text from "@/refresh-components/texts/Text";
 import Truncated from "@/refresh-components/texts/Truncated";
@@ -67,7 +68,10 @@ export function Logo({ folded, size, className, onyxBranded }: LogoProps) {
             {opts.includeName && (
               <Truncated headingH3>{applicationName}</Truncated>
             )}
-            {!NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED &&
+            {/* The env toggle and the enterprise setting below stay in place;
+                the TON product simply never shows upstream attribution. */}
+            {SHOW_UPSTREAM_ATTRIBUTION &&
+              !NEXT_PUBLIC_DO_NOT_USE_TOGGLE_OFF_DANSWER_POWERED &&
               !enterprise?.hide_onyx_branding && (
                 <Text
                   secondaryBody

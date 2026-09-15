@@ -23,6 +23,7 @@ import {
   hasPermission,
 } from "@/lib/permissions";
 import LiteModeIndexingNotice from "@/sections/admin/LiteModeIndexingNotice";
+import { SHOW_COMMERCE_SURFACES } from "@/lib/ton/product-surface";
 import { useTranslations } from "next-intl";
 
 export interface AdminChromeProps {
@@ -115,18 +116,21 @@ export default function AdminChrome({
   return (
     <AdminCustomSidebarSlotContext.Provider value={customSidebarSlot}>
       <RootLayout.Root>
-        {application_status === ApplicationStatus.PAYMENT_REMINDER && (
-          <div className="fixed top-2 left-1/2 -translate-x-1/2 bg-status-warning-01 p-4 rounded-lg shadow-lg z-50 max-w-md text-center">
-            <Text font="main-ui-body" color="text-05">
-              {markdown(t("adminChrome.paymentReminder.text"))}
-            </Text>
-            <div className="mt-2">
-              <Button width="full" href="/admin/billing">
-                {t("adminChrome.paymentReminder.billingButton.label")}
-              </Button>
+        {/* Trial and payment reminders are commerce surfaces, not TON
+            administration. The application status itself is untouched. */}
+        {SHOW_COMMERCE_SURFACES &&
+          application_status === ApplicationStatus.PAYMENT_REMINDER && (
+            <div className="fixed top-2 left-1/2 -translate-x-1/2 bg-status-warning-01 p-4 rounded-lg shadow-lg z-50 max-w-md text-center">
+              <Text font="main-ui-body" color="text-05">
+                {markdown(t("adminChrome.paymentReminder.text"))}
+              </Text>
+              <div className="mt-2">
+                <Button width="full" href="/admin/billing">
+                  {t("adminChrome.paymentReminder.billingButton.label")}
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {hasCustomSidebar ? (
           // `display: contents` so the portaled sidebar column becomes the

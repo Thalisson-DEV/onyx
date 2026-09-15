@@ -6,6 +6,7 @@ import {
   FeatureFlags,
 } from "@/lib/admin-routes";
 import { hasPermission } from "@/lib/permissions";
+import { SHOW_COMMERCE_SURFACES } from "@/lib/ton/product-surface";
 import { Permission } from "@/lib/types";
 import { Settings, Tier } from "@/lib/settings/types";
 import { tierAtLeast } from "@/lib/tiers";
@@ -229,7 +230,10 @@ export function buildItems(
     items.push(item);
   }
 
+  // Upgrade navigation is a commerce surface. The subscription flag still
+  // drives capability checks elsewhere; only the sidebar entry is withheld.
   if (
+    SHOW_COMMERCE_SURFACES &&
     userCanAccess(Permission.FULL_ADMIN_PANEL_ACCESS) &&
     !flags.hasSubscription
   ) {

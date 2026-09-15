@@ -3,6 +3,12 @@
     "metadata": {
       "description": "面向 Vale Norte Construtora 的运营智能与管理会计。",
       "title": "TON"
+    },
+    "footer": {
+      "text": "{appName} {version} — 运营智能与管控"
+    },
+    "version": {
+      "label": "{appName} {version}"
     }
   },
   "accountPopover": {
@@ -787,9 +793,7 @@
         "messaging": {
           "label": "即时通讯"
         },
-        "other": {
-          "label": "其他"
-        },
+        "other": { "label": "其他" },
         "sales": {
           "label": "销售"
         },
@@ -5822,7 +5826,9 @@
         "kgDocumentClassification": {
           "label": "知识图谱分类"
         },
-        "other": { "label": "其他" },
+        "other": {
+          "label": "其他"
+        },
         "unattributed": { "label": "未归属" }
       },
       "filters": {
@@ -9015,7 +9021,7 @@
         "title": "欢迎使用 {appName}"
       },
       "welcomeSubtitle": {
-        "text": "面向工作的开源 AI 平台"
+        "text": "运营智能与管控"
       },
       "workEmailField": {
         "label": "工作邮箱"
@@ -10964,10 +10970,10 @@
           "title": "访问受限"
         },
         "licenseLapse": {
-          "description": "由于许可证失效，您对 Onyx 的访问已被暂时停用。"
+          "description": "由于许可证已失效，访问已被暂时中止。"
         },
         "licenseRequired": {
-          "description": "使用 Onyx 需要许可证。您的数据受到保护，许可证激活后即可使用。"
+          "description": "使用本应用需要许可证。您的数据受到保护，激活许可证后即可访问。"
         },
         "logoutButton": {
           "label": "退出登录"
@@ -10979,7 +10985,7 @@
           "description": "要开始使用，请联系系统管理员获取许可证。"
         },
         "renewLicense": {
-          "description": "要恢复访问权限并继续使用 Onyx，请联系系统管理员续订许可证。"
+          "description": "如需恢复访问，请联系系统管理员续订许可证。"
         },
         "resubscribeButton": {
           "label": "重新订阅",
@@ -10998,10 +11004,10 @@
           "description": "您的组织已超出许可席位数（{used} 位用户 / {seats} 个席位）。在减少用户数量或升级许可证之前，访问将受到限制。"
         },
         "subscriptionLapse": {
-          "description": "由于订阅失效，您对 Onyx 的访问已被暂时停用。"
+          "description": "由于订阅已失效，访问已被暂时中止。"
         },
         "updatePayment": {
-          "description": "要恢复访问权限并继续使用 Onyx 的强大功能，请更新您的付款信息。"
+          "description": "如需恢复访问，请更新付款信息。"
         }
       },
       "configError": {
@@ -11009,8 +11015,11 @@
           "text": "如果您是管理员，请查看我们的<docsLink>文档</docsLink>了解正确的配置步骤。如果您是普通用户，请联系管理员寻求帮助。"
         },
         "heading": {
-          "description": "加载您的 Onyx 设置时似乎出现了问题。这可能是由于配置问题或安装未完成造成的。",
+          "description": "加载应用设置时出现问题。这可能是配置问题或安装未完成。",
           "title": "我们遇到了问题"
+        },
+        "adminHintInternal": {
+          "text": "如果您是管理员，请检查应用配置。如果您是用户，请联系管理员寻求帮助。"
         }
       },
       "maintenance": {
@@ -11018,7 +11027,7 @@
           "description": "对由此带来的不便我们深表歉意，感谢您的耐心等待。"
         },
         "checkBack": {
-          "description": "Onyx 目前处于维护窗口期。请几分钟后再试。"
+          "description": "应用正在维护窗口内。请几分钟后再试。"
         },
         "heading": {
           "title": "维护进行中"
@@ -11026,6 +11035,9 @@
       },
       "needHelp": {
         "text": "需要帮助？加入我们的 <discordLink>Discord 社区</discordLink>获取支持。"
+      },
+      "needHelpInternal": {
+        "text": "需要帮助？请联系系统管理员。"
       }
     },
     "errors": {
@@ -12662,7 +12674,7 @@
         "button": {
           "label": "网页搜索"
         },
-        "description": "让 Onyx 能够在互联网上搜索信息。",
+        "description": "允许智能体在互联网上搜索信息。",
         "title": "选择网页搜索提供商"
       }
     },
@@ -12682,7 +12694,7 @@
         "subtitle": "兼容 LiteLLM 的 API",
         "title": "自定义 LLM 提供商"
       },
-      "description": "Onyx 同时支持自托管模型和主流提供商。",
+      "description": "配置本安装将使用的模型提供方。",
       "edit": {
         "ariaLabel": "编辑 LLM 提供商"
       },
@@ -12705,7 +12717,7 @@
       "input": {
         "placeholder": "您的姓名"
       },
-      "title": "Onyx 该怎么称呼您？"
+      "title": "我们该如何称呼您？"
     },
     "nonAdminStep": {
       "confirmation": {
@@ -12970,6 +12982,9 @@
       "upsell": {
         "description": "访问 token 需要有效的付费订阅。",
         "upgradeButton": "升级套餐"
+      },
+      "unavailable": {
+        "description": "访问令牌未在本安装中启用。"
       }
     },
     "appearance": {
@@ -13462,6 +13477,9 @@
       },
       "searchInput": {
         "placeholder": "搜索…"
+      },
+      "capabilityUnavailable": {
+        "tooltip": "此功能未在本安装中启用。"
       }
     },
     "appSidebar": {

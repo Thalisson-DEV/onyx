@@ -8,6 +8,7 @@ import { Button } from "@opal/components";
 import InlineExternalLink from "@/refresh-components/InlineExternalLink";
 import { logout } from "@/lib/users/svc";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
+import { SHOW_UPSTREAM_LINKS } from "@/lib/ton/product-surface";
 import { useLicense } from "@/hooks/useLicense";
 import { useSettings } from "@/lib/settings/hooks";
 import { ApplicationStatus } from "@/lib/settings/types";
@@ -185,17 +186,21 @@ export default function AccessRestricted() {
         </>
       )}
 
+      {/* Recovery through the upstream community channel is not a TON support
+          path. Licence and seat recovery above stays for the operator. */}
       <Text text03>
-        {t.rich("needHelp.text", {
-          discordLink: (chunks) => (
-            <InlineExternalLink
-              className={linkClassName}
-              href="https://discord.gg/4NA5SbzrWb"
-            >
-              {chunks}
-            </InlineExternalLink>
-          ),
-        })}
+        {SHOW_UPSTREAM_LINKS
+          ? t.rich("needHelp.text", {
+              discordLink: (chunks) => (
+                <InlineExternalLink
+                  className={linkClassName}
+                  href="https://discord.gg/4NA5SbzrWb"
+                >
+                  {chunks}
+                </InlineExternalLink>
+              ),
+            })
+          : t("needHelpInternal.text")}
       </Text>
     </ErrorPageLayout>
   );

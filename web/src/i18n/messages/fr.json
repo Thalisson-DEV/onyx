@@ -3,6 +3,12 @@
     "metadata": {
       "description": "Intelligence opérationnelle et contrôle de gestion pour Vale Norte Construtora.",
       "title": "TON"
+    },
+    "footer": {
+      "text": "{appName} {version} — Intelligence opérationnelle et contrôle de gestion"
+    },
+    "version": {
+      "label": "{appName} {version}"
     }
   },
   "accountPopover": {
@@ -787,9 +793,7 @@
         "messaging": {
           "label": "Messagerie"
         },
-        "other": {
-          "label": "Autres"
-        },
+        "other": { "label": "Autres" },
         "sales": {
           "label": "Ventes"
         },
@@ -5822,7 +5826,9 @@
         "kgDocumentClassification": {
           "label": "Classification du graphe de connaissances"
         },
-        "other": { "label": "Autres" },
+        "other": {
+          "label": "Autres"
+        },
         "unattributed": { "label": "Non attribué" }
       },
       "filters": {
@@ -9015,7 +9021,7 @@
         "title": "Bienvenue sur {appName}"
       },
       "welcomeSubtitle": {
-        "text": "Votre plateforme d'IA open source pour le travail"
+        "text": "Intelligence opérationnelle et contrôle de gestion"
       },
       "workEmailField": {
         "label": "E-mail professionnel"
@@ -10964,10 +10970,10 @@
           "title": "Accès restreint"
         },
         "licenseLapse": {
-          "description": "Votre accès à Onyx a été temporairement suspendu en raison d'une interruption de votre licence."
+          "description": "L'accès est temporairement suspendu car la licence a expiré."
         },
         "licenseRequired": {
-          "description": "Une licence est requise pour utiliser Onyx. Vos données sont protégées et seront disponibles dès qu'une licence sera activée."
+          "description": "Une licence est nécessaire pour utiliser cette application. Vos données sont protégées et seront disponibles dès l'activation d'une licence."
         },
         "logoutButton": {
           "label": "Se déconnecter"
@@ -10979,7 +10985,7 @@
           "description": "Pour commencer, veuillez contacter votre administrateur système afin d'obtenir une licence."
         },
         "renewLicense": {
-          "description": "Pour rétablir votre accès et continuer à utiliser Onyx, veuillez contacter votre administrateur système afin de renouveler votre licence."
+          "description": "Pour rétablir l'accès, contactez votre administrateur système afin de renouveler la licence."
         },
         "resubscribeButton": {
           "label": "Se réabonner",
@@ -10998,10 +11004,10 @@
           "description": "Votre organisation a dépassé le nombre de sièges sous licence ({used} utilisateurs / {seats} sièges). L'accès est restreint jusqu'à ce que le nombre d'utilisateurs soit réduit ou que votre licence soit mise à niveau."
         },
         "subscriptionLapse": {
-          "description": "Votre accès à Onyx a été temporairement suspendu en raison d'une interruption de votre abonnement."
+          "description": "L'accès est temporairement suspendu car l'abonnement a expiré."
         },
         "updatePayment": {
-          "description": "Pour rétablir votre accès et continuer à profiter des fonctionnalités puissantes d'Onyx, veuillez mettre à jour vos informations de paiement."
+          "description": "Pour rétablir l'accès, mettez à jour les informations de paiement."
         }
       },
       "configError": {
@@ -11009,8 +11015,11 @@
           "text": "Si vous êtes administrateur, consultez notre <docsLink>documentation</docsLink> pour connaître les étapes de configuration. Si vous êtes utilisateur, contactez votre administrateur pour obtenir de l'aide."
         },
         "heading": {
-          "description": "Un problème est survenu lors du chargement de vos paramètres Onyx. Cela peut être dû à un problème de configuration ou à une installation incomplète.",
+          "description": "Un problème est survenu lors du chargement des paramètres de l'application. Il peut s'agir d'un problème de configuration ou d'une installation incomplète.",
           "title": "Nous avons rencontré un problème"
+        },
+        "adminHintInternal": {
+          "text": "Si vous êtes administrateur, vérifiez la configuration de l'application. Si vous êtes utilisateur, contactez votre administrateur pour obtenir de l'aide."
         }
       },
       "maintenance": {
@@ -11018,7 +11027,7 @@
           "description": "Nous nous excusons pour la gêne occasionnée et vous remercions de votre patience."
         },
         "checkBack": {
-          "description": "Onyx est actuellement en maintenance. Veuillez réessayer dans quelques minutes."
+          "description": "L'application est en maintenance. Merci de réessayer dans quelques minutes."
         },
         "heading": {
           "title": "Maintenance en cours"
@@ -11026,6 +11035,9 @@
       },
       "needHelp": {
         "text": "Besoin d'aide ? Rejoignez notre <discordLink>communauté Discord</discordLink> pour obtenir de l'assistance."
+      },
+      "needHelpInternal": {
+        "text": "Besoin d'aide ? Contactez votre administrateur système."
       }
     },
     "errors": {
@@ -12662,7 +12674,7 @@
         "button": {
           "label": "Recherche web"
         },
-        "description": "Permettez à Onyx de rechercher des informations sur Internet.",
+        "description": "Autorisez les agents à rechercher des informations sur internet.",
         "title": "Sélectionnez un fournisseur de recherche web"
       }
     },
@@ -12682,7 +12694,7 @@
         "subtitle": "API compatibles LiteLLM",
         "title": "Fournisseur de LLM personnalisé"
       },
-      "description": "Onyx prend en charge les modèles auto-hébergés et les fournisseurs populaires.",
+      "description": "Configurez les fournisseurs de modèles utilisés par cette installation.",
       "edit": {
         "ariaLabel": "Modifier les fournisseurs de LLM"
       },
@@ -12705,7 +12717,7 @@
       "input": {
         "placeholder": "Votre nom"
       },
-      "title": "Comment Onyx doit-il vous appeler ?"
+      "title": "Comment devons-nous vous appeler ?"
     },
     "nonAdminStep": {
       "confirmation": {
@@ -12970,6 +12982,9 @@
       "upsell": {
         "description": "Les jetons d'accès nécessitent un abonnement payant actif.",
         "upgradeButton": "Mettre à niveau le forfait"
+      },
+      "unavailable": {
+        "description": "Les jetons d'accès ne sont pas activés dans cette installation."
       }
     },
     "appearance": {
@@ -13462,6 +13477,9 @@
       },
       "searchInput": {
         "placeholder": "Rechercher..."
+      },
+      "capabilityUnavailable": {
+        "tooltip": "Cette fonctionnalité n'est pas activée dans cette installation."
       }
     },
     "appSidebar": {

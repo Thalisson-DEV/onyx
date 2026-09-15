@@ -176,10 +176,6 @@ export class AppearanceThemePage {
     return this.page.getByText("Powered by Onyx", { exact: true });
   }
 
-  async expectPoweredByOnyxVisible() {
-    await expect(this.poweredByOnyxTagline).toBeVisible({ timeout: 5_000 });
-  }
-
   async expectPoweredByOnyxAbsent() {
     await expect(this.poweredByOnyxTagline).toHaveCount(0, { timeout: 5_000 });
   }

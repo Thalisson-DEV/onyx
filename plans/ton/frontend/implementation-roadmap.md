@@ -290,6 +290,172 @@ Os valores claros resolvidos continuam idênticos e estão fixados em teste.
 Nenhum componente, layout, tipografia, espaçamento ou raio mudou.
 Nenhum arquivo em `backend/` mudou.
 
+## Resultado de TON-FE-003
+
+**Status: DONE.**
+
+TON-FE-003 foi executado sobre `d49ea04e09eb726ad7cea330c038dbd1e3685546`.
+Esse commit contém TON-FE-001, TON-FE-002 e o refinamento do tema escuro.
+As mudanças web do Plano 002 estão em `ea903d2965`.
+
+A mudança ficou entre os níveis 0 e 2.
+Ela alterou copy, catálogos, visibilidade de navegação e uma composição.
+Nenhum token, breakpoint, layout de chat ou arquitetura de navegação mudou.
+Nenhum arquivo em `backend/` mudou.
+A matriz de disposição completa está em `saas-surface-audit.md`.
+
+### Política de superfície
+
+O novo módulo `web/src/lib/ton/product-surface.ts` centraliza a decisão.
+São quatro constantes, todas `false`: `SHOW_UPSTREAM_ATTRIBUTION`,
+`SHOW_UPSTREAM_LINKS`, `SHOW_COMMERCE_SURFACES` e `SHOW_BUILDER_PRODUCT_ENTRY`.
+
+São constantes e não variáveis de ambiente.
+Um `process.env` sem prefixo `NEXT_PUBLIC_` resolve para `undefined` no bundle
+do cliente, o que faria a política divergir entre servidor e cliente.
+
+### Superfícies removidas ou ocultas
+
+- atribuição "Powered by Onyx" sob o logo da sidebar;
+- rodapé `Onyx <versão> - Open Source AI Platform`;
+- link Help & FAQ e link de changelog para `docs.onyx.app`;
+- apêndice de suporte do toast com `discord.gg`;
+- wordmark upstream nas páginas de erro;
+- link de documentação upstream no erro de configuração;
+- link da comunidade Discord no erro e no acesso restrito;
+- banner de lembrete de pagamento e fim de trial;
+- item de navegação `Upgrade Plan`;
+- entrada `Plans & Billing` na sidebar admin;
+- botão `Upgrade Plan` nos tokens de acesso;
+- entrada Craft e sua intro na sidebar do app.
+
+### Superfícies renomeadas ou com copy trocada
+
+- rodapé: `product.footer.text` com `appName` e `settings.version`;
+- versão no menu da conta: `product.version.label`;
+- subtítulo do login: tagline TON em vez de "open source AI platform";
+- tooltip de tier: `capabilityUnavailable`, sem plano nem link de billing;
+- tokens de acesso: `apiKeys.unavailable.description`;
+- onboarding: `nameStep.title`, `llmStep.description` e
+  `finalStep.webSearch.description` sem referência a Onyx ou self-hosted;
+- páginas de erro: descrições sem nome de produto upstream.
+
+O logo final continua bloqueado por falta do ativo oficial.
+As páginas de erro passaram a usar o `Logo` configurável já existente.
+
+### Onboarding depois da mudança
+
+O onboarding não foi redesenhado e nenhum passo foi removido.
+
+A auditoria confirmou que `OnboardingFlow` já separa os dois casos.
+O ramo `isAdmin` hospeda Welcome, Name, LlmSetup e Complete.
+O usuário comum só alcança `NonAdminStep`, que pede o nome de exibição.
+
+Ou seja, "Connect your LLM models" nunca aparecia para o usuário comum.
+O requisito de não guiar o usuário comum por setup de plataforma já estava
+satisfeito pela estrutura. Só a copy foi neutralizada.
+
+`useShowOnboarding` continua decidindo por provider configurado, sessões de
+chat e a chave `onyx:onboardingCompleted:<userId>`. Nada disso mudou.
+
+### Billing, tier e Craft
+
+Billing saiu da apresentação, não do código.
+A entrada de rota `BILLING` continua em `admin-routes.ts`, com a mesma
+permissão, então `matchAdminRoute` e o deep link do operador seguem válidos.
+`useBillingInformation`, `useLicense` e `useCloudSubscription` não mudaram.
+
+O mecanismo de tier foi preservado por necessidade.
+`requiredTier`, `tierAtLeast` e `useTierAtLeast` decidem capacidade em runtime
+em `SettingsPage`, `AgentEditorPage`, `ChatPreferencesPage`, `GroupsPage`,
+`SSOProvidersPage` e `AgentRowActions`. Só o texto de upsell mudou.
+
+Os badges `Business Plan` e `Enterprise Plan` em `lib/tier-badge.ts` foram
+preservados. Eles são admin-only e explicam por que um controle está
+desabilitado. Renomeá-los depende do vocabulário do Plano 008.
+
+Craft saiu da navegação do usuário comum.
+As rotas `/craft/*`, as páginas admin de Craft e o flag `onyx_craft_available`
+não mudaram. Nenhuma execução em segundo plano foi tocada.
+
+### Verificação executada
+
+- `bun run types:check`: passou, cobertura de tipos 98,81%;
+- `bun run lint`: 905 avisos e 0 erros, idêntico ao baseline medido com
+  `git stash`; nenhum aviso novo;
+- `bun run build`: compilou e passou o TypeScript de produção;
+- `oxfmt --check` nos dois arquivos novos: passou;
+- `oxfmt` nos arquivos alterados: nenhuma diferença de conteúdo — as falhas de
+  `format:check` no repositório são de fim de linha CRLF no checkout Windows,
+  preexistentes desde TON-FE-000;
+- Jest: 70 testes passaram em 10 suítes — `ton-product-surface` (12 novos),
+  `ton-privacy`, `lib/app`, `lib/settings`, `i18n` incluindo o teste de
+  paridade de catálogo, `onboardingReducer` e `ton-theme`.
+
+### Contrato de superfície testado
+
+`web/src/ton/ton-product-surface.test.tsx` cobre os dois papéis.
+
+Usuário comum: nome do produto sem atribuição upstream; rodapé sem
+`APP_SLOGAN` e sem `onyx.app`; copy de rodapé, versão e login sem menção a
+open source; onboarding de provider restrito ao ramo admin; nenhum link
+upstream no menu da conta nem nas páginas de erro; `buildItems` sem
+`upgradePlan` e sem `plansAndBilling` nos estados pago e não pago;
+`BILLING.visibleWhen` falso mesmo com assinatura ativa; sem entrada de builder.
+
+Administrador: `buildItems` mantém language models, users, groups, agents,
+connectors, add connector, document sets, index settings, security, SSO, MCP e
+OpenAPI actions, chat preferences e web search; a rota `BILLING` continua
+existindo com `FULL_ADMIN_PANEL_ACCESS`; Craft admin continua visível quando
+disponível; itens desabilitados por tier continuam desabilitados com
+`requiredTier` preservado.
+
+`web/tests/e2e/ton/product-surface.spec.ts` e
+`web/tests/e2e/pages/TonProductSurfacePage.ts` cobrem o mesmo contrato em
+claro e escuro, em 375 e 1280 pixels, e verificam que o admin ainda alcança
+language models, users, agents, security, conectores e document sets.
+
+### Validação visual e limites do ambiente
+
+Nenhum serviço Onyx estava em execução nesta rodada.
+`http://localhost:3000` não respondeu e `backend/log` não existe.
+Os contêineres presentes são de outros projetos e estão parados.
+
+Portanto os testes Playwright de FE-003 não foram executados ao vivo.
+Eles estão escritos, tipados e sem aviso de lint, mas não têm evidência de
+execução. Isso é um bloqueio de ambiente, não um resultado.
+
+A ausência de regressão visual foi verificada de forma estática:
+`git diff` em `web/lib/shared/tokens`, `web/tailwind-themes` e
+`web/lib/opal/src` está vazio; nenhuma linha adicionada usa `dark:` nem cor
+built-in do Tailwind. O sistema visual aprovado em TON-FE-002 não foi tocado.
+
+As duas mudanças com efeito de layout são pequenas e locais: o `Logo` deixa de
+renderizar uma linha de texto secundária, e `ErrorPageLayout` troca o wordmark
+upstream pelo `Logo` configurável.
+
+### Teste upstream reconciliado
+
+`appearance_theme_settings.spec.ts` afirmava que o toggle "Hide Onyx Branding"
+removia a tagline. Com a atribuição fora do produto, a tagline nunca renderiza.
+O teste passou a afirmar a ausência nos dois estados do toggle, e o helper
+`expectPoweredByOnyxVisible` foi removido. O toggle e a settings continuam
+funcionando.
+
+### Avisos
+
+1. Os testes Playwright de FE-003 precisam ser executados quando o ambiente
+   subir. O setup padrão do Playwright ainda falha por causa do endpoint de
+   grupos que exige plano Business e retorna 402, conforme registrado em
+   TON-FE-002.
+2. `web/src/components/errorPages/ErrorPageLayout.tsx` deixou de importar do
+   legado `web/src/components/icons/icons.tsx`, o que aproxima o arquivo do
+   padrão de `web/AGENTS.md`.
+3. As dependências do Backend Plano 008 estão registradas em
+   `saas-surface-audit.md`. Nenhuma delas foi implementada aqui.
+
+TON-FE-004 e itens posteriores não começaram.
+
 ## Sequência recomendada
 
 ```text

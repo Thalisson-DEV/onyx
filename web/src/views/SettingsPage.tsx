@@ -80,6 +80,7 @@ import {
 import { SvgCheck } from "@opal/icons";
 import { cn } from "@opal/utils";
 import { useTierAtLeast } from "@/hooks/useTierAtLeast";
+import { SHOW_COMMERCE_SURFACES } from "@/lib/ton/product-surface";
 import { Tier } from "@/lib/settings/types";
 import { useIsSearchModeAvailable, useSettings } from "@/lib/settings/hooks";
 import {
@@ -2437,11 +2438,15 @@ function AccountsAccessSettings() {
                 <Section alignItems="start" height="fit">
                   <Section flexDirection="row" justifyContent="between">
                     <Text font="secondary-body" color="text-03">
-                      {t("apiKeys.upsell.description")}
+                      {SHOW_COMMERCE_SURFACES
+                        ? t("apiKeys.upsell.description")
+                        : t("apiKeys.unavailable.description")}
                     </Text>
-                    <Button prominence="secondary" href="/admin/billing">
-                      {t("apiKeys.upsell.upgradeButton")}
-                    </Button>
+                    {SHOW_COMMERCE_SURFACES && (
+                      <Button prominence="secondary" href="/admin/billing">
+                        {t("apiKeys.upsell.upgradeButton")}
+                      </Button>
+                    )}
                   </Section>
                 </Section>
               </Card>

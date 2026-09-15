@@ -81,6 +81,7 @@ import SidebarTabSkeleton from "@/refresh-components/skeletons/SidebarTabSkeleto
 import BuildModeIntroBackground from "@/app/craft/components/IntroBackground";
 import BuildModeIntroContent from "@/app/craft/components/IntroContent";
 import { CRAFT_PATH } from "@/app/craft/v1/constants";
+import { SHOW_BUILDER_PRODUCT_ENTRY } from "@/lib/ton/product-surface";
 import { track, AnalyticsEvent } from "@/lib/analytics/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { NotificationType } from "@/lib/notifications/interfaces";
@@ -263,8 +264,13 @@ export default function AppSidebar() {
     useState(false);
 
   // Check if Onyx Craft is enabled via settings (backed by PostHog feature flag)
-  // Only explicit true enables the feature; false or undefined = disabled
-  const isOnyxCraftEnabled = combinedSettingsData?.onyx_craft_enabled === true;
+  // Only explicit true enables the feature; false or undefined = disabled.
+  // TON also withholds the builder as a client-facing product concept, so the
+  // sidebar entry and its intro stay out of normal navigation. The routes, the
+  // admin Craft pages and the backend capability are untouched.
+  const isOnyxCraftEnabled =
+    SHOW_BUILDER_PRODUCT_ENTRY &&
+    combinedSettingsData?.onyx_craft_enabled === true;
 
   // Fetch notifications for build mode intro
   const { notifications, refresh: mutateNotifications } = useNotifications({

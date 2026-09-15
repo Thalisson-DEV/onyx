@@ -3,6 +3,12 @@
     "metadata": {
       "description": "Operative Intelligenz und Controlling für Vale Norte Construtora.",
       "title": "TON"
+    },
+    "footer": {
+      "text": "{appName} {version} — Operative Intelligenz und Controlling"
+    },
+    "version": {
+      "label": "{appName} {version}"
     }
   },
   "accountPopover": {
@@ -787,9 +793,7 @@
         "messaging": {
           "label": "Messaging"
         },
-        "other": {
-          "label": "Sonstige"
-        },
+        "other": { "label": "Sonstige" },
         "sales": {
           "label": "Vertrieb"
         },
@@ -5822,7 +5826,9 @@
         "kgDocumentClassification": {
           "label": "Knowledge-Graph-Klassifizierung"
         },
-        "other": { "label": "Sonstige" },
+        "other": {
+          "label": "Sonstige"
+        },
         "unattributed": { "label": "Nicht zugeordnet" }
       },
       "filters": {
@@ -9015,7 +9021,7 @@
         "title": "Willkommen bei {appName}"
       },
       "welcomeSubtitle": {
-        "text": "Ihre Open-Source-KI-Plattform für die Arbeit"
+        "text": "Operative Intelligenz und Controlling"
       },
       "workEmailField": {
         "label": "Geschäftliche E-Mail"
@@ -10964,10 +10970,10 @@
           "title": "Zugriff eingeschränkt"
         },
         "licenseLapse": {
-          "description": "Dein Zugriff auf Onyx wurde wegen einer abgelaufenen Lizenz vorübergehend ausgesetzt."
+          "description": "Der Zugriff wurde vorübergehend gesperrt, weil die Lizenz abgelaufen ist."
         },
         "licenseRequired": {
-          "description": "Für die Nutzung von Onyx ist eine Lizenz erforderlich. Deine Daten sind geschützt und stehen zur Verfügung, sobald eine Lizenz aktiviert ist."
+          "description": "Für diese Anwendung ist eine Lizenz erforderlich. Ihre Daten sind geschützt und stehen nach der Lizenzaktivierung zur Verfügung."
         },
         "logoutButton": {
           "label": "Abmelden"
@@ -10979,7 +10985,7 @@
           "description": "Um loszulegen, wende dich bitte an deinen Systemadministrator, um eine Lizenz zu erhalten."
         },
         "renewLicense": {
-          "description": "Um deinen Zugriff wiederherzustellen und Onyx weiter zu nutzen, wende dich bitte an deinen Systemadministrator, um die Lizenz zu verlängern."
+          "description": "Wenden Sie sich zur Wiederherstellung des Zugriffs an Ihren Systemadministrator, um die Lizenz zu erneuern."
         },
         "resubscribeButton": {
           "label": "Erneut abonnieren",
@@ -10998,10 +11004,10 @@
           "description": "Deine Organisation hat die lizenzierte Anzahl an Plätzen überschritten ({used} Benutzer / {seats} Plätze). Der Zugriff ist eingeschränkt, bis die Benutzerzahl reduziert oder die Lizenz erweitert wird."
         },
         "subscriptionLapse": {
-          "description": "Dein Zugriff auf Onyx wurde wegen eines abgelaufenen Abonnements vorübergehend ausgesetzt."
+          "description": "Der Zugriff wurde vorübergehend gesperrt, weil das Abonnement abgelaufen ist."
         },
         "updatePayment": {
-          "description": "Um deinen Zugriff wiederherzustellen und die leistungsstarken Funktionen von Onyx weiter zu nutzen, aktualisiere bitte deine Zahlungsinformationen."
+          "description": "Aktualisieren Sie die Zahlungsinformationen, um den Zugriff wiederherzustellen."
         }
       },
       "configError": {
@@ -11009,8 +11015,11 @@
           "text": "Wenn du Administrator bist, findest du in unserer <docsLink>Dokumentation</docsLink> die richtigen Konfigurationsschritte. Wenn du Benutzer bist, wende dich bitte an deinen Administrator."
         },
         "heading": {
-          "description": "Beim Laden deiner Onyx-Einstellungen ist offenbar ein Problem aufgetreten. Das kann an einem Konfigurationsproblem oder einer unvollständigen Einrichtung liegen.",
+          "description": "Beim Laden der Anwendungseinstellungen ist ein Problem aufgetreten. Das kann ein Konfigurationsproblem oder eine unvollständige Einrichtung sein.",
           "title": "Es ist ein Problem aufgetreten"
+        },
+        "adminHintInternal": {
+          "text": "Wenn Sie Administrator sind, prüfen Sie die Anwendungskonfiguration. Wenn Sie Benutzer sind, wenden Sie sich an Ihren Administrator."
         }
       },
       "maintenance": {
@@ -11018,7 +11027,7 @@
           "description": "Wir entschuldigen uns für etwaige Unannehmlichkeiten und danken für deine Geduld."
         },
         "checkBack": {
-          "description": "Onyx befindet sich derzeit in einem Wartungsfenster. Bitte schau in ein paar Minuten wieder vorbei."
+          "description": "Die Anwendung befindet sich in einem Wartungsfenster. Bitte versuchen Sie es in einigen Minuten erneut."
         },
         "heading": {
           "title": "Wartung läuft"
@@ -11026,6 +11035,9 @@
       },
       "needHelp": {
         "text": "Brauchst du Hilfe? Tritt unserer <discordLink>Discord-Community</discordLink> bei, um Unterstützung zu erhalten."
+      },
+      "needHelpInternal": {
+        "text": "Brauchen Sie Hilfe? Wenden Sie sich an Ihren Systemadministrator."
       }
     },
     "errors": {
@@ -12662,7 +12674,7 @@
         "button": {
           "label": "Websuche"
         },
-        "description": "Ermöglichen Sie Onyx, im Internet nach Informationen zu suchen.",
+        "description": "Erlauben Sie Agenten, im Internet nach Informationen zu suchen.",
         "title": "Websuche-Anbieter auswählen"
       }
     },
@@ -12682,7 +12694,7 @@
         "subtitle": "LiteLLM-kompatible APIs",
         "title": "Benutzerdefinierter LLM-Anbieter"
       },
-      "description": "Onyx unterstützt sowohl selbst gehostete Modelle als auch gängige Anbieter.",
+      "description": "Konfigurieren Sie die Modellanbieter, die diese Installation verwendet.",
       "edit": {
         "ariaLabel": "LLM-Anbieter bearbeiten"
       },
@@ -12705,7 +12717,7 @@
       "input": {
         "placeholder": "Ihr Name"
       },
-      "title": "Wie soll Onyx Sie nennen?"
+      "title": "Wie sollen wir Sie nennen?"
     },
     "nonAdminStep": {
       "confirmation": {
@@ -12970,6 +12982,9 @@
       "upsell": {
         "description": "Zugriffstoken erfordern ein aktives kostenpflichtiges Abonnement.",
         "upgradeButton": "Tarif upgraden"
+      },
+      "unavailable": {
+        "description": "Zugriffstokens sind in dieser Installation nicht aktiviert."
       }
     },
     "appearance": {
@@ -13462,6 +13477,9 @@
       },
       "searchInput": {
         "placeholder": "Suchen..."
+      },
+      "capabilityUnavailable": {
+        "tooltip": "Diese Funktion ist in dieser Installation nicht aktiviert."
       }
     },
     "appSidebar": {

@@ -1,5 +1,6 @@
 import { Permission } from "@/lib/types";
 import { Tier } from "@/lib/settings/types";
+import { SHOW_COMMERCE_SURFACES } from "@/lib/ton/product-surface";
 import { IconFunctionComponent } from "@opal/types";
 import {
   SvgActions,
@@ -387,6 +388,9 @@ export const ADMIN_ROUTES = {
   },
 
   // ── Organization ──────────────────────────────────────────────────
+  // Plans and billing are commerce surfaces, so the entry stays out of the
+  // sidebar. The route entry itself remains, which keeps the permission gate,
+  // `matchAdminRoute` and the operator deep link working unchanged.
   BILLING: {
     path: "/admin/billing",
     icon: SvgWallet,
@@ -395,7 +399,8 @@ export const ADMIN_ROUTES = {
     requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
     section: "Organization",
     requiredTier: null,
-    visibleWhen: (f: FeatureFlags) => f.hasSubscription,
+    visibleWhen: (f: FeatureFlags) =>
+      SHOW_COMMERCE_SURFACES && f.hasSubscription,
   },
   THEME: {
     path: "/admin/theme",

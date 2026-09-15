@@ -3,6 +3,12 @@
     "metadata": {
       "description": "Operational Intelligence and Controllership for Vale Norte Construtora.",
       "title": "TON"
+    },
+    "footer": {
+      "text": "{appName} {version} — Operational Intelligence and Controllership"
+    },
+    "version": {
+      "label": "{appName} {version}"
     }
   },
   "accountPopover": {
@@ -9045,7 +9051,7 @@
         "title": "Welcome to {appName}"
       },
       "welcomeSubtitle": {
-        "text": "Your open source AI platform for work"
+        "text": "Operational Intelligence and Controllership"
       },
       "workEmailField": {
         "label": "Work Email"
@@ -10994,10 +11000,10 @@
           "title": "Access Restricted"
         },
         "licenseLapse": {
-          "description": "Your access to Onyx has been temporarily suspended due to a lapse in your license."
+          "description": "Access has been temporarily suspended because the licence has lapsed."
         },
         "licenseRequired": {
-          "description": "A license is required to use Onyx. Your data is protected and will be available once a license is activated."
+          "description": "A licence is required to use this application. Your data is protected and will be available once a licence is activated."
         },
         "logoutButton": {
           "label": "Log out"
@@ -11009,7 +11015,7 @@
           "description": "To get started, please contact your system administrator to obtain a license."
         },
         "renewLicense": {
-          "description": "To reinstate your access and continue using Onyx, please contact your system administrator to renew your license."
+          "description": "To restore access, contact your system administrator to renew the licence."
         },
         "resubscribeButton": {
           "label": "Resubscribe",
@@ -11028,10 +11034,10 @@
           "description": "Your organization has exceeded its licensed seat count ({used} users / {seats} seats). Access is restricted until the number of users is reduced or your license is upgraded."
         },
         "subscriptionLapse": {
-          "description": "Your access to Onyx has been temporarily suspended due to a lapse in your subscription."
+          "description": "Access has been temporarily suspended because the subscription has lapsed."
         },
         "updatePayment": {
-          "description": "To reinstate your access and continue benefiting from Onyx's powerful features, please update your payment information."
+          "description": "To restore access, update the payment information."
         }
       },
       "configError": {
@@ -11039,8 +11045,11 @@
           "text": "If you're an admin, please review our <docsLink>documentation</docsLink> for proper configuration steps. If you're a user, please contact your admin for assistance."
         },
         "heading": {
-          "description": "It seems there was a problem loading your Onyx settings. This could be due to a configuration issue or incomplete setup.",
+          "description": "There was a problem loading the application settings. This could be a configuration issue or an incomplete setup.",
           "title": "We encountered an issue"
+        },
+        "adminHintInternal": {
+          "text": "If you are an administrator, review the application configuration. If you are a user, contact your administrator for assistance."
         }
       },
       "maintenance": {
@@ -11048,7 +11057,7 @@
           "description": "We apologize for any inconvenience this may cause and appreciate your patience."
         },
         "checkBack": {
-          "description": "Onyx is currently in a maintenance window. Please check back in a couple of minutes."
+          "description": "The application is in a maintenance window. Please check back in a couple of minutes."
         },
         "heading": {
           "title": "Maintenance in Progress"
@@ -11056,6 +11065,9 @@
       },
       "needHelp": {
         "text": "Need help? Join our <discordLink>Discord community</discordLink> for support."
+      },
+      "needHelpInternal": {
+        "text": "Need help? Contact your system administrator."
       }
     },
     "errors": {
@@ -12692,7 +12704,7 @@
         "button": {
           "label": "Web Search"
         },
-        "description": "Enable Onyx to search the internet for information.",
+        "description": "Allow agents to search the internet for information.",
         "title": "Select web search provider"
       }
     },
@@ -12712,7 +12724,7 @@
         "subtitle": "LiteLLM Compatible APIs",
         "title": "Custom LLM Provider"
       },
-      "description": "Onyx supports both self-hosted models and popular providers.",
+      "description": "Configure the model providers this installation will use.",
       "edit": {
         "ariaLabel": "Edit LLM providers"
       },
@@ -12735,7 +12747,7 @@
       "input": {
         "placeholder": "Your name"
       },
-      "title": "What should Onyx call you?"
+      "title": "What should we call you?"
     },
     "nonAdminStep": {
       "confirmation": {
@@ -13000,6 +13012,9 @@
       "upsell": {
         "description": "Access tokens require an active paid subscription.",
         "upgradeButton": "Upgrade Plan"
+      },
+      "unavailable": {
+        "description": "Access tokens are not enabled in this installation."
       }
     },
     "appearance": {
@@ -13492,6 +13507,9 @@
       },
       "searchInput": {
         "placeholder": "Search..."
+      },
+      "capabilityUnavailable": {
+        "tooltip": "This capability is not enabled in this installation."
       }
     },
     "appSidebar": {

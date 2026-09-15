@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { LOGOUT_DISABLED } from "@/lib/constants";
+import { DOCS_BASE_URL, LOGOUT_DISABLED } from "@/lib/constants";
+import { SHOW_UPSTREAM_LINKS } from "@/lib/ton/product-surface";
 import { preload } from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import {
@@ -32,7 +33,6 @@ import { useSettings } from "@/lib/settings/hooks";
 import UserAvatar from "@/refresh-components/avatars/UserAvatar";
 import SidebarTabSkeleton from "@/refresh-components/skeletons/SidebarTabSkeleton";
 import { useNotificationSummary } from "@/hooks/useNotifications";
-import { SvgOnyxLogo } from "@opal/logos";
 import { markdown } from "@opal/utils";
 import { useTranslations } from "next-intl";
 import { safeLoginReturnPath } from "@/lib/ton/privacy";
@@ -49,6 +49,7 @@ function SettingsPopover({
   undismissedCount,
 }: SettingsPopoverProps) {
   const t = useTranslations("accountPopover");
+  const tProduct = useTranslations("product");
   const { user, userResolution } = useUser();
   const settings = useSettings();
   const enterpriseSettings = settings.enterprise;
@@ -133,16 +134,18 @@ function SettingsPopover({
             ) : undefined
           }
         />,
-        <LineItemButton
-          key="help-faq"
-          sizePreset="main-ui"
-          variant="section"
-          rounding={2}
-          icon={SvgHelpCircle}
-          title={t("helpFaq.label")}
-          href="https://docs.onyx.app"
-          target="_blank"
-        />,
+        SHOW_UPSTREAM_LINKS && (
+          <LineItemButton
+            key="help-faq"
+            sizePreset="main-ui"
+            variant="section"
+            rounding={2}
+            icon={SvgHelpCircle}
+            title={t("helpFaq.label")}
+            href={DOCS_BASE_URL}
+            target="_blank"
+          />
+        ),
         enterpriseSettings?.custom_help_link_url && (
           <LineItemButton
             key="custom-help-link"
@@ -188,12 +191,18 @@ function SettingsPopover({
             variant="body"
             color="muted"
             orientation="reverse"
-            icon={SvgOnyxLogo}
-            title={markdown(
-              `[Onyx ${
-                settings.version ?? "dev"
-              }](https://docs.onyx.app/changelog)`
-            )}
+            title={
+              SHOW_UPSTREAM_LINKS
+                ? markdown(
+                    `[${settings.appName} ${
+                      settings.version ?? "dev"
+                    }](${DOCS_BASE_URL}/changelog)`
+                  )
+                : tProduct("version.label", {
+                    appName: settings.appName,
+                    version: settings.version ?? "dev",
+                  })
+            }
           />
         </div>,
       ]}

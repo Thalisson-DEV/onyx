@@ -22,6 +22,7 @@ import {
   hasActiveSubscription,
 } from "@/lib/billing";
 import { NEXT_PUBLIC_CLOUD_ENABLED } from "@/lib/constants";
+import { SHOW_COMMERCE_SURFACES } from "@/lib/ton/product-surface";
 import { Tier } from "@/lib/settings/types";
 import useFilter from "@/hooks/useFilter";
 import AccountPopover from "@/sections/sidebar/AccountPopover";
@@ -97,6 +98,21 @@ export default function AdminSidebar() {
       organization: t("adminNav.sections.organization.label"),
       usage: t("adminNav.sections.usage.label"),
     }),
+    [t]
+  );
+
+  // A disabled entry still needs to say why. The tier requirement stays the
+  // reason, but TON states it as an installation limit instead of selling a
+  // plan upgrade, so the tooltip carries no pricing or billing link.
+  const upsellTooltip = useCallback(
+    (requiredTier: Tier | null | undefined) => {
+      if (!SHOW_COMMERCE_SURFACES) {
+        return t("adminSidebar.capabilityUnavailable.tooltip");
+      }
+      return requiredTier === Tier.ENTERPRISE
+        ? t("adminSidebar.enterpriseOnly.tooltip")
+        : t("adminSidebar.businessOrEnterpriseOnly.tooltip");
+    },
     [t]
   );
 
@@ -184,11 +200,7 @@ export default function AdminSidebar() {
                   key={link}
                   disabled
                   icon={icon}
-                  tooltip={markdown(
-                    requiredTier === Tier.ENTERPRISE
-                      ? t("adminSidebar.enterpriseOnly.tooltip")
-                      : t("adminSidebar.businessOrEnterpriseOnly.tooltip")
-                  )}
+                  tooltip={markdown(upsellTooltip(requiredTier))}
                 >
                   {navLabels[nameId]}
                 </SidebarTab>

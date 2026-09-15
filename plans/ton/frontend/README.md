@@ -11,8 +11,14 @@ componentes do design system, tokens de tema, auth, comportamento de agentes ou 
 logo. Os documentos orientam uma mudança futura com escopo separado.
 
 Os documentos com prefixo numérico são exceção: eles registram a execução de um item
-do backlog, não o planejamento. Hoje existe um, `004-ton-navigation.md`. Os resultados
-de TON-FE-000 a TON-FE-003 estão em `implementation-roadmap.md`.
+do backlog, não o planejamento. Hoje existem dois, `004-ton-navigation.md` e
+`000-de-onyx-visual-audit.md`. Os resultados de TON-FE-000 a TON-FE-003 estão em
+`implementation-roadmap.md`.
+
+A trilha visual `TON-VIS-*` tem três documentos próprios:
+`000-de-onyx-visual-audit.md` (auditoria forense), `visual-language.md`
+(especificação alvo) e `visual-implementation-roadmap.md` (fatias VIS-001 a
+VIS-010).
 
 ## Baseline
 
@@ -66,6 +72,12 @@ semantic tokens/dark mode/accessibility, and route backend calls through the fro
 15. [Arquitetura de informação TON](./ton-information-architecture.md) — navegação e domínio.
 16. [Navegação TON — execução de FE-004](./004-ton-navigation.md) — registro da
     arquitetura de informação implementada na sidebar.
+17. [Auditoria forense visual e De-Onyx — VIS-000](./000-de-onyx-visual-audit.md) —
+    matriz forense, impressões digitais upstream e mapa de tokens.
+18. [Linguagem visual TON](./visual-language.md) — especificação alvo,
+    independente de página.
+19. [Roadmap de implementação visual](./visual-implementation-roadmap.md) —
+    fatias VIS-001 a VIS-010.
 
 ## Matriz de entregáveis
 
@@ -89,6 +101,9 @@ semantic tokens/dark mode/accessibility, and route backend calls through the fro
 | [implementation-roadmap.md](./implementation-roadmap.md) | In what order should later work happen? | Phases, gates, and verification plan. |
 | [ton-information-architecture.md](./ton-information-architecture.md) | What is the TON navigation/domain model? | Central, specialist, source, finding, and report IA. |
 | [004-ton-navigation.md](./004-ton-navigation.md) | Which navigation did TON-FE-004 actually ship? | Executed IA, route map, decisions, checks, and the VIS-000 handoff. |
+| [000-de-onyx-visual-audit.md](./000-de-onyx-visual-audit.md) | Why does this still read as Onyx, and where exactly? | Forensic matrix, fingerprint inventory, token map, a11y findings, slicing. |
+| [visual-language.md](./visual-language.md) | What should TON look like, independent of any page? | Surfaces, borders, radius, elevation, state, type, spacing, motion, a11y contract. |
+| [visual-implementation-roadmap.md](./visual-implementation-roadmap.md) | In what order, and with what limits, does the visual work happen? | VIS-001 to VIS-010 with scope, risk, and validation per slice. |
 
 ## Application-change confirmation
 

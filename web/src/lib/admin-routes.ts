@@ -362,7 +362,10 @@ export const ADMIN_ROUTES = {
     sidebarLabel: "Groups",
     requiredPermission: Permission.MANAGE_USER_GROUPS,
     section: "Permissions",
-    requiredTier: Tier.BUSINESS,
+    // No tier: Backend Plan 008a removed the commercial gate on
+    // `/manage/admin/user-group`, so the entry must stop rendering disabled.
+    // `MANAGE_USER_GROUPS` above stays the gate that decides access.
+    requiredTier: null,
     visibleWhen: null,
   },
   SCIM: {

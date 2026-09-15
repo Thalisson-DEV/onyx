@@ -13487,16 +13487,13 @@
         "label": "管理面板"
       },
       "agents": {
-        "title": "智能体"
+        "title": "已固定的专家"
       },
       "craft": {
         "label": "Craft"
       },
-      "exploreAgents": {
-        "label": "探索智能体"
-      },
-      "moreAgents": {
-        "label": "更多智能体"
+      "historyNav": {
+        "ariaLabel": "对话历史"
       },
       "moveChatError": {
         "message": "移动对话失败。请重试。"
@@ -13506,19 +13503,25 @@
         "tooltip": "新建项目"
       },
       "newSession": {
-        "label": "新建会话"
+        "label": "Central"
+      },
+      "productNav": {
+        "ariaLabel": "TON 导航"
       },
       "projects": {
         "title": "项目"
       },
       "recents": {
         "empty": {
-          "text": "试着发送一条消息吧！您的对话历史将显示在这里。"
+          "text": "您的对话将显示在这里。"
         },
-        "title": "最近"
+        "title": "对话"
       },
       "searchChats": {
         "label": "搜索对话"
+      },
+      "specialists": {
+        "label": "专家"
       }
     },
     "chatButton": {
@@ -13584,7 +13587,7 @@
         "label": "新建项目"
       },
       "newSession": {
-        "label": "新建会话"
+        "label": "Central"
       },
       "noMoreResults": {
         "text": "没有更多结果"

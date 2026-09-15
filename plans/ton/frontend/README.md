@@ -10,6 +10,10 @@ Este trabalho não modifica código de aplicação, backend, contratos API, depe
 componentes do design system, tokens de tema, auth, comportamento de agentes ou assets de
 logo. Os documentos orientam uma mudança futura com escopo separado.
 
+Os documentos com prefixo numérico são exceção: eles registram a execução de um item
+do backlog, não o planejamento. Hoje existe um, `004-ton-navigation.md`. Os resultados
+de TON-FE-000 a TON-FE-003 estão em `implementation-roadmap.md`.
+
 ## Baseline
 
 The initial audit snapshot had no tracked changes. The 18 Markdown files in
@@ -60,6 +64,8 @@ semantic tokens/dark mode/accessibility, and route backend calls through the fro
 13. [Riscos](./risks.md) — riscos transversais e mitigações.
 14. [Roadmap de implementação](./implementation-roadmap.md) — ordem e verificação.
 15. [Arquitetura de informação TON](./ton-information-architecture.md) — navegação e domínio.
+16. [Navegação TON — execução de FE-004](./004-ton-navigation.md) — registro da
+    arquitetura de informação implementada na sidebar.
 
 ## Matriz de entregáveis
 
@@ -82,6 +88,7 @@ semantic tokens/dark mode/accessibility, and route backend calls through the fro
 | [risks.md](./risks.md) | What can regress? | Risk register and mitigations. |
 | [implementation-roadmap.md](./implementation-roadmap.md) | In what order should later work happen? | Phases, gates, and verification plan. |
 | [ton-information-architecture.md](./ton-information-architecture.md) | What is the TON navigation/domain model? | Central, specialist, source, finding, and report IA. |
+| [004-ton-navigation.md](./004-ton-navigation.md) | Which navigation did TON-FE-004 actually ship? | Executed IA, route map, decisions, checks, and the VIS-000 handoff. |
 
 ## Application-change confirmation
 

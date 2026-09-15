@@ -13487,16 +13487,13 @@
         "label": "Painel de administração"
       },
       "agents": {
-        "title": "Agentes"
+        "title": "Especialistas fixados"
       },
       "craft": {
         "label": "Craft"
       },
-      "exploreAgents": {
-        "label": "Explorar agentes"
-      },
-      "moreAgents": {
-        "label": "Mais agentes"
+      "historyNav": {
+        "ariaLabel": "Histórico de conversas"
       },
       "moveChatError": {
         "message": "Falha ao mover o chat. Tente novamente."
@@ -13506,19 +13503,25 @@
         "tooltip": "Novo projeto"
       },
       "newSession": {
-        "label": "Nova sessão"
+        "label": "Central"
+      },
+      "productNav": {
+        "ariaLabel": "Navegação do TON"
       },
       "projects": {
         "title": "Projetos"
       },
       "recents": {
         "empty": {
-          "text": "Experimente enviar uma mensagem! Seu histórico de chats aparecerá aqui."
+          "text": "Suas conversas aparecerão aqui."
         },
-        "title": "Recentes"
+        "title": "Conversas"
       },
       "searchChats": {
         "label": "Pesquisar chats"
+      },
+      "specialists": {
+        "label": "Especialistas"
       }
     },
     "chatButton": {
@@ -13584,7 +13587,7 @@
         "label": "Novo projeto"
       },
       "newSession": {
-        "label": "Nova sessão"
+        "label": "Central"
       },
       "noMoreResults": {
         "text": "Não há mais resultados"

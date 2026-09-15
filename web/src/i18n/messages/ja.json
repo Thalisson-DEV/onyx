@@ -13487,16 +13487,13 @@
         "label": "管理パネル"
       },
       "agents": {
-        "title": "エージェント"
+        "title": "ピン留めしたスペシャリスト"
       },
       "craft": {
         "label": "Craft"
       },
-      "exploreAgents": {
-        "label": "エージェントを探す"
-      },
-      "moreAgents": {
-        "label": "その他のエージェント"
+      "historyNav": {
+        "ariaLabel": "会話履歴"
       },
       "moveChatError": {
         "message": "チャットを移動できませんでした。もう一度お試しください。"
@@ -13506,19 +13503,25 @@
         "tooltip": "新しいプロジェクト"
       },
       "newSession": {
-        "label": "新しいセッション"
+        "label": "Central"
+      },
+      "productNav": {
+        "ariaLabel": "TON ナビゲーション"
       },
       "projects": {
         "title": "プロジェクト"
       },
       "recents": {
         "empty": {
-          "text": "メッセージを送信してみましょう。チャット履歴がここに表示されます。"
+          "text": "会話はここに表示されます。"
         },
-        "title": "最近の項目"
+        "title": "会話"
       },
       "searchChats": {
         "label": "チャットを検索"
+      },
+      "specialists": {
+        "label": "スペシャリスト"
       }
     },
     "chatButton": {
@@ -13584,7 +13587,7 @@
         "label": "新しいプロジェクト"
       },
       "newSession": {
-        "label": "新しいセッション"
+        "label": "Central"
       },
       "noMoreResults": {
         "text": "これ以上の結果はありません"

@@ -13487,16 +13487,13 @@
         "label": "لوحة الإدارة"
       },
       "agents": {
-        "title": "الوكلاء"
+        "title": "المتخصصون المثبتون"
       },
       "craft": {
         "label": "Craft"
       },
-      "exploreAgents": {
-        "label": "استكشاف الوكلاء"
-      },
-      "moreAgents": {
-        "label": "المزيد من الوكلاء"
+      "historyNav": {
+        "ariaLabel": "سجل المحادثات"
       },
       "moveChatError": {
         "message": "فشل نقل المحادثة. يرجى المحاولة مرة أخرى."
@@ -13506,19 +13503,25 @@
         "tooltip": "مشروع جديد"
       },
       "newSession": {
-        "label": "جلسة جديدة"
+        "label": "Central"
+      },
+      "productNav": {
+        "ariaLabel": "تنقل TON"
       },
       "projects": {
         "title": "المشاريع"
       },
       "recents": {
         "empty": {
-          "text": "جرب إرسال رسالة! سيظهر سجل محادثاتك هنا."
+          "text": "ستظهر محادثاتك هنا."
         },
-        "title": "الأحدث"
+        "title": "المحادثات"
       },
       "searchChats": {
         "label": "البحث في المحادثات"
+      },
+      "specialists": {
+        "label": "المتخصصون"
       }
     },
     "chatButton": {
@@ -13584,7 +13587,7 @@
         "label": "مشروع جديد"
       },
       "newSession": {
-        "label": "جلسة جديدة"
+        "label": "Central"
       },
       "noMoreResults": {
         "text": "لا توجد نتائج أخرى"

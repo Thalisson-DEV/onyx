@@ -197,7 +197,9 @@ describe("administrator", () => {
 
   it("keeps the tier mechanism intact behind the neutral wording", () => {
     // Runtime capability checks read the tier, so only the upsell copy changed.
-    expect(ADMIN_ROUTES.GROUPS.requiredTier).toBe(Tier.BUSINESS);
+    // Groups used to stand here. Backend Plan 008a un-gated that capability, so
+    // the mechanism is now pinned on routes that are still gated by decision.
+    expect(ADMIN_ROUTES.API_KEYS.requiredTier).toBe(Tier.BUSINESS);
     expect(ADMIN_ROUTES.SCIM.requiredTier).toBe(Tier.ENTERPRISE);
 
     const disabled = buildItems(ADMIN_PERMISSIONS, UNPAID_FLAGS, null).filter(

@@ -13487,16 +13487,13 @@
         "label": "관리자 패널"
       },
       "agents": {
-        "title": "에이전트"
+        "title": "고정된 전문가"
       },
       "craft": {
         "label": "Craft"
       },
-      "exploreAgents": {
-        "label": "에이전트 둘러보기"
-      },
-      "moreAgents": {
-        "label": "에이전트 더 보기"
+      "historyNav": {
+        "ariaLabel": "대화 기록"
       },
       "moveChatError": {
         "message": "채팅을 이동하지 못했습니다. 다시 시도하세요."
@@ -13506,19 +13503,25 @@
         "tooltip": "새 프로젝트"
       },
       "newSession": {
-        "label": "새 세션"
+        "label": "Central"
+      },
+      "productNav": {
+        "ariaLabel": "TON 탐색"
       },
       "projects": {
         "title": "프로젝트"
       },
       "recents": {
         "empty": {
-          "text": "메시지를 보내 보세요! 채팅 기록이 여기에 표시됩니다."
+          "text": "대화가 여기에 표시됩니다."
         },
-        "title": "최근 항목"
+        "title": "대화"
       },
       "searchChats": {
         "label": "채팅 검색"
+      },
+      "specialists": {
+        "label": "전문가"
       }
     },
     "chatButton": {
@@ -13584,7 +13587,7 @@
         "label": "새 프로젝트"
       },
       "newSession": {
-        "label": "새 세션"
+        "label": "Central"
       },
       "noMoreResults": {
         "text": "더 이상 결과가 없습니다"

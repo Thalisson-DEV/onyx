@@ -454,7 +454,92 @@ funcionando.
 3. As dependências do Backend Plano 008 estão registradas em
    `saas-surface-audit.md`. Nenhuma delas foi implementada aqui.
 
-TON-FE-004 e itens posteriores não começaram.
+TON-FE-004 foi executado depois. Itens posteriores não começaram.
+
+## Resultado de TON-FE-004
+
+**Status: DONE.** O registro completo está em
+[`004-ton-navigation.md`](./004-ton-navigation.md).
+
+Executado em worktree isolado `../ton-frontend-004`, branch `ton/frontend-004`,
+sobre `1a9b40476abbac0594c40eb264ed3e97e3a14bb3`. Esse baseline contém os Planos
+backend 001, 002, 007, 008a, 003a e 003b (revisão `faee7eaa921e`).
+
+A mudança ficou no nível 2. Ela alterou rótulos, agrupamento, ordenação, um
+separador e dois landmarks. Nenhum token, breakpoint, store, rota ou mecânica de
+sidebar mudou. Nenhum arquivo em `backend/` mudou.
+
+### Arquitetura de informação final
+
+```text
+Header (fixo)   Central → /app · Especialistas → /app/agents · Pesquisar chats
+Body (scroll)   Especialistas fixados · Projetos · ─divider─ · Conversas
+Footer          Painel de administração · conta
+```
+
+Central é a entrada principal existente com terminologia TON. Especialistas
+deixou de ser o transbordo da lista de fixados e passou a ser destino próprio,
+fixado ao lado de Central fora da área com scroll. Conversas ganhou um `Divider`
+e um landmark `nav` próprio, separando histórico de navegação de produto.
+
+`appSidebar.moreAgents` e `appSidebar.exploreAgents` saíram;
+`appSidebar.specialists`, `productNav.ariaLabel` e `historyNav.ariaLabel`
+entraram. `newSession.label` e `chatSearch.newSession.label` valem `Central` nos
+nove catálogos, como nome de produto, à maneira de `craft.label`.
+
+### Decisão de projeto e conhecimento
+
+**A** — expor a capacidade existente de projetos na navegação primária, com
+terminologia TON. Projetos é a única capacidade de conhecimento com destino real
+e UX madura hoje. Nenhum agrupamento "Conhecimento" foi criado, porque arquivos e
+document sets não têm rota de usuário própria e Fontes pertence a TON-FE-007.
+
+### Adiado, sem link morto
+
+Ocorrências (TON-FE-008), Relatórios (TON-FE-009), Fontes (TON-FE-007),
+especialistas concretos (TON-FE-005) e estado de runtime do especialista. Sem
+rota, sem item desabilitado, sem "em breve". O Plano backend 003c em execução
+concorrente não autoriza expor Ocorrências, e FE-004 não depende dele.
+
+### Follow-up do Plano 008a
+
+`ADMIN_ROUTES.GROUPS.requiredTier` passou de `Tier.BUSINESS` para `null`, a
+única linha da tabela do Plano 008a que é navegação. `MANAGE_USER_GROUPS`
+continua decidindo acesso. `API_KEYS` e `SCIM` mantêm seus tiers. A afirmação de
+tier em `ton-product-surface.test.tsx` foi reapontada para `API_KEYS`, como o
+Plano 008a prescreve. `useCanManageGroups` e os seletores de grupo continuam
+gated: são affordances de página, não navegação, e ficam para TON-CAP-002.
+
+### Verificação executada
+
+- `bun run types:check`: passou, cobertura de tipos 98,81%, idêntica ao baseline;
+- `bun run lint`: 905 avisos e 0 erros, idêntico ao baseline de FE-003;
+- `oxfmt --check` nos sete arquivos TS alterados e novos: limpo na forma LF;
+- `bun run build`: compilou; a lista de rotas não contém ocorrências,
+  relatórios nem fontes;
+- Jest `src/ton/`: 3 suítes, 44 testes, todos passaram, sendo 28 novos em
+  `ton-navigation.test.tsx`, que renderiza a sidebar de verdade;
+- Jest completo: 9 suítes falham, as mesmas 9 que falham no baseline medido com
+  `git stash`. Nenhuma toca sidebar, navegação, rota ou i18n.
+
+**PLAYWRIGHT DEFERRED — SHARED RUNTIME CONFLICT.**
+`web/tests/e2e/ton/navigation.spec.ts` e `TonNavigationPage.ts` estão escritos,
+tipados e formatados, mas não rodaram ao vivo. O contêiner `onyx-web_server-1`
+roda a imagem pronta `onyxdotapp/onyx-web-server:latest` sem bind mount e foi
+criado antes desta mudança, então serve o código anterior a FE-004. Reconstruí-lo
+alteraria estado Docker compartilhado, e um segundo frontend faria o global-setup
+registrar usuários no banco compartilhado com o Plano 003c. Rodar
+`bun run playwright navigation` quando existir ambiente que sirva este branch.
+
+### Handoff para TON-VIS-000
+
+`004-ton-navigation.md` registra a hierarquia final, os donos de componente da
+casca, a implementação de estado ativo, os breakpoints e sete itens de dívida
+visual — entre eles `SvgOnyxOctagon` como glifo de agente em oito superfícies e
+os rótulos `"Open Sidebar"`/`"Close Sidebar"` sem i18n em Opal. Nenhum deles foi
+resolvido aqui.
+
+TON-FE-005 e os itens `TON-VIS-*` não começaram.
 
 ## Sequência recomendada
 

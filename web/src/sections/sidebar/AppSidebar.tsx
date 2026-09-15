@@ -61,7 +61,7 @@ import {
   showErrorNotification,
 } from "@/lib/sidebar/utils";
 import { handleMoveOperation } from "@/lib/sidebar/svc";
-import { SidebarTab } from "@opal/components";
+import { Divider, SidebarTab } from "@opal/components";
 import { ChatSession } from "@/app/app/interfaces";
 import { useUser } from "@/providers/UserProvider";
 import { getFirstPermittedAdminRoute } from "@/lib/permissions";
@@ -72,7 +72,6 @@ import {
   SvgDevKit,
   SvgEditBig,
   SvgFolderPlus,
-  SvgMoreHorizontal,
   SvgOnyxOctagon,
   SvgSearchMenu,
   SvgSettings,
@@ -171,7 +170,10 @@ function RecentsSection({
   }, [hasMore, isLoadingMore]);
 
   return (
-    <div
+    /* A landmark of its own: conversation history is not product navigation.
+    TON states that boundary semantically, not only with the divider above. */
+    <nav
+      aria-label={t("appSidebar.historyNav.ariaLabel")}
       ref={setNodeRef}
       className={cn(
         "transition-colors duration-200 rounded-08 h-full",
@@ -208,7 +210,7 @@ function RecentsSection({
           </>
         )}
       </SidebarLayouts.Section>
-    </div>
+    </nav>
   );
 }
 
@@ -507,21 +509,18 @@ export default function AppSidebar() {
     (user?.preferences?.default_app_mode?.toLowerCase() as "chat" | "search") ??
     "chat";
 
-  const moreAgentsButton = (
+  /* Especialistas is a TON destination, not the overflow of the pinned list, so
+  it sits beside Central in the pinned header and reads the same folded, empty
+  and scrolled. The test id predates the rename and stays: it identifies the
+  route, which did not change. */
+  const specialistsButton = (
     <div data-testid="AppSidebar/more-agents">
       <SidebarTab
-        icon={
-          folded || visibleAgents.length === 0
-            ? SvgOnyxOctagon
-            : SvgMoreHorizontal
-        }
+        icon={SvgOnyxOctagon}
         href="/app/agents"
         selected={activeSidebarTab.isMoreAgents()}
-        variant={folded ? "sidebar-heavy" : "sidebar-light"}
       >
-        {visibleAgents.length === 0
-          ? t("appSidebar.exploreAgents.label")
-          : t("appSidebar.moreAgents.label")}
+        {t("appSidebar.specialists.label")}
       </SidebarTab>
     </div>
   );
@@ -610,20 +609,25 @@ export default function AppSidebar() {
           showLogoWhenFolded={showLogoWhenFolded}
           renderAppLogo={renderSidebarLogo}
         >
-          <div data-testid="AppSidebar/new-session">
-            <SidebarTab
-              icon={SvgEditBig}
-              href="/app"
-              selected={activeSidebarTab.isNewSession()}
-              onClick={() => {
-                if (!activeSidebarTab.isNewSession()) return;
-                setAppMode(defaultAppMode);
-                reset();
-              }}
-            >
-              {t("appSidebar.newSession.label")}
-            </SidebarTab>
-          </div>
+          {/* The two TON destinations, pinned above the scroll area so neither
+          a long history nor a folded sidebar can push them out of reach. */}
+          <nav aria-label={t("appSidebar.productNav.ariaLabel")}>
+            <div data-testid="AppSidebar/new-session">
+              <SidebarTab
+                icon={SvgEditBig}
+                href="/app"
+                selected={activeSidebarTab.isNewSession()}
+                onClick={() => {
+                  if (!activeSidebarTab.isNewSession()) return;
+                  setAppMode(defaultAppMode);
+                  reset();
+                }}
+              >
+                {t("appSidebar.newSession.label")}
+              </SidebarTab>
+            </div>
+            {specialistsButton}
+          </nav>
           <ChatSearchCommandMenu
             trigger={(open) => (
               <SidebarTab icon={SvgSearchMenu} onClick={open}>
@@ -642,31 +646,36 @@ export default function AppSidebar() {
               </SidebarTab>
             </div>
           )}
-          {folded && moreAgentsButton}
           {folded && <FoldedProjectsPopover />}
         </SidebarLayouts.Header>
 
         <SidebarLayouts.Body scrollKey="app-sidebar">
           {isLoadingDynamicContent ? null : (
             <>
-              {/* Agents */}
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleAgentDragEnd}
-              >
-                <SidebarLayouts.Section title={t("appSidebar.agents.title")}>
-                  <SortableContext
-                    items={visibleAgentIds}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {visibleAgents.map((visibleAgent) => (
-                      <AgentButton key={visibleAgent.id} agent={visibleAgent} />
-                    ))}
-                  </SortableContext>
-                  {moreAgentsButton}
-                </SidebarLayouts.Section>
-              </DndContext>
+              {/* Pinned specialists. A shortcut into the Especialistas
+              destination above, so with nothing pinned the section is dropped
+              rather than shown as a bare heading. */}
+              {visibleAgents.length > 0 && (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleAgentDragEnd}
+                >
+                  <SidebarLayouts.Section title={t("appSidebar.agents.title")}>
+                    <SortableContext
+                      items={visibleAgentIds}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {visibleAgents.map((visibleAgent) => (
+                        <AgentButton
+                          key={visibleAgent.id}
+                          agent={visibleAgent}
+                        />
+                      ))}
+                    </SortableContext>
+                  </SidebarLayouts.Section>
+                </DndContext>
+              )}
 
               {/* Wrap Projects and Recents in a shared DndContext for chat-to-project drag */}
               <DndContext
@@ -697,7 +706,12 @@ export default function AppSidebar() {
                   {projects.length === 0 && newProjectButton}
                 </SidebarLayouts.Section>
 
-                {/* Recents */}
+                {/* Where TON's capabilities end and the conversation log
+                begins. The history below is unbounded; the boundary keeps it
+                from reading as another capability. */}
+                <Divider paddingParallel={2} paddingPerpendicular={2} />
+
+                {/* Conversations */}
                 <RecentsSection
                   chatSessions={chatSessions}
                   hasMore={hasMore}

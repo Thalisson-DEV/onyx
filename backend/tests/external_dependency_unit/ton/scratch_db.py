@@ -32,6 +32,7 @@ from onyx.db.engine.sql_engine import SYNC_DB_API, build_connection_string
 REVISION_003A = "714172b66b07"
 REVISION_003B = "faee7eaa921e"
 REVISION_003C = "6b0ca4eb29fb"
+REVISION_003D = "440b8984f851"
 
 # The nine tables Plan 003b introduces, in creation order. Used both to assert
 # what the migration creates and to assert what its downgrade removes.
@@ -63,10 +64,37 @@ TON_003C_TABLES: tuple[str, ...] = (
     "ton_occurrence__user_group",
 )
 
+# The nine tables Plan 003d introduces, in creation order. ``ton_report__user_group``
+# is the fourth ACL junction, deferred from 003c because ``ton_report`` did not
+# exist yet (decision D-043).
+TON_003D_TABLES: tuple[str, ...] = (
+    "ton_report",
+    "ton_report_revision",
+    "ton_report_revision__analysis_run",
+    "ton_report_revision__occurrence",
+    "ton_report_revision__finding",
+    "ton_report_revision__rule_version",
+    "ton_report_revision__source_snapshot",
+    "ton_report__user_group",
+    "ton_audit_event",
+)
+
+# The five join tables that pin a revision's inputs. Named separately because the
+# reproducibility assertions walk them as a set.
+TON_REPORT_LINK_TABLES: tuple[str, ...] = (
+    "ton_report_revision__analysis_run",
+    "ton_report_revision__occurrence",
+    "ton_report_revision__finding",
+    "ton_report_revision__rule_version",
+    "ton_report_revision__source_snapshot",
+)
+
 # Every TON table that exists at head. The inverse assertions run over this set,
 # so a new table cannot escape the no-``is_public`` and no-source-write checks by
 # being added to a later slice's list only.
-TON_TABLES_AT_HEAD: tuple[str, ...] = TON_003B_TABLES + TON_003C_TABLES
+TON_TABLES_AT_HEAD: tuple[str, ...] = (
+    TON_003B_TABLES + TON_003C_TABLES + TON_003D_TABLES
+)
 
 OCCURRENCE_SHORT_CODE_SEQUENCE = "ton_occurrence_short_code_seq"
 

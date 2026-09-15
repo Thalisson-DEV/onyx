@@ -72,6 +72,12 @@ IMPLIED_PERMISSIONS: dict[str, set[str]] = {
     Permission.MANAGE_TON_OCCURRENCES.value: {
         Permission.READ_TON_OCCURRENCES.value,
     },
+    # Same shape for reports: managing a published report includes reading it.
+    # TonReport__UserGroup still decides *which* reports either token reaches, and
+    # zero junction rows means DENIED for both.
+    Permission.MANAGE_TON_REPORTS.value: {
+        Permission.READ_TON_REPORTS.value,
+    },
     # basic grants the search/chat surfaces; admin grants read:admin (and the
     # rest) via the FULL_ADMIN_PANEL_ACCESS short-circuit in
     # resolve_effective_permissions.
@@ -294,6 +300,27 @@ PERMISSION_REGISTRY: list[PermissionRegistryEntry] = [
             "restricted to administrators."
         ),
         permissions=[Permission.MANAGE_TON_OCCURRENCES],
+        group=4,
+    ),
+    PermissionRegistryEntry(
+        id="view_ton_reports",
+        display_name="View TON Reports",
+        description=(
+            "View TON reports and their published revisions. A group still sees "
+            "only the reports explicitly shared with it."
+        ),
+        permissions=[Permission.READ_TON_REPORTS],
+        group=4,
+    ),
+    PermissionRegistryEntry(
+        id="manage_ton_reports",
+        display_name="Manage TON Reports",
+        description=(
+            "Publish revisions of TON reports the group can edit, and correct a "
+            "revision by publishing a new one. A published revision is never "
+            "edited. Deleting a report stays restricted to administrators."
+        ),
+        permissions=[Permission.MANAGE_TON_REPORTS],
         group=4,
     ),
 ]

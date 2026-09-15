@@ -590,17 +590,31 @@ class TestPermissionTokens:
         assert Permission.MANAGE_TON_RULES.value == "manage:ton_rules"
         assert Permission.MANAGE_TON_BUSINESS_UNITS.value == "manage:ton_business_units"
 
-    def test_no_003d_token_is_added_early(self) -> None:
-        """A grantable permission whose resource does not exist authorizes
-        nothing and misleads an administrator.
+    def test_every_ton_token_has_its_resource(self) -> None:
+        """A grantable permission whose resource does not exist authorizes nothing
+        and misleads an administrator.
 
-        The occurrence tokens arrived with their tables in 003c. The report tokens
-        wait for 003d.
+        The occurrence tokens arrived with their tables in 003c, the report tokens
+        with theirs in 003d. Asserted against the mapper rather than by name, so a
+        token declared ahead of its table fails here.
         """
-        for permission in Permission:
-            if "ton" not in permission.value:
-                continue
-            assert "report" not in permission.value
+        resource_by_token: dict[Permission, str] = {
+            Permission.READ_TON_OCCURRENCES: "ton_occurrence",
+            Permission.MANAGE_TON_OCCURRENCES: "ton_occurrence",
+            Permission.READ_TON_REPORTS: "ton_report",
+            Permission.MANAGE_TON_REPORTS: "ton_report",
+            Permission.READ_TON_ANALYSIS: "ton_analysis_run",
+            Permission.MANAGE_TON_RULES: "ton_rule_version",
+            Permission.MANAGE_TON_BUSINESS_UNITS: "ton_business_unit",
+        }
+        ton_tokens = {
+            permission for permission in Permission if "ton" in permission.value
+        }
+        assert ton_tokens == set(resource_by_token)
+        for token, table in resource_by_token.items():
+            assert table in Base.metadata.tables, (
+                f"{token.value} would authorize a table that does not exist"
+            )
 
     def test_manage_ton_rules_is_not_a_scoped_manager_permission(self) -> None:
         """Approving or activating a rule version has company-wide effect, so a
@@ -640,14 +654,20 @@ class TestPermissionTokens:
 
 
 class TestModuleBoundaries:
-    def test_no_report_or_audit_model_exists(self) -> None:
+    def test_no_ingestion_agent_or_scheduler_model_exists(self) -> None:
+        """The report and audit models arrived in 003d. What stays absent is the
+        work later plans own: ingestion (004), agents (005), scheduling (006)."""
         for forbidden in (
-            "TonReport",
-            "TonReportRevision",
-            "TonReport__UserGroup",
-            "TonAuditEvent",
+            "TonReportSchedule",
+            "TonPublicationCeiling",
+            "TonAlert",
+            "TonAgentRun",
+            "TonIngestionJob",
+            "TonRoiRegistry",
         ):
-            assert not hasattr(ton_models, forbidden), f"{forbidden} belongs to 003d"
+            assert not hasattr(ton_models, forbidden), (
+                f"{forbidden} belongs to Plan 004, 005 or 006"
+            )
 
     def test_the_nine_003b_models_exist(self) -> None:
         for expected in (

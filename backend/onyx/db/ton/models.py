@@ -1,4 +1,4 @@
-"""TON domain tables — Plans 003b and 003c.
+"""TON domain tables — Plans 003b, 003c and 003d.
 
 Plan 003b, the identity, rule and analysis spine:
 
@@ -24,11 +24,23 @@ Plan 003c, the analytical result and business-case layer:
 * fail-closed resource ACL — :class:`BusinessUnit__UserGroup`,
   :class:`Contract__UserGroup`, :class:`Occurrence__UserGroup`.
 
-Deliberately absent, with the slice that owns them: TonReport,
-TonReportRevision, ``TonReport__UserGroup`` and TonAuditEvent (003d);
-ingestion (Plan 004); agents (Plan 005); scheduling (Plan 006).
+Plan 003d, the published-evidence layer that closes the persistent chain
+``RuleVersion -> AnalysisRun -> Finding -> Occurrence -> TonReport``:
 
-Two invariants hold for every table here and must keep holding:
+* the stable logical report identity — :class:`TonReport`;
+* the immutable published snapshot — :class:`TonReportRevision`;
+* the pinned inputs a revision was built from —
+  :class:`TonReportRevision__AnalysisRun`,
+  :class:`TonReportRevision__Occurrence`, :class:`TonReportRevision__Finding`,
+  :class:`TonReportRevision__RuleVersion`,
+  :class:`TonReportRevision__SourceSnapshot`;
+* the fourth fail-closed ACL junction — :class:`TonReport__UserGroup`;
+* persistent best-effort actor attribution — :class:`TonAuditEvent`.
+
+Deliberately absent, with the slice that owns them: ingestion (Plan 004);
+agents (Plan 005); scheduling, alerting and report computation (Plan 006).
+
+Three invariants hold for every table here and must keep holding:
 
 1. **No ``is_public`` column, anywhere.** ``Persona.is_public`` defaults to true
    and short-circuits the whole group ACL. Copying that would leak Vale Norte
@@ -39,6 +51,11 @@ Two invariants hold for every table here and must keep holding:
    Mestre §12.1 is enforced by absence: there is no column and no function here
    that writes to an ERP, a measurement, a billing record or a glosa
    (readiness §9).
+3. **Published history is append-only.** :class:`Finding`,
+   :class:`OccurrenceEvent`, :class:`FindingInterpretation`, :class:`RuleVersion`
+   and :class:`TonReportRevision` are never updated in place. A new published
+   state is a new row, so what a report stated stays reproducible after the
+   rules, the findings and the cases behind it have all moved on.
 
 Table names carry a ``ton_`` prefix. The classes keep the readiness names. This
 checkout tracks ``upstream/main``, and ``rule``, ``contract`` and
@@ -69,12 +86,15 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    event,
     func,
+    inspect,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.engine import Connection
+from sqlalchemy.orm import Mapped, Mapper, mapped_column, relationship
 
 from onyx.db.models import Base
 from onyx.db.ton.enums import (
@@ -111,6 +131,8 @@ from onyx.db.ton.enums import (
     RuleVersionOutcome,
     RuleVersionStatus,
     SourceType,
+    TonAuditResourceKind,
+    TonReportType,
     TonSharePermission,
     UnitCostSource,
 )
@@ -2009,3 +2031,592 @@ class Occurrence__UserGroup(Base):
     )
 
     __table_args__ = (Index("ix_ton_occurrence__user_group_group_id", "user_group_id"),)
+
+
+class TonReport(Base):
+    """The stable logical identity of a report (readiness §12).
+
+    Deliberately *not* the report content. This row answers "which report is
+    this?" — the monthly close for the northern unit, the ISC panel for a
+    contract — and never holds the latest generated payload. Content lives in
+    :class:`TonReportRevision`, one immutable row per publication.
+
+    That split is the whole decision. A single mutable row holding the newest
+    payload would make every historical statement unverifiable the moment the
+    report was regenerated, and Prompt Mestre's evidence chain would only ever be
+    as old as the last run.
+
+    ``code`` is the stable reference an owner recognises, on the same convention
+    as :attr:`BusinessUnit.code` and :attr:`Contract.code`: regenerating a report
+    must not change it, and two generators asked for the same logical report
+    converge on one row rather than two.
+
+    No lifecycle column beyond provenance. Readiness approves none, and a status
+    here would compete with the revision history for authority over what was
+    published. There is no ``is_public`` column either — visibility comes from
+    :class:`TonReport__UserGroup`, where zero rows means DENIED.
+    """
+
+    __tablename__ = "ton_report"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    code: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    report_type: Mapped[TonReportType] = mapped_column(
+        Enum(TonReportType, native_enum=False), nullable=False
+    )
+    # Wording of the logical report. Never an identity input, and never part of a
+    # revision's canonical payload unless the generator puts it there explicitly.
+    title: Mapped[str] = mapped_column(String, nullable=False)
+
+    # Business context. Nullable on the same reasoning as `Occurrence`: a
+    # consolidated corporate report has no single unit. RESTRICT because a unit
+    # named by a published report must stay referenceable.
+    business_unit_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_business_unit.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    # Competência covered. Nullable: an exception card covers a case, not a month.
+    period_start: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+    period_end: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
+
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+
+    revisions: Mapped[list[TonReportRevision]] = relationship(
+        "TonReportRevision",
+        back_populates="report",
+        order_by="TonReportRevision.revision_no",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    group_shares: Mapped[list[TonReport__UserGroup]] = relationship(
+        "TonReport__UserGroup",
+        back_populates="report",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "period_end IS NULL OR period_start IS NULL OR period_end >= period_start",
+            name="ck_ton_report_period_order",
+        ),
+        Index("ix_ton_report_type_period", "report_type", "period_start"),
+        Index("ix_ton_report_business_unit_id", "business_unit_id"),
+    )
+
+
+class TonReportRevision(Base):
+    """One immutable published snapshot of a :class:`TonReport` (readiness §12).
+
+    Append-only. ``UNIQUE(report_id, revision_no)`` gives the ordered history, and
+    a later generation creates revision *N+1* rather than rewriting *N*. A
+    correction is also a new revision: it sets ``correction_reason`` and the
+    superseded row records the successor in ``superseded_by_revision_id``, so what
+    was published — and that it was corrected — both survive.
+
+    **Reproducibility.** ``canonical_payload`` holds the values *as published*, so
+    a later source correction cannot alter them, and the five
+    ``TonReportRevision__*`` join tables pin the exact inputs by id. Nothing here
+    resolves "latest" on read: the pinned ``RuleVersion`` rows are append-only,
+    the pinned ``SourceSnapshot`` rows are receipts of one extraction, and a later
+    interpretation or resolution appends a row elsewhere rather than changing
+    anything reachable from here.
+
+    **Why the algorithm and the scheme are columns.** ``content_hash`` is a digest
+    over :func:`onyx.db.ton.canonical.canonical_bytes`, and both the
+    canonicalisation version and the hash algorithm are stored as data. A future
+    change to either therefore cannot invalidate a hash already recorded — the old
+    row still names the scheme that produced it.
+
+    **Immutability.** :mod:`onyx.db.ton.reports` exposes no update path, a named
+    test asserts an attempted mutation raises, and
+    :func:`onyx.db.ton.reports.verify_revision_hash` recomputes the digest on read
+    so tampering that bypassed the application is still detectable.
+    """
+
+    __tablename__ = "ton_report_revision"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    # CASCADE, matching RuleVersion -> Rule: a revision has no meaning without its
+    # logical report. Deleting a report is a global-authority act, never routine,
+    # and the RESTRICTs on the join tables below still refuse to let a pinned
+    # input disappear underneath a revision that survives.
+    report_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_report.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    revision_no: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # The frozen content. Written once by the revision creator, never updated.
+    canonical_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    # NOT NULL with no default on all four: a snapshot whose scheme, algorithm,
+    # digest or generator identity is unknown is not evidence of anything.
+    canonicalization_version: Mapped[str] = mapped_column(String, nullable=False)
+    hash_algorithm: Mapped[str] = mapped_column(String, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String, nullable=False)
+    generator_version: Mapped[str] = mapped_column(String, nullable=False)
+
+    generated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    # SET NULL: provenance only. Losing an account must not delete a published
+    # revision, and the canonical payload records what was published regardless.
+    generated_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+
+    # A correction is a new revision. SET NULL rather than CASCADE: losing the
+    # successor must not delete the record of what was published before it.
+    superseded_by_revision_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_report_revision.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    correction_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Optional rendered artifact. SET NULL: the canonical payload, not the file, is
+    # the authoritative published content.
+    file_record_id: Mapped[str | None] = mapped_column(
+        String, ForeignKey("file_record.file_id", ondelete="SET NULL"), nullable=True
+    )
+
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    report: Mapped[TonReport] = relationship("TonReport", back_populates="revisions")
+    analysis_run_links: Mapped[list[TonReportRevision__AnalysisRun]] = relationship(
+        "TonReportRevision__AnalysisRun",
+        back_populates="revision",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    occurrence_links: Mapped[list[TonReportRevision__Occurrence]] = relationship(
+        "TonReportRevision__Occurrence",
+        back_populates="revision",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    finding_links: Mapped[list[TonReportRevision__Finding]] = relationship(
+        "TonReportRevision__Finding",
+        back_populates="revision",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    rule_version_links: Mapped[list[TonReportRevision__RuleVersion]] = relationship(
+        "TonReportRevision__RuleVersion",
+        back_populates="revision",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    source_snapshot_links: Mapped[list[TonReportRevision__SourceSnapshot]] = (
+        relationship(
+            "TonReportRevision__SourceSnapshot",
+            back_populates="revision",
+            cascade="all, delete-orphan",
+            passive_deletes=True,
+        )
+    )
+
+    __table_args__ = (
+        # The append-only history contract. Publishing again cannot reuse an
+        # existing revision number, so revision N stays what it was.
+        UniqueConstraint(
+            "report_id", "revision_no", name="uq_ton_report_revision_report_revision"
+        ),
+        CheckConstraint("revision_no >= 1", name="ck_ton_report_revision_positive"),
+        CheckConstraint(
+            "superseded_by_revision_id IS NULL OR superseded_by_revision_id <> id",
+            name="ck_ton_report_revision_no_self_supersede",
+        ),
+        # A correction must say why. Recording that a published figure changed
+        # without recording the reason is the audit gap this table exists to close.
+        CheckConstraint(
+            "superseded_by_revision_id IS NULL OR correction_reason IS NOT NULL",
+            name="ck_ton_report_revision_superseded_requires_reason",
+        ),
+        Index("ix_ton_report_revision_report_id", "report_id"),
+        Index("ix_ton_report_revision_content_hash", "content_hash"),
+        Index("ix_ton_report_revision_generated_at", "generated_at", "id"),
+    )
+
+
+class TonReportRevision__AnalysisRun(Base):
+    """Pins the analysis runs a published revision was built from.
+
+    An explicit association row, not an entry in a JSON list. Readiness §12
+    requires "which report revision used analysis run X?" to stay relationally
+    answerable, and a JSONB array of ids answers it only with a scan and no
+    referential integrity.
+
+    ``RESTRICT`` on the run: deleting an input a published report depends on would
+    silently corrupt the evidence chain, so the database refuses. ``CASCADE`` on
+    the revision, because the link has no meaning without it.
+    """
+
+    __tablename__ = "ton_report_revision__analysis_run"
+
+    report_revision_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_report_revision.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    analysis_run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_analysis_run.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+
+    revision: Mapped[TonReportRevision] = relationship(
+        "TonReportRevision", back_populates="analysis_run_links"
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_ton_report_revision__analysis_run_run_id",
+            "analysis_run_id",
+        ),
+    )
+
+
+class TonReportRevision__Occurrence(Base):
+    """Pins the business cases a published revision reported on.
+
+    The composite primary key is the uniqueness rule: one case appears at most
+    once in one revision.
+    """
+
+    __tablename__ = "ton_report_revision__occurrence"
+
+    report_revision_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_report_revision.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    occurrence_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_occurrence.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+
+    revision: Mapped[TonReportRevision] = relationship(
+        "TonReportRevision", back_populates="occurrence_links"
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_ton_report_revision__occurrence_occurrence_id",
+            "occurrence_id",
+        ),
+    )
+
+
+class TonReportRevision__Finding(Base):
+    """Pins the deterministic detections a published revision included.
+
+    ``RESTRICT`` matters most here. ``Finding`` is immutable, so a pinned finding
+    that still exists still says what it said; a deleted one would leave a
+    published number with no detection behind it.
+    """
+
+    __tablename__ = "ton_report_revision__finding"
+
+    report_revision_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_report_revision.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    finding_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_finding.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+
+    revision: Mapped[TonReportRevision] = relationship(
+        "TonReportRevision", back_populates="finding_links"
+    )
+
+    __table_args__ = (
+        Index("ix_ton_report_revision__finding_finding_id", "finding_id"),
+    )
+
+
+class TonReportRevision__RuleVersion(Base):
+    """Pins the rule versions in force for a published revision.
+
+    The version, never the rule. Readiness §12's reproducibility argument rests on
+    this: ``RuleVersion`` is append-only, so a later threshold change adds a row
+    and leaves the pinned one untouched.
+    """
+
+    __tablename__ = "ton_report_revision__rule_version"
+
+    report_revision_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_report_revision.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    rule_version_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_rule_version.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+
+    revision: Mapped[TonReportRevision] = relationship(
+        "TonReportRevision", back_populates="rule_version_links"
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_ton_report_revision__rule_version_rule_version_id",
+            "rule_version_id",
+        ),
+    )
+
+
+class TonReportRevision__SourceSnapshot(Base):
+    """Pins the extraction receipts behind a published revision.
+
+    Without this a report is not reproducible: the snapshot is the record of
+    *which* extraction the published numbers came from, and rule S10 — no margin
+    published on a reproved base — is not expressible without it.
+    """
+
+    __tablename__ = "ton_report_revision__source_snapshot"
+
+    report_revision_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_report_revision.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    source_snapshot_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_source_snapshot.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+
+    revision: Mapped[TonReportRevision] = relationship(
+        "TonReportRevision", back_populates="source_snapshot_links"
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_ton_report_revision__source_snapshot_snapshot_id",
+            "source_snapshot_id",
+        ),
+    )
+
+
+class TonReport__UserGroup(Base):
+    """Authorizes a user group to reach one report — the fourth ACL junction.
+
+    Deferred from 003c only because :class:`TonReport` did not exist yet
+    (decision D-043); the shape and the semantics are the other three unchanged.
+    Restrictive: **zero rows means DENIED**, so no report is readable by default
+    and there is no ``is_public`` column that could short-circuit it.
+
+    A revision inherits its report's authorization. A second junction on the
+    revision would be two ACLs over one published document, and one would
+    eventually grant what the other denies.
+    """
+
+    __tablename__ = "ton_report__user_group"
+
+    report_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_report.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    user_group_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("user_group.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    permission: Mapped[TonSharePermission] = mapped_column(
+        Enum(TonSharePermission, native_enum=False),
+        nullable=False,
+        default=TonSharePermission.VIEWER,
+        server_default=TonSharePermission.VIEWER.value,
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    report: Mapped[TonReport] = relationship("TonReport", back_populates="group_shares")
+
+    __table_args__ = (Index("ix_ton_report__user_group_group_id", "user_group_id"),)
+
+
+# The content columns of a published revision. Kept here rather than imported
+# from `onyx.db.ton.reports` because that module imports this one, and the guard
+# below must be active whenever the model is importable — not only when the
+# reports service happens to have been imported.
+_REPORT_REVISION_CONTENT_COLUMNS: frozenset[str] = frozenset(
+    {
+        "report_id",
+        "revision_no",
+        "canonical_payload",
+        "canonicalization_version",
+        "hash_algorithm",
+        "content_hash",
+        "generator_version",
+        "generated_at",
+        "generated_by",
+        "file_record_id",
+    }
+)
+
+
+# Readiness §12's second immutability layer, in code rather than as a comment.
+# Layer 1 is the absence of an update path in `onyx.db.ton.reports`; this makes
+# bypassing that module fail too. `superseded_by_revision_id` and
+# `correction_reason` are excluded on purpose: a revision cannot name its
+# successor at publication time, and neither column is covered by the content
+# hash.
+@event.listens_for(TonReportRevision, "before_update")
+def _reject_report_revision_content_change(
+    mapper: Mapper,  # noqa: ARG001
+    connection: Connection,  # noqa: ARG001
+    target: TonReportRevision,
+) -> None:
+    state = inspect(target)
+    changed = sorted(
+        name
+        for name in _REPORT_REVISION_CONTENT_COLUMNS
+        if state.attrs[name].history.has_changes()
+    )
+    if changed:
+        raise ValueError(
+            "A published report revision is immutable. Attempted to change: "
+            f"{', '.join(changed)}. Publish a new revision instead — historical "
+            "values must stay reproducible."
+        )
+
+
+class TonAuditEvent(Base):
+    """Persistent, actor-attributed, **best-effort** audit (readiness §11).
+
+    The distinction from domain history is the point of this table, and reversing
+    it would be a defect in either direction:
+
+    ==================== ============================================ ==============
+    Layer                Examples                                     Guarantee
+    ==================== ============================================ ==============
+    domain history       ``OccurrenceEvent``, ``OccurrenceAssignment``,
+                         ``OccurrenceNote``, ``FindingInterpretation``,
+                         ``TonReportRevision``                        transactional
+    ``TonAuditEvent``    actor attribution for those acts             best-effort
+    ==================== ============================================ ==============
+
+    A lost lifecycle transition is data loss, so writing it must fail loudly. A
+    lost audit line must not break a user's action. Two guarantees mean two
+    mechanisms: :mod:`onyx.db.ton.audit` writes this table inside a SAVEPOINT and
+    never raises into the caller.
+
+    **A reference, not a copy.** Readiness §11's anti-duplication rule: when a
+    fact is already an immutable domain row, this table stores
+    ``resource_kind``, ``resource_id`` and ``domain_event_id`` and stops. Nothing
+    here holds evidence content, a canonical payload, an interpretation narrative
+    or a secret, and :mod:`onyx.db.ton.audit` strips such keys from ``extra``
+    before writing.
+
+    **Additive to the existing stdout stream.** ``onyx.utils.audit`` keeps
+    emitting one JSON line per event for SIEM export, unchanged. The columns here
+    mirror that payload deliberately, so the table and the stream stay one schema.
+
+    Rows may carry PII, so a read path must apply the TON resource ACL.
+    """
+
+    __tablename__ = "ton_audit_event"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    # Mirrors `AUDIT_SCHEMA_VERSION` on the stdout payload, so a consumer reading
+    # both can tell which shape it is looking at.
+    audit_schema_version: Mapped[str] = mapped_column(String, nullable=False)
+    occurred_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    # `AuditAction`, `AuditOutcome` and `OCSFEventClass` are stored as their
+    # dotted `.value` strings in plain String columns, not as `Enum(...)`.
+    # `AuditAction` is a repository-wide append-only vocabulary that grows with
+    # unrelated features; a non-native Enum column would add a CHECK constraint
+    # that turns "someone added an audit action elsewhere" into a failed INSERT
+    # here until a TON migration caught up. The value, not the member name, also
+    # keeps this table byte-comparable with the stdout stream.
+    action: Mapped[str] = mapped_column(String, nullable=False)
+    outcome: Mapped[str] = mapped_column(String, nullable=False)
+    ocsf_class: Mapped[str | None] = mapped_column(String, nullable=True)
+    tenant_id: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # The four `AuditActor` fields. `actor_user_id` is SET NULL so removing an
+    # account never deletes the audit row; the textual identity beside it keeps
+    # attribution readable afterwards. `actor_api_key_id` is the key's id, never
+    # its value — the same contract as `AuditActor`.
+    actor_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+    actor_email: Mapped[str | None] = mapped_column(String, nullable=True)
+    actor_api_key_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    actor_auth_type: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    resource_kind: Mapped[TonAuditResourceKind | None] = mapped_column(
+        Enum(TonAuditResourceKind, native_enum=False), nullable=True
+    )
+    resource_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), nullable=True
+    )
+    # The authoritative domain row this event attributes, when there is one — an
+    # `OccurrenceEvent`, a `TonReportRevision`, a `RuleVersion`. Deliberately no
+    # foreign key: one column pointing at several tables cannot have one, and an
+    # audit row must survive even if its subject is later removed. The domain
+    # table stays the source of truth; this is the pointer to it.
+    domain_event_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), nullable=True
+    )
+    # Readiness §11: a human approval records what authorized it.
+    authorization_reference: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    endpoint: Mapped[str | None] = mapped_column(String, nullable=True)
+    request_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    source_ip: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # Before/after **metadata** for a manual correction or override — which field
+    # changed and between which recorded values, not a copy of the row.
+    before_state: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    after_state: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    extra: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+
+    __table_args__ = (
+        # A resource reference must be complete or absent. Half a pointer is not
+        # queryable and silently drops the event out of a resource's history.
+        CheckConstraint(
+            "(resource_kind IS NULL) = (resource_id IS NULL)",
+            name="ck_ton_audit_event_resource_reference_complete",
+        ),
+        Index("ix_ton_audit_event_resource", "resource_kind", "resource_id"),
+        Index("ix_ton_audit_event_action", "action"),
+        Index("ix_ton_audit_event_actor_user_id", "actor_user_id"),
+        Index("ix_ton_audit_event_occurred_at", "occurred_at", "id"),
+    )

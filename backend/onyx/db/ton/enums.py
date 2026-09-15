@@ -631,3 +631,60 @@ class TonSharePermission(str, PyEnum):
 
     VIEWER = "VIEWER"
     EDITOR = "EDITOR"
+
+
+class TonReportType(str, PyEnum):
+    """The closed report vocabulary of Prompt Mestre §14 (readiness §12).
+
+    Exactly the types readiness names, plus ``ROI``. Readiness §13 settles ROI as
+    a *derived* aggregation over verified ``OccurrenceImpact`` rows and states
+    that a frozen ROI statement, if one is ever wanted, is a
+    :class:`~onyx.db.ton.models.TonReportRevision` with this type. So the identity
+    exists here and nothing else does: 003d adds no ROI table, no ROI
+    verification logic and no ROI schedule.
+
+    Nothing here is a report *layout*. §14.2 executive ordering, the §14.4 hidden
+    money panel presentation and the §14.3 ISC computation are Plan 006. What 003d
+    owns is the persisted identity of a published snapshot.
+
+    ============================ ==================
+    Member                       Prompt Mestre §14
+    ============================ ==================
+    EXCEPTION_CARD               §14.1
+    EXECUTIVE                    §14.2
+    ISC                          §14.3
+    HIDDEN_MONEY_PANEL           §14.4
+    MONTHLY_CLOSE                §5 publication
+    RECONCILIATION               §5 Passo 3
+    FORECAST                     §17
+    ROI                          §13.3
+    ============================ ==================
+    """
+
+    EXCEPTION_CARD = "EXCEPTION_CARD"
+    EXECUTIVE = "EXECUTIVE"
+    ISC = "ISC"
+    HIDDEN_MONEY_PANEL = "HIDDEN_MONEY_PANEL"
+    MONTHLY_CLOSE = "MONTHLY_CLOSE"
+    RECONCILIATION = "RECONCILIATION"
+    FORECAST = "FORECAST"
+    ROI = "ROI"
+
+
+class TonAuditResourceKind(str, PyEnum):
+    """What a :class:`~onyx.db.ton.models.TonAuditEvent` row points at.
+
+    A closed vocabulary rather than free text, so ``(resource_kind,
+    resource_id)`` is queryable. The row is a **reference**: readiness §11's
+    anti-duplication rule keeps the referenced domain table the source of truth,
+    and nothing here copies its payload.
+    """
+
+    REPORT = "REPORT"
+    REPORT_REVISION = "REPORT_REVISION"
+    OCCURRENCE = "OCCURRENCE"
+    FINDING = "FINDING"
+    RULE_VERSION = "RULE_VERSION"
+    ANALYSIS_RUN = "ANALYSIS_RUN"
+    BUSINESS_UNIT = "BUSINESS_UNIT"
+    CONTRACT = "CONTRACT"

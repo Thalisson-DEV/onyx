@@ -9,6 +9,7 @@ value existing anywhere.
 import datetime
 import uuid
 from collections.abc import Sequence
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -17,6 +18,7 @@ from sqlalchemy.orm import Session
 from onyx.db.enums import AccountType, GrantSource, Permission
 from onyx.db.models import PermissionGrant, User, User__UserGroup, UserGroup
 from onyx.db.permissions import recompute_user_permissions__no_commit
+from onyx.db.ton.canonical import ScaledDecimal
 from onyx.db.ton.enums import (
     AnalysisSpecialist,
     AnalysisStepCode,
@@ -35,6 +37,7 @@ from onyx.db.ton.enums import (
     RuleProvenance,
     RuleVersionStatus,
     SourceType,
+    TonReportType,
     TonSharePermission,
 )
 from onyx.db.ton.models import (
@@ -44,13 +47,21 @@ from onyx.db.ton.models import (
     BusinessUnit__UserGroup,
     Contract,
     Contract__UserGroup,
+    Finding,
     Occurrence,
     Occurrence__UserGroup,
     Rule,
     RuleVersion,
     SourceSnapshot,
+    TonReport,
+    TonReport__UserGroup,
+    TonReportRevision,
 )
 from onyx.db.ton.occurrences import DetectionResult, record_detection__no_commit
+from onyx.db.ton.reports import (
+    create_report__no_commit,
+    publish_report_revision__no_commit,
+)
 
 # Obviously synthetic. Named so a reader cannot mistake them for approved
 # configuration.
@@ -408,6 +419,7 @@ def authorize_group(
     occurrence: Occurrence | None = None,
     business_unit: BusinessUnit | None = None,
     contract: Contract | None = None,
+    report: TonReport | None = None,
     permission: TonSharePermission = TonSharePermission.VIEWER,
 ) -> None:
     """Write ACL junction rows directly, bypassing the write gate.
@@ -441,4 +453,98 @@ def authorize_group(
                 permission=permission,
             )
         )
+    if report is not None:
+        db_session.add(
+            TonReport__UserGroup(
+                report_id=report.id,
+                user_group_id=group.id,
+                permission=permission,
+            )
+        )
     db_session.flush()
+
+
+# ---------------------------------------------------------------------------
+# Plan 003d — reports, canonicalisation, audit.
+#
+# Same rule again: every value is invented. No Prompt Mestre report layout, no
+# ISC weight, no publication ceiling and no Vale Norte figure appears below.
+# ---------------------------------------------------------------------------
+
+SYNTHETIC_GENERATOR_VERSION = "synthetic-report-generator-0"
+SYNTHETIC_GENERATED_AT = datetime.datetime(2001, 3, 1, 8, 30, tzinfo=datetime.UTC)
+
+
+def make_report(
+    db_session: Session,
+    *,
+    report_type: TonReportType = TonReportType.MONTHLY_CLOSE,
+    code: str | None = None,
+    title: str = "Synthetic report",
+    business_unit: BusinessUnit | None = None,
+    period_start: datetime.date | None = SYNTHETIC_PERIOD_START,
+    period_end: datetime.date | None = SYNTHETIC_PERIOD_END,
+    created_by: UUID | None = None,
+) -> TonReport:
+    """A logical report, created through the production path."""
+    return create_report__no_commit(
+        db_session,
+        code=code or f"SYN-REP-{unique_suffix()}",
+        report_type=report_type,
+        title=title,
+        business_unit_id=business_unit.id if business_unit is not None else None,
+        period_start=period_start,
+        period_end=period_end,
+        created_by=created_by,
+    )
+
+
+def synthetic_report_body(
+    *, total: str = "1234.50", percentage: str = "12.5000"
+) -> dict[str, Any]:
+    """A report body exercising the canonical decimal rules.
+
+    Amounts arrive as ``ScaledDecimal`` so the published scale is part of the
+    contract, which is what a monetary figure needs. Nothing here is a real
+    Vale Norte number.
+    """
+    return {
+        "headline": "Sintese sintética",
+        "total_amount": ScaledDecimal(Decimal(total), scale=2),
+        "deviation_percentage": ScaledDecimal(Decimal(percentage), scale=4),
+        "counted_rows": 3,
+        "currency": SYNTHETIC_CURRENCY,
+    }
+
+
+def publish_synthetic_revision(
+    db_session: Session,
+    *,
+    report: TonReport,
+    body: dict[str, Any] | None = None,
+    findings: Sequence[Finding] = (),
+    occurrences: Sequence[Occurrence] = (),
+    analysis_runs: Sequence[AnalysisRun] = (),
+    rule_versions: Sequence[RuleVersion] = (),
+    source_snapshots: Sequence[SourceSnapshot] = (),
+    generated_at: datetime.datetime | None = None,
+    generated_by: UUID | None = None,
+    corrects: TonReportRevision | None = None,
+    correction_reason: str | None = None,
+) -> TonReportRevision:
+    """Publish one revision through the production path."""
+    return publish_report_revision__no_commit(
+        db_session,
+        report=report,
+        body=body if body is not None else synthetic_report_body(),
+        generator_version=SYNTHETIC_GENERATOR_VERSION,
+        generated_at=generated_at or SYNTHETIC_GENERATED_AT,
+        generated_by=generated_by,
+        findings=findings,
+        occurrences=occurrences,
+        analysis_runs=analysis_runs,
+        rule_versions=rule_versions,
+        source_snapshots=source_snapshots,
+        corrects=corrects,
+        correction_reason=correction_reason,
+    )

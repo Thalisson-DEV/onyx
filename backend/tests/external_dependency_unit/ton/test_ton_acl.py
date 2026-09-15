@@ -939,8 +939,21 @@ class TestScopedAuthorityBoundary:
         assert Permission.READ_TON_OCCURRENCES in registered
         assert Permission.MANAGE_TON_OCCURRENCES in registered
 
-    def test_no_report_token_is_added_early(self) -> None:
-        """A grantable permission whose resource does not exist authorizes nothing
-        while telling an administrator otherwise. Report tokens wait for 003d."""
-        for token in TON_TOKENS:
-            assert "report" not in token.value
+    def test_the_report_tokens_are_bound_by_the_same_boundary(self) -> None:
+        """003d added ``READ_TON_REPORTS`` and ``MANAGE_TON_REPORTS`` with their
+        table. They are held to the same rule as every other TON token: never
+        ``SCOPED``, so a group manager gains no authority over a published report
+        merely shared with their group."""
+        from onyx.auth.permissions import (
+            SCOPED_MANAGER_PERMISSIONS,
+            SCOPED_MANAGER_PERMISSIONS_EXPANDED,
+        )
+
+        report_tokens = {token for token in TON_TOKENS if "report" in token.value}
+        assert report_tokens == {
+            Permission.READ_TON_REPORTS,
+            Permission.MANAGE_TON_REPORTS,
+        }
+        for token in report_tokens:
+            assert token not in SCOPED_MANAGER_PERMISSIONS
+            assert token.value not in SCOPED_MANAGER_PERMISSIONS_EXPANDED

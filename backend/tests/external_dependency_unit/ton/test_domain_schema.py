@@ -35,8 +35,10 @@ from tests.external_dependency_unit.ton.scratch_db import (
     OCCURRENCE_SHORT_CODE_SEQUENCE,
     REVISION_003A,
     REVISION_003B,
+    REVISION_003C,
     TON_003B_TABLES,
     TON_003C_TABLES,
+    TON_003D_TABLES,
     TON_TABLES_AT_HEAD,
     column_names,
     column_types,
@@ -48,19 +50,17 @@ from tests.external_dependency_unit.ton.scratch_db import (
     upgrade,
 )
 
-# Tables that belong to 003d. Their absence is part of this slice's contract:
-# 003c must not reach into the report or audit slice.
-#
-# The readiness gate historically said 003c creates "four ``*__UserGroup``
-# junctions". ``TonReport`` does not exist until 003d, so its junction goes with
-# it and ``ton_report__user_group`` is listed here rather than in the 003c set.
+# Tables that belong to slices after 003d. Their absence is still part of the
+# contract: ingestion is Plan 004, agents Plan 005, scheduling and alerting Plan
+# 006. The 003d tables that used to be listed here now exist — see
+# ``TON_003D_TABLES`` and ``test_report_immutability.py``, which owns them.
 LATER_SLICE_TABLES: tuple[str, ...] = (
-    "ton_report",
-    "ton_report_revision",
-    "ton_report__user_group",
-    "ton_report_revision__analysis_run",
-    "ton_report_revision__occurrence",
-    "ton_audit_event",
+    "ton_report_schedule",
+    "ton_publication_ceiling",
+    "ton_alert",
+    "ton_agent_run",
+    "ton_ingestion_job",
+    "ton_roi_registry",
 )
 
 # (table, column, referenced table, expected delete rule)
@@ -149,6 +149,77 @@ EXPECTED_FOREIGN_KEYS: tuple[tuple[str, str, str, str], ...] = (
     ("ton_contract__user_group", "user_group_id", "user_group", "CASCADE"),
     ("ton_occurrence__user_group", "occurrence_id", "ton_occurrence", "CASCADE"),
     ("ton_occurrence__user_group", "user_group_id", "user_group", "CASCADE"),
+    # 003d. RESTRICT on every pinned report input: a published revision must not
+    # be left with a number whose evidence has vanished. The per-key reasoning
+    # lives in `test_report_immutability.py`; they are repeated here because this
+    # assertion is whole-schema and catches a key added with no recorded decision.
+    ("ton_report", "business_unit_id", "ton_business_unit", "RESTRICT"),
+    ("ton_report", "created_by", "user", "SET NULL"),
+    ("ton_report_revision", "report_id", "ton_report", "CASCADE"),
+    ("ton_report_revision", "generated_by", "user", "SET NULL"),
+    (
+        "ton_report_revision",
+        "superseded_by_revision_id",
+        "ton_report_revision",
+        "SET NULL",
+    ),
+    ("ton_report_revision", "file_record_id", "file_record", "SET NULL"),
+    (
+        "ton_report_revision__analysis_run",
+        "report_revision_id",
+        "ton_report_revision",
+        "CASCADE",
+    ),
+    (
+        "ton_report_revision__analysis_run",
+        "analysis_run_id",
+        "ton_analysis_run",
+        "RESTRICT",
+    ),
+    (
+        "ton_report_revision__occurrence",
+        "report_revision_id",
+        "ton_report_revision",
+        "CASCADE",
+    ),
+    ("ton_report_revision__occurrence", "occurrence_id", "ton_occurrence", "RESTRICT"),
+    (
+        "ton_report_revision__finding",
+        "report_revision_id",
+        "ton_report_revision",
+        "CASCADE",
+    ),
+    ("ton_report_revision__finding", "finding_id", "ton_finding", "RESTRICT"),
+    (
+        "ton_report_revision__rule_version",
+        "report_revision_id",
+        "ton_report_revision",
+        "CASCADE",
+    ),
+    (
+        "ton_report_revision__rule_version",
+        "rule_version_id",
+        "ton_rule_version",
+        "RESTRICT",
+    ),
+    (
+        "ton_report_revision__source_snapshot",
+        "report_revision_id",
+        "ton_report_revision",
+        "CASCADE",
+    ),
+    (
+        "ton_report_revision__source_snapshot",
+        "source_snapshot_id",
+        "ton_source_snapshot",
+        "RESTRICT",
+    ),
+    ("ton_report__user_group", "report_id", "ton_report", "CASCADE"),
+    ("ton_report__user_group", "user_group_id", "user_group", "CASCADE"),
+    # `domain_event_id` deliberately has none: it points at whichever
+    # authoritative row an event attributes, and one column cannot key several
+    # tables.
+    ("ton_audit_event", "actor_user_id", "user", "SET NULL"),
 )
 
 # Monetary and quantity columns. Every one must be ``numeric``: a
@@ -210,17 +281,20 @@ class TestMigrationShape:
         assert table_names(ton_database, "ton_") == set(TON_TABLES_AT_HEAD)
 
     def test_003c_adds_exactly_twelve_tables(self, ton_database: str) -> None:
-        """Measured, not asserted from a list: downgrade to 003b and diff.
+        """Measured, not asserted from a list: step down one revision and diff.
 
         This is the assertion that catches a table smuggled into 003c without a
-        recorded decision, and the one that proves 003b's nine survive.
+        recorded decision, and the one that proves 003b's nine survive. It steps to
+        003c first rather than jumping from head, so a later slice's tables cannot
+        be counted as this slice's.
         """
-        at_head = table_names(ton_database)
+        downgrade(ton_database, REVISION_003C)
+        at_003c = table_names(ton_database)
 
         downgrade(ton_database, REVISION_003B)
 
         at_003b = table_names(ton_database)
-        assert at_head - at_003b == set(TON_003C_TABLES)
+        assert at_003c - at_003b == set(TON_003C_TABLES)
         assert table_names(ton_database, "ton_") == set(TON_003B_TABLES)
 
     def test_003c_downgrade_leaves_every_003b_structure_intact(
@@ -254,18 +328,21 @@ class TestMigrationShape:
         present = table_names(ton_database)
         for table in LATER_SLICE_TABLES:
             assert table not in present, (
-                f"{table} belongs to 003d and must not exist after 003c"
+                f"{table} belongs to Plan 004, 005 or 006 and must not exist yet"
             )
 
-    def test_creates_no_report_or_audit_table(self, ton_database: str) -> None:
+    def test_the_report_and_audit_tables_are_exactly_the_003d_set(
+        self, ton_database: str
+    ) -> None:
         """An inverse assertion by substring, so a differently named report or
-        audit table cannot slip past the explicit list above."""
-        forbidden = {
+        audit table cannot slip past the explicit lists. 003c created none of
+        these; 003d created all of them."""
+        present = {
             name
             for name in table_names(ton_database, "ton_")
             if "report" in name or "audit" in name
         }
-        assert forbidden == set()
+        assert present == set(TON_003D_TABLES)
 
     def test_creates_no_roi_table(self, ton_database: str) -> None:
         """Realised ROI is a derived aggregation over verified impact rows, not a
@@ -323,10 +400,10 @@ class TestFailClosedSchema:
         for table in TON_TABLES_AT_HEAD:
             assert column_names(ton_database, table) & forbidden == set()
 
-    def test_the_three_acl_junctions_exist(self, ton_database: str) -> None:
-        """Three, not four. ``ton_report__user_group`` arrives with its table in
-        003d — a junction to a table that does not exist would authorize
-        nothing."""
+    def test_the_four_acl_junctions_exist(self, ton_database: str) -> None:
+        """003c created three; ``ton_report__user_group`` arrived with its table in
+        003d, because a junction to a table that does not exist would authorize
+        nothing (decision D-043)."""
         junctions = {
             name for name in table_names(ton_database, "ton_") if "__user_group" in name
         }
@@ -334,6 +411,7 @@ class TestFailClosedSchema:
             "ton_business_unit__user_group",
             "ton_contract__user_group",
             "ton_occurrence__user_group",
+            "ton_report__user_group",
         }
 
     def test_finding_and_evidence_have_no_acl_junction(self, ton_database: str) -> None:

@@ -107,6 +107,16 @@ class AuditAction(str, Enum):
     # partial authority, not on every 403.
     PERMISSION_DENIED = "permission.denied"
 
+    # TON attributed actions (Plan 003d). These are the four events readiness §11
+    # assigns to the persistent `ton_audit_event` table rather than to a domain
+    # history table: the domain row records *what* changed and is transactional,
+    # while these record *who* did it and are best-effort. Emitting one does not
+    # replace writing the domain row -- see `onyx.db.ton.audit`.
+    TON_REPORT_GENERATE = "ton_report.generate"
+    TON_RULE_VERSION_CHANGE = "ton_rule_version.change"
+    TON_MANUAL_OVERRIDE = "ton_occurrence.manual_override"
+    TON_HUMAN_APPROVAL = "ton_occurrence.human_approval"
+
 
 _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
     AuditAction.LOGIN: OCSFEventClass.AUTHENTICATION,
@@ -152,6 +162,12 @@ _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
     # OCSF has no authorization-denial class, so a refused request maps onto the
     # request surface instead.
     AuditAction.PERMISSION_DENIED: OCSFEventClass.API_ACTIVITY,
+    # OCSF has no business-domain class either. These are resource actions, so
+    # they map onto the API activity surface like the other resource CRUD above.
+    AuditAction.TON_REPORT_GENERATE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_RULE_VERSION_CHANGE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_MANUAL_OVERRIDE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_HUMAN_APPROVAL: OCSFEventClass.API_ACTIVITY,
 }
 
 # Guard: every action must map to a class, so a new action can't ship untagged.
@@ -161,6 +177,17 @@ if _unmapped:
         f"AuditAction members missing an OCSF class mapping: "
         f"{sorted(a.value for a in _unmapped)}"
     )
+
+
+def ocsf_class_for(action: AuditAction) -> OCSFEventClass | None:
+    """The OCSF class an action is tagged with.
+
+    A public accessor over the mapping above, so a second audit sink (the
+    persistent `ton_audit_event` table) records the same class as the stdout
+    stream instead of reading a private module attribute or keeping its own copy
+    that could drift.
+    """
+    return _OCSF_CLASS_BY_ACTION.get(action)
 
 
 @dataclass(frozen=True)

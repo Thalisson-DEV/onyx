@@ -69,8 +69,9 @@ from onyx.db.ton.occurrences import (
     resolve_post_resolution_policy,
 )
 
-# The twelve tables Plan 003c adds, plus the nine from 003b. The inverse
-# assertions run over the whole set.
+# The twelve tables Plan 003c adds, plus the nine from 003b and the nine from
+# 003d. The inverse assertions run over the whole set, so a table added by a later
+# slice cannot escape them by being listed only in that slice's own file.
 TON_003B_TABLES: tuple[str, ...] = (
     "ton_business_unit",
     "ton_contract",
@@ -96,7 +97,18 @@ TON_003C_TABLES: tuple[str, ...] = (
     "ton_contract__user_group",
     "ton_occurrence__user_group",
 )
-TON_TABLE_NAMES: tuple[str, ...] = TON_003B_TABLES + TON_003C_TABLES
+TON_003D_TABLES: tuple[str, ...] = (
+    "ton_report",
+    "ton_report_revision",
+    "ton_report_revision__analysis_run",
+    "ton_report_revision__occurrence",
+    "ton_report_revision__finding",
+    "ton_report_revision__rule_version",
+    "ton_report_revision__source_snapshot",
+    "ton_report__user_group",
+    "ton_audit_event",
+)
+TON_TABLE_NAMES: tuple[str, ...] = TON_003B_TABLES + TON_003C_TABLES + TON_003D_TABLES
 
 BASE_COMPONENTS = ["rule_code", "business_unit_id", "period"]
 BASE_VALUES: dict[str, object | None] = {
@@ -661,9 +673,12 @@ class TestFailClosedMetadata:
             table = Base.metadata.tables[table_name]
             assert set(table.columns.keys()) & forbidden == set()
 
-    def test_the_metadata_holds_exactly_the_twenty_one_ton_tables(self) -> None:
+    def test_the_metadata_holds_exactly_the_thirty_ton_tables(self) -> None:
+        """Nine from 003b, twelve from 003c, nine from 003d. Measured against the
+        mapper, so a model added without being classified fails here."""
         ton_tables = {name for name in Base.metadata.tables if name.startswith("ton_")}
         assert ton_tables == set(TON_TABLE_NAMES)
+        assert len(TON_TABLE_NAMES) == 30
 
     def test_no_ton_model_writes_to_a_source_system(self) -> None:
         """The advisory boundary is enforced by absence: no column here can carry
@@ -683,8 +698,9 @@ class TestFailClosedMetadata:
                     fragment in column.name for fragment in forbidden_fragments
                 )
 
-    def test_exactly_three_acl_junctions_exist(self) -> None:
-        """``TonReport__UserGroup`` arrives with its table in 003d."""
+    def test_exactly_four_acl_junctions_exist(self) -> None:
+        """``TonReport__UserGroup`` arrived with its table in 003d, completing the
+        set readiness §10 specifies (decision D-043)."""
         junctions = {
             name
             for name in Base.metadata.tables
@@ -694,6 +710,7 @@ class TestFailClosedMetadata:
             "ton_business_unit__user_group",
             "ton_contract__user_group",
             "ton_occurrence__user_group",
+            "ton_report__user_group",
         }
 
 
@@ -921,13 +938,14 @@ class TestOccurrencePermissionTokens:
                 "Groups administration cannot grant it"
             )
 
-    def test_no_report_token_is_added_early(self) -> None:
+    def test_the_report_tokens_arrived_with_their_table(self) -> None:
         """A grantable permission whose resource does not exist authorizes nothing
-        while telling an administrator otherwise. Report tokens wait for 003d."""
-        for permission in Permission:
-            if "ton" not in permission.value:
-                continue
-            assert "report" not in permission.value
+        while telling an administrator otherwise. The report tokens waited for
+        003d, and ``ton_report`` now exists."""
+        assert Permission.READ_TON_REPORTS.value == "read:ton_reports"
+        assert Permission.MANAGE_TON_REPORTS.value == "manage:ton_reports"
+        assert "ton_report" in Base.metadata.tables
+        assert "ton_report__user_group" in Base.metadata.tables
 
     def test_manage_ton_rules_stays_out_of_the_scoped_bundle(self) -> None:
         """003b's decision, re-asserted: activating a threshold is a company-wide
@@ -964,14 +982,19 @@ class TestModuleBoundaries:
         ):
             assert hasattr(ton_models, expected)
 
-    def test_no_report_or_audit_model_exists(self) -> None:
-        for forbidden in (
+    def test_the_nine_003d_models_exist(self) -> None:
+        for expected in (
             "TonReport",
             "TonReportRevision",
+            "TonReportRevision__AnalysisRun",
+            "TonReportRevision__Occurrence",
+            "TonReportRevision__Finding",
+            "TonReportRevision__RuleVersion",
+            "TonReportRevision__SourceSnapshot",
             "TonReport__UserGroup",
             "TonAuditEvent",
         ):
-            assert not hasattr(ton_models, forbidden), f"{forbidden} belongs to 003d"
+            assert hasattr(ton_models, expected)
 
     def test_no_finding_or_evidence_acl_junction_model_exists(self) -> None:
         for forbidden in ("Finding__UserGroup", "FindingEvidence__UserGroup"):

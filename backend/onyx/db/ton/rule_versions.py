@@ -14,11 +14,14 @@ NC mapping and no Vale Norte value appears in this file or in the migration.
 
 import datetime
 from collections.abc import Sequence
+from dataclasses import dataclass, field
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from onyx.db.ton.canonical import CANONICALIZATION_VERSION, compute_content_hash
 from onyx.db.ton.enums import (
     EvidenceConfidenceLevel,
     MissingDataBehavior,
@@ -147,6 +150,13 @@ def create_rule_version__no_commit(
         created_by=created_by,
     )
     db_session.add(rule_version)
+    # Flushed before hashing so `version` is settled — it is part of the
+    # canonical definition, and a server-assigned value would otherwise be absent.
+    db_session.flush()
+
+    rule_version.definition_hash = compute_definition_hash(
+        rule_version, rule_code=rule.code
+    )
     db_session.flush()
     return rule_version
 
@@ -254,3 +264,217 @@ def get_effective_rule_version(
         .all()
     )
     return select_effective_rule_version(list(versions), on_date)
+
+
+# ---------------------------------------------------------------------------
+# Plan 003d — the canonical definition hash.
+#
+# 003b created `RuleVersion.definition_hash` nullable and left it unwritten on
+# purpose: the canonical serialisation was specified in readiness §12 but not
+# implemented, and a hash recorded under an ad-hoc scheme would have been
+# meaningless. `ton-canon-1` now exists, so this is where the column is filled.
+# ---------------------------------------------------------------------------
+
+# The business definition, and only the business definition. Two rows carrying
+# the same values here describe the same rule and must hash identically, whenever
+# and wherever they were stored.
+RULE_VERSION_DEFINITION_FIELDS: tuple[str, ...] = (
+    "rule_code",
+    "version",
+    "title",
+    "description",
+    "executor_key",
+    "parameters",
+    "unit",
+    "currency",
+    "scale",
+    "rounding_mode",
+    "applicability",
+    "effective_from",
+    "effective_to",
+    "source_reference",
+    "provenance",
+    "missing_data_behavior",
+    "evidence_requirements",
+    "min_confidence_level",
+    "severity_mapping",
+    "nc_code",
+    "identity_components",
+    "post_resolution_policy",
+)
+
+# Columns deliberately outside the canonical definition, with the reason:
+#
+# * `id`, `rule_id` — database surrogates. `rule_code` is the business identity,
+#   and Prompt Mestre §7 forbids renaming it, so it is the stable choice.
+# * `status`, `approved_by`, `approved_at`, `approval_reference` — approval
+#   *execution* state. Readiness does not put it in the canonical definition, and
+#   including it would make one unchanged definition hash differently before and
+#   after it was approved, which defeats the tamper check.
+# * `created_at`, `updated_at`, `created_by` — facts about the row, not the rule.
+#   These are exactly the "mutable runtime database facts" that must not make the
+#   same definition hash differently merely because it was stored at another time.
+# * `definition_hash` — itself.
+RULE_VERSION_NON_DEFINITION_COLUMNS: frozenset[str] = frozenset(
+    {
+        "id",
+        "rule_id",
+        "status",
+        "approved_by",
+        "approved_at",
+        "approval_reference",
+        "created_at",
+        "updated_at",
+        "created_by",
+        "definition_hash",
+    }
+)
+
+
+@dataclass(frozen=True)
+class DefinitionHashBackfill:
+    """Outcome of :func:`backfill_definition_hashes__no_commit`."""
+
+    hashed: int = 0
+    already_hashed: int = 0
+    # Rows that could not be canonicalised, with the reason. Reported rather than
+    # papered over: a fabricated hash is worse than an absent one.
+    failed: list[tuple[UUID, str]] = field(default_factory=list)
+
+
+def rule_version_definition_payload(
+    rule_version: RuleVersion, *, rule_code: str
+) -> dict[str, Any]:
+    """The canonical business definition of *rule_version*.
+
+    Exposed, like :func:`onyx.db.ton.identity.canonical_identity_payload`, so a
+    test can assert the payload rather than only the digest — a digest mismatch
+    cannot show *which* field moved.
+
+    ``rule_code`` is a parameter rather than read from the relationship so this
+    stays pure: no session, no lazy load, and callable on an unpersisted row.
+    """
+    if not rule_code or not rule_code.strip():
+        raise ValueError(
+            "rule_code is required: it is the stable business identity of the "
+            "rule this definition belongs to."
+        )
+
+    return {
+        "rule_code": rule_code.strip(),
+        "version": rule_version.version,
+        "title": rule_version.title,
+        "description": rule_version.description,
+        "executor_key": rule_version.executor_key,
+        "parameters": rule_version.parameters,
+        "unit": rule_version.unit,
+        "currency": rule_version.currency,
+        "scale": rule_version.scale,
+        "rounding_mode": rule_version.rounding_mode,
+        "applicability": rule_version.applicability,
+        "effective_from": rule_version.effective_from,
+        "effective_to": rule_version.effective_to,
+        "source_reference": rule_version.source_reference,
+        "provenance": rule_version.provenance,
+        "missing_data_behavior": rule_version.missing_data_behavior,
+        "evidence_requirements": rule_version.evidence_requirements,
+        "min_confidence_level": rule_version.min_confidence_level,
+        "severity_mapping": rule_version.severity_mapping,
+        "nc_code": rule_version.nc_code,
+        # Re-normalised rather than taken as stored: two versions declaring the
+        # same dimensions in a different order declare the same definition.
+        "identity_components": validate_identity_components(
+            rule_version.identity_components
+        ),
+        "post_resolution_policy": rule_version.post_resolution_policy,
+    }
+
+
+def compute_definition_hash(rule_version: RuleVersion, *, rule_code: str) -> str:
+    """Tamper evidence over the canonical definition of *rule_version*.
+
+    Scheme-prefixed, as :func:`onyx.db.ton.identity.compute_identity_key` is, and
+    unlike ``TonReportRevision.content_hash``: a revision stores its
+    ``canonicalization_version`` in its own column, whereas ``definition_hash`` has
+    no companion column, so the scheme travels inside the value. A future scheme
+    change is then visible instead of producing a silently incomparable digest.
+
+    Raises ``ValueError`` if the definition cannot be canonicalised — most often a
+    float that reached ``parameters`` through JSONB. That is deliberate: a
+    threshold stored as an IEEE-754 double is not exactly reproducible, and
+    hashing it anyway would record tamper evidence that cannot be re-derived.
+    """
+    payload = rule_version_definition_payload(rule_version, rule_code=rule_code)
+    return f"{CANONICALIZATION_VERSION}:{compute_content_hash(payload)}"
+
+
+def set_definition_hash__no_commit(
+    db_session: Session, *, rule_version: RuleVersion
+) -> str:
+    """Compute and store the definition hash of *rule_version*.
+
+    Reads the rule code through the relationship, so unlike
+    :func:`compute_definition_hash` this one needs a session.
+    """
+    digest = compute_definition_hash(rule_version, rule_code=rule_version.rule.code)
+    rule_version.definition_hash = digest
+    db_session.flush()
+    return digest
+
+
+def definition_hash_matches(rule_version: RuleVersion, *, rule_code: str) -> bool:
+    """Whether the stored hash still matches the stored definition.
+
+    ``False`` for an unhashed row: absence of evidence is not evidence of
+    integrity, and answering ``True`` would let a NULL pass a tamper check.
+    """
+    if rule_version.definition_hash is None:
+        return False
+    return rule_version.definition_hash == compute_definition_hash(
+        rule_version, rule_code=rule_code
+    )
+
+
+def backfill_definition_hashes__no_commit(
+    db_session: Session,
+) -> DefinitionHashBackfill:
+    """Fill ``definition_hash`` on rows that have none, under ``ton-canon-1``.
+
+    The production migration seeds zero rule versions, so on a real deployment
+    this finds nothing. It exists for a development or disposable database that
+    holds legitimate rows created before 003d.
+
+    Three properties matter, and each is the reason the column stays nullable:
+
+    * **Nothing is deleted or recreated.** Only ``definition_hash`` is written.
+    * **A row already carrying a hash is left alone**, so re-running cannot
+      overwrite recorded tamper evidence.
+    * **A row that cannot be canonicalised is reported, not fabricated.** Making
+      the column NOT NULL would force a value for such a row, and inventing one
+      would defeat the purpose of the column. Readiness requires no NOT NULL here,
+      so the safe shape is a nullable column plus this reported backfill.
+    """
+    result = DefinitionHashBackfill(failed=[])
+    hashed = 0
+    already_hashed = 0
+
+    rows = db_session.scalars(
+        select(RuleVersion).order_by(RuleVersion.rule_id, RuleVersion.version)
+    ).all()
+    for rule_version in rows:
+        if rule_version.definition_hash is not None:
+            already_hashed += 1
+            continue
+        try:
+            rule_version.definition_hash = compute_definition_hash(
+                rule_version, rule_code=rule_version.rule.code
+            )
+        except ValueError as error:
+            result.failed.append((rule_version.id, str(error)))
+            continue
+        hashed += 1
+
+    db_session.flush()
+    return DefinitionHashBackfill(
+        hashed=hashed, already_hashed=already_hashed, failed=result.failed
+    )

@@ -1,4 +1,4 @@
-"""Fail-closed resource authorization for TON (Plan 003c).
+"""Fail-closed resource authorization for TON (Plans 003c and 003d).
 
 This module lives in the Community tree deliberately. ``update_persona_access``
 in the CE tree raises ``NotImplementedError("Onyx MIT does not support
@@ -54,6 +54,21 @@ non-public — and with the caller's own groups as the managed set. The result: 
 non-admin may act on a case only when *every* group it is shared with is one they
 belong to. Reaching a case that finance also sees, and then adding a group finance
 cannot see, is not expressible.
+
+## Plan 003d — reports, on the same four decisions
+
+003c deferred ``TonReport__UserGroup`` because ``TonReport`` did not exist yet
+(decision D-043). 003d adds it and the predicates over it, and adds **nothing
+else**: no second authorization framework, no report-specific share level, no
+report-specific bypass. ``READ_TON_REPORTS`` and ``MANAGE_TON_REPORTS`` behave
+exactly as their occurrence counterparts — the admin bypass is still
+``FULL_ADMIN_PANEL_ACCESS``, neither token is in ``SCOPED_MANAGER_PERMISSIONS``,
+and zero junction rows still means DENIED.
+
+One derivation is worth stating: **a revision inherits its report's
+authorization**, exactly as a finding inherits its occurrence's. A second junction
+on the revision would be two ACLs over one published document, and one would
+eventually grant what the other denies.
 """
 
 from collections.abc import Mapping
@@ -79,6 +94,9 @@ from onyx.db.ton.models import (
     FindingEvidence,
     Occurrence,
     Occurrence__UserGroup,
+    TonReport,
+    TonReport__UserGroup,
+    TonReportRevision,
 )
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
@@ -700,14 +718,18 @@ def _deny(
     gate: str,
     *,
     occurrence_id: UUID | None = None,
+    report_id: UUID | None = None,
     extra_group_ids: list[int] | None = None,
 ) -> None:
     """Raise the standard denial.
 
-    Emits nothing to a persistent audit table: 003c creates none, and the existing
-    stdout audit stream is unchanged. 003d owns persistent generic audit.
+    Emits nothing here. 003d does add a persistent audit table, but writing one
+    row per refused authorization check would let an unauthenticated caller grow
+    the table at will; the existing stdout stream already carries
+    ``AuditAction.PERMISSION_DENIED`` for the scoped write gates.
+    :mod:`onyx.db.ton.audit` is for attributed *actions*, not for denials.
     """
-    del user, gate, occurrence_id, extra_group_ids  # kept for call-site clarity
+    del user, gate, occurrence_id, report_id, extra_group_ids  # call-site clarity
     raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS, _DENIED_MESSAGE)
 
 
@@ -720,3 +742,368 @@ def ton_permission_authority(user: User, permission: Permission) -> PermissionAu
     granted.
     """
     return has_permission(user, permission)
+
+
+# ---------------------------------------------------------------------------
+# Plan 003d — reports. The fourth junction, and nothing new besides.
+# ---------------------------------------------------------------------------
+
+
+def holds_ton_report_read_capability(user: User) -> bool:
+    """Whether *user* holds a token that admits them to TON report reads."""
+    return has_global_permission(
+        user, Permission.READ_TON_REPORTS
+    ) or has_global_permission(user, Permission.MANAGE_TON_REPORTS)
+
+
+def holds_ton_report_manage_capability(user: User) -> bool:
+    """Whether *user* holds the TON report write token globally."""
+    return has_global_permission(user, Permission.MANAGE_TON_REPORTS)
+
+
+def report_visible_clause(user: User) -> ColumnElement[bool]:
+    """Whether *user* may read a report.
+
+    Two conditions, both required, mirroring
+    :func:`occurrence_visible_clause` minus the contract leg — readiness gives
+    ``TonReport`` a business-unit scope and no contract column:
+
+    1. a junction row for one of the caller's groups — the resource ACL;
+    2. authorization for the owning business unit, when the report names one.
+
+    Condition 2 is what keeps cross-unit denial holding even if a report junction
+    row is created by mistake: an HR-scoped group with no authorization for the
+    financial unit still cannot read its reports.
+    """
+    if is_ton_administrator(user):
+        return sa.true()
+
+    shared = _shared_with_user_group(
+        resource_id_col=TonReport.id,
+        junction_resource_col=TonReport__UserGroup.report_id,
+        junction_group_col=TonReport__UserGroup.user_group_id,
+        user=user,
+    )
+    unit_ok = or_(
+        TonReport.business_unit_id.is_(None),
+        exists(
+            select(BusinessUnit__UserGroup.business_unit_id)
+            .join(
+                User__UserGroup,
+                User__UserGroup.user_group_id == BusinessUnit__UserGroup.user_group_id,
+            )
+            .where(
+                BusinessUnit__UserGroup.business_unit_id == TonReport.business_unit_id,
+                User__UserGroup.user_id == user.id,
+            )
+        ),
+    )
+    return and_(shared, unit_ok)
+
+
+def report_editable_clause(user: User) -> ColumnElement[bool]:
+    """Whether *user* may publish a revision of a report.
+
+    The same construction as :func:`occurrence_editable_clause`:
+    ``within_managed_scope_clause`` with the caller's own groups as the managed
+    set, so acting on a report shared with a group they cannot reach is not
+    expressible, plus a required EDITOR row — a VIEWER share reads and nothing
+    more.
+
+    "Editable" never means editing a published revision. Nothing can: revisions
+    are immutable, and this predicate authorizes *publishing the next one*.
+    """
+    if is_ton_administrator(user):
+        return sa.true()
+    if not holds_ton_report_manage_capability(user):
+        return sa.false()
+
+    every_group_is_the_callers = within_managed_scope_clause(
+        resource_id_col=TonReport.id,
+        junction_resource_col=TonReport__UserGroup.report_id,
+        junction_group_col=TonReport__UserGroup.user_group_id,
+        non_public_clause=TON_NON_PUBLIC_CLAUSE,
+        managed_subq=user_group_ids_subquery(user),
+    )
+    has_editor_row = (
+        select(TonReport__UserGroup.report_id)
+        .join(
+            User__UserGroup,
+            User__UserGroup.user_group_id == TonReport__UserGroup.user_group_id,
+        )
+        .where(
+            TonReport__UserGroup.report_id == TonReport.id,
+            TonReport__UserGroup.permission == TonSharePermission.EDITOR,
+            User__UserGroup.user_id == user.id,
+        )
+        .exists()
+    )
+    return and_(every_group_is_the_callers, has_editor_row)
+
+
+def report_revision_visible_clause(user: User) -> ColumnElement[bool]:
+    """Whether *user* may read a published revision.
+
+    Derived entirely from the owning report. :class:`TonReportRevision` has no
+    junction of its own, for the same reason :class:`Finding` has none.
+    """
+    if is_ton_administrator(user):
+        return sa.true()
+    return exists(
+        select(TonReport.id).where(
+            TonReport.id == TonReportRevision.report_id, report_visible_clause(user)
+        )
+    )
+
+
+def fetch_reports_for_user(
+    db_session: Session,
+    user: User,
+    *,
+    editable: bool = False,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[TonReport]:
+    """Reports *user* may see, newest scope first.
+
+    Ordered by ``(period_start, code)``: ``period_start`` is nullable and not a
+    total order, so ``code`` is the tiebreaker and pagination cannot return
+    duplicates.
+    """
+    if not holds_ton_report_read_capability(user) and not is_ton_administrator(user):
+        return []
+
+    clause = report_editable_clause(user) if editable else report_visible_clause(user)
+    stmt = (
+        select(TonReport)
+        .where(clause)
+        .order_by(TonReport.period_start.desc().nullslast(), TonReport.code)
+        .offset(offset)
+    )
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return list(db_session.scalars(stmt).all())
+
+
+def get_report_for_user(
+    db_session: Session,
+    user: User,
+    report_id: UUID,
+    *,
+    editable: bool = False,
+) -> TonReport:
+    """One report by id, or raise. Same predicate as the list path.
+
+    Raises the same error whether the row is absent or merely forbidden: telling a
+    caller that a report exists but is not theirs already leaks the report.
+    """
+    if not holds_ton_report_read_capability(user) and not is_ton_administrator(user):
+        raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS, _DENIED_MESSAGE)
+
+    clause = report_editable_clause(user) if editable else report_visible_clause(user)
+    report = db_session.scalars(
+        select(TonReport).where(TonReport.id == report_id, clause)
+    ).one_or_none()
+    if report is None:
+        raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS, _DENIED_MESSAGE)
+    return report
+
+
+def fetch_report_revisions_for_user(
+    db_session: Session, user: User, *, report_id: UUID | None = None
+) -> list[TonReportRevision]:
+    """Published revisions *user* may see, optionally narrowed to one report."""
+    if not holds_ton_report_read_capability(user) and not is_ton_administrator(user):
+        return []
+
+    stmt = select(TonReportRevision).where(report_revision_visible_clause(user))
+    if report_id is not None:
+        stmt = stmt.where(TonReportRevision.report_id == report_id)
+    return list(
+        db_session.scalars(
+            stmt.order_by(TonReportRevision.revision_no, TonReportRevision.id)
+        ).all()
+    )
+
+
+def get_report_revision_for_user(
+    db_session: Session, user: User, revision_id: UUID
+) -> TonReportRevision:
+    """One revision by id, or raise. Same predicate as the list path."""
+    if not holds_ton_report_read_capability(user) and not is_ton_administrator(user):
+        raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS, _DENIED_MESSAGE)
+
+    revision = db_session.scalars(
+        select(TonReportRevision).where(
+            TonReportRevision.id == revision_id,
+            report_revision_visible_clause(user),
+        )
+    ).one_or_none()
+    if revision is None:
+        raise OnyxError(OnyxErrorCode.INSUFFICIENT_PERMISSIONS, _DENIED_MESSAGE)
+    return revision
+
+
+def assert_can_manage_report(
+    db_session: Session, *, user: User, report: TonReport
+) -> None:
+    """GATE 2 for publishing a revision. Raises 403 when out of scope.
+
+    Re-reads the current group relationships **inside the transaction** with
+    ``FOR UPDATE``, so a concurrent reshare cannot slip between the check and the
+    write, and never trusts group ids from the request.
+    """
+    if is_ton_administrator(user):
+        return
+    if not holds_ton_report_manage_capability(user):
+        _deny(user, "manage_report", report_id=report.id)
+
+    current = _locked_report_group_ids(db_session, report.id)
+    if not current:
+        # Fail-closed: an unshared report is reachable only by an administrator.
+        _deny(user, "manage_report_unshared", report_id=report.id)
+
+    editor_groups = _report_editor_group_ids(db_session, report.id, user)
+    own_groups = fetch_user_group_ids(db_session, user)
+    if not editor_groups or not current.issubset(own_groups):
+        _deny(user, "manage_report_out_of_scope", report_id=report.id)
+
+
+def assert_can_delete_report(
+    db_session: Session, *, user: User, report: TonReport
+) -> None:
+    """Deletion is the strictest gate: global authority **and** resource scope.
+
+    ``assert_global`` first, as readiness §10 correction 5 requires — never an
+    ``allow_scope`` shortcut on a delete path. That alone excludes a scoped group
+    manager, who resolves ``NONE`` for every TON token.
+
+    Deleting a report destroys its published revisions, which are immutable
+    evidence, so a group granted the capability must not be able to destroy a
+    report it could not even read.
+    """
+    assert_global(user, permission=Permission.MANAGE_TON_REPORTS)
+    if is_ton_administrator(user):
+        return
+    assert_can_manage_report(db_session, user=user, report=report)
+
+
+def set_report_groups__no_commit(
+    db_session: Session,
+    *,
+    user: User,
+    report: TonReport,
+    group_permissions: Mapping[int, TonSharePermission],
+) -> list[TonReport__UserGroup]:
+    """Replace the group authorizations of *report*.
+
+    Lives in the Community tree and works unconditionally, like every other TON
+    ACL write: a CE-resolved worker must not silently write zero junction rows,
+    because with the fail-closed default that would make the report invisible.
+
+    A non-administrator may neither reach outside their own groups nor add a group
+    they do not belong to.
+    """
+    requested = dict(group_permissions)
+    assert_can_manage_report(db_session, user=user, report=report)
+
+    if not is_ton_administrator(user):
+        own_groups = fetch_user_group_ids(db_session, user)
+        widened = set(requested) - own_groups
+        if widened:
+            _deny(
+                user,
+                "widen_report_groups",
+                report_id=report.id,
+                extra_group_ids=sorted(widened),
+            )
+        if not requested:
+            # Removing the last authorization would orphan the report behind the
+            # fail-closed default and lose the caller's own access with it.
+            _deny(user, "orphan_report", report_id=report.id)
+
+    for existing in db_session.scalars(
+        select(TonReport__UserGroup)
+        .where(TonReport__UserGroup.report_id == report.id)
+        .with_for_update()
+    ).all():
+        db_session.delete(existing)
+    db_session.flush()
+
+    rows = [
+        TonReport__UserGroup(
+            report_id=report.id, user_group_id=group_id, permission=permission
+        )
+        for group_id, permission in requested.items()
+    ]
+    db_session.add_all(rows)
+    db_session.flush()
+    return rows
+
+
+def report_group_ids(db_session: Session, report_id: UUID) -> set[int]:
+    """The groups currently authorized for a report. Introspection, not a gate."""
+    return set(
+        db_session.scalars(
+            select(TonReport__UserGroup.user_group_id).where(
+                TonReport__UserGroup.report_id == report_id
+            )
+        ).all()
+    )
+
+
+def user_report_share_permission(
+    db_session: Session, *, user: User, report_id: UUID
+) -> TonSharePermission | None:
+    """The best share level *user* holds on a report, or ``None``.
+
+    A hint for hiding a UI affordance. The write gate still refuses a direct call.
+    """
+    levels = set(
+        db_session.scalars(
+            select(TonReport__UserGroup.permission)
+            .join(
+                User__UserGroup,
+                User__UserGroup.user_group_id == TonReport__UserGroup.user_group_id,
+            )
+            .where(
+                TonReport__UserGroup.report_id == report_id,
+                User__UserGroup.user_id == user.id,
+            )
+        ).all()
+    )
+    if TonSharePermission.EDITOR in levels:
+        return TonSharePermission.EDITOR
+    if TonSharePermission.VIEWER in levels:
+        return TonSharePermission.VIEWER
+    return None
+
+
+def _locked_report_group_ids(db_session: Session, report_id: UUID) -> set[int]:
+    """Current authorizations, read ``FOR UPDATE`` inside the transaction."""
+    return set(
+        db_session.scalars(
+            select(TonReport__UserGroup.user_group_id)
+            .where(TonReport__UserGroup.report_id == report_id)
+            .with_for_update()
+        ).all()
+    )
+
+
+def _report_editor_group_ids(
+    db_session: Session, report_id: UUID, user: User
+) -> set[int]:
+    return set(
+        db_session.scalars(
+            select(TonReport__UserGroup.user_group_id)
+            .join(
+                User__UserGroup,
+                User__UserGroup.user_group_id == TonReport__UserGroup.user_group_id,
+            )
+            .where(
+                TonReport__UserGroup.report_id == report_id,
+                TonReport__UserGroup.permission == TonSharePermission.EDITOR,
+                User__UserGroup.user_id == user.id,
+            )
+        ).all()
+    )

@@ -39,11 +39,17 @@ cleanup. Domain schema and production rules must wait for the decisions in
 | 002 | Tenant, upload, error, trace and telemetry boundaries | 001 | DONE |
 | 003 | Rule/analysis/Finding/Occurrence/Report contract and migrations | 001, 002, decision approval | TODO |
 | 004 | File lifecycle, ingestion, knowledge and quality hooks | 001, 002, 003 | TODO |
-| 005 | Specialist agents and native supervisor extension | 002, 003, 004 | TODO |
-| 006 | Reports, alerts, administration and scheduled processing | 001, 002, 003, 004, 005 | TODO |
+| 005 | Specialist agents and native supervisor extension | 002, 003, 004, 008a | TODO |
+| 006 | Reports, alerts, administration and scheduled processing | 001, 002, 003, 004, 005, 008a | TODO |
 | 007 | Deployment credential hardening and generated artifact sync | 001, 002 | PARTIAL: credentials and artifact sync DONE; provider-secret encryption blocked on Plan 003 |
-| 008 | Web-only product surface and shared-contract gate | 001, 002, 006, 007 | TODO |
+| 008a | Capability/authorization separated from commercial tier (Groups + permission grants) | 001, 002 | DONE for the P0 Groups slice; branding and other gates deliberately deferred |
+| 008b | Web-only product surface and shared-contract gate | 001, 002, 006, 007, 008a | TODO |
 | 009 | Telegram channel adapter | 002, 005, 006 | BLOCKED: channel contract unavailable |
+
+Plan 008 is split. `008a-capability-gates.md` owns the backend
+entitlement→capability transformation and is done for the P0 Groups/RBAC slice.
+`008-web-only-product.md` remains the surface slice (008b) and is still TODO;
+it must not be marked complete because of 008a.
 
 ## Dependency graph
 
@@ -55,9 +61,17 @@ cleanup. Domain schema and production rules must wait for the decisions in
               -> 005 agents/orchestration
                   -> 006 reports/alerts/admin/schedules
 001 + 002 -> 007 deployment hardening
-001 + 002 + 006 + 007 -> 008 web-only product surface
+001 + 002 -> 008a capability/authorization gates
+008a -> 005 agents (specialist group sharing)
+008a -> 006 reports/admin (group-scoped report ACLs)
+001 + 002 + 006 + 007 + 008a -> 008b web-only product surface
 002 + 005 + 006 -> 009 Telegram channel adapter
 ```
+
+Plan 005 depends on 008a because specialist agents are shared per business unit
+through `Persona__UserGroup`, which is administered on the group routes. Plan 006
+depends on 008a because group-scoped report and finding ACLs reuse the same group
+primitives.
 
 ## Implementation strategy
 
@@ -90,7 +104,7 @@ plans are linked. Unresolved report conflicts remain visible in
 
 ## Done criteria
 
-- [ ] All nine executable plans exist and are linked from `plans/ton/README.md`.
+- [ ] All executable plans exist and are linked from `plans/ton/backend/README.md`.
 - [ ] Dependencies prevent schema work before decision approval.
 - [ ] Every phase has a named test spec and verification gate.
 - [ ] Web-only cleanup is last and contract-gated.

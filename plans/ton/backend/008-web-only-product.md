@@ -1,7 +1,15 @@
 # Plan 008: Ship the TON web-only product surface
 
+> **Plan split (2026-09-15)**: the backend entitlement→capability transformation
+> moved out of this plan into `008a-capability-gates.md`, which is DONE for the
+> P0 Groups/RBAC slice. This plan is the remaining surface slice (008b) and stays
+> TODO. Do not treat 008 as complete because 008a is. Backend commercial gates,
+> `PATH_PREFIX_MIN_TIER`, `tier_gate`, `license_enforcement` and
+> `apply_license_status_to_settings` are 008a's scope, not this one's. Billing,
+> Stripe, subscription and license-surface cleanup remain here.
+
 > **Executor instructions**: Run this final product slice only after Plans 001,
-> 002, 006 and 007 are DONE. Preserve shared API, authentication, queue,
+> 002, 006, 007 and 008a are DONE. Preserve shared API, authentication, queue,
 > storage, search, worker, beat, health and monitoring contracts. Do not remove
 > mobile, desktop, widget or extension consumers from lack of V1 UI usage.
 >
@@ -11,11 +19,14 @@
 
 ## Status
 
+- **State**: TODO. The backend gate layer was split out and completed as Plan
+  008a; the surface work in this plan has not started.
 - **Priority**: P1
 - **Effort**: M
 - **Risk**: HIGH
 - **Depends on**: `001-baseline-contracts.md`, `002-security-privacy.md`,
-  `006-reports-schedules-admin.md`, `007-deployment-hardening.md`
+  `006-reports-schedules-admin.md`, `007-deployment-hardening.md`,
+  `008a-capability-gates.md`
 - **Category**: direction
 - **Planned at**: commit `a0370f232b`, 2026-09-13
 

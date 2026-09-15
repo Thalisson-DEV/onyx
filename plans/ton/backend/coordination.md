@@ -45,7 +45,8 @@ interaction.
 | 004 | TON-FE-006 and TON-FE-007 | File lifecycle and source contracts precede UX claims. |
 | 005 | TON-FE-005 | Specialist UI consumes authorized agent capabilities. |
 | 006 | TON-FE-008 and TON-FE-009 | Lifecycle, schedule, and reporting APIs precede UI. |
-| 008 | TON-FE-003 | Backend gates remain authoritative when surfaces are hidden. |
+| 008a | TON-FE-003, TON-FE-004 | Backend decides capability availability. FE-003 hid commerce surfaces without changing authorization; 008a removed the product-tier requirement from Groups. The frontend still mirrors the old commercial check for group affordances — the narrow follow-up is listed in `008a-capability-gates.md`. |
+| 008b | TON-FE-003 | Backend gates remain authoritative when surfaces are hidden. |
 | 009 | TON-FE-010 | Telegram administration waits for the channel contract. |
 
 ## Dependency rule

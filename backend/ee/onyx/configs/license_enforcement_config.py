@@ -13,10 +13,18 @@ Two related concerns live here, both consumed by the `tier_gate` middleware:
 Import these constants in both production code and tests to ensure
 consistency.
 
+`UPSTREAM_PATH_PREFIX_MIN_TIER` is the unmodified upstream declaration.
+`PATH_PREFIX_MIN_TIER` is what the middleware enforces: the upstream map with
+TON's locally implemented capabilities removed. See
+`onyx.configs.ton_capabilities` for that policy and for why a purchased tier is
+not the authority for feature availability in a TON deployment. Authorization is
+unaffected — every route keeps its `require_permission` gate and its scope check.
+
 Multi-tenant cloud gating lives in `multi_tenant_gating_config.py` and is
 deliberately separate — cloud uses subscriptions, not licenses.
 """
 
+from onyx.configs.ton_capabilities import apply_ton_capability_policy
 from onyx.server.gateway.configs import GATEWAY_PATH_PREFIX, LLM_GATEWAY_MIN_TIER
 from onyx.server.settings.models import Tier
 
@@ -70,7 +78,7 @@ LICENSE_ENFORCEMENT_ALLOWED_PREFIXES: frozenset[str] = frozenset(
 )
 
 
-PATH_PREFIX_MIN_TIER: dict[str, Tier] = {
+UPSTREAM_PATH_PREFIX_MIN_TIER: dict[str, Tier] = {
     # ----- BUSINESS -----
     "/admin/chat-sessions": Tier.BUSINESS,
     "/admin/chat-session-history": Tier.BUSINESS,
@@ -92,3 +100,12 @@ PATH_PREFIX_MIN_TIER: dict[str, Tier] = {
     "/evals": Tier.ENTERPRISE,
     "/scim": Tier.ENTERPRISE,  # SCIM protocol
 }
+
+
+# What `tier_gate` actually enforces. TON's locally implemented capabilities are
+# governed by permissions, group scope, tenant context and resource ACLs, not by
+# a purchased tier, so they are dropped here. Every other entry above is
+# retained unchanged.
+PATH_PREFIX_MIN_TIER: dict[str, Tier] = apply_ton_capability_policy(
+    UPSTREAM_PATH_PREFIX_MIN_TIER
+)

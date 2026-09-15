@@ -8,22 +8,27 @@ production until source evidence, domain contracts and owner approvals exist.
 ## Execution order and status
 
 P0 means a release or security blocker. It does not override dependency order:
-Plan 001 is the read-only baseline, Plan 002 is the first P0 gate, and Plan 007
-is the P0 deployment hardening gate. Plan 008 is the later web-only surface
-slice. Status values are `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED (reason)`, or
-`REJECTED (reason)`.
+Plan 001 is the read-only baseline, Plan 002 is the first P0 gate, Plan 007 is the
+P0 deployment hardening gate, and Plan 008a is the P0 capability gate. Plan 008b
+is the later web-only surface slice. Status values are `TODO`, `IN PROGRESS`,
+`DONE`, `PARTIAL`, `BLOCKED (reason)`, or `REJECTED (reason)`.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |---|---|---|---|---|---|
 | 001 | [Evidence and contract baseline](001-baseline-contracts.md) | P1 | M | none | DONE |
-| 002 | [Tenant, upload, error, and privacy boundaries](002-security-privacy.md) | P0 | M | 001 | TODO |
+| 002 | [Tenant, upload, error, and privacy boundaries](002-security-privacy.md) | P0 | M | 001 | DONE |
 | 003 | [Rule, interpretation, Finding, and report domain](003-domain-rules-findings.md) | P1 | L | 001, 002, approved decisions | TODO |
 | 004 | [File lifecycle and knowledge ingestion](004-files-knowledge-ingestion.md) | P1 | L | 001, 002, 003 | TODO |
-| 005 | [Authorized agents and orchestration](005-agents-orchestration.md) | P1 | L | 001, 002, 003, 004 | TODO |
-| 006 | [Reports, schedules, alerts, and administration](006-reports-schedules-admin.md) | P1 | L | 001, 002, 003, 004, 005 | TODO |
+| 005 | [Authorized agents and orchestration](005-agents-orchestration.md) | P1 | L | 001, 002, 003, 004, 008a | TODO |
+| 006 | [Reports, schedules, alerts, and administration](006-reports-schedules-admin.md) | P1 | L | 001, 002, 003, 004, 005, 008a | TODO |
 | 007 | [Deployment credential hardening](007-deployment-hardening.md) | P0 | M | 001, 002 | PARTIAL (provider-secret encryption blocked on Plan 003) |
-| 008 | [Web-only product surface](008-web-only-product.md) | P1 | M | 001, 002, 006, 007 | TODO |
+| 008a | [Capability and authorization vs commercial tier](008a-capability-gates.md) | P0 | S | 001, 002 | DONE (P0 Groups/RBAC slice; branding and other gates deferred) |
+| 008b | [Web-only product surface](008-web-only-product.md) | P1 | M | 001, 002, 006, 007, 008a | TODO |
 | 009 | [Telegram channel adapter](009-telegram-channel-adapter.md) | P1 | M | 002, 005, 006 | BLOCKED (channel contract unavailable) |
+
+Plan 002 was previously listed as `TODO` here while `roadmap.md` listed it `DONE`.
+That was status drift on an already completed plan; this table now matches the
+roadmap. No other status was changed.
 
 ## Dependency notes
 
@@ -47,6 +52,7 @@ the report service.
 - [Domain rules and lifecycle contract](domain-rules.md)
 - [Decision log](decision-log.md)
 - [Execution roadmap](roadmap.md)
+- [Capability, edition and entitlement audit](../capability-edition-audit.md)
 
 ## Hard gates
 

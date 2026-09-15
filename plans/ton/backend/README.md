@@ -18,7 +18,8 @@ is the later web-only surface slice. Status values are `TODO`, `IN PROGRESS`,
 | 001 | [Evidence and contract baseline](001-baseline-contracts.md) | P1 | M | none | DONE |
 | 002 | [Tenant, upload, error, and privacy boundaries](002-security-privacy.md) | P0 | M | 001 | DONE |
 | 003a | [Provider secret encryption](003a-provider-secret-encryption.md) | P0 | M | 001, 002, 007, [readiness gate](003-readiness.md), decision 7a | DONE |
-| 003 | [Rule, interpretation, Finding, and report domain](003-domain-rules-findings.md) | P1 | L | 001, 002, 003a, [readiness gate](003-readiness.md) | READY for 003b/003c/003d; 003a DONE |
+| 003b | [TON identity, rules and analysis core](003b-ton-identity-rules-analysis.md) | P1 | L | 003a, [readiness gate](003-readiness.md), 008a | DONE |
+| 003 | [Rule, interpretation, Finding, and report domain](003-domain-rules-findings.md) | P1 | L | 001, 002, 003a, [readiness gate](003-readiness.md) | READY for 003c/003d; 003a and 003b DONE |
 | 004 | [File lifecycle and knowledge ingestion](004-files-knowledge-ingestion.md) | P1 | L | 001, 002, 003 | TODO |
 | 005 | [Authorized agents and orchestration](005-agents-orchestration.md) | P1 | L | 001, 002, 003, 004, 008a | TODO |
 | 006 | [Reports, schedules, alerts, and administration](006-reports-schedules-admin.md) | P1 | L | 001, 002, 003, 004, 005, 008a | TODO |

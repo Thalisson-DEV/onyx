@@ -42,7 +42,8 @@ cleanup. Domain schema and production rules must wait for the decisions in
 | 001 | Evidence baseline, web contract inventory and named test specs | none | DONE |
 | 002 | Tenant, upload, error, trace and telemetry boundaries | 001 | DONE |
 | 003a | Provider secret encryption (SECURITY-08) | 001, 002, 007, `003-readiness.md`, decision 7a | DONE |
-| 003 | Rule/analysis/Finding/Occurrence/Report contract and migrations | 001, 002, 003a, `003-readiness.md` | READY for 003b/003c/003d. 003a DONE. |
+| 003b | TON identity, rules and analysis core | 003a, `003-readiness.md`, 008a | DONE |
+| 003 | Rule/analysis/Finding/Occurrence/Report contract and migrations | 001, 002, 003a, `003-readiness.md` | READY for 003c/003d. 003a and 003b DONE. |
 | 004 | File lifecycle, ingestion, knowledge and quality hooks | 001, 002, 003 | TODO |
 | 005 | Specialist agents and native supervisor extension | 002, 003, 004, 008a | TODO |
 | 006 | Reports, alerts, administration and scheduled processing | 001, 002, 003, 004, 005, 008a | TODO |
@@ -61,15 +62,29 @@ canonical where it is more specific than the plan. It splits Plan 003 into four
 slices: 003a (provider-secret encryption), 003b (rules and analysis), 003c
 (findings, occurrences and ACL) and 003d (report snapshot and audit).
 
-**003b, 003c and 003d are READY.** Alembic revision `6e8f0a2b1c35` is identified
-as an orphan merge migration that was never committed, and the live database now
-reports the repository head `ad99acb9be41`, so it accepts a new migration.
+**003c and 003d are READY.** Alembic revision `6e8f0a2b1c35` is identified as an
+orphan merge migration that was never committed, and the repository history is
+linear with a single head.
 
 **003a is DONE.** Decision 7a is resolved and recorded in
 `003a-provider-secret-encryption.md`, which closes readiness blocker B4 and
 SECURITY-08. Both provider `custom_config` columns are now `EncryptedJson`, and
-revision `714172b66b07` is the new single head. **003b takes `714172b66b07` as
-its `down_revision`.**
+revision `714172b66b07` chains from `ad99acb9be41`.
+
+**003b is DONE.** Recorded in `003b-ton-identity-rules-analysis.md`. Revision
+`faee7eaa921e` creates the nine identity, rule and analysis tables and is the new
+single head. **003c takes `faee7eaa921e` as its `down_revision`.** Plan 003 as a
+whole is not complete: Finding, Occurrence and the resource ACL junctions belong
+to 003c, and the report snapshot and TON audit trail to 003d.
+
+The original TON global-blocking defect is closed structurally by 003b:
+`AnalysisStep` scopes blocking to `(step_code, domain, business_unit_id)`, a
+BLOCKED row must name its cause, and a partially blocked run reports
+`COMPLETED_WITH_BLOCKED_DOMAINS` rather than `FAILED`.
+
+The running development database was **not** migrated by 003a or 003b. It stays
+at `ad99acb9be41`. The operational upgrade path is recorded in
+`003b-ton-identity-rules-analysis.md`.
 
 Business-rule approval does **not** block any migration. Every threshold stays a
 `RuleVersion` row, and a CHECK constraint makes an `ACTIVE` version require a

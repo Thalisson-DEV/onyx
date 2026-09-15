@@ -32,6 +32,11 @@ from shared_configs.configs import (
 )
 from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
 from onyx.db.models import Base
+
+# TON domain tables live in their own module (onyx/db/ton/), so importing Base
+# alone would leave them out of target_metadata and a future autogenerate would
+# propose dropping them. Imported for the side effect of registering the mappers.
+import onyx.db.ton.models  # noqa: F401
 from celery.backends.database.session import (
     ResultModelBase,  # ty: ignore[unresolved-import]
 )

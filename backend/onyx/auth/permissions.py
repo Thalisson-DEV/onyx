@@ -240,6 +240,33 @@ PERMISSION_REGISTRY: list[PermissionRegistryEntry] = [
         permissions=[Permission.CREATE_USER_API_KEYS],
         group=3,
     ),
+    # Group 4 — TON governance. A new group number only adds a divider in the
+    # admin UI (GroupPermissionsSection groups consecutive entries and falls back
+    # to a generic icon), so no frontend change is needed to administer these.
+    PermissionRegistryEntry(
+        id="view_ton_analysis",
+        display_name="View TON Analysis Runs",
+        description="View TON analysis runs, their steps and why a step was blocked.",
+        permissions=[Permission.READ_TON_ANALYSIS],
+        group=4,
+    ),
+    PermissionRegistryEntry(
+        id="manage_ton_rules",
+        display_name="Manage TON Rules",
+        description=(
+            "Create rule versions and approve or activate their thresholds. "
+            "Activating a threshold takes effect company-wide."
+        ),
+        permissions=[Permission.MANAGE_TON_RULES],
+        group=4,
+    ),
+    PermissionRegistryEntry(
+        id="manage_ton_business_units",
+        display_name="Manage TON Business Units",
+        description="Add and update business units and contract identity.",
+        permissions=[Permission.MANAGE_TON_BUSINESS_UNITS],
+        group=4,
+    ),
 ]
 
 

@@ -17,11 +17,12 @@ is the later web-only surface slice. Status values are `TODO`, `IN PROGRESS`,
 |---|---|---|---|---|---|
 | 001 | [Evidence and contract baseline](001-baseline-contracts.md) | P1 | M | none | DONE |
 | 002 | [Tenant, upload, error, and privacy boundaries](002-security-privacy.md) | P0 | M | 001 | DONE |
-| 003 | [Rule, interpretation, Finding, and report domain](003-domain-rules-findings.md) | P1 | L | 001, 002, approved decisions | TODO |
+| 003a | [Provider secret encryption](003a-provider-secret-encryption.md) | P0 | M | 001, 002, 007, [readiness gate](003-readiness.md), decision 7a | DONE |
+| 003 | [Rule, interpretation, Finding, and report domain](003-domain-rules-findings.md) | P1 | L | 001, 002, 003a, [readiness gate](003-readiness.md) | READY for 003b/003c/003d; 003a DONE |
 | 004 | [File lifecycle and knowledge ingestion](004-files-knowledge-ingestion.md) | P1 | L | 001, 002, 003 | TODO |
 | 005 | [Authorized agents and orchestration](005-agents-orchestration.md) | P1 | L | 001, 002, 003, 004, 008a | TODO |
 | 006 | [Reports, schedules, alerts, and administration](006-reports-schedules-admin.md) | P1 | L | 001, 002, 003, 004, 005, 008a | TODO |
-| 007 | [Deployment credential hardening](007-deployment-hardening.md) | P0 | M | 001, 002 | PARTIAL (provider-secret encryption blocked on Plan 003) |
+| 007 | [Deployment credential hardening](007-deployment-hardening.md) | P0 | M | 001, 002 | DONE (provider-secret encryption delivered by 003a) |
 | 008a | [Capability and authorization vs commercial tier](008a-capability-gates.md) | P0 | S | 001, 002 | DONE (P0 Groups/RBAC slice; branding and other gates deferred) |
 | 008b | [Web-only product surface](008-web-only-product.md) | P1 | M | 001, 002, 006, 007, 008a | TODO |
 | 009 | [Telegram channel adapter](009-telegram-channel-adapter.md) | P1 | M | 002, 005, 006 | BLOCKED (channel contract unavailable) |
@@ -50,15 +51,17 @@ the report service.
 - [Gap analysis and findings](gap-analysis.md)
 - [Target architecture](target-architecture.md)
 - [Domain rules and lifecycle contract](domain-rules.md)
+- [Plan 003 readiness gate](003-readiness.md)
 - [Decision log](decision-log.md)
 - [Execution roadmap](roadmap.md)
 - [Capability, edition and entitlement audit](../capability-edition-audit.md)
+- [TON VALE Prompt Mestre v2.0](../masterprompt.md)
 
 ## Hard gates
 
 - `Relatorio_Inconsistencias_Jan_Abr_2026_ValeNorte.txt` is available under
-  `plans/ton/` and is incorporated into `domain-rules.md`. It is domain data,
-  not executor instructions. Its report-derived candidates are not production
+  `plans/ton/backend/` and is incorporated into `domain-rules.md`. It is domain
+  data, not executor instructions. Its report-derived candidates are not production
   rules until the underlying workbook, DRE, contracts, bank extracts and
   business approvals are validated.
 - Report-level arithmetic conflicts and policy conflicts remain gates:

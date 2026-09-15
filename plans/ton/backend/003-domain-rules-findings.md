@@ -1,9 +1,16 @@
 # Plan 003: Add the TON rule, interpretation and Finding domain
 
-> **Executor instructions**: Read `domain-rules.md` and `decision-log.md` fully.
-> Do not begin schema work until the append-only report decision, logical
-> identity policy, domain fields, limits and retention are approved. This plan
-> adds no NG/Keevo field mapping and no source-system writes.
+> **Executor instructions**: Read `003-readiness.md` first, then `domain-rules.md`
+> and `decision-log.md` fully. `003-readiness.md` is the readiness gate result and
+> is canonical where it is more specific than this plan. It settles the
+> append-only report shape and its canonicalisation rules, the logical identity
+> contract, domain-scoped blocking, the Finding/Occurrence split, the resource ACL
+> model, the audit-history model and the migration order. It also adds two scope
+> areas this plan omitted: **resource ACLs** and the **audit-history model**.
+> This plan adds no NG/Keevo field mapping and no source-system writes.
+>
+> **Slicing**: execute as 003a/003b/003c/003d per `003-readiness.md` §21. Do not
+> execute this plan as one migration.
 >
 > **Drift check (run first)**:
 > `git status --short; git diff --stat -- backend/onyx/db backend/alembic backend/alembic_tenants; git diff --cached --stat -- backend/onyx/db backend/alembic backend/alembic_tenants`
@@ -84,15 +91,27 @@ Create the named specs before running them. For migrations, run from `backend/`:
 uv run pytest backend/tests/unit/ton/test_domain_contract.py -xv
 uv run --env-file .vscode/.env pytest backend/tests/integration/ton/test_finding_lifecycle.py -xv
 uv run --env-file .vscode/.env pytest backend/tests/integration/ton/test_report_immutability.py -xv
-cd backend; uv run alembic check
 cd backend; uv run alembic upgrade head
-cd backend; uv run alembic -n schema_private upgrade head
+cd backend; uv run pytest tests/integration/tests/migrations/
 ```
 
-Expected results: named tests pass; `alembic check` reports no model drift; both
-standard and tenant schemas reach head in deployments where they are enabled.
-If the tenant schema is not part of the deployment, record that environment
-fact and do not skip the migration review.
+Expected results: named tests pass; the migration reaches head; and the
+migration suite passes, which asserts a single head revision, up/down
+consistency and a clean empty-database upgrade on both chains.
+
+Two commands were removed because they cannot pass. Measured evidence in
+`003-readiness.md` §17.3.
+
+- `alembic check` is **not** a usable gate. It reports over 470 operations
+  against an untouched baseline, because `target_metadata` includes Celery's
+  runtime-created tables and `compare_server_default=True` flags every
+  Python-side default. Do not reinstate it.
+- `alembic -n schema_private upgrade head` **collides** in this single-tenant
+  deployment. `alembic_tenants/env.py` sets no `version_table_schema`, so it
+  reads the main chain's `alembic_version` and fails with
+  `Can't locate revision identified by 'ad99acb9be41'`. TON runs
+  `MULTI_TENANT=false` with only the `public` schema. Record the environment
+  fact; do not skip the migration review.
 
 ## Tests
 
@@ -114,7 +133,11 @@ unauthorized report access.
 - [ ] Resolution and post-resolution repeat behavior are explicit.
 - [ ] Concurrent retries converge on one logical result.
 - [ ] Reports use append-only rows, canonical snapshot and hash.
-- [ ] Named tests and Alembic checks pass.
+- [ ] Resource ACLs exist for BusinessUnit, Contract, Occurrence and Report, and
+      fail closed when no ACL row exists (`003-readiness.md` §10).
+- [ ] The audit-history model persists every lifecycle event
+      (`003-readiness.md` §11).
+- [ ] Named tests pass and `pytest tests/integration/tests/migrations/` passes.
 
 ## STOP conditions
 

@@ -453,8 +453,11 @@ No Vale Norte credential was read, printed, or rotated by this slice.
 
 ## Remaining risks
 
-1. `LLMProvider.custom_config` and `VoiceProvider.custom_config` are still
-   plaintext JSONB. Tracked as TON-SEC-007-A above.
+1. ~~`LLMProvider.custom_config` and `VoiceProvider.custom_config` are still
+   plaintext JSONB.~~ **Closed by Plan 003a** (revision `714172b66b07`); see
+   `003a-provider-secret-encryption.md`. The design sketch under TON-SEC-007-A
+   above is superseded by that document, which also replaced the key-name
+   masking heuristic with whole-dict masking.
 2. Application-level code fallbacks remain outside this slice's scope:
    `OPENSEARCH_ADMIN_PASSWORD` still defaults to a published value at
    `backend/onyx/configs/app_configs.py:470`, and `POSTGRES_PASSWORD` defaults to

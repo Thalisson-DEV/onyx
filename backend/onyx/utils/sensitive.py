@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from typing import Any, Generic, NoReturn, TypeVar
+from typing import Any, Generic, NoReturn, TypeVar, cast
 from unittest.mock import MagicMock
 
 from onyx.utils.encryption import mask_credential_dict, mask_string
@@ -47,6 +47,23 @@ def make_mock_sensitive_value(value: dict[str, Any] | str | None) -> MagicMock:
 
 class SensitiveAccessError(Exception):
     """Raised when attempting to access a SensitiveValue without explicit masking decision."""
+
+
+def read_sensitive_dict(
+    value: "SensitiveValue[dict[str, Any]] | dict[str, Any] | None",
+    *,
+    apply_mask: bool,
+) -> dict[str, Any] | None:
+    """Unwrap an ``EncryptedJson`` column value into a plain dict.
+
+    Plain dicts pass through so callers also work with non-persisted model
+    instances, where the attribute-set event has not run.
+    """
+    if value is None:
+        return None
+    if isinstance(value, SensitiveValue):
+        return cast("dict[str, Any]", value.get_value(apply_mask=apply_mask))
+    return value
 
 
 class SensitiveValue(Generic[T]):

@@ -29,7 +29,7 @@ def _make_provider() -> VoiceProvider:
     provider.tts_model = None
     provider.default_voice = None
     provider.api_base = None
-    provider.custom_config = {}
+    provider.custom_config = {}  # ty: ignore[invalid-assignment]
     provider.api_key = None
     provider.api_secret = None
     return provider
@@ -49,8 +49,14 @@ def test_provider_to_view_returns_fixed_secret_placeholder() -> None:
 
 
 def test_provider_to_view_strips_legacy_custom_config_credentials() -> None:
+    """Credential-named keys are dropped; every other value is masked.
+
+    Masking is whole-dict, so a value under a key name the deployment does not
+    recognise (``voice`` here) is masked too. Only keys known to be settings —
+    ``speech_region`` — keep their value, because the admin form reads them back.
+    """
     provider = _make_provider()
-    provider.custom_config = {
+    provider.custom_config = {  # ty: ignore[invalid-assignment]
         "speech_region": "us-east",
         "nested": {
             "API_SECRET": "legacy-secret",
@@ -63,9 +69,11 @@ def test_provider_to_view_strips_legacy_custom_config_credentials() -> None:
     assert view.custom_config == {
         "speech_region": "us-east",
         "nested": {
-            "allowed": [{}, {"voice": "alloy"}],
+            "allowed": [{}, {"voice": "****"}],
         },
     }
+    assert "legacy-secret" not in str(view.custom_config)
+    assert "legacy-key" not in str(view.custom_config)
 
 
 @pytest.mark.asyncio

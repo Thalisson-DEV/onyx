@@ -50,6 +50,7 @@ from onyx.tools.tool_implementations.search.search_tool import SearchTool
 from onyx.tools.tool_implementations.web_search.web_search_tool import WebSearchTool
 from onyx.utils.headers import header_dict_to_header_list
 from onyx.utils.logger import setup_logger
+from onyx.utils.sensitive import read_sensitive_dict
 
 logger = setup_logger()
 
@@ -117,7 +118,7 @@ def _get_image_generation_config(llm: LLM, db_session: Session) -> LLMConfig:
         api_version=llm_provider.api_version,
         deployment_name=llm_provider.deployment_name,
         max_input_tokens=llm.config.max_input_tokens,
-        custom_config=llm_provider.custom_config,
+        custom_config=read_sensitive_dict(llm_provider.custom_config, apply_mask=False),
     )
 
 

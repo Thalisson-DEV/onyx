@@ -3619,9 +3619,11 @@ class LLMProvider(Base):
     api_base: Mapped[str | None] = mapped_column(String, nullable=True)
     api_version: Mapped[str | None] = mapped_column(String, nullable=True)
     # custom configs that should be passed to the LLM provider at inference time
-    # (e.g. `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, etc. for bedrock)
-    custom_config: Mapped[dict[str, str] | None] = mapped_column(
-        postgresql.JSONB(), nullable=True
+    # (e.g. `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, etc. for bedrock).
+    # Encrypted at rest: the dict accepts arbitrary keys, so it must be treated
+    # as credential-bearing regardless of the key names an admin chooses.
+    custom_config: Mapped[SensitiveValue[dict[str, str]] | None] = mapped_column(
+        EncryptedJson(), nullable=True
     )
 
     # Deprecated: use LLMModelFlow with CHAT flow type instead
@@ -3806,8 +3808,10 @@ class VoiceProvider(Base):
         EncryptedString(), nullable=True
     )
     api_base: Mapped[str | None] = mapped_column(String, nullable=True)
-    custom_config: Mapped[dict[str, Any] | None] = mapped_column(
-        postgresql.JSONB(), nullable=True
+    # Encrypted at rest for the same reason as LLMProvider.custom_config: the
+    # dict accepts arbitrary keys, so any of them may hold credential material.
+    custom_config: Mapped[SensitiveValue[dict[str, Any]] | None] = mapped_column(
+        EncryptedJson(), nullable=True
     )
 
     # Model/voice configuration

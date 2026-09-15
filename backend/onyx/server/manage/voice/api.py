@@ -21,6 +21,10 @@ from onyx.db.voice import (
 )
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
+from onyx.llm.custom_config_masking import (
+    mask_custom_config,
+    restore_masked_custom_config,
+)
 from onyx.server.manage.voice.models import (
     VoiceOption,
     VoiceProviderTestRequest,
@@ -30,6 +34,7 @@ from onyx.server.manage.voice.models import (
 )
 from onyx.utils.encryption import mask_string
 from onyx.utils.logger import setup_logger
+from onyx.utils.sensitive import SensitiveValue, read_sensitive_dict
 from onyx.utils.url import SSRFException, validate_outbound_http_url
 from onyx.voice.factory import get_voice_provider
 
@@ -102,11 +107,17 @@ def _sanitize_custom_config_list(value: list[Any]) -> list[Any]:
 
 
 def _custom_config_to_view(
-    custom_config: dict[str, Any] | None,
+    custom_config: SensitiveValue[dict[str, Any]] | dict[str, Any] | None,
 ) -> dict[str, Any] | None:
-    if custom_config is None:
+    """Strip credential-named keys, then mask every remaining value.
+
+    Masking is whole-dict rather than key-name driven, so a secret an admin
+    stored under an unrecognised key cannot be read back out of the API.
+    """
+    stored = read_sensitive_dict(custom_config, apply_mask=False)
+    if stored is None:
         return None
-    return _sanitize_custom_config_dict(custom_config)
+    return mask_custom_config(_sanitize_custom_config_dict(stored))
 
 
 def _validate_voice_api_base(provider_type: str, api_base: str | None) -> str | None:
@@ -212,6 +223,15 @@ async def upsert_voice_provider_endpoint(
         request.provider_type, request.target_uri or request.api_base
     )
     custom_config = _reject_custom_config_credentials(request.custom_config)
+    # The view masks stored values, so a form that resubmits what it was shown
+    # would otherwise persist placeholders over the real configuration.
+    if request.id is not None:
+        stored_provider = fetch_voice_provider_by_id(db_session, request.id)
+        if stored_provider is not None:
+            custom_config = restore_masked_custom_config(
+                read_sensitive_dict(stored_provider.custom_config, apply_mask=False),
+                custom_config,
+            )
 
     provider = upsert_voice_provider(
         db_session=db_session,

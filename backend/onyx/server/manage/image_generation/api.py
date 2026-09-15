@@ -39,6 +39,7 @@ from onyx.server.manage.llm.models import (
 )
 from onyx.server.manage.llm.provider_cache import invalidate_provider_listing_cache
 from onyx.utils.logger import setup_logger
+from onyx.utils.sensitive import read_sensitive_dict
 
 logger = setup_logger()
 
@@ -88,7 +89,9 @@ def _build_llm_provider_request(
 
         _validate_llm_provider_change(
             existing_api_base=source_provider.api_base,
-            existing_custom_config=source_provider.custom_config,
+            existing_custom_config=read_sensitive_dict(
+                source_provider.custom_config, apply_mask=False
+            ),
             new_api_base=api_base,
             new_custom_config=custom_config,
             api_key_changed=False,  # Using stored key from source provider
@@ -235,7 +238,9 @@ def test_image_generation(
 
         _validate_llm_provider_change(
             existing_api_base=source_provider.api_base,
-            existing_custom_config=source_provider.custom_config,
+            existing_custom_config=read_sensitive_dict(
+                source_provider.custom_config, apply_mask=False
+            ),
             new_api_base=test_request.api_base,
             new_custom_config=test_request.custom_config,
             api_key_changed=False,  # Using stored key from source provider
@@ -446,7 +451,9 @@ def update_config(
             ):
                 _validate_llm_provider_change(
                     existing_api_base=old_provider.api_base,
-                    existing_custom_config=old_provider.custom_config,
+                    existing_custom_config=read_sensitive_dict(
+                        old_provider.custom_config, apply_mask=False
+                    ),
                     new_api_base=config_update.api_base,
                     new_custom_config=config_update.custom_config,
                     api_key_changed=False,

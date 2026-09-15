@@ -49,6 +49,12 @@ from onyx.llm.constants import (
     WELL_KNOWN_PROVIDER_NAMES,
     LlmProviderNames,
 )
+from onyx.llm.custom_config_masking import (
+    is_masked_custom_config_value,
+    mask_custom_config,
+    mask_provider_secret,
+    restore_masked_custom_config,
+)
 from onyx.llm.factory import (
     get_default_llm,
     get_llm,
@@ -61,7 +67,6 @@ from onyx.llm.model_capabilities import (
 )
 from onyx.llm.utils import (
     get_llm_contextual_cost,
-    is_sensitive_custom_config_key,
     test_llm,
 )
 from onyx.llm.well_known_providers.auto_update_service import (
@@ -134,8 +139,8 @@ from onyx.utils.audit import (
     actor_from_user,
     emit_audit_event,
 )
-from onyx.utils.encryption import mask_string as mask_with_ellipsis
 from onyx.utils.logger import setup_logger
+from onyx.utils.sensitive import read_sensitive_dict
 from shared_configs.configs import MULTI_TENANT
 
 logger = setup_logger()
@@ -143,12 +148,9 @@ logger = setup_logger()
 admin_router = APIRouter(prefix="/admin/llm")
 basic_router = APIRouter(prefix="/llm")
 
-
-def _mask_string(value: str) -> str:
-    """Mask a string, showing first 4 and last 4 characters."""
-    if len(value) <= 8:
-        return "****"
-    return value[:4] + "****" + value[-4:]
+# Local alias kept so the many call sites below stay short; the implementation
+# lives with the rest of the custom_config masking rules.
+_mask_string = mask_provider_secret
 
 
 def _resolve_api_key(
@@ -204,10 +206,15 @@ def _resolve_bedrock_bearer_token(
         return bearer_token
 
     existing_provider = fetch_existing_llm_provider_by_id(provider_id, db_session)
-    if not existing_provider or not existing_provider.custom_config:
+    stored_custom_config = (
+        read_sensitive_dict(existing_provider.custom_config, apply_mask=False)
+        if existing_provider
+        else None
+    )
+    if not stored_custom_config:
         return bearer_token
 
-    stored_token = existing_provider.custom_config.get("AWS_BEARER_TOKEN_BEDROCK")
+    stored_token = stored_custom_config.get("AWS_BEARER_TOKEN_BEDROCK")
     if stored_token and _is_masked_value_for_existing(
         bearer_token, stored_token, "AWS_BEARER_TOKEN_BEDROCK"
     ):
@@ -248,57 +255,30 @@ def _sync_fetched_models(
 
 
 def _mask_provider_credentials(provider_view: LLMProviderView) -> None:
-    """Mask sensitive credentials in provider view including api_key and custom_config."""
-    # Mask the API key
+    """Mask the api_key and the whole custom_config before a client sees them.
+
+    ``custom_config`` masking is whole-dict: only keys known to hold settings
+    keep their value, so a secret under an unrecognised key cannot leak.
+    """
     if provider_view.api_key:
         provider_view.api_key = _mask_string(provider_view.api_key)
 
-    # Mask sensitive values in custom_config
-    if provider_view.custom_config:
-        masked_config: dict[str, Any] = {}
-        for key, value in provider_view.custom_config.items():
-            if is_sensitive_custom_config_key(key) and isinstance(value, str) and value:
-                masked_config[key] = _mask_string(value)
-            else:
-                masked_config[key] = value
-        provider_view.custom_config = masked_config
+    provider_view.custom_config = mask_custom_config(provider_view.custom_config)
 
 
 def _is_masked_value_for_existing(
     incoming_value: str, existing_value: str, key: str
 ) -> bool:
     """Return True when incoming_value is a masked round-trip of existing_value."""
-    if not is_sensitive_custom_config_key(key):
-        return False
-
-    masked_candidates = {
-        _mask_string(existing_value),
-        mask_with_ellipsis(existing_value),
-        "****",
-        "••••••••••••",
-        "***REDACTED***",
-    }
-    return incoming_value in masked_candidates
+    return is_masked_custom_config_value(incoming_value, existing_value, key)
 
 
 def _restore_masked_custom_config_values(
     existing_custom_config: dict[str, str] | None,
     new_custom_config: dict[str, str] | None,
 ) -> dict[str, str] | None:
-    """Restore sensitive custom config values when clients send masked placeholders."""
-    if not existing_custom_config or not new_custom_config:
-        return new_custom_config
-
-    restored_config = dict(new_custom_config)
-
-    for key, incoming_value in restored_config.items():
-        existing_value = existing_custom_config.get(key)
-        if not isinstance(incoming_value, str) or not isinstance(existing_value, str):
-            continue
-        if _is_masked_value_for_existing(incoming_value, existing_value, key):
-            restored_config[key] = existing_value
-
-    return restored_config
+    """Restore custom config values when clients send masked placeholders."""
+    return restore_masked_custom_config(existing_custom_config, new_custom_config)
 
 
 def _validate_llm_provider_change(
@@ -455,16 +435,21 @@ def test_llm_configuration(
         existing_provider = fetch_existing_llm_provider_by_id(
             id=test_llm_request.id, db_session=db_session
         )
+        existing_custom_config = (
+            read_sensitive_dict(existing_provider.custom_config, apply_mask=False)
+            if existing_provider
+            else None
+        )
         if existing_provider:
             test_custom_config = _restore_masked_custom_config_values(
-                existing_custom_config=existing_provider.custom_config,
+                existing_custom_config=existing_custom_config,
                 new_custom_config=test_custom_config,
             )
         # if an API key is not provided, use the existing provider's API key
         if existing_provider and not test_llm_request.api_key_changed:
             _validate_llm_provider_change(
                 existing_api_base=existing_provider.api_base,
-                existing_custom_config=existing_provider.custom_config,
+                existing_custom_config=existing_custom_config,
                 new_api_base=test_llm_request.api_base,
                 new_custom_config=test_custom_config,
                 api_key_changed=False,
@@ -475,7 +460,7 @@ def test_llm_configuration(
                 else None
             )
         if existing_provider and not test_llm_request.custom_config_changed:
-            test_custom_config = existing_provider.custom_config
+            test_custom_config = existing_custom_config
 
     test_custom_config = _validate_and_normalize_vertex_auth(
         provider=test_llm_request.provider,
@@ -616,17 +601,23 @@ def put_llm_provider(
             f"LLM Provider with name {llm_provider_upsert_request.name} and id={llm_provider_upsert_request.id} does not exist",
         )
 
+    existing_custom_config = (
+        read_sensitive_dict(existing_provider.custom_config, apply_mask=False)
+        if existing_provider
+        else None
+    )
+
     # SSRF Protection: Validate api_base and custom_config match stored values
     if existing_provider:
         llm_provider_upsert_request.custom_config = (
             _restore_masked_custom_config_values(
-                existing_custom_config=existing_provider.custom_config,
+                existing_custom_config=existing_custom_config,
                 new_custom_config=llm_provider_upsert_request.custom_config,
             )
         )
         _validate_llm_provider_change(
             existing_api_base=existing_provider.api_base,
-            existing_custom_config=existing_provider.custom_config,
+            existing_custom_config=existing_custom_config,
             new_api_base=llm_provider_upsert_request.api_base,
             new_custom_config=llm_provider_upsert_request.custom_config,
             api_key_changed=llm_provider_upsert_request.api_key_changed,
@@ -660,7 +651,7 @@ def put_llm_provider(
             else None
         )
     if existing_provider and not llm_provider_upsert_request.custom_config_changed:
-        llm_provider_upsert_request.custom_config = existing_provider.custom_config
+        llm_provider_upsert_request.custom_config = existing_custom_config
 
     llm_provider_upsert_request.custom_config = _validate_and_normalize_vertex_auth(
         provider=llm_provider_upsert_request.provider,
@@ -1180,7 +1171,9 @@ def get_provider_contextual_cost(
                 ),
                 api_base=provider.api_base,
                 api_version=provider.api_version,
-                custom_config=provider.custom_config,
+                custom_config=read_sensitive_dict(
+                    provider.custom_config, apply_mask=False
+                ),
                 max_input_tokens=get_max_input_tokens_from_llm_provider(
                     llm_provider=llm_provider, model_name=model_configuration.name
                 ),
@@ -1672,12 +1665,13 @@ def get_lm_studio_available_models(
         existing_provider = fetch_existing_llm_provider_by_id(
             request.provider_id, db_session
         )
-        if existing_provider and existing_provider.custom_config:
+        if existing_provider is not None:
+            stored_custom_config = read_sensitive_dict(
+                existing_provider.custom_config, apply_mask=False
+            )
             stored_base = (existing_provider.api_base or "").strip().rstrip("/")
-            if stored_base == cleaned_api_base:
-                api_key = existing_provider.custom_config.get(
-                    LM_STUDIO_API_KEY_CONFIG_KEY
-                )
+            if stored_custom_config and stored_base == cleaned_api_base:
+                api_key = stored_custom_config.get(LM_STUDIO_API_KEY_CONFIG_KEY)
 
     url = f"{cleaned_api_base}/api/v1/models"
     headers: dict[str, str] = {}

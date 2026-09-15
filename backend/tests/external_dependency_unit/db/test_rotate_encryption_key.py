@@ -90,6 +90,24 @@ class TestDiscoverEncryptedColumns:
         }
         assert ("credential", "credential_json", True) in found
 
+    def test_discovers_provider_custom_config(self) -> None:
+        """Provider custom_config joins rotation without a rotation-side change.
+
+        Guards revision ``714172b66b07``: reverting either column to plain JSONB
+        would silently drop it from key rotation.
+        """
+        results = _discover_encrypted_columns()
+        found = {
+            (
+                model_cls.__tablename__,  # ty: ignore[unresolved-attribute]
+                col_name,
+                is_json,
+            )
+            for model_cls, col_name, _, is_json in results
+        }
+        assert ("llm_provider", "custom_config", True) in found
+        assert ("voice_provider", "custom_config", True) in found
+
     def test_discovers_internet_search_provider_api_key(self) -> None:
         results = _discover_encrypted_columns()
         found = {

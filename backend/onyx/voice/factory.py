@@ -1,4 +1,5 @@
 from onyx.db.models import VoiceProvider
+from onyx.utils.sensitive import read_sensitive_dict
 from onyx.voice.interface import VoiceProviderInterface
 
 
@@ -27,7 +28,9 @@ def get_voice_provider(provider: VoiceProvider) -> VoiceProviderInterface:
         # Plain string from temporary model
         api_key = provider.api_key
     api_base = provider.api_base
-    custom_config = provider.custom_config
+    # custom_config is an encrypted column, so it arrives wrapped; a temporary
+    # (non-persisted) provider may still hold a plain dict.
+    custom_config = read_sensitive_dict(provider.custom_config, apply_mask=False)
     stt_model = provider.stt_model
     tts_model = provider.tts_model
     default_voice = provider.default_voice

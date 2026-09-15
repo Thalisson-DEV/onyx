@@ -12,6 +12,7 @@ from onyx.image_gen.interfaces import (
     ReferenceImage,
 )
 from onyx.utils.logger import setup_logger
+from onyx.utils.sensitive import read_sensitive_dict
 
 logger = setup_logger()
 
@@ -101,7 +102,7 @@ def _default_provider_and_model(
         api_base=llm_provider.api_base,
         api_version=llm_provider.api_version,
         deployment_name=llm_provider.deployment_name,
-        custom_config=llm_provider.custom_config,
+        custom_config=read_sensitive_dict(llm_provider.custom_config, apply_mask=False),
     )
     if not validate_credentials(llm_provider.provider, credentials):
         raise ImageGenerationNotConfiguredError(

@@ -101,8 +101,8 @@ remains assigned to Plan 005. Plan 002 did not change domain schema, agent
 routing or deployment artifacts.
 
 Plan 007 closed SECURITY-07 and opened SECURITY-08, which it analysed and
-deferred rather than fixed. SECURITY-08 needs a migration and is blocked on Plan
-003 readiness.
+deferred because it needed a migration. Plan 003a closed SECURITY-08 once the
+Alembic history and the key-custody decision were both settled.
 
 ### [SECURITY-01] Redact content-bearing traces
 
@@ -189,8 +189,10 @@ deferred rather than fixed. SECURITY-08 needs a migration and is blocked on Plan
 
 ### [SECURITY-08] Encrypt LLM provider `custom_config` at rest
 
-- **Status**: OPEN. Raised by the capability audit, analysed by Plan 007,
-  deferred with a named prerequisite. Not fixed.
+- **Status**: CLOSED by Plan 003a, revision `714172b66b07`. Both columns are now
+  `EncryptedJson`, and API masking is whole-dict rather than key-name driven. See
+  `003a-provider-secret-encryption.md`. The evidence below describes the defect
+  as it was.
 - **Evidence**: `backend/onyx/db/models.py:3624-3626` stores `custom_config` as
   plain `postgresql.JSONB()` while the sibling `api_key` at `:3617-3619` uses
   `EncryptedString()`. The dict holds AWS Bedrock keys, Vertex service-account
@@ -201,13 +203,16 @@ deferred rather than fixed. SECURITY-08 needs a migration and is blocked on Plan
 - **Effort**: M.
 - **Risk**: HIGH.
 - **Confidence**: HIGH.
-- **Blocker**: the fix needs a `jsonb` → `bytea` migration plus an
-  application-level data rewrite, and the live database still references unknown
-  Alembic revision `6e8f0a2b1c35`. Plan 007 must not author migration-bearing
-  changes.
-- **Fix sketch**: reuse `EncryptedJson`; see TON-SEC-007-A in
-  `007-deployment-hardening.md` for the full design, reader list and test list.
-  Depends on Plan 003 readiness.
+- **Blocker (cleared)**: the fix needed a `jsonb` → `bytea` migration plus an
+  application-level data rewrite. Revision `6e8f0a2b1c35` was identified as an
+  orphan (D-026) and key custody was settled (D-040), so Plan 003a could author
+  the migration.
+- **Fix**: reuse `EncryptedJson`, with two migration guards and a deliberately
+  lossy downgrade. See `003a-provider-secret-encryption.md`.
+- **Follow-up, still plaintext**: `InternetSearchProvider` and
+  `InternetContentProvider` configuration, tracing-provider configuration and
+  hook configuration carry the same shape. Deliberately left out of 003a to keep
+  its blast radius narrow.
 
 ### [PRIVACY-01] Make telemetry and browser analytics opt-in
 

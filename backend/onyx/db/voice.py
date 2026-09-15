@@ -89,8 +89,9 @@ def upsert_voice_provider(
     provider.api_base = api_base
     # None means "leave unchanged" (pass {} to clear) so partial writers can't
     # wipe keys like speech_region.
+    # EncryptedJson accepts a dict for writes, returns SensitiveValue for reads
     if custom_config is not None:
-        provider.custom_config = custom_config
+        provider.custom_config = custom_config  # ty: ignore[invalid-assignment]
     provider.stt_model = stt_model
     provider.tts_model = tts_model
     provider.default_voice = default_voice

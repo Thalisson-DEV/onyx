@@ -30,6 +30,7 @@ from onyx.server.manage.llm.utils import (
     filter_model_configurations,
     is_reasoning_model,
 )
+from onyx.utils.sensitive import read_sensitive_dict
 
 if TYPE_CHECKING:
     from onyx.db.models import LLMProvider as LLMProviderModel
@@ -109,11 +110,14 @@ class LLMProviderDescriptor(BaseModel):
 
         provider = llm_provider_model.provider
 
+        custom_config = read_sensitive_dict(
+            llm_provider_model.custom_config, apply_mask=False
+        )
         model_configurations = filter_model_configurations(
             llm_provider_model.model_configurations,
             provider,
-            use_stored_display_name=llm_provider_model.custom_config is not None,
-            custom_config=llm_provider_model.custom_config,
+            use_stored_display_name=custom_config is not None,
+            custom_config=custom_config,
             deployment_name=llm_provider_model.deployment_name,
         )
         default_model = fetch_default_model_for_provider(provider)
@@ -210,6 +214,13 @@ class LLMProviderView(LLMProvider):
             )
             api_key = llm_provider_model.api_key.get_value(apply_mask=False)
 
+        # custom_config is stored encrypted. This view is also the internal
+        # shape the LLM factory builds from, so the raw dict is unwrapped here;
+        # responses that reach a client are masked at the API boundary.
+        custom_config = read_sensitive_dict(
+            llm_provider_model.custom_config, apply_mask=False
+        )
+
         return cls(
             id=llm_provider_model.id,
             name=llm_provider_model.name,
@@ -217,7 +228,7 @@ class LLMProviderView(LLMProvider):
             api_key=api_key,
             api_base=llm_provider_model.api_base,
             api_version=llm_provider_model.api_version,
-            custom_config=llm_provider_model.custom_config,
+            custom_config=custom_config,
             is_public=llm_provider_model.is_public,
             is_auto_mode=llm_provider_model.is_auto_mode,
             groups=groups,
@@ -226,8 +237,8 @@ class LLMProviderView(LLMProvider):
             model_configurations=filter_model_configurations(
                 llm_provider_model.model_configurations,
                 provider,
-                use_stored_display_name=llm_provider_model.custom_config is not None,
-                custom_config=llm_provider_model.custom_config,
+                use_stored_display_name=custom_config is not None,
+                custom_config=custom_config,
                 deployment_name=llm_provider_model.deployment_name,
             ),
         )

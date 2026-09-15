@@ -28,9 +28,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from onyx.db.engine.shard_registry import ALEMBIC_TARGET_URL_ATTRIBUTE
 from onyx.db.engine.sql_engine import SYNC_DB_API, build_connection_string
 
-# Plan 003b's revision and the 003a head it chains from.
-REVISION_003B = "faee7eaa921e"
+# The TON revision chain, oldest first.
 REVISION_003A = "714172b66b07"
+REVISION_003B = "faee7eaa921e"
+REVISION_003C = "6b0ca4eb29fb"
 
 # The nine tables Plan 003b introduces, in creation order. Used both to assert
 # what the migration creates and to assert what its downgrade removes.
@@ -45,6 +46,29 @@ TON_003B_TABLES: tuple[str, ...] = (
     "ton_analysis_run__source_snapshot",
     "ton_analysis_step",
 )
+
+# The twelve tables Plan 003c introduces, in creation order.
+TON_003C_TABLES: tuple[str, ...] = (
+    "ton_occurrence",
+    "ton_finding",
+    "ton_finding_evidence",
+    "ton_finding_interpretation",
+    "ton_occurrence_event",
+    "ton_occurrence_impact",
+    "ton_occurrence_assignment",
+    "ton_occurrence_note",
+    "ton_occurrence_impacted_domain",
+    "ton_business_unit__user_group",
+    "ton_contract__user_group",
+    "ton_occurrence__user_group",
+)
+
+# Every TON table that exists at head. The inverse assertions run over this set,
+# so a new table cannot escape the no-``is_public`` and no-source-write checks by
+# being added to a later slice's list only.
+TON_TABLES_AT_HEAD: tuple[str, ...] = TON_003B_TABLES + TON_003C_TABLES
+
+OCCURRENCE_SHORT_CODE_SEQUENCE = "ton_occurrence_short_code_seq"
 
 
 def admin_engine() -> Engine:
@@ -87,7 +111,7 @@ def drop_database(name: str) -> None:
 @contextmanager
 def scratch_database(template: str | None = None) -> Iterator[str]:
     """Yield a throwaway database name, dropped afterwards."""
-    name = f"onyx_ton_003b_{uuid4().hex[:12]}"
+    name = f"onyx_ton_{uuid4().hex[:12]}"
     create_database(name, template=template)
     try:
         yield name
@@ -176,3 +200,41 @@ def query_all(
             return list(connection.execute(text(sql), params or {}).all())
     finally:
         engine.dispose()
+
+
+def sequence_exists(database: str, name: str) -> bool:
+    """Whether a PostgreSQL sequence exists in the public schema."""
+    rows = query_all(
+        database,
+        "SELECT count(*) FROM pg_class WHERE relkind = 'S' AND relname = :name",
+        {"name": name},
+    )
+    return bool(rows[0][0])
+
+
+def constraint_names(database: str, table: str) -> set[str]:
+    """Every constraint name on *table*, whatever its kind."""
+    rows = query_all(
+        database,
+        "SELECT conname FROM pg_constraint "
+        "JOIN pg_class ON pg_class.oid = pg_constraint.conrelid "
+        "WHERE pg_class.relname = :table",
+        {"table": table},
+    )
+    return {str(row[0]) for row in rows}
+
+
+def column_types(database: str, table: str) -> dict[str, str]:
+    """Column name to SQL type for *table*.
+
+    Used to assert that no monetary column is a floating-point type: the check
+    has to read the built schema, because a model annotation cannot prove what the
+    migration actually created.
+    """
+    rows = query_all(
+        database,
+        "SELECT column_name, data_type FROM information_schema.columns "
+        "WHERE table_schema = 'public' AND table_name = :table",
+        {"table": table},
+    )
+    return {str(row[0]): str(row[1]) for row in rows}

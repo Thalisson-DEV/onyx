@@ -19,7 +19,8 @@ is the later web-only surface slice. Status values are `TODO`, `IN PROGRESS`,
 | 002 | [Tenant, upload, error, and privacy boundaries](002-security-privacy.md) | P0 | M | 001 | DONE |
 | 003a | [Provider secret encryption](003a-provider-secret-encryption.md) | P0 | M | 001, 002, 007, [readiness gate](003-readiness.md), decision 7a | DONE |
 | 003b | [TON identity, rules and analysis core](003b-ton-identity-rules-analysis.md) | P1 | L | 003a, [readiness gate](003-readiness.md), 008a | DONE |
-| 003 | [Rule, interpretation, Finding, and report domain](003-domain-rules-findings.md) | P1 | L | 001, 002, 003a, [readiness gate](003-readiness.md) | READY for 003c/003d; 003a and 003b DONE |
+| 003c | [TON findings, occurrences, evidence and resource ACL](003c-findings-occurrences-acl.md) | P1 | L | 003b, [readiness gate](003-readiness.md), 008a | DONE |
+| 003 | [Rule, interpretation, Finding, and report domain](003-domain-rules-findings.md) | P1 | L | 001, 002, 003a, [readiness gate](003-readiness.md) | READY for 003d; 003a, 003b and 003c DONE |
 | 004 | [File lifecycle and knowledge ingestion](004-files-knowledge-ingestion.md) | P1 | L | 001, 002, 003 | TODO |
 | 005 | [Authorized agents and orchestration](005-agents-orchestration.md) | P1 | L | 001, 002, 003, 004, 008a | TODO |
 | 006 | [Reports, schedules, alerts, and administration](006-reports-schedules-admin.md) | P1 | L | 001, 002, 003, 004, 005, 008a | TODO |
@@ -53,6 +54,7 @@ the report service.
 - [Target architecture](target-architecture.md)
 - [Domain rules and lifecycle contract](domain-rules.md)
 - [Plan 003 readiness gate](003-readiness.md)
+- [Plan 003c result — findings, occurrences and ACL](003c-findings-occurrences-acl.md)
 - [Decision log](decision-log.md)
 - [Execution roadmap](roadmap.md)
 - [Capability, edition and entitlement audit](../capability-edition-audit.md)

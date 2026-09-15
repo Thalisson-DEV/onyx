@@ -1,6 +1,7 @@
-"""TON domain schema spec — Plan 003b, revision ``faee7eaa921e``.
+"""TON domain schema spec — Plans 003b (``faee7eaa921e``) and 003c
+(``6b0ca4eb29fb``).
 
-Verifies what the migration actually built, not what the models declare. Real
+Verifies what the migrations actually built, not what the models declare. Real
 PostgreSQL is required: a unique constraint, an ``ON DELETE`` rule and a CHECK
 constraint only exist once the migration ran, and a mock cannot show any of them.
 
@@ -31,35 +32,34 @@ from onyx.db.ton.enums import (
 from onyx.db.ton.models import AnalysisRunRuleVersion, AnalysisStep
 from tests.external_dependency_unit.ton import factories
 from tests.external_dependency_unit.ton.scratch_db import (
+    OCCURRENCE_SHORT_CODE_SEQUENCE,
     REVISION_003A,
+    REVISION_003B,
     TON_003B_TABLES,
+    TON_003C_TABLES,
+    TON_TABLES_AT_HEAD,
     column_names,
+    column_types,
+    constraint_names,
     downgrade,
     query_all,
+    sequence_exists,
     table_names,
     upgrade,
 )
 
-# Tables that belong to later slices. Their absence is part of this slice's
-# contract: 003b must not reach into 003c or 003d.
+# Tables that belong to 003d. Their absence is part of this slice's contract:
+# 003c must not reach into the report or audit slice.
+#
+# The readiness gate historically said 003c creates "four ``*__UserGroup``
+# junctions". ``TonReport`` does not exist until 003d, so its junction goes with
+# it and ``ton_report__user_group`` is listed here rather than in the 003c set.
 LATER_SLICE_TABLES: tuple[str, ...] = (
-    # 003c
-    "ton_finding",
-    "ton_finding_evidence",
-    "ton_finding_interpretation",
-    "ton_occurrence",
-    "ton_occurrence_event",
-    "ton_occurrence_impact",
-    "ton_occurrence_assignment",
-    "ton_occurrence_note",
-    "ton_occurrence_impacted_domain",
-    "ton_business_unit__user_group",
-    "ton_contract__user_group",
-    "ton_occurrence__user_group",
-    # 003d
     "ton_report",
     "ton_report_revision",
     "ton_report__user_group",
+    "ton_report_revision__analysis_run",
+    "ton_report_revision__occurrence",
     "ton_audit_event",
 )
 
@@ -100,6 +100,71 @@ EXPECTED_FOREIGN_KEYS: tuple[tuple[str, str, str, str], ...] = (
     ("ton_analysis_step", "analysis_run_id", "ton_analysis_run", "CASCADE"),
     ("ton_analysis_step", "business_unit_id", "ton_business_unit", "RESTRICT"),
     ("ton_analysis_step", "blocked_by_step_id", "ton_analysis_step", "CASCADE"),
+    # 003c. RESTRICT wherever deletion would break the audit chain, CASCADE where
+    # the child has no meaning without its parent, SET NULL for a provenance-only
+    # user reference.
+    ("ton_occurrence", "rule_id", "ton_rule", "RESTRICT"),
+    ("ton_occurrence", "current_rule_version_id", "ton_rule_version", "RESTRICT"),
+    ("ton_occurrence", "business_unit_id", "ton_business_unit", "RESTRICT"),
+    ("ton_occurrence", "contract_id", "ton_contract", "RESTRICT"),
+    ("ton_occurrence", "superseded_by_occurrence_id", "ton_occurrence", "SET NULL"),
+    ("ton_finding", "analysis_run_id", "ton_analysis_run", "RESTRICT"),
+    ("ton_finding", "rule_version_id", "ton_rule_version", "RESTRICT"),
+    ("ton_finding", "occurrence_id", "ton_occurrence", "CASCADE"),
+    ("ton_finding", "business_unit_id", "ton_business_unit", "RESTRICT"),
+    ("ton_finding", "contract_id", "ton_contract", "RESTRICT"),
+    ("ton_finding_evidence", "finding_id", "ton_finding", "CASCADE"),
+    (
+        "ton_finding_evidence",
+        "source_snapshot_id",
+        "ton_source_snapshot",
+        "RESTRICT",
+    ),
+    ("ton_finding_evidence", "file_record_id", "file_record", "SET NULL"),
+    ("ton_finding_evidence", "document_id", "document", "SET NULL"),
+    ("ton_finding_evidence", "chat_message_id", "chat_message", "SET NULL"),
+    ("ton_finding_interpretation", "finding_id", "ton_finding", "CASCADE"),
+    ("ton_occurrence_event", "occurrence_id", "ton_occurrence", "CASCADE"),
+    # The one exception to the SET NULL convention. See
+    # TestOccurrenceEventActorReference for why.
+    ("ton_occurrence_event", "actor_user_id", "user", "RESTRICT"),
+    ("ton_occurrence_event", "finding_id", "ton_finding", "SET NULL"),
+    ("ton_occurrence_event", "rule_version_id", "ton_rule_version", "RESTRICT"),
+    ("ton_occurrence_impact", "occurrence_id", "ton_occurrence", "CASCADE"),
+    ("ton_occurrence_impact", "verified_by", "user", "SET NULL"),
+    ("ton_occurrence_assignment", "occurrence_id", "ton_occurrence", "CASCADE"),
+    ("ton_occurrence_assignment", "responsible_user_id", "user", "SET NULL"),
+    ("ton_occurrence_assignment", "assigned_by_user_id", "user", "SET NULL"),
+    ("ton_occurrence_note", "occurrence_id", "ton_occurrence", "CASCADE"),
+    ("ton_occurrence_note", "author_user_id", "user", "SET NULL"),
+    ("ton_occurrence_impacted_domain", "occurrence_id", "ton_occurrence", "CASCADE"),
+    (
+        "ton_business_unit__user_group",
+        "business_unit_id",
+        "ton_business_unit",
+        "CASCADE",
+    ),
+    ("ton_business_unit__user_group", "user_group_id", "user_group", "CASCADE"),
+    ("ton_contract__user_group", "contract_id", "ton_contract", "CASCADE"),
+    ("ton_contract__user_group", "user_group_id", "user_group", "CASCADE"),
+    ("ton_occurrence__user_group", "occurrence_id", "ton_occurrence", "CASCADE"),
+    ("ton_occurrence__user_group", "user_group_id", "user_group", "CASCADE"),
+)
+
+# Monetary and quantity columns. Every one must be ``numeric``: a
+# ``double precision`` here would make a published amount irreproducible, and the
+# existing ``Numeric(18, 6, asdecimal=False)`` token-cost pattern must not spread
+# into this domain.
+EXPECTED_DECIMAL_COLUMNS: tuple[tuple[str, str], ...] = (
+    ("ton_finding", "expected_value"),
+    ("ton_finding", "actual_value"),
+    ("ton_finding", "deviation_value"),
+    ("ton_finding", "computed_impact_amount"),
+    ("ton_occurrence_impact", "predicted_amount"),
+    ("ton_occurrence_impact", "realized_amount"),
+    ("ton_occurrence_impact", "quantity"),
+    ("ton_occurrence_impact", "unit_cost"),
+    ("ton_occurrence_impact", "sensitivity_pct"),
 )
 
 _FOREIGN_KEY_SQL = """
@@ -137,29 +202,64 @@ WHERE schemaname = 'public' AND tablename = :table
 
 
 class TestMigrationShape:
-    """What revision faee7eaa921e creates, and what it must leave alone."""
+    """What the TON revisions create, and what they must leave alone."""
 
-    def test_creates_exactly_the_nine_expected_tables(self, ton_database: str) -> None:
+    def test_head_holds_exactly_the_expected_ton_tables(
+        self, ton_database: str
+    ) -> None:
+        assert table_names(ton_database, "ton_") == set(TON_TABLES_AT_HEAD)
+
+    def test_003c_adds_exactly_twelve_tables(self, ton_database: str) -> None:
+        """Measured, not asserted from a list: downgrade to 003b and diff.
+
+        This is the assertion that catches a table smuggled into 003c without a
+        recorded decision, and the one that proves 003b's nine survive.
+        """
+        at_head = table_names(ton_database)
+
+        downgrade(ton_database, REVISION_003B)
+
+        at_003b = table_names(ton_database)
+        assert at_head - at_003b == set(TON_003C_TABLES)
         assert table_names(ton_database, "ton_") == set(TON_003B_TABLES)
+
+    def test_003c_downgrade_leaves_every_003b_structure_intact(
+        self, ton_database: str
+    ) -> None:
+        """A 003c rollback must not touch the rule and analysis spine."""
+        constraints_before = {
+            table: constraint_names(ton_database, table) for table in TON_003B_TABLES
+        }
+        columns_before = {
+            table: column_names(ton_database, table) for table in TON_003B_TABLES
+        }
+
+        downgrade(ton_database, REVISION_003B)
+
+        for table in TON_003B_TABLES:
+            assert constraint_names(ton_database, table) == constraints_before[table]
+            assert column_names(ton_database, table) == columns_before[table]
+
+    def test_003c_downgrade_removes_the_short_code_sequence(
+        self, ton_database: str
+    ) -> None:
+        """A sequence left behind would make a re-upgrade fail on second run."""
+        assert sequence_exists(ton_database, OCCURRENCE_SHORT_CODE_SEQUENCE)
+
+        downgrade(ton_database, REVISION_003B)
+
+        assert not sequence_exists(ton_database, OCCURRENCE_SHORT_CODE_SEQUENCE)
 
     def test_creates_no_later_slice_table(self, ton_database: str) -> None:
         present = table_names(ton_database)
         for table in LATER_SLICE_TABLES:
             assert table not in present, (
-                f"{table} belongs to a later slice and must not exist after 003b"
+                f"{table} belongs to 003d and must not exist after 003c"
             )
 
-    def test_creates_no_finding_or_occurrence_table(self, ton_database: str) -> None:
-        """An inverse assertion by substring, so a differently named Finding or
-        Occurrence table cannot slip past the explicit list above."""
-        forbidden = {
-            name
-            for name in table_names(ton_database)
-            if "finding" in name or "occurrence" in name
-        }
-        assert forbidden == set()
-
     def test_creates_no_report_or_audit_table(self, ton_database: str) -> None:
+        """An inverse assertion by substring, so a differently named report or
+        audit table cannot slip past the explicit list above."""
         forbidden = {
             name
             for name in table_names(ton_database, "ton_")
@@ -167,13 +267,19 @@ class TestMigrationShape:
         }
         assert forbidden == set()
 
-    def test_downgrade_removes_only_003b_structures(self, ton_database: str) -> None:
+    def test_creates_no_roi_table(self, ton_database: str) -> None:
+        """Realised ROI is a derived aggregation over verified impact rows, not a
+        registry (readiness §13)."""
+        forbidden = {name for name in table_names(ton_database) if "roi" in name}
+        assert forbidden == set()
+
+    def test_downgrade_to_003a_removes_every_ton_table(self, ton_database: str) -> None:
         before = table_names(ton_database)
 
         downgrade(ton_database, REVISION_003A)
 
         after = table_names(ton_database)
-        assert before - after == set(TON_003B_TABLES)
+        assert before - after == set(TON_TABLES_AT_HEAD)
         assert after - before == set(), "downgrade must not create anything"
         assert query_all(ton_database, "SELECT version_num FROM alembic_version") == [
             (REVISION_003A,)
@@ -190,8 +296,12 @@ class TestMigrationShape:
         assert table_names(ton_database) == before
 
 
-class TestFailClosedPreparation:
-    """The inverse assertion that keeps the fail-closed decision durable."""
+class TestFailClosedSchema:
+    """The inverse assertions that keep the fail-closed decision durable.
+
+    They run over every TON table at head, not just the current slice's, so a
+    table added later cannot escape them by being listed elsewhere.
+    """
 
     def test_no_ton_table_has_an_is_public_column(self, ton_database: str) -> None:
         """``Persona.is_public`` defaults to true and short-circuits the whole
@@ -199,7 +309,7 @@ class TestFailClosedPreparation:
         does not exist cannot be short-circuited by future code."""
         offenders = {
             table
-            for table in TON_003B_TABLES
+            for table in TON_TABLES_AT_HEAD
             if "is_public" in column_names(ton_database, table)
         }
         assert offenders == set()
@@ -210,8 +320,134 @@ class TestFailClosedPreparation:
         """Also rejects the near-misses that would reintroduce fail-open
         visibility under another name."""
         forbidden = {"is_public", "public", "is_global", "public_permission"}
-        for table in TON_003B_TABLES:
+        for table in TON_TABLES_AT_HEAD:
             assert column_names(ton_database, table) & forbidden == set()
+
+    def test_the_three_acl_junctions_exist(self, ton_database: str) -> None:
+        """Three, not four. ``ton_report__user_group`` arrives with its table in
+        003d — a junction to a table that does not exist would authorize
+        nothing."""
+        junctions = {
+            name for name in table_names(ton_database, "ton_") if "__user_group" in name
+        }
+        assert junctions == {
+            "ton_business_unit__user_group",
+            "ton_contract__user_group",
+            "ton_occurrence__user_group",
+        }
+
+    def test_finding_and_evidence_have_no_acl_junction(self, ton_database: str) -> None:
+        """Their visibility derives from the owning occurrence. Two independent
+        ACLs over one analytical case would eventually disagree (readiness
+        §10)."""
+        present = table_names(ton_database)
+        assert "ton_finding__user_group" not in present
+        assert "ton_finding_evidence__user_group" not in present
+
+
+class TestNoSourceSystemWrites:
+    """The advisory boundary of Prompt Mestre §12.1, enforced by absence."""
+
+    def test_no_ton_column_writes_back_to_a_source_system(
+        self, ton_database: str
+    ) -> None:
+        forbidden_fragments = (
+            "glosa",
+            "erp_write",
+            "billing_write",
+            "measurement_write",
+            "push_to_",
+            "sync_to_",
+        )
+        for table in TON_TABLES_AT_HEAD:
+            for column in column_names(ton_database, table):
+                assert not any(
+                    fragment in column for fragment in forbidden_fragments
+                ), f"{table}.{column} suggests a write back into a source system"
+
+
+class TestNoRawModelOutputIsStored:
+    """No chain-of-thought, no raw prompt body, no response transcript."""
+
+    def test_interpretation_has_no_transcript_column(self, ton_database: str) -> None:
+        forbidden_fragments = (
+            "chain_of_thought",
+            "reasoning",
+            "raw_response",
+            "raw_prompt",
+            "prompt_body",
+            "prompt_text",
+            "transcript",
+            "completion",
+            "messages",
+            "thinking",
+        )
+        columns = column_names(ton_database, "ton_finding_interpretation")
+        for column in columns:
+            assert not any(fragment in column for fragment in forbidden_fragments), (
+                f"ton_finding_interpretation.{column} could hold hidden model "
+                "output; only the business-facing interpretation is persisted"
+            )
+
+    def test_interpretation_stores_prompt_identity_not_prompt_content(
+        self, ton_database: str
+    ) -> None:
+        """Reproducibility comes from the key and version, not the body."""
+        columns = column_names(ton_database, "ton_finding_interpretation")
+        assert {"prompt_key", "prompt_version"} <= columns
+
+
+class TestDecimalColumns:
+    """Money is exact. No monetary column is a floating-point type."""
+
+    def test_every_amount_column_is_numeric(self, ton_database: str) -> None:
+        for table, column in EXPECTED_DECIMAL_COLUMNS:
+            actual = column_types(ton_database, table)[column]
+            assert actual == "numeric", f"{table}.{column} is {actual}, not numeric"
+
+    def test_no_ton_table_holds_a_floating_point_column(
+        self, ton_database: str
+    ) -> None:
+        """An inverse assertion: the token-cost ``asdecimal=False`` pattern must
+        not spread into this domain under any column name."""
+        floating = {"double precision", "real"}
+        for table in TON_TABLES_AT_HEAD:
+            offenders = {
+                name
+                for name, sql_type in column_types(ton_database, table).items()
+                if sql_type in floating
+            }
+            assert offenders == set(), f"{table} has floating-point columns"
+
+    def test_evidence_extracted_value_stays_a_string(self, ton_database: str) -> None:
+        """It records what the source stated, at the source's own scale."""
+        assert (
+            column_types(ton_database, "ton_finding_evidence")["extracted_value"]
+            == "character varying"
+        )
+
+
+class TestFindingPinsTheRuleVersion:
+    def test_finding_has_a_rule_version_id_and_no_rule_id(
+        self, ton_database: str
+    ) -> None:
+        """Readiness §3: history references the version, never the rule alone.
+
+        A ``rule_id`` column here could disagree with ``rule_version_id``, and a
+        threshold change would then be able to reinterpret a published detection.
+        """
+        columns = column_names(ton_database, "ton_finding")
+        assert "rule_version_id" in columns
+        assert "rule_id" not in columns
+
+    def test_finding_has_no_lifecycle_status_column(self, ton_database: str) -> None:
+        """Lifecycle belongs to the occurrence. ``interpretation_status`` tracks
+        the interpretation attempt, not the business case."""
+        columns = column_names(ton_database, "ton_finding")
+        assert "status" not in columns
+        assert "resolved_at" not in columns
+        assert "resolution" not in columns
+        assert "interpretation_status" in columns
 
 
 class TestUniqueness:
@@ -542,8 +778,154 @@ class TestRunRuleVersionConstraint:
         )
 
 
+class TestOccurrenceUniqueness:
+    """``UNIQUE(identity_key)`` is the deduplication boundary."""
+
+    def test_identity_key_is_unique(self, ton_database: str) -> None:
+        constraints = query_all(
+            ton_database,
+            "SELECT conname FROM pg_constraint c "
+            "JOIN pg_class t ON t.oid = c.conrelid "
+            "JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey) "
+            "WHERE t.relname = 'ton_occurrence' AND c.contype = 'u' "
+            "AND a.attname = 'identity_key'",
+        )
+        assert constraints, "ton_occurrence.identity_key must be UNIQUE"
+
+    def test_a_second_occurrence_with_the_same_identity_key_is_refused(
+        self, ton_session: Session
+    ) -> None:
+        rule, rule_version = factories.make_occurrence_rule_version(ton_session)
+        run = factories.make_analysis_run(ton_session)
+        first = factories.record_synthetic_detection(
+            ton_session, rule=rule, rule_version=rule_version, analysis_run=run
+        )
+        ton_session.commit()
+
+        ton_session.add(
+            _clone_occurrence_row(first.occurrence, rule.id, rule_version.id)
+        )
+        with pytest.raises(IntegrityError):
+            ton_session.commit()
+
+    def test_a_lineage_generation_pair_is_unique(self, ton_database: str) -> None:
+        assert "uq_ton_occurrence_lineage_generation" in constraint_names(
+            ton_database, "ton_occurrence"
+        )
+
+
+class TestFindingUniqueness:
+    """A rerun of the same logical analysis is idempotent."""
+
+    def test_the_run_rule_version_identity_triple_is_unique(
+        self, ton_database: str
+    ) -> None:
+        assert "uq_ton_finding_run_rule_version_identity" in constraint_names(
+            ton_database, "ton_finding"
+        )
+
+    def test_retrying_a_detection_in_the_same_run_is_refused_by_the_database(
+        self, ton_session: Session
+    ) -> None:
+        """Asserted at the database, bypassing the domain resolution path.
+
+        The domain path returns the existing occurrence instead of duplicating,
+        and this is the guarantee underneath it: even a writer that skips the
+        module cannot record the same detection twice.
+        """
+        from onyx.db.ton.models import Finding
+
+        rule, rule_version = factories.make_occurrence_rule_version(ton_session)
+        run = factories.make_analysis_run(ton_session)
+        result = factories.record_synthetic_detection(
+            ton_session, rule=rule, rule_version=rule_version, analysis_run=run
+        )
+        ton_session.commit()
+
+        ton_session.add(
+            Finding(
+                analysis_run_id=run.id,
+                rule_version_id=rule_version.id,
+                occurrence_id=result.occurrence.id,
+                identity_key=result.finding.identity_key,
+                finding_kind=result.finding.finding_kind,
+                domain=result.finding.domain,
+                detected_at=result.finding.detected_at,
+            )
+        )
+        with pytest.raises(IntegrityError):
+            ton_session.commit()
+
+
+class TestEvidenceConfidenceIsRequired:
+    def test_confidence_level_is_not_nullable(self, ton_database: str) -> None:
+        """Prompt Mestre §3.4: a published number without its A/B/C/D level is a
+        defect, so the column cannot be null."""
+        rows = query_all(
+            ton_database,
+            "SELECT is_nullable FROM information_schema.columns "
+            "WHERE table_name = 'ton_finding_evidence' "
+            "AND column_name = 'confidence_level'",
+        )
+        assert rows == [("NO",)]
+
+    def test_redaction_level_is_not_nullable(self, ton_database: str) -> None:
+        rows = query_all(
+            ton_database,
+            "SELECT is_nullable FROM information_schema.columns "
+            "WHERE table_name = 'ton_finding_evidence' "
+            "AND column_name = 'redaction_level'",
+        )
+        assert rows == [("NO",)]
+
+    def test_redaction_level_has_no_server_default(self, ton_database: str) -> None:
+        """The writer states how much identity a row carries; it is not assumed."""
+        rows = query_all(
+            ton_database,
+            "SELECT column_default FROM information_schema.columns "
+            "WHERE table_name = 'ton_finding_evidence' "
+            "AND column_name = 'redaction_level'",
+        )
+        assert rows == [(None,)]
+
+
+class TestOccurrenceEventActorReference:
+    """Why ``actor_user_id`` breaks the SET NULL convention.
+
+    The human-only CHECK requires the column to be non-null for an authorized
+    decision. ``SET NULL`` would void that guarantee the first time an account was
+    hard deleted, so the reference is ``RESTRICT`` and an authorizing account stays
+    referenceable.
+    """
+
+    def test_actor_user_id_is_restrict_not_set_null(self, ton_database: str) -> None:
+        rows = query_all(ton_database, _FOREIGN_KEY_SQL)
+        actual = {
+            (row[0], row[1], row[3])
+            for row in rows
+            if row[0] == "ton_occurrence_event" and row[1] == "actor_user_id"
+        }
+        assert actual == {("ton_occurrence_event", "actor_user_id", "RESTRICT")}
+
+
 class TestNoSeeding:
     """The migration creates schema only."""
+
+    def test_every_003c_table_is_empty(self, ton_database: str) -> None:
+        for table in TON_003C_TABLES:
+            count = query_all(ton_database, f"SELECT count(*) FROM {table}")  # noqa: S608
+            assert count == [(0,)], f"{table} was seeded"
+
+    def test_no_acl_junction_row_is_seeded(self, ton_database: str) -> None:
+        """A seeded junction row would grant access nobody decided to grant."""
+        for table in (
+            "ton_business_unit__user_group",
+            "ton_contract__user_group",
+            "ton_occurrence__user_group",
+        ):
+            assert query_all(ton_database, f"SELECT count(*) FROM {table}") == [  # noqa: S608
+                (0,)
+            ]
 
     def test_no_rule_row_is_seeded(self, ton_database: str) -> None:
         assert query_all(ton_database, "SELECT count(*) FROM ton_rule") == [(0,)]
@@ -575,6 +957,63 @@ class TestExpectedConstraintNames:
     @pytest.mark.parametrize(
         ("table", "constraint"),
         [
+            # 003c — the constraints that carry this slice's guarantees.
+            (
+                "ton_occurrence_event",
+                "ck_ton_occurrence_event_human_only_transitions",
+            ),
+            (
+                "ton_occurrence_event",
+                "ck_ton_occurrence_event_resolution_requires_user",
+            ),
+            (
+                "ton_occurrence_event",
+                "ck_ton_occurrence_event_user_actor_identified",
+            ),
+            ("ton_occurrence_event", "uq_ton_occurrence_event_sequence"),
+            (
+                "ton_occurrence",
+                "ck_ton_occurrence_critical_requires_human_closure",
+            ),
+            ("ton_occurrence", "ck_ton_occurrence_first_generation_identity"),
+            ("ton_occurrence", "ck_ton_occurrence_resolved_requires_timestamp"),
+            ("ton_occurrence", "ck_ton_occurrence_no_self_supersede"),
+            ("ton_occurrence", "ck_ton_occurrence_detection_order"),
+            ("ton_occurrence", "uq_ton_occurrence_lineage_generation"),
+            ("ton_finding", "uq_ton_finding_run_rule_version_identity"),
+            ("ton_finding", "ck_ton_finding_period_order"),
+            (
+                "ton_finding_interpretation",
+                "ck_ton_finding_interpretation_completed_has_summary",
+            ),
+            (
+                "ton_finding_interpretation",
+                "ck_ton_finding_interpretation_failed_has_class",
+            ),
+            (
+                "ton_finding_interpretation",
+                "ck_ton_finding_interpretation_class_only_on_failure",
+            ),
+            (
+                "ton_finding_interpretation",
+                "uq_ton_finding_interpretation_attempt",
+            ),
+            (
+                "ton_occurrence_impact",
+                "ck_ton_occurrence_impact_realized_requires_verification",
+            ),
+            ("ton_occurrence_impact", "ck_ton_occurrence_impact_has_an_amount"),
+            (
+                "ton_occurrence_impact",
+                "ck_ton_occurrence_impact_unit_cost_source_required",
+            ),
+            (
+                "ton_occurrence_assignment",
+                "ck_ton_occurrence_assignment_completed_has_timestamp",
+            ),
+            ("ton_occurrence_note", "uq_ton_occurrence_note_sequence"),
+            # 003b — unchanged by this slice, asserted so a 003c downgrade or a
+            # future edit cannot quietly drop one.
             ("ton_rule_version", "ck_ton_rule_version_active_requires_approval"),
             ("ton_rule_version", "ck_ton_rule_version_effective_order"),
             ("ton_rule_version", "ck_ton_rule_version_positive"),
@@ -626,3 +1065,26 @@ class TestExpectedConstraintNames:
             )
         }
         assert "ix_ton_analysis_run__source_snapshot_snapshot_id" in definitions
+
+
+def _clone_occurrence_row(occurrence: Any, rule_id: Any, rule_version_id: Any) -> Any:
+    """A second occurrence carrying an existing ``identity_key``.
+
+    Built by hand rather than through the domain path: the point is to prove the
+    database refuses the duplicate, not that the module avoids creating one.
+    """
+    from onyx.db.ton.models import Occurrence
+
+    return Occurrence(
+        identity_key=occurrence.identity_key,
+        logical_identity_key=occurrence.logical_identity_key,
+        supersede_generation=occurrence.supersede_generation,
+        rule_id=rule_id,
+        current_rule_version_id=rule_version_id,
+        owning_domain=occurrence.owning_domain,
+        ledger_kind=occurrence.ledger_kind,
+        criticality=occurrence.criticality,
+        title="Duplicate identity attempt",
+        first_detected_at=occurrence.first_detected_at,
+        last_detected_at=occurrence.last_detected_at,
+    )

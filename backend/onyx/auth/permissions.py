@@ -64,6 +64,14 @@ IMPLIED_PERMISSIONS: dict[str, set[str]] = {
     Permission.MANAGE_ACTIONS.value: {
         Permission.READ_USER_GROUPS.value,
     },
+    # Managing TON occurrences includes reading them. The resource ACL in
+    # onyx/db/ton/acl.py still narrows *which* occurrences either token reaches —
+    # neither of them confers company-wide sight, and neither bypasses the
+    # junction. Note this implication does not leak into
+    # SCOPED_MANAGER_PERMISSIONS_EXPANDED, because no TON token is in the bundle.
+    Permission.MANAGE_TON_OCCURRENCES.value: {
+        Permission.READ_TON_OCCURRENCES.value,
+    },
     # basic grants the search/chat surfaces; admin grants read:admin (and the
     # rest) via the FULL_ADMIN_PANEL_ACCESS short-circuit in
     # resolve_effective_permissions.
@@ -265,6 +273,27 @@ PERMISSION_REGISTRY: list[PermissionRegistryEntry] = [
         display_name="Manage TON Business Units",
         description="Add and update business units and contract identity.",
         permissions=[Permission.MANAGE_TON_BUSINESS_UNITS],
+        group=4,
+    ),
+    PermissionRegistryEntry(
+        id="view_ton_occurrences",
+        display_name="View TON Occurrences",
+        description=(
+            "View TON occurrences, their findings, evidence and history. "
+            "A group still sees only the occurrences explicitly shared with it."
+        ),
+        permissions=[Permission.READ_TON_OCCURRENCES],
+        group=4,
+    ),
+    PermissionRegistryEntry(
+        id="manage_ton_occurrences",
+        display_name="Manage TON Occurrences",
+        description=(
+            "Update TON occurrences the group can edit: assignments, notes, "
+            "impact and lifecycle decisions. Deleting an occurrence stays "
+            "restricted to administrators."
+        ),
+        permissions=[Permission.MANAGE_TON_OCCURRENCES],
         group=4,
     ),
 ]

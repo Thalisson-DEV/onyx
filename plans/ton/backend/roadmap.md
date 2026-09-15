@@ -43,7 +43,8 @@ cleanup. Domain schema and production rules must wait for the decisions in
 | 002 | Tenant, upload, error, trace and telemetry boundaries | 001 | DONE |
 | 003a | Provider secret encryption (SECURITY-08) | 001, 002, 007, `003-readiness.md`, decision 7a | DONE |
 | 003b | TON identity, rules and analysis core | 003a, `003-readiness.md`, 008a | DONE |
-| 003 | Rule/analysis/Finding/Occurrence/Report contract and migrations | 001, 002, 003a, `003-readiness.md` | READY for 003c/003d. 003a and 003b DONE. |
+| 003c | TON findings, occurrences, evidence and resource ACL | 003b, `003-readiness.md`, 008a | DONE |
+| 003 | Rule/analysis/Finding/Occurrence/Report contract and migrations | 001, 002, 003a, `003-readiness.md` | READY for 003d. 003a, 003b and 003c DONE. |
 | 004 | File lifecycle, ingestion, knowledge and quality hooks | 001, 002, 003 | TODO |
 | 005 | Specialist agents and native supervisor extension | 002, 003, 004, 008a | TODO |
 | 006 | Reports, alerts, administration and scheduled processing | 001, 002, 003, 004, 005, 008a | TODO |
@@ -62,9 +63,9 @@ canonical where it is more specific than the plan. It splits Plan 003 into four
 slices: 003a (provider-secret encryption), 003b (rules and analysis), 003c
 (findings, occurrences and ACL) and 003d (report snapshot and audit).
 
-**003c and 003d are READY.** Alembic revision `6e8f0a2b1c35` is identified as an
-orphan merge migration that was never committed, and the repository history is
-linear with a single head.
+**003d is READY.** Alembic revision `6e8f0a2b1c35` is identified as an orphan merge
+migration that was never committed, and the repository history is linear with a
+single head.
 
 **003a is DONE.** Decision 7a is resolved and recorded in
 `003a-provider-secret-encryption.md`, which closes readiness blocker B4 and
@@ -72,19 +73,37 @@ SECURITY-08. Both provider `custom_config` columns are now `EncryptedJson`, and
 revision `714172b66b07` chains from `ad99acb9be41`.
 
 **003b is DONE.** Recorded in `003b-ton-identity-rules-analysis.md`. Revision
-`faee7eaa921e` creates the nine identity, rule and analysis tables and is the new
-single head. **003c takes `faee7eaa921e` as its `down_revision`.** Plan 003 as a
-whole is not complete: Finding, Occurrence and the resource ACL junctions belong
-to 003c, and the report snapshot and TON audit trail to 003d.
+`faee7eaa921e` creates the nine identity, rule and analysis tables.
+
+**003c is DONE.** Recorded in `003c-findings-occurrences-acl.md`. Revision
+`6b0ca4eb29fb` creates the twelve finding, occurrence, evidence, interpretation and
+resource-ACL tables plus the occurrence short-code sequence, and is the new single
+head. **003d takes `6b0ca4eb29fb` as its `down_revision`.**
+
+Plan 003 as a whole is **not** complete: the report snapshot, its join tables,
+`TonReport__UserGroup` and the persistent TON audit trail belong to 003d.
+
+One readiness correction is recorded by 003c. `003-readiness.md` §21 says 003c
+creates "four `*__UserGroup` junctions", but `TonReport` does not exist until 003d.
+The authoritative slicing is three junctions in 003c —
+`BusinessUnit__UserGroup`, `Contract__UserGroup`, `Occurrence__UserGroup` — and
+`TonReport__UserGroup` in 003d, with its table. `Finding` and `FindingEvidence` get
+no junction in any slice; their visibility derives from the owning occurrence.
 
 The original TON global-blocking defect is closed structurally by 003b:
 `AnalysisStep` scopes blocking to `(step_code, domain, business_unit_id)`, a
 BLOCKED row must name its cause, and a partially blocked run reports
-`COMPLETED_WITH_BLOCKED_DOMAINS` rather than `FAILED`.
+`COMPLETED_WITH_BLOCKED_DOMAINS` rather than `FAILED`. 003c weakens nothing there:
+the 003b analysis suite is unchanged and still green.
 
-The running development database was **not** migrated by 003a or 003b. It stays
-at `ad99acb9be41`. The operational upgrade path is recorded in
-`003b-ton-identity-rules-analysis.md`.
+TON resources are fail-closed from 003c onward. Zero `*__UserGroup` rows means
+DENIED, no TON table has an `is_public` column, and the administrator bypass is
+`FULL_ADMIN_PANEL_ACCESS` rather than any TON capability token — so granting a
+group the ability to manage its own occurrences confers no company-wide sight.
+
+The running development database was **not** migrated by 003a, 003b or 003c. It
+stays at `ad99acb9be41`. The operational upgrade path is recorded in
+`003c-findings-occurrences-acl.md`.
 
 Business-rule approval does **not** block any migration. Every threshold stays a
 `RuleVersion` row, and a CHECK constraint makes an `ACTIVE` version require a

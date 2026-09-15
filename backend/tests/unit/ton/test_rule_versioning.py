@@ -57,6 +57,9 @@ from onyx.db.ton.rule_versions import (
     select_effective_rule_version,
 )
 
+# The nine tables this slice introduced. The whole-schema inverse assertions moved
+# to `test_occurrence_projection.py` when 003c added twelve more; what stays here
+# is the 003b subset, so a 003b regression is still named as one.
 TON_TABLE_NAMES: tuple[str, ...] = (
     "ton_business_unit",
     "ton_contract",
@@ -444,9 +447,11 @@ class TestFailClosedMetadata:
             table = Base.metadata.tables[table_name]
             assert "is_public" not in table.columns
 
-    def test_the_metadata_holds_exactly_the_nine_003b_tables(self) -> None:
+    def test_the_nine_003b_tables_are_still_mapped(self) -> None:
+        """This slice's tables survive later slices. The exact whole-schema set is
+        asserted in ``test_occurrence_projection.py``, which owns the 003c list."""
         ton_tables = {name for name in Base.metadata.tables if name.startswith("ton_")}
-        assert ton_tables == set(TON_TABLE_NAMES)
+        assert set(TON_TABLE_NAMES) <= ton_tables
 
     def test_no_ton_model_writes_to_a_source_system(self) -> None:
         """The advisory boundary is enforced by absence: no column here can carry
@@ -585,14 +590,17 @@ class TestPermissionTokens:
         assert Permission.MANAGE_TON_RULES.value == "manage:ton_rules"
         assert Permission.MANAGE_TON_BUSINESS_UNITS.value == "manage:ton_business_units"
 
-    def test_no_003c_or_003d_token_is_added_early(self) -> None:
+    def test_no_003d_token_is_added_early(self) -> None:
         """A grantable permission whose resource does not exist authorizes
-        nothing and misleads an administrator."""
-        premature = {"occurrence", "report"}
+        nothing and misleads an administrator.
+
+        The occurrence tokens arrived with their tables in 003c. The report tokens
+        wait for 003d.
+        """
         for permission in Permission:
             if "ton" not in permission.value:
                 continue
-            assert not any(word in permission.value for word in premature)
+            assert "report" not in permission.value
 
     def test_manage_ton_rules_is_not_a_scoped_manager_permission(self) -> None:
         """Approving or activating a rule version has company-wide effect, so a
@@ -632,24 +640,11 @@ class TestPermissionTokens:
 
 
 class TestModuleBoundaries:
-    def test_no_finding_or_occurrence_model_exists(self) -> None:
-        for forbidden in (
-            "Finding",
-            "FindingEvidence",
-            "FindingInterpretation",
-            "Occurrence",
-            "OccurrenceEvent",
-            "OccurrenceImpact",
-            "OccurrenceAssignment",
-            "OccurrenceNote",
-            "OccurrenceImpactedDomain",
-        ):
-            assert not hasattr(ton_models, forbidden), f"{forbidden} belongs to 003c"
-
     def test_no_report_or_audit_model_exists(self) -> None:
         for forbidden in (
             "TonReport",
             "TonReportRevision",
+            "TonReport__UserGroup",
             "TonAuditEvent",
         ):
             assert not hasattr(ton_models, forbidden), f"{forbidden} belongs to 003d"

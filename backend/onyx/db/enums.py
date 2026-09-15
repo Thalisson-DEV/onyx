@@ -685,15 +685,22 @@ class Permission(str, PyEnum):
     MANAGE_SERVICE_ACCOUNT_API_KEYS = "manage:service_account_api_keys"
     MANAGE_BOTS = "manage:bots"
 
-    # TON domain capabilities (Plan 003b). Only the tokens whose resources exist
-    # after 003b are declared; the occurrence and report tokens arrive with their
-    # tables in 003c/003d, so no grantable permission ever authorizes nothing.
-    # MANAGE_TON_RULES must never join SCOPED_MANAGER_PERMISSIONS: approving a
-    # rule version activates a threshold company-wide, which is not something a
-    # business-unit manager may do.
+    # TON domain capabilities (Plans 003b and 003c). Only the tokens whose
+    # resources exist are declared; the report tokens arrive with their tables in
+    # 003d, so no grantable permission ever authorizes nothing.
+    #
+    # No TON token joins SCOPED_MANAGER_PERMISSIONS. For MANAGE_TON_RULES the
+    # reason is company-wide effect: approving a rule version activates a
+    # threshold everywhere. For the occurrence tokens the reason is a different
+    # axis — group-manager scope is not a TON share level, and overlapping them
+    # would let managing a group confer authority over cases merely shared with
+    # it. Resource-level authority comes from the *__UserGroup junctions instead
+    # (see onyx/db/ton/acl.py).
     READ_TON_ANALYSIS = "read:ton_analysis"
     MANAGE_TON_RULES = "manage:ton_rules"
     MANAGE_TON_BUSINESS_UNITS = "manage:ton_business_units"
+    READ_TON_OCCURRENCES = "read:ton_occurrences"
+    MANAGE_TON_OCCURRENCES = "manage:ton_occurrences"
 
     # Role scopes — a bundle token implying the surfaces a given machine
     # identity may use. PAT-only; never granted to a group/user.

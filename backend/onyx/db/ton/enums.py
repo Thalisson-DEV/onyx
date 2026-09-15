@@ -321,3 +321,313 @@ class RuleVersionOutcome(str, PyEnum):
     SKIPPED_NOT_APPLICABLE = "SKIPPED_NOT_APPLICABLE"
     SKIPPED_MISSING_DATA = "SKIPPED_MISSING_DATA"
     ERRORED = "ERRORED"
+
+
+# ---------------------------------------------------------------------------
+# Plan 003c — findings, occurrences, evidence, interpretation and resource ACL.
+#
+# The same rule as above holds for every member below: none of them is a
+# business *value*. Criticality bands, NC thresholds, deadlines and tolerances
+# stay data in ``RuleVersion``.
+# ---------------------------------------------------------------------------
+
+
+class FindingKind(str, PyEnum):
+    """What kind of detection a :class:`~onyx.db.ton.models.Finding` records.
+
+    ``BLIND_SPOT`` is what makes Prompt Mestre §11's "lacuna de dado é achado de
+    primeira classe" real rather than aspirational: a blind-spot finding is valid
+    with no numeric impact and no source record, so missing data cannot be
+    silently dropped for having nothing to quantify.
+    """
+
+    DETECTION = "DETECTION"
+    SANITY_VIOLATION = "SANITY_VIOLATION"
+    BLIND_SPOT = "BLIND_SPOT"
+
+
+class OccurrenceLedgerKind(str, PyEnum):
+    """Which Prompt Mestre §13 ledger an occurrence belongs to (readiness §13).
+
+    A discriminator, deliberately not a second table. §13.2's opportunity fields
+    are a near-subset of §13.1's, and duplicating the table would triplicate the
+    impact, verification and ACL logic. Realised ROI stays a later aggregation
+    over verified :class:`~onyx.db.ton.models.OccurrenceImpact` rows.
+    """
+
+    EXCEPTION = "EXCEPTION"
+    OPPORTUNITY = "OPPORTUNITY"
+
+
+class OccurrenceCriticality(str, PyEnum):
+    """The single Prompt Mestre §10 criticality scale (PAD-CTRL-001).
+
+    Four levels, mapping to the source markers:
+
+    ============ ==================
+    Member       Prompt Mestre §10
+    ============ ==================
+    CRITICAL     🔴 Crítico
+    HIGH         🟠 Alto
+    MEDIUM       🟡 Médio
+    MONITORING   🟢 Monitoramento
+    ============ ==================
+
+    §10 forbids a parallel scale, so this is the only severity vocabulary in the
+    TON domain. **The percentage bands are not here.** They are
+    ``RuleVersion.severity_mapping`` data requiring owner approval; encoding
+    ≥1%, 0.3-1% or 0.1-0.3% as a constant is exactly what this slice must not do.
+    """
+
+    CRITICAL = "CRITICAL"
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    MONITORING = "MONITORING"
+
+
+class OccurrenceStatus(str, PyEnum):
+    """Lifecycle state of a persistent business case.
+
+    A **cached projection** of :class:`OccurrenceTransition` history, never an
+    independent field: every member here is produced by exactly one transition,
+    and :mod:`onyx.db.ton.occurrences` is the only writer. See
+    ``TRANSITION_RESULTING_STATUS`` there for the mapping.
+    """
+
+    NEW = "NEW"
+    REOPENED = "REOPENED"
+    CONFIRMED = "CONFIRMED"
+    RESOLVED = "RESOLVED"
+    RISK_ACCEPTED = "RISK_ACCEPTED"
+    DISMISSED = "DISMISSED"
+    SUPERSEDED = "SUPERSEDED"
+
+
+class OccurrenceActorKind(str, PyEnum):
+    """Who performed a transition (readiness §9).
+
+    The boundary Prompt Mestre §12.1 draws. ``SYSTEM`` is permitted only for the
+    operational transitions TON may take alone; the human-decision transitions
+    require ``USER`` plus an identified account, enforced by a database CHECK.
+    """
+
+    USER = "USER"
+    SYSTEM = "SYSTEM"
+
+
+class OccurrenceTransition(str, PyEnum):
+    """Append-only lifecycle vocabulary for :class:`OccurrenceEvent`.
+
+    Three authorization classes, and the class is a database property rather
+    than a convention (see ``ck_ton_occurrence_event_human_only_transitions`` and
+    ``ck_ton_occurrence_event_resolution_requires_user``):
+
+    * **System-allowed** — ``DETECT``, ``REPEAT_DETECTED``, ``REOPENED``,
+      ``ESCALATE_BY_CYCLE_RULE``, ``VERIFICATION_PASSED``,
+      ``VERIFICATION_FAILED``, ``SUPERSEDE``. Prompt Mestre §12.1 lets TON read,
+      test, calculate, classify, draft, alert and write to the ledger, and §10
+      says the criticality scale is applied "sem consultar ninguém".
+    * **Requires an identified user** — ``RESOLVED``. Closing a case is a human
+      act; §12.1's autonomous list does not include it.
+    * **Human-only, with a recorded authorization** — ``RESOLVE_CRITICAL``,
+      ``ACCEPT_RISK``, ``DISMISS``, ``ASSERT_NONCOMPLIANCE``,
+      ``PROMOTE_INTERPRETATION``, ``OVERRIDE_DETERMINISTIC_VALUE``
+      (readiness §9, verbatim).
+
+    Nothing here writes to a source system. There is no transition for
+    contesting a glosa, altering a measurement, changing billing or contacting a
+    contracting authority: the advisory boundary is enforced by absence.
+    """
+
+    DETECT = "DETECT"
+    REPEAT_DETECTED = "REPEAT_DETECTED"
+    REOPENED = "REOPENED"
+    ESCALATE_BY_CYCLE_RULE = "ESCALATE_BY_CYCLE_RULE"
+    VERIFICATION_PASSED = "VERIFICATION_PASSED"
+    VERIFICATION_FAILED = "VERIFICATION_FAILED"
+    SUPERSEDE = "SUPERSEDE"
+    RESOLVED = "RESOLVED"
+    RESOLVE_CRITICAL = "RESOLVE_CRITICAL"
+    ACCEPT_RISK = "ACCEPT_RISK"
+    DISMISS = "DISMISS"
+    ASSERT_NONCOMPLIANCE = "ASSERT_NONCOMPLIANCE"
+    PROMOTE_INTERPRETATION = "PROMOTE_INTERPRETATION"
+    OVERRIDE_DETERMINISTIC_VALUE = "OVERRIDE_DETERMINISTIC_VALUE"
+
+
+class OccurrenceVerificationResult(str, PyEnum):
+    """Outcome of the Prompt Mestre §5 Passo 7 verification criterion.
+
+    Nullable on the occurrence: "not verified yet" is the absence of a row value,
+    not a member, so there is one representation per state.
+    """
+
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    INCONCLUSIVE = "INCONCLUSIVE"
+
+
+class ImpactCategory(str, PyEnum):
+    """The seven Prompt Mestre §9 impact categories.
+
+    They are the columns of the Dinheiro Escondido panel, so the vocabulary is
+    closed and ordered as §9 lists it:
+
+    ===================== ==========================
+    Member                Prompt Mestre §9
+    ===================== ==========================
+    POTENTIAL_SAVING      economia potencial
+    AVOIDED_LOSS          perda evitada
+    RECOVERABLE_REVENUE   receita recuperável
+    UNBILLED_REVENUE      receita não faturada
+    EXCESS_COST           custo excedente
+    FINANCIAL_RISK        risco financeiro
+    MARGIN_OPPORTUNITY    oportunidade de margem
+    ===================== ==========================
+    """
+
+    POTENTIAL_SAVING = "POTENTIAL_SAVING"
+    AVOIDED_LOSS = "AVOIDED_LOSS"
+    RECOVERABLE_REVENUE = "RECOVERABLE_REVENUE"
+    UNBILLED_REVENUE = "UNBILLED_REVENUE"
+    EXCESS_COST = "EXCESS_COST"
+    FINANCIAL_RISK = "FINANCIAL_RISK"
+    MARGIN_OPPORTUNITY = "MARGIN_OPPORTUNITY"
+
+
+class ImpactConfidence(str, PyEnum):
+    """Prompt Mestre §9 confidence in a quantification.
+
+    Portuguese member names because readiness §13 states the ROI rule against
+    these literals: a low-confidence impact never enters a target or a realised
+    ROI, expressed as ``confidence <> 'BAIXA'``. Keeping the literal identical
+    means the aggregation rule and the stored value cannot drift.
+
+    ALTA is complete A/B evidence, MEDIA is B/C with one premise, BAIXA is two or
+    more premises. Nothing promotes a level automatically.
+    """
+
+    ALTA = "ALTA"
+    MEDIA = "MEDIA"
+    BAIXA = "BAIXA"
+
+
+class ImpactMethod(str, PyEnum):
+    """How an impact amount was arrived at.
+
+    Readiness §9 fixes the standard formula
+    (``impact = operational difference × reference unit cost``) but leaves the
+    remaining members open, so this is an executor-defined vocabulary in the same
+    position as :class:`AnalysisRunErrorClass`:
+
+    * ``OPERATIONAL_DIFFERENCE_TIMES_UNIT_COST`` — the §9 standard;
+    * ``DIRECT_SOURCE_AMOUNT`` — the amount *is* the source value (a duplicated
+      posting, an unbilled measurement), so no reference unit cost applies;
+    * ``VALUE_AT_RISK`` — §9's *risco financeiro*: exposure, not a realised
+      difference.
+    """
+
+    OPERATIONAL_DIFFERENCE_TIMES_UNIT_COST = "OPERATIONAL_DIFFERENCE_TIMES_UNIT_COST"
+    DIRECT_SOURCE_AMOUNT = "DIRECT_SOURCE_AMOUNT"
+    VALUE_AT_RISK = "VALUE_AT_RISK"
+
+
+class UnitCostSource(str, PyEnum):
+    """Which reference unit cost a quantification used (Prompt Mestre §9).
+
+    §9 fixes the preference order and adds "diga sempre qual usou", which is why
+    the column is NOT NULL:
+
+    1. ``CONTRACT_DOTACAO`` — the contract's own dotação cost composition;
+    2. ``OWN_UNIT_TRAILING_3M`` — the unit's own trailing three-month actual;
+    3. ``COMPARABLE_UNIT_MEDIAN`` — the median of comparable units.
+
+    ``NOT_APPLICABLE`` exists so a method that uses no reference unit cost still
+    has to say so explicitly rather than leaving the column null.
+    ``ck_ton_occurrence_impact_unit_cost_source_required`` stops it being used as
+    an escape hatch for the §9 formula.
+    """
+
+    CONTRACT_DOTACAO = "CONTRACT_DOTACAO"
+    OWN_UNIT_TRAILING_3M = "OWN_UNIT_TRAILING_3M"
+    COMPARABLE_UNIT_MEDIAN = "COMPARABLE_UNIT_MEDIAN"
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+
+
+class AssignmentStatus(str, PyEnum):
+    """Outcome of one assignment row.
+
+    Reassignment appends a new row and marks the previous one ``SUPERSEDED``, so
+    every past responsible party and every past deadline survives. Prompt Mestre
+    §10 escalation and §12 R9 need the history, not the latest value.
+    """
+
+    OPEN = "OPEN"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+    SUPERSEDED = "SUPERSEDED"
+
+
+class RedactionLevel(str, PyEnum):
+    """How much personal identity a row carries (readiness §9).
+
+    §12.1 forbids TON from imputing conduct to a named person, so evidence and
+    notes record a role or cargo by default and person identity only behind the
+    resource ACL. NOT NULL with no default: the writer must state the level
+    rather than let it be assumed.
+
+    * ``NONE`` — no personal data;
+    * ``ROLE_ONLY`` — a role or cargo, no person identity (the §9 default);
+    * ``MASKED_IDENTIFIER`` — an identity present but masked, e.g. the
+      ``employee_key_masked`` identity dimension;
+    * ``IDENTIFIED`` — person identity present. Only reachable behind the ACL.
+    """
+
+    NONE = "NONE"
+    ROLE_ONLY = "ROLE_ONLY"
+    MASKED_IDENTIFIER = "MASKED_IDENTIFIER"
+    IDENTIFIED = "IDENTIFIED"
+
+
+class InterpretationInputScope(str, PyEnum):
+    """What an interpretation attempt was allowed to see (readiness §8).
+
+    The privacy control, and it composes with ``TON_TRACE_CONTENT_MODE`` from
+    Plan 002 (D-015): a deployment configured for metadata-only content must not
+    be able to persist ``FULL_EVIDENCE``. Enforced in
+    :mod:`onyx.db.ton.interpretations`, not left to the caller.
+    """
+
+    STRUCTURED_ONLY = "STRUCTURED_ONLY"
+    MASKED_EXCERPT = "MASKED_EXCERPT"
+    FULL_EVIDENCE = "FULL_EVIDENCE"
+
+
+class InterpretationFailureClass(str, PyEnum):
+    """Why an interpretation attempt failed (readiness §8).
+
+    A failure is durable and operator-visible. It is never converted into an
+    empty successful interpretation, which is why ``FAILED`` requires one of
+    these and ``COMPLETED`` requires a summary.
+    """
+
+    PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE"
+    TIMEOUT = "TIMEOUT"
+    MALFORMED_OUTPUT = "MALFORMED_OUTPUT"
+    POLICY_REFUSAL = "POLICY_REFUSAL"
+    INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
+
+
+class TonSharePermission(str, PyEnum):
+    """Level granted by a TON resource ``*__UserGroup`` row (readiness §10).
+
+    The junction is **restrictive**, not additive: for a TON resource, zero
+    junction rows means DENIED. That inverts the ``Persona``/``Skill`` convention
+    on purpose — ``Persona.is_public`` defaults to true and short-circuits the
+    group ACL, and copying it would publish Vale Norte financial data. No TON
+    table has an ``is_public`` column at all, so the short-circuit is not merely
+    disabled, it is inexpressible.
+    """
+
+    VIEWER = "VIEWER"
+    EDITOR = "EDITOR"

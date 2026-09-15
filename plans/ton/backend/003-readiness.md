@@ -814,12 +814,18 @@ manager must not activate a threshold.
 
 Shaped on `Persona__UserGroup`: composite primary key plus a share-level enum.
 
-| Junction | Share level |
-|---|---|
-| `BusinessUnit__UserGroup` | VIEWER / EDITOR |
-| `Contract__UserGroup` | VIEWER / EDITOR |
-| `Occurrence__UserGroup` | VIEWER / EDITOR |
-| `TonReport__UserGroup` | VIEWER / EDITOR |
+| Junction | Share level | Slice |
+|---|---|---|
+| `BusinessUnit__UserGroup` | VIEWER / EDITOR | 003c |
+| `Contract__UserGroup` | VIEWER / EDITOR | 003c |
+| `Occurrence__UserGroup` | VIEWER / EDITOR | 003c |
+| `TonReport__UserGroup` | VIEWER / EDITOR | **003d** |
+
+**Correction, recorded by Plan 003c (D-043).** This gate originally assigned all
+four junctions to 003c. `TonReport` does not exist until 003d, so its junction goes
+with its table: **003c creates three junctions, 003d creates the fourth.** A
+junction to an absent table cannot be created, and a grantable permission that
+authorizes nothing would mislead an administrator.
 
 **`Finding` and `FindingEvidence` get no junction.** Their ACL derives from the
 owning `Occurrence` and its `business_unit_id`. Two independent ACLs over one case
@@ -1601,13 +1607,19 @@ head, on both chains. Then the 003a acceptance list and the rotation-discovery t
 
 `down_revision` = 003b. Creates `Finding`, `FindingEvidence`,
 `FindingInterpretation`, `Occurrence`, `OccurrenceEvent`, `OccurrenceImpact`,
-`OccurrenceAssignment`, `OccurrenceNote`, `OccurrenceImpactedDomain`, and the four
-`*__UserGroup` junctions.
+`OccurrenceAssignment`, `OccurrenceNote`, `OccurrenceImpactedDomain`, and **three**
+`*__UserGroup` junctions — `BusinessUnit`, `Contract` and `Occurrence`. See the
+correction in §10: `TonReport__UserGroup` ships with its table in 003d.
+
+**Executed.** Revision `6b0ca4eb29fb`. Result in
+`003c-findings-occurrences-acl.md`.
 
 ### Step 6 — Plan 003d, reports and audit
 
-`down_revision` = 003c. Creates `TonReport`, `TonReportRevision`, the five
-`TonReportRevision__*` join tables, and `TonAuditEvent`.
+`down_revision` = `6b0ca4eb29fb` (003c). Creates `TonReport`, `TonReportRevision`,
+the five `TonReportRevision__*` join tables, `TonAuditEvent`, and
+`TonReport__UserGroup` — the fourth ACL junction, deferred here from 003c because
+its table did not exist yet (§10 correction).
 
 ### Step 7 — seed no business rule
 
@@ -1795,8 +1807,8 @@ security risk, or to produce independently testable boundaries — not for tidin
 |---|---|---|
 | **003a** | security prerequisite: provider `custom_config` encryption + whole-dict masking | **Risk reduction.** Different blast radius (an existing table with live credentials), different rollback (deliberately lossy), different approval gate (open decision 7a). Coupling it to TON schema means a TON rollback un-encrypts credentials. |
 | **003b** | `BusinessUnit`, `Contract`, `Rule`, `RuleVersion`, `SourceSnapshot`, `AnalysisRun`, `AnalysisStep` | **Independently testable.** Rule versioning, effective-date selection, approval constraints and domain-scoped blocking need no Finding table. The anti-defect blocking test runs here. |
-| **003c** | `Finding`, evidence, interpretation, `Occurrence` and its history tables, the four ACL junctions | **Independently testable.** Lifecycle, dedup, concurrency and ACL. Depends on 003b. |
-| **003d** | `TonReport`, `TonReportRevision`, join tables, `TonAuditEvent` | **Independently testable.** Snapshot immutability, hash determinism and audit persistence. Depends on 003c. |
+| **003c** | `Finding`, evidence, interpretation, `Occurrence` and its history tables, the three ACL junctions (§10 correction) | **Independently testable.** Lifecycle, dedup, concurrency and ACL. Depends on 003b. |
+| **003d** | `TonReport`, `TonReportRevision`, join tables, `TonReport__UserGroup`, `TonAuditEvent` | **Independently testable.** Snapshot immutability, hash determinism and audit persistence. Depends on 003c. |
 
 Each slice is one Alembic revision, chained linearly, individually reversible, with
 its own test file from section 20.

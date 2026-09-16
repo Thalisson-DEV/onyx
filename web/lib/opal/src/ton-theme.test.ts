@@ -113,6 +113,46 @@ function expectContrast(
   ).toBeGreaterThanOrEqual(minimum);
 }
 
+function isNeutralGrey(color: string): boolean {
+  const [red, green, blue] = parseHexColor(color).rgb;
+  return red === green && green === blue;
+}
+
+// TON surface language. The product speaks in roles; the token layer still carries
+// the numeric names FE-002 established. This map is the binding between the two and
+// is the reason VIS-001 introduced no parallel colour-token tree.
+const SURFACE_ROLES = {
+  canvas: "background-tint-01",
+  surface: "background-tint-02",
+  "surface-raised": "background-tint-00",
+  "surface-hover": "background-tint-03",
+  field: "background-neutral-00",
+} as const;
+
+// background-tint-04 is not a structural surface: it is the inset companion of the
+// input focus edge. It is neutral and part of the ladder, but focus contrast is not
+// measured against it.
+const FOCUS_INSET_ROLE = "background-tint-04";
+
+// TON border language. `selected` binds to theme-primary-04 rather than
+// action-selection-04: the selection ring must clear 3:1 on every surface role in
+// BOTH themes, and only the identity green inverts across themes well enough to do
+// that (measured in "keeps the selected border above 3:1 on every surface role").
+const BORDER_ROLES = {
+  subtle: "border-01",
+  default: "border-01",
+  interactive: "border-02",
+  selected: "theme-primary-04",
+  focus: "border-04",
+  error: "status-error-05",
+  attention: "theme-amber-05",
+} as const;
+
+const THEMES: ReadonlyArray<readonly [string, ColorTokens]> = [
+  ["light", lightTokens],
+  ["dark", darkTokens],
+];
+
 describe("Vale Norte theme tokens", () => {
   test("maps brand roles without replacing status colors", () => {
     expect(lightTokens["theme-primary-05"]?.value).toBe(
@@ -183,6 +223,233 @@ describe("Vale Norte theme tokens", () => {
     );
     expectContrast("action-selection-05", "background-tint-00", darkTokens, 3);
     expectContrast("theme-amber-05", "theme-amber-01", darkTokens, 4.5);
+  });
+});
+
+// VIS-001 — neutral-first surface language. Structural surfaces and generic borders
+// are true neutrals in both themes; Vale Norte green is reserved for identity, focus
+// and selection. These tests are what stops a later edit from re-tinting the canvas.
+describe("TON neutral surface foundation", () => {
+  test.each(THEMES)(
+    "keeps every %s structural surface a true neutral",
+    (_theme, tokens) => {
+      for (const token of [
+        ...Object.values(SURFACE_ROLES),
+        FOCUS_INSET_ROLE,
+        "background-neutral-01",
+        "background-neutral-02",
+        "background-neutral-03",
+        "background-neutral-04",
+        "background-code-01",
+      ]) {
+        expect(isNeutralGrey(resolveColor(token, tokens))).toBe(true);
+      }
+    }
+  );
+
+  test.each(THEMES)(
+    "keeps every %s generic border a true neutral",
+    (_theme, tokens) => {
+      for (const token of [
+        "border-01",
+        "border-02",
+        "border-03",
+        "border-04",
+      ]) {
+        expect(isNeutralGrey(resolveColor(token, tokens))).toBe(true);
+      }
+    }
+  );
+
+  test("keeps the dark canvas neutral charcoal rather than a green wash", () => {
+    // The FE-002.1 ladder was vale-norte-neutral-*, a green-tinted charcoal. The
+    // approved TON direction is neutral-first, so the exact neutral references are
+    // pinned: an accidental re-tint has to change this list.
+    const expected: Record<string, string> = {
+      "background-neutral-00": "{grey-94}",
+      "background-neutral-01": "{grey-88}",
+      "background-neutral-02": "{grey-80}",
+      "background-neutral-03": "{grey-75}",
+      "background-neutral-04": "{grey-70}",
+      "background-tint-00": "{tint-97}",
+      "background-tint-01": "{tint-93}",
+      "background-tint-02": "{tint-88}",
+      "background-tint-03": "{tint-83}",
+      "background-tint-04": "{tint-76}",
+      "border-01": "{grey-60}",
+      "border-02": "{grey-50}",
+      "border-03": "{grey-40}",
+      "border-04": "{grey-20}",
+      "border-05": "{grey-00}",
+    };
+
+    for (const [token, value] of Object.entries(expected)) {
+      expect(darkTokens[token]?.value).toBe(value);
+    }
+
+    expect(resolveColor("background-tint-01", darkTokens)).toBe("#333333");
+    expect(resolveColor("background-neutral-00", darkTokens)).toBe("#0f0f0f");
+  });
+
+  test("keeps the light canvas an off-white neutral, not pure white", () => {
+    expect(resolveColor("background-tint-01", lightTokens)).toBe("#fafafa");
+    expect(resolveColor("background-tint-02", lightTokens)).toBe("#f0f0f0");
+    // A perceptible step between the canvas and a raised surface is what keeps
+    // light mode from going white-on-white.
+    expect(
+      contrastRatio("background-tint-00", "background-tint-01", lightTokens)
+    ).toBeGreaterThan(1);
+  });
+
+  test("routes the whole tint alias ramp through the neutral grey ramp", () => {
+    // tint-* stays the single swap point for surface tone. VIS-001 only changed what
+    // it points at: the neutral grey ramp instead of vale-norte-neutral-*.
+    const tintAliases = Object.keys(primitiveTokens).filter((name) =>
+      name.startsWith("tint-")
+    );
+    expect(tintAliases.length).toBeGreaterThan(0);
+    for (const alias of tintAliases) {
+      expect(primitiveTokens[alias]?.value).toMatch(/^\{grey-\d{2}\}$/);
+    }
+  });
+
+  test("drops the upstream Onyx brand ramps from the primitive layer", () => {
+    for (const name of Object.keys(primitiveTokens)) {
+      expect(name).not.toMatch(/^onyx-(ink|chrome)-/);
+    }
+  });
+
+  test("keeps shimmer and every semantic colour inside the token system", () => {
+    for (const [, tokens] of THEMES) {
+      for (const [name, token] of Object.entries(tokens)) {
+        if (token.type !== "color") continue;
+        if (token.value === "transparent") continue;
+        expect(`${name}=${token.value}`).toMatch(/=\{[a-z0-9-]+\}$/);
+      }
+    }
+  });
+});
+
+describe("TON border role foundation", () => {
+  test("resolves every named border role in both themes", () => {
+    for (const [, tokens] of THEMES) {
+      for (const token of Object.values(BORDER_ROLES)) {
+        expect(() => resolveColor(token, tokens)).not.toThrow();
+      }
+    }
+  });
+
+  test("keeps the subtle border role visible on the canvas", () => {
+    // Dark clears the 1.5:1 target. Light inherits grey-10 from the approved
+    // FE-002 light theme and sits at ~1.2:1; raising it is a light-theme change
+    // deferred out of VIS-001, so only a regression floor is pinned here.
+    expectContrast(BORDER_ROLES.subtle, SURFACE_ROLES.canvas, darkTokens, 1.5);
+    expectContrast(
+      BORDER_ROLES.subtle,
+      SURFACE_ROLES.canvas,
+      lightTokens,
+      1.15
+    );
+  });
+
+  test.each(THEMES)(
+    "keeps the %s selected border above 3:1 on every surface role",
+    (_theme, tokens) => {
+      for (const surface of Object.values(SURFACE_ROLES)) {
+        expectContrast(BORDER_ROLES.selected, surface, tokens, 3);
+      }
+    }
+  );
+
+  test.each(THEMES)(
+    "keeps the %s focus border above 3:1 on every surface role",
+    (_theme, tokens) => {
+      for (const surface of Object.values(SURFACE_ROLES)) {
+        expectContrast(BORDER_ROLES.focus, surface, tokens, 3);
+      }
+    }
+  );
+
+  test("separates the interactive border role from the default one", () => {
+    // Dark holds the 1.3 step the hierarchy suite already pins. Light inherits
+    // grey-10/grey-20 from the approved FE-002 light ramp, which is a 1.29 step;
+    // the floor records that measurement instead of silently claiming 1.3.
+    expectContrast(
+      BORDER_ROLES.interactive,
+      BORDER_ROLES.default,
+      darkTokens,
+      1.3
+    );
+    expectContrast(
+      BORDER_ROLES.interactive,
+      BORDER_ROLES.default,
+      lightTokens,
+      1.25
+    );
+  });
+
+  test("keeps error and attention borders distinct and legible", () => {
+    // status-error-05 is the inherited upstream red. It clears 3:1 on the light
+    // canvas but reaches only ~2.6:1 on the dark canvas, so the dark floor records
+    // the measured value; the error surface itself belongs to VIS-006.
+    expectContrast(BORDER_ROLES.error, SURFACE_ROLES.canvas, lightTokens, 3);
+    expectContrast(BORDER_ROLES.error, SURFACE_ROLES.canvas, darkTokens, 2.5);
+    for (const [, tokens] of THEMES) {
+      expectContrast(BORDER_ROLES.attention, SURFACE_ROLES.canvas, tokens, 3);
+      expect(resolveColor(BORDER_ROLES.attention, tokens)).not.toBe(
+        resolveColor(BORDER_ROLES.error, tokens)
+      );
+    }
+  });
+});
+
+describe("TON identity colour discipline", () => {
+  test("keeps Vale Norte green as the only brand and selection green", () => {
+    for (const [, tokens] of THEMES) {
+      for (const token of [
+        "theme-primary-04",
+        "theme-primary-05",
+        "theme-primary-06",
+        "action-selection-00",
+        "action-selection-01",
+        "action-selection-02",
+        "action-selection-03",
+        "action-selection-04",
+        "action-selection-05",
+        "action-selection-06",
+        "action-text-link-05",
+      ]) {
+        expect(tokens[token]?.value).toMatch(/^\{vale-norte-(green|gold)-/);
+      }
+    }
+  });
+
+  test("never lets theme-green stand in for the brand primary", () => {
+    for (const [, tokens] of THEMES) {
+      const upstreamGreen = resolveColor("theme-green-05", tokens);
+      for (const token of [
+        "theme-primary-04",
+        "theme-primary-05",
+        "theme-primary-06",
+        "action-selection-04",
+        "action-selection-05",
+        "action-selection-06",
+        "action-text-link-05",
+      ]) {
+        expect(resolveColor(token, tokens)).not.toBe(upstreamGreen);
+      }
+      expect(tokens["theme-green-05"]?.value).toMatch(/^\{green-\d{2}\}$/);
+    }
+  });
+
+  test("keeps disabled text weaker than enabled text in both themes", () => {
+    for (const [, tokens] of THEMES) {
+      const onCanvas = (token: string): number =>
+        contrastRatio(token, SURFACE_ROLES.canvas, tokens);
+      expect(onCanvas("text-01")).toBeLessThan(onCanvas("text-02"));
+      expect(onCanvas("text-01")).toBeLessThan(onCanvas("text-03"));
+      expect(onCanvas("text-01")).toBeLessThan(onCanvas("text-05"));
+    }
   });
 });
 

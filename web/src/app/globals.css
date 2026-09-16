@@ -15,21 +15,20 @@
 @import "./css/desktop-titlebar.css";
 @config '../../tailwind.config.js';
 
-/*
-  The default border color has changed to `currentcolor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
+/* TON structural border foundation — the single default border colour.
 
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
+   Tailwind v4 defaults every border to `currentcolor`, so a default has to be
+   declared. It is declared exactly once, here, and it is theme-aware: `border-01`
+   is the `subtle`/`default` border role and flips with `.dark`. Pseudo-elements are
+   included on purpose — they used to fall back to Tailwind's `--color-gray-200`,
+   a theme-blind grey that ignored dark mode. */
 @layer base {
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
+    border-color: var(--border-01);
   }
 }
 
@@ -47,8 +46,14 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
+  /* TON focus foundation. One accessible focus edge for anything focusable that
+     does not draw its own: 2px of the tokenized focus width in the `focus` border
+     role, which clears 3:1 on every surface role in both themes. Component rules
+     live in the `utilities` layer and still win, so surfaces that own their focus
+     treatment (and the composer, which VIS-004 owns) are untouched. */
+  :focus-visible {
+    outline: calc(var(--weight-line-focus) * 1px) solid var(--border-04);
+    outline-offset: 1px;
   }
 
   body {
@@ -184,7 +189,7 @@
 
   .default-scrollbar {
     scrollbar-width: thin;
-    scrollbar-color: #888 transparent;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
     overflow-y: scroll;
     overflow-x: hidden;
   }
@@ -398,4 +403,37 @@
 
 .container {
   margin-bottom: 1rem;
+}
+
+/* TON reduced-motion foundation.
+
+   Before VIS-001 only four scoped blocks honoured `prefers-reduced-motion`, so
+   `animate-pulse`, `animate-waveform`, `animate-fade-in-up` and every `duration-*`
+   transition kept running for users who asked for less motion. This is the global
+   reset. It collapses decorative and transitional motion; it does not remove state,
+   because 0.01ms still fires `transitionend`/`animationend`, so libraries that wait
+   for those events (Radix `Presence`) still unmount correctly.
+
+   Operational feedback must stay understandable, so there is an explicit escape
+   hatch: mark a progress indicator with `data-motion="essential"` and it keeps
+   running. `--motion-essential-duration` / `--motion-essential-iterations` tune it.
+   VIS-009 owns the full motion pass; this only guarantees the floor. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-motion="essential"],
+  [data-motion="essential"] * {
+    animation-duration: var(--motion-essential-duration, 1s) !important;
+    animation-iteration-count: var(
+      --motion-essential-iterations,
+      infinite
+    ) !important;
+  }
 }

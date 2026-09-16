@@ -4,8 +4,13 @@ Sequenciamento derivado de
 [`000-de-onyx-visual-audit.md`](./000-de-onyx-visual-audit.md). A linguagem alvo
 está em [`visual-language.md`](./visual-language.md).
 
-**Nada aqui foi implementado.** VIS-000 é especificação. Após VIS-000, **PARAR**;
-VIS-001 não começa automaticamente.
+**Estado: VIS-001 DONE. VIS-002 a VIS-010 não implementadas.** Após VIS-001,
+**PARAR**; VIS-004 não começa automaticamente.
+
+| Fatia | Estado |
+|---|---|
+| VIS-001 | **DONE** — [`001-visual-foundations.md`](./001-visual-foundations.md) |
+| VIS-002 … VIS-010 | não iniciadas |
 
 ---
 
@@ -55,13 +60,34 @@ saltar.
 
 ---
 
-## VIS-001 — Fundações e linguagem de superfície
+## VIS-001 — Fundações e linguagem de superfície — **DONE**
 
 **Nível máximo: 2.** Só tokens, CSS de biblioteca e a matriz de `Interactive`.
 
+Resultado, valores finais, contraste medido, decisões e trabalho deferido:
+[`001-visual-foundations.md`](./001-visual-foundations.md).
+
+Resumo do que entrou: escada de superfície neutra nos dois temas (canvas escuro
+`#333333`, campo `#0f0f0f`, canvas claro `#fafafa`); bordas genéricas neutras;
+sete papéis de borda nomeados, com `selected` em `theme-primary-04`; largura de
+borda tokenizada; uma única declaração global de cor de borda, agora tema-aware
+até nos pseudo-elementos; aliases de raio do Tailwind repontados para a escala TON
+sem mover geometria; elevação reduzida a três níveis com sombra preta no escuro;
+`selected:hover` corrigido nas cinco variantes e célula `PRESSED` adicionada, com
+anel de seleção de 1px que engrossa para 2px ao pressionar; foco global
+`focus-visible`; camada de token de movimento e reset global de reduced-motion com
+escape hatch; escala de blur monotônica; largura de leitura semântica; resíduos
+`onyx-ink-*`, `onyx-chrome-*`, `#888` e `--color-gray-200` removidos.
+
+Duas decisões que **não** seguiram a proposta original, com a medição no
+documento: espaçamento **não** foi ligado ao preset (as chaves de token são
+denominadas em px e os utilitários em passos — ligar dividiria todo `p-*` por
+quatro), e o papel `selected` usa `theme-primary-04` em vez de
+`action-selection-04/05`, que não alcançam 3:1 sobre a sidebar escura.
+
 ### Pré-requisitos
 VIS-000 aprovado. Decisão de produto sobre o **escuro neutro** (§8.2 da
-auditoria), porque reabre contraste aprovado em FE-002.1.
+auditoria), porque reabre contraste aprovado em FE-002.1. — **atendidos.**
 
 ### Escopo permitido
 

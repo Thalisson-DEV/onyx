@@ -6,7 +6,7 @@
         "type": "fontFamily"
       },
       "fontSize": {
-        "value": "48px",
+        "value": "{height-font-display}",
         "type": "dimension"
       },
       "fontWeight": {
@@ -14,7 +14,7 @@
         "type": "fontWeight"
       },
       "lineHeight": {
-        "value": "64px",
+        "value": "{height-line-display}",
         "type": "dimension"
       },
       "letterSpacing": {

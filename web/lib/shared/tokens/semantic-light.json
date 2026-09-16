@@ -1,11 +1,11 @@
 {
   "light": {
     "shimmer-base": {
-      "value": "#a3a3a3",
+      "value": "{grey-40}",
       "type": "color"
     },
     "shimmer-highlight": {
-      "value": "#000000",
+      "value": "{grey-100}",
       "type": "color"
     },
     "text-05": {

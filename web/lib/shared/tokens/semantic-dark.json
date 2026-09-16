@@ -1,11 +1,11 @@
 {
   "dark": {
     "shimmer-base": {
-      "value": "#5c5c5c",
+      "value": "{grey-55}",
       "type": "color"
     },
     "shimmer-highlight": {
-      "value": "#ffffff",
+      "value": "{grey-00}",
       "type": "color"
     },
     "text-05": {
@@ -65,23 +65,23 @@
       "type": "color"
     },
     "background-neutral-00": {
-      "value": "{vale-norte-neutral-99}",
+      "value": "{grey-94}",
       "type": "color"
     },
     "background-neutral-01": {
-      "value": "{vale-norte-neutral-97}",
+      "value": "{grey-88}",
       "type": "color"
     },
     "background-neutral-02": {
-      "value": "{vale-norte-neutral-93}",
+      "value": "{grey-80}",
       "type": "color"
     },
     "background-neutral-03": {
-      "value": "{vale-norte-neutral-88}",
+      "value": "{grey-75}",
       "type": "color"
     },
     "background-neutral-04": {
-      "value": "{vale-norte-neutral-83}",
+      "value": "{grey-70}",
       "type": "color"
     },
     "background-neutral-inverted-04": {
@@ -165,19 +165,19 @@
       "type": "color"
     },
     "border-01": {
-      "value": "{vale-norte-neutral-82}",
+      "value": "{grey-60}",
       "type": "color"
     },
     "border-02": {
-      "value": "{vale-norte-neutral-74}",
+      "value": "{grey-50}",
       "type": "color"
     },
     "border-03": {
-      "value": "{vale-norte-neutral-50}",
+      "value": "{grey-40}",
       "type": "color"
     },
     "border-04": {
-      "value": "{vale-norte-neutral-20}",
+      "value": "{grey-20}",
       "type": "color"
     },
     "border-05": {
@@ -509,7 +509,7 @@
       "type": "color"
     },
     "background-code-01": {
-      "value": "{vale-norte-neutral-97}",
+      "value": "{grey-88}",
       "type": "color"
     },
     "code-code": {
@@ -553,15 +553,15 @@
       "type": "color"
     },
     "shadow-01": {
-      "value": "{alpha-grey-00-05}",
+      "value": "{alpha-grey-100-30}",
       "type": "color"
     },
     "shadow-02": {
-      "value": "{alpha-grey-00-10}",
+      "value": "{alpha-grey-100-45}",
       "type": "color"
     },
     "shadow-03": {
-      "value": "{alpha-grey-00-20}",
+      "value": "{alpha-grey-100-60}",
       "type": "color"
     },
     "mask-01": {

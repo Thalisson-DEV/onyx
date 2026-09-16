@@ -43,6 +43,14 @@ module.exports = {
         "4xl": "2000px",
       },
       width: {
+        // TON reading width — the one semantic name for the conversation column.
+        // It resolves to `--app-page-main-content-width` (45rem / 720px), the value
+        // the app page already lays out with, so adopting it moves nothing. The
+        // audited competitors are `MSG_MAX_W` (720px literal, ChatUI), the unused
+        // 740px `message-default` below, 725px `content-max`, the 800px canvas mask
+        // and `max-w-200` in the shared chat. Migrating those call sites belongs to
+        // the slices that own them (VIS-004 composer, VIS-006 transcript).
+        reading: "var(--app-page-main-content-width)",
         "message-xs": "450px",
         "message-sm": "550px",
         "message-default": "740px",
@@ -54,6 +62,7 @@ module.exports = {
         "searchbar-max": "60px",
       },
       maxWidth: {
+        reading: "var(--app-page-main-content-width)",
         "document-sidebar": "1000px",
         "message-max": "850px",
         "content-max": "725px",

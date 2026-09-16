@@ -22,6 +22,23 @@
 
    Interaction override: `data-interaction="hover"` and `data-interaction="active"`
    allow JS-controlled visual state overrides.
+
+   TON state language (VIS-001). Twelve states are defined for the product; this
+   primitive owns the shared ones and later slices consume them:
+
+     DEFAULT / HOVER / SELECTED   the cells below
+     PRESSED                      `:active` and `data-interaction="active"`
+     DISABLED                     `[data-disabled]`
+     FOCUS_VISIBLE                globals.css `:focus-visible` + component rules
+     ACTIVE                       SELECTED plus `data-interactive-state`
+     LOADING / RUNNING / ERROR / SUCCESS / ATTENTION
+                                  owned by the consuming component; they use the
+                                  status-*, theme-amber-* and border-* roles, and
+                                  must not rely on colour alone
+
+   No state is expressed by colour alone: SELECTED adds the ring, PRESSED
+   thickens it, DISABLED publishes `data-disabled` and `aria-disabled`, and every
+   cell publishes `data-interactive-state` for assistive tech and tests.
 ============================================================================ */
 
 /* ===========================================================================
@@ -117,7 +134,7 @@
 .interactive[data-interactive-variant="select-heavy"][data-interactive-state="selected"][data-interaction="hover"]:not(
   [data-disabled]
 ) {
-  @apply bg-background-tint-02;
+  @apply bg-[var(--action-selection-02)];
 }
 .interactive[data-interactive-variant="select-heavy"][data-interactive-state="selected"]:active:not(
   [data-disabled]
@@ -125,7 +142,7 @@
 .interactive[data-interactive-variant="select-heavy"][data-interactive-state="selected"][data-interaction="active"]:not(
   [data-disabled]
 ) {
-  @apply bg-background-tint-00;
+  @apply bg-[var(--action-selection-02)];
 }
 .interactive[data-interactive-variant="select-heavy"][data-interactive-state="selected"][data-disabled] {
   @apply bg-transparent;
@@ -219,7 +236,7 @@
 .interactive[data-interactive-variant="select-card"][data-interactive-state="selected"][data-interaction="hover"]:not(
   [data-disabled]
 ) {
-  @apply bg-background-tint-02;
+  @apply bg-[var(--action-selection-02)];
 }
 .interactive[data-interactive-variant="select-card"][data-interactive-state="selected"]:active:not(
   [data-disabled]
@@ -227,7 +244,7 @@
 .interactive[data-interactive-variant="select-card"][data-interactive-state="selected"][data-interaction="active"]:not(
   [data-disabled]
 ) {
-  @apply bg-background-tint-00;
+  @apply bg-[var(--action-selection-02)];
 }
 .interactive[data-interactive-variant="select-card"][data-interactive-state="selected"][data-disabled] {
   @apply bg-transparent;
@@ -316,7 +333,7 @@
 .interactive[data-interactive-variant="select-light"][data-interactive-state="selected"][data-interaction="hover"]:not(
   [data-disabled]
 ) {
-  @apply bg-background-tint-02;
+  @apply bg-[var(--action-selection-01)];
 }
 .interactive[data-interactive-variant="select-light"][data-interactive-state="selected"]:active:not(
   [data-disabled]
@@ -324,7 +341,7 @@
 .interactive[data-interactive-variant="select-light"][data-interactive-state="selected"][data-interaction="active"]:not(
   [data-disabled]
 ) {
-  @apply bg-background-tint-00;
+  @apply bg-[var(--action-selection-01)];
 }
 .interactive[data-interactive-variant="select-light"][data-interactive-state="selected"][data-disabled] {
   @apply bg-transparent;
@@ -493,6 +510,10 @@
 
 /* ---------------------------------------------------------------------------
    Sidebar-Heavy — Selected
+
+   Hover keeps the selection recessed (tint-00 -> tint-01) instead of jumping to
+   the unselected hover surface (tint-03). Pressed continues in the same
+   direction (tint-02). The step direction is deterministic in both themes.
    --------------------------------------------------------------------------- */
 .interactive[data-interactive-variant="sidebar-heavy"][data-interactive-state="selected"] {
   @apply bg-background-tint-00;
@@ -505,7 +526,33 @@
 .interactive[data-interactive-variant="sidebar-heavy"][data-interactive-state="selected"][data-interaction="hover"]:not(
   [data-disabled]
 ) {
-  @apply bg-background-tint-03;
+  @apply bg-background-tint-01;
+}
+.interactive[data-interactive-variant="sidebar-heavy"][data-interactive-state="selected"]:active:not(
+  [data-disabled]
+),
+.interactive[data-interactive-variant="sidebar-heavy"][data-interactive-state="selected"][data-interaction="active"]:not(
+  [data-disabled]
+) {
+  @apply bg-background-tint-02;
+}
+/* ---------------------------------------------------------------------------
+   Sidebar-Heavy — Pressed (unselected)
+
+   PRESSED had no cell before VIS-001: pressing a sidebar row looked exactly
+   like hovering it. It now moves one surface step past hover.
+   --------------------------------------------------------------------------- */
+.interactive[data-interactive-variant="sidebar-heavy"]:is(
+  [data-interactive-state="empty"],
+  [data-interactive-state="filled"]
+):active:not([data-disabled]),
+.interactive[data-interactive-variant="sidebar-heavy"]:is(
+  [data-interactive-state="empty"],
+  [data-interactive-state="filled"]
+)[data-interaction="active"]:not([data-disabled]) {
+  @apply bg-background-tint-04;
+  --interactive-foreground: var(--text-04);
+  --interactive-foreground-icon: var(--text-03);
 }
 /* ---------------------------------------------------------------------------
    Sidebar-Heavy — Disabled (all states)
@@ -557,7 +604,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Sidebar-Light — Selected
+   Sidebar-Light — Selected (same hover/pressed direction as Sidebar-Heavy)
    --------------------------------------------------------------------------- */
 .interactive[data-interactive-variant="sidebar-light"][data-interactive-state="selected"] {
   @apply bg-background-tint-00;
@@ -570,7 +617,30 @@
 .interactive[data-interactive-variant="sidebar-light"][data-interactive-state="selected"][data-interaction="hover"]:not(
   [data-disabled]
 ) {
-  @apply bg-background-tint-03;
+  @apply bg-background-tint-01;
+}
+.interactive[data-interactive-variant="sidebar-light"][data-interactive-state="selected"]:active:not(
+  [data-disabled]
+),
+.interactive[data-interactive-variant="sidebar-light"][data-interactive-state="selected"][data-interaction="active"]:not(
+  [data-disabled]
+) {
+  @apply bg-background-tint-02;
+}
+/* ---------------------------------------------------------------------------
+   Sidebar-Light — Pressed (unselected)
+   --------------------------------------------------------------------------- */
+.interactive[data-interactive-variant="sidebar-light"]:is(
+  [data-interactive-state="empty"],
+  [data-interactive-state="filled"]
+):active:not([data-disabled]),
+.interactive[data-interactive-variant="sidebar-light"]:is(
+  [data-interactive-state="empty"],
+  [data-interactive-state="filled"]
+)[data-interaction="active"]:not([data-disabled]) {
+  @apply bg-background-tint-04;
+  --interactive-foreground: var(--text-03);
+  --interactive-foreground-icon: var(--text-03);
 }
 /* ---------------------------------------------------------------------------
    Sidebar-Light — Disabled (all states)
@@ -579,4 +649,66 @@
   @apply bg-transparent opacity-50;
   --interactive-foreground: var(--text-03);
   --interactive-foreground-icon: var(--text-03);
+}
+
+/* ===========================================================================
+   TON selection ring — cross-variant SELECTED / PRESSED foundation (VIS-001)
+
+   Two defects the audit found in the matrix above:
+
+   1. SELECTED inverted under the cursor. Every `selected:hover` cell reused the
+      unselected hover surface, so moving the mouse over a selected row erased
+      the selection. Each variant's `selected:hover` now stays inside its own
+      family (surface variants step within the tint ladder, wash variants step
+      within action-selection-*).
+   2. PRESSED did not exist for the sidebar variants, and for the wash variants
+      it was indistinguishable from hover.
+
+   The ring is what makes SELECTED readable without a large filled pill, and it
+   is not colour alone: PRESSED thickens it from the border weight to the focus
+   weight. `theme-primary-04` is the identity green that inverts across themes,
+   and it is the only green that clears 3:1 on every surface role in BOTH themes
+   (measured in ton-theme.test.ts). An inset box-shadow is used rather than a
+   real border so no geometry moves; the same technique already draws the input
+   focus edge and the editable header edge.
+   =========================================================================== */
+.interactive:is(
+  [data-interactive-variant="sidebar-heavy"],
+  [data-interactive-variant="sidebar-light"],
+  [data-interactive-variant="select-heavy"],
+  [data-interactive-variant="select-card"],
+  [data-interactive-variant="select-light"]
+)[data-interactive-state="selected"] {
+  box-shadow: inset 0 0 0 calc(var(--weight-line-border) * 1px)
+    var(--theme-primary-04);
+}
+.interactive:is(
+  [data-interactive-variant="sidebar-heavy"],
+  [data-interactive-variant="sidebar-light"],
+  [data-interactive-variant="select-heavy"],
+  [data-interactive-variant="select-card"],
+  [data-interactive-variant="select-light"]
+)[data-interactive-state="selected"]:active:not([data-disabled]),
+.interactive:is(
+  [data-interactive-variant="sidebar-heavy"],
+  [data-interactive-variant="sidebar-light"],
+  [data-interactive-variant="select-heavy"],
+  [data-interactive-variant="select-card"],
+  [data-interactive-variant="select-light"]
+)[data-interactive-state="selected"][data-interaction="active"]:not(
+  [data-disabled]
+) {
+  box-shadow: inset 0 0 0 calc(var(--weight-line-focus) * 1px)
+    var(--theme-primary-04);
+}
+/* Disabled selection keeps the shape but drops to a neutral border, so disabled
+   never reads stronger than enabled. */
+.interactive:is(
+  [data-interactive-variant="sidebar-heavy"],
+  [data-interactive-variant="sidebar-light"],
+  [data-interactive-variant="select-heavy"],
+  [data-interactive-variant="select-card"],
+  [data-interactive-variant="select-light"]
+)[data-interactive-state="selected"][data-disabled] {
+  box-shadow: inset 0 0 0 calc(var(--weight-line-border) * 1px) var(--border-01);
 }

@@ -176,12 +176,6 @@ module.exports = {
         "theme-magenta-05": "var(--theme-magenta-05)",
         "theme-magenta-02": "var(--theme-magenta-02)",
         "theme-magenta-01": "var(--theme-magenta-01)",
-        "onyx-ink-100": "var(--onyx-ink-100)",
-        "onyx-ink-95": "var(--onyx-ink-95)",
-        "onyx-ink-90": "var(--onyx-ink-90)",
-        "onyx-chrome-20": "var(--onyx-chrome-20)",
-        "onyx-chrome-10": "var(--onyx-chrome-10)",
-        "onyx-chrome-00": "var(--onyx-chrome-00)",
         "tint-98": "var(--tint-98)",
         "tint-95": "var(--tint-95)",
         "tint-90": "var(--tint-90)",
@@ -226,6 +220,25 @@ module.exports = {
         foreground: "var(--background-tint-inverted-01)",
         border: "var(--border-01)",
         text: "var(--text-04)",
+
+        // TON surface language. Named aliases over the numeric roles above — no
+        // second colour tree, no duplicated values. `web/lib/opal/src/ton-theme.test.ts`
+        // pins the role -> token binding.
+        "surface-canvas": "var(--background-tint-01)",
+        surface: "var(--background-tint-02)",
+        "surface-raised": "var(--background-tint-00)",
+        "surface-hover": "var(--background-tint-03)",
+        "surface-field": "var(--background-neutral-00)",
+
+        // TON border language. `selected` uses the identity green because it is the
+        // only green that clears 3:1 on every surface role in BOTH themes.
+        "border-subtle": "var(--border-01)",
+        "border-default": "var(--border-01)",
+        "border-interactive": "var(--border-02)",
+        "border-selected": "var(--theme-primary-04)",
+        "border-focus": "var(--border-04)",
+        "border-error": "var(--status-error-05)",
+        "border-attention": "var(--theme-amber-05)",
       },
       borderRadius: {
         "02": "var(--radius-02)",
@@ -235,7 +248,40 @@ module.exports = {
         16: "var(--radius-16)",
         20: "var(--radius-20)",
         full: "var(--radius-round)",
+
+        // Tailwind's own radius aliases, re-pointed at the TON scale. Every value is
+        // byte-identical to the Tailwind v4 default it replaces (xs 0.125rem, sm
+        // 0.25rem, lg 0.5rem, xl 0.75rem, 2xl 1rem), so no geometry moves — the
+        // point is that `rounded-sm`/`-lg`/`-xl`/`-2xl` now resolve through a token
+        // instead of bypassing the scale. `md` (0.375rem) and `3xl`/`4xl` have no TON
+        // step and stay off-scale; their call sites belong to later VIS slices.
+        xs: "var(--radius-02)",
+        sm: "var(--radius-04)",
+        lg: "var(--radius-08)",
+        xl: "var(--radius-12)",
+        "2xl": "var(--radius-16)",
       },
+      borderWidth: {
+        // Structural border width is a token, not a literal. `border` (1px) and
+        // `border-2` (2px) keep their Tailwind meaning; these are additive.
+        line: "calc(var(--weight-line-border) * 1px)",
+        focus: "calc(var(--weight-line-focus) * 1px)",
+      },
+      outlineWidth: {
+        focus: "calc(var(--weight-line-focus) * 1px)",
+      },
+      transitionDuration: {
+        instant: "var(--duration-instant)",
+        fast: "var(--duration-fast)",
+        base: "var(--duration-base)",
+        slow: "var(--duration-slow)",
+      },
+      transitionTimingFunction: {
+        standard: "var(--easing-standard)",
+        out: "var(--easing-out)",
+        in: "var(--easing-in)",
+      },
+
       fontSize: {
         "2xs": "0.625rem",
       },

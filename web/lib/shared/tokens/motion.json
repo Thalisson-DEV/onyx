@@ -1,0 +1,30 @@
+{
+  "duration-instant": {
+    "value": "120ms",
+    "type": "duration"
+  },
+  "duration-fast": {
+    "value": "150ms",
+    "type": "duration"
+  },
+  "duration-base": {
+    "value": "200ms",
+    "type": "duration"
+  },
+  "duration-slow": {
+    "value": "280ms",
+    "type": "duration"
+  },
+  "easing-standard": {
+    "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+    "type": "cubicBezier"
+  },
+  "easing-out": {
+    "value": "cubic-bezier(0, 0, 0.2, 1)",
+    "type": "cubicBezier"
+  },
+  "easing-in": {
+    "value": "cubic-bezier(0.4, 0, 1, 1)",
+    "type": "cubicBezier"
+  }
+}

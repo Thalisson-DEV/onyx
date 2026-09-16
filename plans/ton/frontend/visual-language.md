@@ -3,9 +3,15 @@
 Especificação alvo, independente de página. Companheira de
 [`000-de-onyx-visual-audit.md`](./000-de-onyx-visual-audit.md).
 
-**Este documento é especificação. Nenhum token de produção foi alterado.** Os
-valores marcados como *candidato* precisam de aprovação de design e de medição
-de contraste antes de entrar em `web/lib/shared/tokens/`.
+**Estado: parcialmente implementado.** As fundações (§2 superfícies, §4 borda,
+§5 raio, §6 elevação, §7 linguagem de estado, §9.2 espaçamento, §9.3 largura de
+leitura, §11 movimento) foram executadas em `TON-VIS-001`. Os valores finais e as
+medições estão em [`001-visual-foundations.md`](./001-visual-foundations.md), que
+é a fonte de verdade para o que existe hoje. As seções restantes continuam
+especificação e pertencem às fatias VIS-002 a VIS-010.
+
+Onde a implementação refinou a especificação, este documento foi corrigido com a
+medição e o trecho está marcado com **[VIS-001]**.
 
 ---
 
@@ -81,15 +87,19 @@ VIS-001 decide se introduz aliases nomeados ou apenas documenta.
 
 ### 2.3 Claro
 
-Candidato: manter a estrutura atual, reduzir o viés verde do canvas.
+**[VIS-001] Implementado.** A estrutura foi mantida e o viés verde saiu.
 
-| Papel | Atual | Direção |
-|---|---|---|
-| `canvas` | `#f8f9f8` | off-white neutro; viés verde mínimo ou nenhum |
-| `surface` | `#eff2f0` | cinza neutro claro |
-| `surface-raised` | `#ffffff` | branco |
-| `surface-hover` | `#e3e7e4` | cinza neutro |
-| `field` | `#ffffff` | branco |
+| Papel | Antes | Agora | Primitivo |
+|---|---|---|---|
+| `canvas` | `#f8f9f8` | `#fafafa` | `grey-02` |
+| `surface` | `#eff2f0` | `#f0f0f0` | `grey-06` |
+| `surface-raised` | `#ffffff` | `#ffffff` | `grey-00` |
+| `surface-hover` | `#e3e7e4` | `#e6e6e6` | `grey-10` |
+| `field` | `#ffffff` | `#ffffff` | `grey-00` |
+
+Deslocamentos de 1 a 3 níveis de cinza, nada de redesenho. O canvas continua
+off-white e `surface-raised` continua branco, então a hierarquia estrutural do
+claro permanece perceptível.
 
 Evitar: verde em tudo, grades de cartão sem propósito, blocos de cor decorativos.
 
@@ -107,28 +117,33 @@ verde:    foco / ativo / identidade
 dourado:  atenção semântica específica
 ```
 
-Estado atual, para comparação (todos `vale-norte-neutral-*`, portanto
-esverdeados):
+**[VIS-001] Implementado.** O viés verde vinha de um único ponto: os aliases
+`tint-*` apontavam para `vale-norte-neutral-*`. Eles passaram a apontar para a
+rampa neutra `grey-*`, que já existia, e os 20 primitivos esverdeados foram
+removidos por falta de consumidor.
 
-| Papel | Valor atual |
-|---|---|
-| `field` | `#0b1410` |
-| `surface-raised` | `#18231d` |
-| `canvas` | `#27332c` |
-| `surface` | `#344139` |
-| `surface-hover` | `#414f47` |
-| anel de foco interno | `#56655d` |
+| Papel | Antes (esverdeado) | Agora (neutro) | Primitivo |
+|---|---|---|---|
+| `field` | `#0b1410` | `#0f0f0f` | `grey-94` |
+| `surface-raised` | `#18231d` | `#1f1f1f` | `grey-88` |
+| `canvas` | `#27332c` | `#333333` | `grey-80` |
+| `surface` | `#344139` | `#404040` | `grey-75` |
+| `surface-hover` | `#414f47` | `#4d4d4d` | `grey-70` |
+| anel de foco interno | `#56655d` | `#626262` | `grey-55` |
 
-Restrições obrigatórias, herdadas de FE-002.1 e a preservar:
+As quatro restrições herdadas de FE-002.1 foram reexecutadas e passam:
 
-1. nenhuma superfície usa preto puro;
-2. cada passo mantém ≥1.15 de contraste;
-3. `text-05` e `text-01` não mudam, para que `disabled` continue o mais fraco;
-4. `border-04` e `border-05` mantêm foco acima de 3:1.
+1. nenhuma superfície usa preto puro — a mais escura é `#0f0f0f`;
+2. cada passo mantém ≥ 1.15 (medidos: 1.16 · 1.30 · 1.22 · 1.23 · 1.39);
+3. `text-05` e `text-01` não mudaram, e a escada segue estritamente ordenada, então
+   `disabled` continua o elo mais fraco;
+4. `border-04` fica em 3.80 no pior caso e `border-05` em 19.2 sobre o campo.
 
-Custo declarado: mudar para neutro reabre as razões aprovadas em FE-002.1 e
-obriga a reexecutar contraste na escada inteira, mais atualizar
-`ton-theme.test.ts:170-277` no mesmo commit.
+A ordem da escada foi preservada de propósito: ela é o contrato fixado em teste, e
+inverter qual superfície é mais clara mudaria a leitura de cada componente. O
+canvas ficou carvão neutro (`#333333`, verificado em runtime como
+`rgb(51, 51, 51)`), não quase-preto, porque o campo precisa continuar mais escuro
+que ele e o anel de foco precisa manter 3:1 contra o campo.
 
 ---
 
@@ -187,15 +202,39 @@ sistema nomeado** — os papéis existem só como convenção documentada em um 
 
 ### 4.1 Papéis alvo
 
-| Papel | Função | Token candidato | Contraste mínimo |
-|---|---|---|---|
-| `subtle` | divisor interno, grade de tabela | `border-01` | 1.5:1 sobre canvas |
-| `default` | fronteira de componente: cartão, input, composer | `border-01`/`border-02` | 1.5:1 |
-| `interactive` | fronteira que responde a hover | `border-02` | 1.5:1 |
-| `selected` | **item selecionado ou ativo** | `action-selection-04/05` | 3:1 |
-| `focus` | anel de `focus-visible` | `border-04` | 3:1 em toda superfície |
-| `error` | validação falhou | `status-error-05` | 3:1 |
-| `attention` | precisa de olhar | `theme-amber-05` | 3:1 |
+**[VIS-001]** Implementado. Os papéis existem como aliases nomeados no preset
+(`border-border-subtle`, `-default`, `-interactive`, `-selected`, `-focus`,
+`-error`, `-attention`) sobre os mesmos tokens numéricos, sem segunda árvore de
+valores, e o vínculo papel → token está fixado em `ton-theme.test.ts`.
+
+| Papel | Função | Token | Contraste alvo | Medido |
+|---|---|---|---|---|
+| `subtle` | divisor interno, grade de tabela | `border-01` | 1.5:1 sobre canvas | escuro 1.69 · **claro 1.20** |
+| `default` | fronteira de componente: cartão, input, composer | `border-01` | 1.5:1 | idem |
+| `interactive` | fronteira que responde a hover | `border-02` | 1.3 vs `default` | escuro 1.89 · **claro 1.29** |
+| `selected` | **item selecionado ou ativo** | **`theme-primary-04`** | 3:1 | 4.55–9.54 nos dois temas |
+| `focus` | anel de `focus-visible` | `border-04` | 3:1 em toda superfície | 3.16–15.2 nos dois temas |
+| `error` | validação falhou | `status-error-05` | 3:1 | claro 4.63 · **escuro 2.62** |
+| `attention` | precisa de olhar | `theme-amber-05` | 3:1 | claro 4.19 · escuro 4.91 |
+
+**[VIS-001] Correção do papel `selected`.** A especificação candidata propunha
+`action-selection-04/05` **e** um mínimo de 3:1, e as duas coisas são
+incompatíveis: medindo sobre a superfície de sidebar escura, `action-selection-04`
+chega a 2.28:1 e `action-selection-05` a 1.98:1. `theme-primary-04` **inverte
+entre temas** (verde escuro no claro, verde claro no escuro) e é o único verde que
+fica ≥ 3:1 sobre os cinco papéis de superfície nos **dois** temas.
+
+Divisão final, coerente com a hierarquia de meios: a **lavagem** de seleção vem da
+rampa de estado (`action-selection-01/02`) e o **anel** de seleção vem da
+identidade (`theme-primary-04`).
+
+Os três valores em negrito ficam abaixo do alvo, são **herdados** e não foram
+introduzidos por VIS-001. Reforçar as bordas claras desloca a rampa
+`border-01..05` inteira e muda toda superfície com borda no tema claro, o que está
+fora do escopo declarado da fatia. `status-error-05` é o vermelho upstream e a
+apresentação de erro é de VIS-006. Os três estão fixados em teste com o valor
+medido, e não com o alvo, para que a regressão seja detectada sem que o documento
+minta.
 
 ### 4.2 Regras
 
@@ -439,15 +478,24 @@ Dados operacionais usam mono com `tabular-nums`. O padrão já existe:
 **Não aplicar uma densidade em tudo.** O `gap-12` (3rem) entre mensagens está
 correto para canvas conversacional e seria errado numa tabela de ocorrências.
 
-### 9.2 A escala precisa existir de fato
+### 9.2 A escala não pode ser ligada como está
 
-`size.json:102-257` define 25 passos `spacing-block-*`. **O preset não tem chave
-`spacing`**, então todo `p-`/`gap-`/`m-` resolve para a escala embutida do
-Tailwind e editar o token não faz nada.
+**[VIS-001] Decidido: não ligar.** A razão é aritmética, não estética.
 
-VIS-001 decide: ligar a escala (e aceitar que a mudança é global), ou remover os
-tokens órfãos e declarar a escala do Tailwind como a oficial. **Manter os dois
-sem ligação é a pior opção**, porque parece configurável e não é.
+As chaves de token são **denominadas em px** (`spacing-block-4` = `0.25rem`,
+`spacing-block-16` = `1rem`) e os utilitários do Tailwind são **denominados em
+passos** (`p-4` = `calc(var(--spacing) * 4)` = `1rem`). Ligar as chaves faria
+`p-4` valer `0.25rem` — **um quarto** — em todo `p-*`, `m-*`, `gap-*` e `space-*`
+do aplicativo. Verificado em CSS gerado que `p-4` continua `16px`.
+
+**Correção à auditoria:** os 25 passos **não são órfãos**. O formato
+`js/nativewind-theme` do Style Dictionary os converte no `theme.extend.spacing`
+do mobile, então removê-los quebraria o mobile. Ficam, vivos lá e
+deliberadamente não ligados na web.
+
+Caminho para quem quiser resolver: renomear as chaves para denominação de passo
+(`spacing-1 … spacing-40`) e só então ligar, ou expor aliases semânticos e migrar
+componente a componente. Nunca em massa.
 
 ### 9.3 Largura de leitura
 
@@ -461,8 +509,15 @@ Hoje existem **cinco** valores concorrentes:
 | máscara de blur | 800px | `AppChrome.tsx:684-690` |
 | chat compartilhado | `max-w-200` | `SharedChatDisplay.tsx:233` |
 
-Alvo: **um token de largura de leitura**, consumido por composer, transcript,
-home e chat compartilhado.
+**[VIS-001]** Existe um nome semântico único: `w-reading` / `max-w-reading`, ligado
+a `--app-page-main-content-width` (45rem / 720px), que já é a largura com que a
+página de conversa se desenha — adotá-lo não move nada. Medido em runtime:
+`max-w-reading` resolve para `720px`.
+
+Migrar os call sites é de quem é dono deles: `MSG_MAX_W` (VIS-006), a máscara de
+800px do canvas (VIS-002) e `max-w-200` do chat compartilhado (VIS-004).
+`width.message-default` (740px) **não** é morto — `ExpandableContentWrapper.tsx`
+o consome.
 
 ### 9.4 Alvos de densidade
 
@@ -558,11 +613,18 @@ ela já é 150–300ms, portanto o movimento **não é o problema principal**.
 Easing: `ease-out` para entrada, `ease-in-out` para mudança contínua de layout.
 Sem bounce, sem escala dramática, sem movimento contínuo decorativo.
 
-### 11.3 Não existe camada de token
+### 11.3 A camada de token existe
 
-Não há token de duração nem de easing em nenhum lugar. Os valores estão como
-literais em `tailwind-preset.cjs`, `tailwind.config.js`, `globals.css` e em
-strings de classe de componente. VIS-001 cria a camada.
+**[VIS-001]** `web/lib/shared/tokens/motion.json` publica
+`duration-instant` 120ms · `duration-fast` 150ms · `duration-base` 200ms ·
+`duration-slow` 280ms, e `easing-standard` · `easing-out` · `easing-in`. Expostos
+como `duration-*` e `ease-*`.
+
+As três curvas são **exatamente** `--ease-in-out`, `--ease-out` e `--ease-in` do
+Tailwind v4, as mesmas que o app já usa como palavra reservada; `duration-fast` é
+o `--default-transition-duration` do Tailwind e a duração de `.interactive`;
+`duration-base` é a dobra da sidebar. Nenhum valor foi importado de referência
+externa. Nenhuma animação existente foi migrada: isso é de VIS-009.
 
 ### 11.4 Alvos
 
@@ -578,19 +640,22 @@ strings de classe de componente. VIS-001 cria a camada.
 | espaçadores de sombra | 150ms | **remover** com a sombra |
 | pontos de ferramenta | `animate-pulse` 2s com delays inúteis | substituir |
 
-### 11.5 Reduced motion — requisito
+### 11.5 Reduced motion — entregue
 
-**Não existe reset global de `prefers-reduced-motion`.** Só quatro blocos
-escopados. Logo, `animate-fade-in-scale`, `animate-waveform`,
-`animate-fade-in-up`, `animate-pulse` e todo `duration-150` continuam rodando
-para quem pediu menos movimento.
+**[VIS-001]** `globals.css` tem o reset global. Ele colapsa animação e transição
+para `0.01ms` com `animation-iteration-count: 1` — não para `0s`, para que
+`transitionend` e `animationend` continuem disparando e o `Presence` do Radix
+ainda desmonte.
 
-VIS-001 entrega um reset global. Casos específicos:
+Escape hatch: `data-motion="essential"` mantém indicador de progresso operacional
+rodando, ajustável por `--motion-essential-duration` e
+`--motion-essential-iterations`. Medido em runtime com
+`prefers-reduced-motion: reduce`: decorativo em `1e-05s` / iteração `1`, essencial
+em `1s` / `infinite`.
 
-- `SvgSimpleLoader` usa `animate-spin` puro e é o spinner mais usado no admin →
-  precisa de `motion-safe:`;
-- 7 dos 8 skeletons animam sob reduced-motion;
-- o único que acerta hoje é `UsageReports.tsx:71`.
+`SvgSimpleLoader` recebeu `motion-safe:animate-spin`, alinhando-o a `IconLoader` e
+`OnyxLoader`. Os 7 skeletons que ainda animavam passam pelo reset global; dar a
+eles `role="status"` continua sendo de VIS-009.
 
 ### 11.6 Microinterações
 
@@ -668,11 +733,16 @@ shimmer para reduced-motion · ações de mensagem permanentes no mobile.
 
 ## 14. Limites desta especificação
 
-1. **Somente especificação.** Nenhum token de produção mudou.
-2. Valores marcados *candidato* precisam de aprovação de design e medição.
-3. A mudança do escuro para neutro tem custo declarado: reabre contraste
-   aprovado em FE-002.1.
-4. Ligar a escala de espaçamento é mudança global. Decisão de VIS-001.
+1. **Fundações implementadas em VIS-001; o resto continua especificação.** Para o
+   que existe hoje, com valores e medições, ler
+   [`001-visual-foundations.md`](./001-visual-foundations.md).
+2. Valores ainda marcados *candidato* nas seções não implementadas precisam de
+   aprovação de design e medição.
+3. A mudança do escuro para neutro **foi feita** e as razões de FE-002.1 foram
+   reexecutadas: a escada mantém ≥ 1.15 por passo, nenhuma superfície é preto
+   puro, o foco fica ≥ 3:1 e `disabled` continua o elo mais fraco.
+4. A escala de espaçamento **não** foi ligada, por incompatibilidade de
+   denominação (§9.2).
 5. **ClearEyed/Twenty é referência de qualidade e interação, não de estrutura.**
    Nenhuma medida da referência foi tratada como constante TON, nenhum CSS foi
    copiado, nenhuma cor foi reproduzida, e a arquitetura de informação de FE-004

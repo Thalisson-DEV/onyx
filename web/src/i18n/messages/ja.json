@@ -12851,6 +12851,10 @@
       "previousPage": "前のページ",
       "rangeOfTotal": "<range></range> / <total></total>"
     },
+    "sidebar": {
+      "close": "サイドバーを閉じる",
+      "open": "サイドバーを開く"
+    },
     "table": {
       "alwaysShown": "常に表示",
       "ascending": "昇順",

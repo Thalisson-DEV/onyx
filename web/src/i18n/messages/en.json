@@ -12881,6 +12881,10 @@
       "previousPage": "Previous page",
       "rangeOfTotal": "<range></range> of <total></total>"
     },
+    "sidebar": {
+      "close": "Close sidebar",
+      "open": "Open sidebar"
+    },
     "table": {
       "alwaysShown": "Always Shown",
       "ascending": "Ascending",

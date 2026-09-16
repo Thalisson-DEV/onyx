@@ -45,6 +45,8 @@ export type OpalStrings = {
   valueCannotBeRevealed: string;
   scrollTabsLeft: string;
   scrollTabsRight: string;
+  sidebarOpen: string;
+  sidebarClose: string;
   previousPage: string;
   nextPage: string;
   goToPage: string;
@@ -140,6 +142,8 @@ export const defaultOpalStrings: OpalStrings = {
   valueCannotBeRevealed: "Value cannot be revealed",
   scrollTabsLeft: "Scroll tabs left",
   scrollTabsRight: "Scroll tabs right",
+  sidebarOpen: "Open sidebar",
+  sidebarClose: "Close sidebar",
   previousPage: "Previous page",
   nextPage: "Next page",
   goToPage: "Go to page",

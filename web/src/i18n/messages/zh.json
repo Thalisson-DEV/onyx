@@ -12851,6 +12851,10 @@
       "previousPage": "上一页",
       "rangeOfTotal": "<range></range> / <total></total>"
     },
+    "sidebar": {
+      "close": "关闭侧边栏",
+      "open": "打开侧边栏"
+    },
     "table": {
       "alwaysShown": "始终显示",
       "ascending": "升序",

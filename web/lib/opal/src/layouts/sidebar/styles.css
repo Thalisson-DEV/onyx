@@ -22,9 +22,15 @@
 /* `h-full`, not `h-screen`: the root frame owns the viewport height, and a
    column asserting `100vh` on its own is what let a leaf define the app's
    geometry (and overflow the frame on mobile, where 100vh > 100dvh). */
+/* The boundary against the canvas is a 1px structural edge plus the quiet
+   surface step, not a shadow and not a heavier fill. The surface alone is only
+   1.09:1 from the canvas in light, so without the edge the column had no
+   boundary at all and read as an undivided grey field. */
 .opal-sidebar-root__column {
   @apply h-full min-h-0 flex flex-col bg-background-tint-02 pb-2 shrink-0;
   width: var(--sidebar-width-expanded);
+  border-inline-end: calc(var(--weight-line-border) * 1px) solid
+    var(--border-01);
   transition: width 200ms ease-in-out;
 }
 .opal-sidebar-root__column[data-folded="true"] {
@@ -39,6 +45,8 @@
 .opal-sidebar-root__overlay {
   @apply flex flex-col bg-background-tint-02 pb-2;
   width: var(--sidebar-width-expanded);
+  border-inline-end: calc(var(--weight-line-border) * 1px) solid
+    var(--border-01);
   transition: width 200ms ease-in-out;
 }
 .opal-sidebar-root__overlay[data-folded="true"] {
@@ -90,12 +98,18 @@
   @apply flex flex-col gap-4;
 }
 
+/* The brand band takes the same height the chrome header uses on the other side
+   of the edge, so the mark and the first row of canvas content sit on one line
+   instead of the sidebar starting 12px higher for no reason. */
 .opal-sidebar-header__topbar {
-  @apply pt-3 px-2;
+  @apply px-2 flex items-center shrink-0;
+  height: var(--chrome-header-height);
 }
 
+/* `items-center`, was `items-start`: the fold control is a shell utility sitting
+   on the mark's optical centre, not something hanging off the top edge. */
 .opal-sidebar-header__topbar-inner {
-  @apply flex flex-row justify-between items-start px-1 w-full;
+  @apply flex flex-row justify-between items-center px-1 w-full;
 }
 
 .opal-sidebar-header__content {
@@ -170,10 +184,17 @@
    SidebarSection
    --------------------------------------------------------------------------- */
 
+/* Section rhythm carries the hierarchy, so it is spacing before it is anything
+   else: `pt-5` (was `pt-3`) opens a gap a reader parses as "new group" rather
+   than "next row", without adding a container or a heading size. */
 .opal-sidebar-section__header {
-  @apply pt-3 ps-2 pe-1 flex flex-row justify-between items-center;
+  @apply pt-5 ps-2 pe-1 flex flex-row justify-between items-center;
 }
 
+/* `px-0.5` stays: measured, it puts the label at 18px from the column edge,
+   which is exactly where a row's icon starts. Only the vertical padding tightens
+   (`py-1.5` to `py-1`), so the label sits closer to the rows it titles than to
+   the section above it — the gap now reads as belonging to one group. */
 .opal-sidebar-section__title {
-  @apply flex px-0.5 py-1.5;
+  @apply flex px-0.5 py-1;
 }

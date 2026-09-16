@@ -17,6 +17,7 @@ import {
   SidebarTab,
 } from "@opal/components";
 import { ConfirmationModalLayout } from "@opal/layouts";
+import { Hoverable } from "@opal/core";
 import { cn } from "@opal/utils";
 import {
   SvgEdit,
@@ -234,48 +235,61 @@ export function ProjectFolderButton({ project }: ProjectFolderButtonProps) {
       <FolderIconProvider open={open} onToggle={() => setOpen((prev) => !prev)}>
         <Popover onOpenChange={setPopoverOpen}>
           <Popover.Anchor>
-            <SidebarTab
-              icon={FolderIcon}
-              // Folded, the project's chats are hidden — and a project chat
-              // appears nowhere else in the sidebar (Recents excludes them), so
-              // the folder itself has to carry the "you are here" mark.
-              selected={isActiveProject && (activeSidebar.isProject() || !open)}
-              /* While renaming, drop the click target so the input stays usable. */
-              onClick={isEditing ? undefined : noProp(handleTextClick)}
-              rightChildren={
-                <>
-                  <Popover.Trigger asChild onClick={noProp()}>
-                    <div
-                      className={cn(
-                        !popoverOpen && "hidden",
-                        !isEditing && "group-hover/SidebarTab:flex"
-                      )}
-                    >
-                      <Button
-                        icon={SvgMoreHorizontal}
-                        prominence="internal"
-                        size="sm"
-                        interaction={popoverOpen ? "hover" : "rest"}
-                      />
-                    </div>
-                  </Popover.Trigger>
-
-                  <Popover.Content side="right" align="end" width="md">
-                    <PopoverMenu>{popoverItems}</PopoverMenu>
-                  </Popover.Content>
-                </>
-              }
+            <Hoverable.Root
+              group="ProjectFolderButton"
+              interaction={popoverOpen ? "hover" : "rest"}
             >
-              {isEditing ? (
-                <ButtonRenaming
-                  initialName={project.name}
-                  onRename={handleRename}
-                  onClose={() => setIsEditing(false)}
-                />
-              ) : (
-                project.name
-              )}
-            </SidebarTab>
+              <SidebarTab
+                icon={FolderIcon}
+                // Folded, the project's chats are hidden — and a project chat
+                // appears nowhere else in the sidebar (Recents excludes them), so
+                // the folder itself has to carry the "you are here" mark.
+                selected={
+                  isActiveProject && (activeSidebar.isProject() || !open)
+                }
+                /* While renaming, drop the click target so the input stays usable. */
+                onClick={isEditing ? undefined : noProp(handleTextClick)}
+                rightChildren={
+                  <>
+                    <Popover.Trigger asChild onClick={noProp()}>
+                      {/* `Hoverable.Item`, not `hidden` + `group-hover:flex`. The
+                        hand-written pair had no hover-less fallback, so on a
+                        touch device the project menu could never be revealed and
+                        rename/delete were unreachable. `Hoverable` gates its
+                        hidden state behind `@media (hover: hover)` and also
+                        reveals on keyboard focus, which the old pair did not.
+                        This is the same primitive `ChatButton` already uses. */}
+                      <div>
+                        {(!isEditing || popoverOpen) && (
+                          <Hoverable.Item group="ProjectFolderButton">
+                            <Button
+                              icon={SvgMoreHorizontal}
+                              prominence="internal"
+                              size="sm"
+                              interaction={popoverOpen ? "hover" : "rest"}
+                            />
+                          </Hoverable.Item>
+                        )}
+                      </div>
+                    </Popover.Trigger>
+
+                    <Popover.Content side="right" align="end" width="md">
+                      <PopoverMenu>{popoverItems}</PopoverMenu>
+                    </Popover.Content>
+                  </>
+                }
+              >
+                {isEditing ? (
+                  <ButtonRenaming
+                    initialName={project.name}
+                    onRename={handleRename}
+                    onClose={() => setIsEditing(false)}
+                  />
+                ) : (
+                  project.name
+                )}
+              </SidebarTab>
+            </Hoverable.Root>
           </Popover.Anchor>
         </Popover>
       </FolderIconProvider>

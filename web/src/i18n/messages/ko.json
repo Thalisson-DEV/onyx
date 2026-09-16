@@ -12851,6 +12851,10 @@
       "previousPage": "이전 페이지",
       "rangeOfTotal": "<range></range> / <total></total>"
     },
+    "sidebar": {
+      "close": "사이드바 닫기",
+      "open": "사이드바 열기"
+    },
     "table": {
       "alwaysShown": "항상 표시",
       "ascending": "오름차순",

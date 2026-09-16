@@ -375,6 +375,11 @@ Estes três são defeitos reais encontrados na auditoria, não preferências:
    fundo do hover não selecionado. A seleção desaparece ao passar o mouse.
    Correção: hover de item selecionado mantém o sinal de seleção e só intensifica.
 2. **`PRESSED` não existe** nas variantes de sidebar (sem célula `:active`).
+   **[VIS-001] resolvido** com o anel; **[VIS-002] a navegação passou do anel de
+   perímetro para um marcador na aresta de início** (`::before`, `inset-inline-start`,
+   `theme-primary-04`), porque num item de largura total o anel lia como cartão
+   contornado. PRESSED engrossa o marcador, como engrossava o anel. As variantes
+   `select-*` mantiveram o anel — é a forma certa para um chip.
    Pressionado é indistinguível de hover.
 3. **[VIS-004] Foco do composer: resolvido.** Era o achado de a11y mais grave —
    `outline-hidden` no editável e nada no contêiner. A correção é
@@ -528,7 +533,7 @@ o consome.
 |---|---|---|
 | barra do composer com altura fixa e sem overflow | `AppInputBar.tsx:612-623` | prioridade de overflow |
 | header de cartão de especialista `h-24` fixo | `AgentCard.tsx:83` | altura por conteúdo |
-| rótulo de seção com muito padding e pouco contraste | `sidebar/styles.css:145-148` | menos padding, mais peso |
+| rótulo de seção com muito padding e pouco contraste | **[VIS-002] feito** — `text-03` (4.59:1 claro / 6.03:1 escuro, era 3.29:1), `py-1`, e `pt-5` antes do header da seção | tamanho e peso ficaram: rótulo, não título |
 | grade de tabela vinda só das variáveis prose | `custom-code-styles.css:305-380` | grade explícita e densa |
 
 ---
@@ -717,8 +722,10 @@ Toda recomendação visual precisa preservar ou melhorar:
 ### 13.1 A corrigir
 
 ~~Foco do composer~~ **[VIS-004] feito** · ~~`id` duplicado do botão enviar~~
-**[VIS-004] feito** · menu de projeto no toque ·
-`"Open Sidebar"`/`"Close Sidebar"` sem i18n · `aria-label="share-chat-button"` ·
+**[VIS-004] feito** · ~~menu de projeto no toque~~ **[VIS-002] feito, via
+`Hoverable`** · ~~rótulo do controle de recolher sem i18n~~ **[VIS-002] feito, pelo
+contrato `OpalStrings`** · ~~`aria-label="share-chat-button"`~~ **[VIS-002]
+feito** ·
 `"AgentsPage/new-agent-button"` como `aria-label` · `role="button"` envolvendo
 `Button` · reset global de reduced-motion · `role="status"` nos skeletons ·
 contraste dos rótulos de seção · seleção que inverte sob o cursor ·

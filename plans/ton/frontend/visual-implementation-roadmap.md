@@ -4,14 +4,15 @@ Sequenciamento derivado de
 [`000-de-onyx-visual-audit.md`](./000-de-onyx-visual-audit.md). A linguagem alvo
 está em [`visual-language.md`](./visual-language.md).
 
-**Estado: VIS-001 e VIS-004 DONE. As demais não implementadas.** Após VIS-004,
-**PARAR**; VIS-002 e VIS-005 não começam automaticamente.
+**Estado: VIS-001, VIS-004 e VIS-002 DONE. As demais não implementadas.** Após
+VIS-002, **PARAR**; VIS-005 não começa automaticamente.
 
 | Fatia | Estado |
 |---|---|
 | VIS-001 | **DONE** — [`001-visual-foundations.md`](./001-visual-foundations.md) |
 | VIS-004 | **DONE** — [`004-composer.md`](./004-composer.md) |
-| VIS-002, VIS-003, VIS-005 … VIS-010 | não iniciadas |
+| VIS-002 | **DONE** — [`002-shell-navigation.md`](./002-shell-navigation.md) |
+| VIS-003, VIS-005 … VIS-010 | não iniciadas |
 
 ---
 
@@ -173,9 +174,24 @@ arquivos alterados.
 
 ---
 
-## VIS-002 — Casca e navegação (visual de FE-004)
+## VIS-002 — Casca e navegação (visual de FE-004) — **DONE**
 
-**Nível máximo: 3.**
+**Nível máximo: 3.** Resultado, decisões e evidência de estilo computado em
+[`002-shell-navigation.md`](./002-shell-navigation.md).
+
+Entregue: aresta lógica de 1px na coluna sobre o degrau de superfície; linha de
+navegação em `radius-04` com **marcador na aresta de início** no lugar do anel de
+perímetro (as variantes `select-*` mantiveram o anel, que é de onde VIS-004 tira o
+Deep Research); rótulo de seção de `text-02` para `text-03` e ritmo `pt-3` para
+`pt-5`; faixa da marca na altura do header do chrome com o recolher centrado;
+header do chrome centrado verticalmente e sem os dois `FrostedDiv`;
+`AppChrome` de 742 para 226 linhas com `AppHeader.tsx` extraído literalmente.
+Corrigidos A3 (menu de projeto no toque, via `Hoverable`), C1/A4
+(`Open Sidebar`/`Close Sidebar` pelo contrato `OpalStrings` nos nove catálogos) e
+C3 (`aria-label="share-chat-button"`). Skeletons determinísticos e carregamento por
+seção. A IA de FE-004 não mudou. Playwright de aplicação **deferido** por conflito
+de runtime compartilhado; validação visual feita em Chromium isolado sobre o CSS do
+build. Detalhes em `002-shell-navigation.md` §13 e §15.
 
 ### Pré-requisitos
 VIS-001.

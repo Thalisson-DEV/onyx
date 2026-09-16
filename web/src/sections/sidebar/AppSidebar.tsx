@@ -110,16 +110,42 @@ function buildVisibleAgents(
   return [visibleAgents, currentAgentIsPinned];
 }
 
-const SKELETON_WIDTHS_BASE = ["w-4/5", "w-4/5", "w-3/5"];
+/* Fixed order, not shuffled. These were re-sorted through `Math.random()` on
+   every page change, which made the placeholder rows jitter between renders and
+   gave the server and the client two different first paints. A skeleton stands
+   in for content; it is not content, so it has nothing to randomise. */
+const SKELETON_WIDTHS = ["w-4/5", "w-3/5", "w-4/5"] as const;
 
-function shuffleWidths(): string[] {
-  return [...SKELETON_WIDTHS_BASE].sort(() => Math.random() - 0.5);
+interface SkeletonRowsProps {
+  /** How many placeholder rows to stand in for. */
+  count?: number;
+}
+
+/**
+ * A run of placeholder rows, for a section whose own data has not arrived.
+ *
+ * The sidebar used to render nothing at all until every source had resolved, so
+ * the whole column emptied out and the shell's structure disappeared on each
+ * cold load. Each section now holds its own shape while it waits.
+ */
+function SkeletonRows({ count = SKELETON_WIDTHS.length }: SkeletonRowsProps) {
+  return (
+    <div aria-hidden="true">
+      {Array.from({ length: count }, (_, index) => (
+        <SidebarTabSkeleton
+          key={index}
+          textWidth={SKELETON_WIDTHS[index % SKELETON_WIDTHS.length]}
+        />
+      ))}
+    </div>
+  );
 }
 
 interface RecentsSectionProps {
   chatSessions: ChatSession[];
   hasMore: boolean;
   isLoadingMore: boolean;
+  isLoading: boolean;
   onLoadMore: () => void;
 }
 
@@ -127,6 +153,7 @@ function RecentsSection({
   chatSessions,
   hasMore,
   isLoadingMore,
+  isLoading,
   onLoadMore,
 }: RecentsSectionProps) {
   const t = useTranslations("sidebar");
@@ -136,9 +163,6 @@ function RecentsSection({
       type: DRAG_TYPES.RECENTS,
     },
   });
-
-  // Re-shuffle skeleton widths each time loaded session count changes
-  const skeletonWidths = useMemo(shuffleWidths, [chatSessions.length]);
 
   // Sentinel ref for IntersectionObserver-based infinite scroll
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -181,7 +205,9 @@ function RecentsSection({
       )}
     >
       <SidebarLayouts.Section title={t("appSidebar.recents.title")}>
-        {chatSessions.length === 0 ? (
+        {isLoading ? (
+          <SkeletonRows />
+        ) : chatSessions.length === 0 ? (
           <Text as="p" text01 className="px-3">
             {t("appSidebar.recents.empty.text")}
           </Text>
@@ -195,7 +221,7 @@ function RecentsSection({
               />
             ))}
             {hasMore &&
-              skeletonWidths.map((width, i) => (
+              SKELETON_WIDTHS.map((width, i) => (
                 <div
                   key={i}
                   ref={i === 0 ? sentinelRef : undefined}
@@ -245,12 +271,10 @@ export default function AppSidebar() {
     isLoading: isLoadingPinnedAgents,
   } = usePinnedAgents();
 
-  // Wait for ALL dynamic data before showing any sections
-  const isLoadingDynamicContent =
-    isLoadingChatSessions ||
-    isLoadingProjects ||
-    isLoadingAgents ||
-    isLoadingPinnedAgents;
+  /* There is no aggregate loading gate any more. Each section reads the source
+     it actually depends on, so a slow projects request no longer blanks the
+     conversation list and the shell keeps its shape throughout. The requests
+     themselves are unchanged. */
 
   // Still need some context for stateful operations
   const { refreshCurrentProjectDetails, currentProjectId } =
@@ -650,32 +674,38 @@ export default function AppSidebar() {
         </SidebarLayouts.Header>
 
         <SidebarLayouts.Body scrollKey="app-sidebar">
-          {isLoadingDynamicContent ? null : (
+          {
             <>
               {/* Pinned specialists. A shortcut into the Especialistas
               destination above, so with nothing pinned the section is dropped
-              rather than shown as a bare heading. */}
-              {visibleAgents.length > 0 && (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleAgentDragEnd}
-                >
-                  <SidebarLayouts.Section title={t("appSidebar.agents.title")}>
-                    <SortableContext
-                      items={visibleAgentIds}
-                      strategy={verticalListSortingStrategy}
+              rather than shown as a bare heading. While the pinned list is in
+              flight the section stays out too: it may resolve to empty, and a
+              heading that then vanishes is worse than one that arrives late. */}
+              {!isLoadingPinnedAgents &&
+                !isLoadingAgents &&
+                visibleAgents.length > 0 && (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleAgentDragEnd}
+                  >
+                    <SidebarLayouts.Section
+                      title={t("appSidebar.agents.title")}
                     >
-                      {visibleAgents.map((visibleAgent) => (
-                        <AgentButton
-                          key={visibleAgent.id}
-                          agent={visibleAgent}
-                        />
-                      ))}
-                    </SortableContext>
-                  </SidebarLayouts.Section>
-                </DndContext>
-              )}
+                      <SortableContext
+                        items={visibleAgentIds}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {visibleAgents.map((visibleAgent) => (
+                          <AgentButton
+                            key={visibleAgent.id}
+                            agent={visibleAgent}
+                          />
+                        ))}
+                      </SortableContext>
+                    </SidebarLayouts.Section>
+                  </DndContext>
+                )}
 
               {/* Wrap Projects and Recents in a shared DndContext for chat-to-project drag */}
               <DndContext
@@ -700,10 +730,19 @@ export default function AppSidebar() {
                     />
                   }
                 >
-                  {projects.map((project) => (
-                    <ProjectFolderButton key={project.id} project={project} />
-                  ))}
-                  {projects.length === 0 && newProjectButton}
+                  {isLoadingProjects ? (
+                    <SkeletonRows count={2} />
+                  ) : (
+                    <>
+                      {projects.map((project) => (
+                        <ProjectFolderButton
+                          key={project.id}
+                          project={project}
+                        />
+                      ))}
+                      {projects.length === 0 && newProjectButton}
+                    </>
+                  )}
                 </SidebarLayouts.Section>
 
                 {/* Where TON's capabilities end and the conversation log
@@ -716,11 +755,12 @@ export default function AppSidebar() {
                   chatSessions={chatSessions}
                   hasMore={hasMore}
                   isLoadingMore={isLoadingMore}
+                  isLoading={isLoadingChatSessions}
                   onLoadMore={loadMore}
                 />
               </DndContext>
             </>
-          )}
+          }
         </SidebarLayouts.Body>
 
         <SidebarLayouts.Footer>

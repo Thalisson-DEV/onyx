@@ -18,6 +18,7 @@ import { SvgSidebar } from "@opal/icons";
 import type { IconFunctionComponent, RichStr } from "@opal/types";
 import { useSidebarState } from "@opal/layouts/root/components";
 import { SidebarFoldedContext } from "@opal/layouts/sidebar/context";
+import { useOpalStrings } from "@opal/strings";
 import useScreenSize from "@opal/hooks/useScreenSize";
 
 // ---------------------------------------------------------------------------
@@ -174,7 +175,12 @@ function SidebarHeader({
     [setFolded]
   );
 
-  const foldLabel = folded ? "Open Sidebar" : "Close Sidebar";
+  /* The label of the most-used control in the shell. It was a hardcoded English
+     literal, so a PT-BR product announced the fold button and the folded logo
+     button in English, in both the accessible name and the tooltip. It rides the
+     `OpalStrings` contract now, like every other label Opal renders itself. */
+  const strings = useOpalStrings();
+  const foldLabel = folded ? strings.sidebarOpen : strings.sidebarClose;
 
   const closeButton = useMemo(
     () => (
@@ -349,8 +355,14 @@ function SidebarSection({
         <Hoverable.Root group="sidebar-section">
           <Disabled disabled={disabled}>
             <div className="opal-sidebar-section__header">
+              {/* `text-03`, was `text-02`: at 3.29:1 on the sidebar surface the
+                  label was quieter than the rows it governs, which is what made
+                  the section hierarchy read as noise. `text-03` measures 4.59:1
+                  light and 6.03:1 dark — deliberate, still subordinate to a row
+                  label at `text-04`. The weight and size are untouched, so the
+                  labels do not become headings. */}
               <div className="opal-sidebar-section__title">
-                <Text font="secondary-body" color="text-02">
+                <Text font="secondary-body" color="text-03">
                   {title}
                 </Text>
               </div>

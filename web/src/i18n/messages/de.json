@@ -12851,6 +12851,10 @@
       "previousPage": "Vorherige Seite",
       "rangeOfTotal": "<range></range> von <total></total>"
     },
+    "sidebar": {
+      "close": "Seitenleiste schließen",
+      "open": "Seitenleiste öffnen"
+    },
     "table": {
       "alwaysShown": "Immer angezeigt",
       "ascending": "Aufsteigend",

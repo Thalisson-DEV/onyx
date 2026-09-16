@@ -164,7 +164,7 @@ function SidebarTab({
   outline is inset because the container clips its overflow. `cursor-pointer` is
   explicit because the UA stylesheet gives `button` a default cursor, which wins
   over the value inherited from `.interactive`. */
-  const overlayClassName = "absolute z-99 inset-0 rounded-08";
+  const overlayClassName = "absolute z-99 inset-0 rounded-04";
   const controlClassName = cn(
     overlayClassName,
     "cursor-pointer outline-border-04 outline-offset-[-2px] focus-visible:outline-2"
@@ -220,7 +220,11 @@ function SidebarTab({
         type="button"
         group="group/SidebarTab"
       >
-        <Interactive.Container rounding={2} size="lg" width="full">
+        {/* `rounding={1}` (4px), not the 8px a chip uses: a navigation row is a
+            line in a column, and the softer corner is what made a selected row
+            read as an outlined card. The overlay above matches it so the focus
+            outline follows the same geometry. */}
+        <Interactive.Container rounding={1} size="lg" width="full">
           {trigger}
 
           {rightChildren && (

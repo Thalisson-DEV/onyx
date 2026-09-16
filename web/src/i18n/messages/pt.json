@@ -12851,6 +12851,10 @@
       "previousPage": "Página anterior",
       "rangeOfTotal": "<range></range> de <total></total>"
     },
+    "sidebar": {
+      "close": "Fechar a barra lateral",
+      "open": "Abrir a barra lateral"
+    },
     "table": {
       "alwaysShown": "Sempre exibida",
       "ascending": "Crescente",

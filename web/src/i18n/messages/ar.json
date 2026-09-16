@@ -12851,6 +12851,10 @@
       "previousPage": "الصفحة السابقة",
       "rangeOfTotal": "<range></range> من <total></total>"
     },
+    "sidebar": {
+      "close": "إغلاق الشريط الجانبي",
+      "open": "فتح الشريط الجانبي"
+    },
     "table": {
       "alwaysShown": "معروض دائمًا",
       "ascending": "تصاعدي",

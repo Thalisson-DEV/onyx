@@ -22,6 +22,17 @@ This file provides guidance to AI agents when working with code in this reposito
   This works on a host checkout and inside the devcontainer. If no `psql` client is available, fall back to
   `docker exec onyx-relational_db-1 psql -U postgres -c "<SQL>"` (no `-it` — agent shells have no TTY).
 - When making calls to the backend, always go through the frontend. E.g. make a call to `http://localhost:3000/api/persona` not `http://localhost:8080/api/persona`
+- **Never `docker compose pull` the `onyx-backend` or `onyx-web-server` images.** TON adds its own
+  Alembic migrations, so the upstream `latest` is behind this repo (440 revisions against 448) and
+  the api_server dies in a migration loop: `Can't locate revision identified by 'faee7eaa921e'`.
+  Build them from the repo instead. Only pull what this repo does not build (`opensearch`, `redis`,
+  `minio`, `postgres`, `code-interpreter`, `onyx-model-server`).
+- **On a Windows checkout, `*.sh` files break images you build locally.** The root `.gitattributes`
+  has no rule for them, so `core.autocrlf=true` writes CRLF, the shebang becomes `#!/bin/sh\r`, and
+  the container exits 127 with `<script>: not found` even though the file is present and executable.
+  Normalize the scripts to LF before building, or set `core.autocrlf=input`.
+- The local Docker runbook — lite versus full topology, measured RAM footprint per container, the
+  required `.env` variables, and exit-code triage — is in `plans/ton/local-runtime.md`.
 
 ## Project Overview
 

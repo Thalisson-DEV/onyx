@@ -425,7 +425,10 @@ export const MessageTextRenderer: MessageRenderer<
     []
   );
 
-  const shouldShowThinkingPlaceholder =
+  // Both gaps below are the voice path withholding text that already exists or
+  // is imminent, so "preparing response" describes a real observable state. The
+  // conditions are unchanged — only the copy is.
+  const shouldShowProcessingPlaceholder =
     shouldUseAutoPlaybackSync &&
     isAwaitingAutoPlaybackStart &&
     !hasTimelineThinking &&
@@ -456,9 +459,9 @@ export const MessageTextRenderer: MessageRenderer<
       icon: null,
       status: null,
       content:
-        shouldShowThinkingPlaceholder || shouldShowSpeechWarmupIndicator ? (
-          <Text as="span" secondaryBody text04 className="italic">
-            {t("text.thinkingPlaceholder.text")}
+        shouldShowProcessingPlaceholder || shouldShowSpeechWarmupIndicator ? (
+          <Text as="span" secondaryBody text04>
+            {t("text.processingPlaceholder.text")}
           </Text>
         ) : displayedContent.length > 0 ? (
           <div
@@ -466,7 +469,7 @@ export const MessageTextRenderer: MessageRenderer<
             className={cn(!streamFullyDisplayed && "streaming-katex")}
           >
             <ReactMarkdown
-              className="prose prose-onyx font-main-content-body max-w-full"
+              className="prose prose-ton font-main-content-body max-w-full"
               components={markdownComponents}
               remarkPlugins={
                 streamFullyDisplayed

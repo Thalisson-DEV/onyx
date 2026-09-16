@@ -1,91 +1,72 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-
 import {
   PacketType,
-  ReasoningDelta,
   ReasoningPacket,
 } from "@/app/app/services/streamingModels";
 import {
-  MessageRenderer,
   FullChatState,
+  MessageRenderer,
+  RendererResult,
 } from "@/app/app/message/messageComponents/interfaces";
-import MinimalMarkdown from "@/components/chat/MinimalMarkdown";
-import ExpandableTextDisplay from "@/refresh-components/texts/ExpandableTextDisplay";
 import {
-  mutedTextMarkdownComponents,
-  collapsedMarkdownComponents,
-} from "@/app/app/message/messageComponents/timeline/renderers/sharedMarkdownComponents";
-import { SvgCircle } from "@opal/icons";
+  ActivityStatus,
+  activityStateIcon,
+  type ActivityState,
+} from "@/app/app/message/messageComponents/timeline/ActivityStatus";
 
-const THINKING_MIN_DURATION_MS = 500; // 0.5 second minimum for "Thinking" state
+/**
+ * Observable execution step for a model deliberation phase.
+ *
+ * TON does not surface private chain-of-thought. The reasoning packets tell us
+ * exactly three observable things — a deliberation phase started, it is still
+ * running, and it ended — so that is all this step reports. The text carried by
+ * `REASONING_DELTA` is never read, never accumulated and never rendered, so it
+ * cannot reach the DOM, the accessibility tree, a tooltip, a copy buffer or a
+ * download. See `plans/ton/frontend/006-messages-streaming-tools.md` §4.
+ *
+ * The packets themselves stay untouched in the stream: `packetProcessor` still
+ * groups them and still uses `REASONING_START` to open a step, so sequencing and
+ * ordering are unchanged.
+ */
 
-function extractFirstParagraph(content: string): {
-  title: string | null;
-  remainingContent: string;
-} {
-  if (!content || content.trim().length === 0) {
-    return { title: null, remainingContent: content };
-  }
+/** Matches the old dwell time so short phases don't flash and vanish. */
+const MIN_VISIBLE_DURATION_MS = 500;
 
-  const trimmed = content.trim();
-
-  // Split by double newline (paragraph break) or single newline
-  const lines = trimmed.split(/\n\n|\n/);
-  const firstLine = lines[0]?.trim();
-
-  if (!firstLine) {
-    return { title: null, remainingContent: content };
-  }
-
-  // Only treat as title if it's an actual markdown heading (starts with #)
-  const isMarkdownHeading = /^#+\s/.test(firstLine);
-  if (!isMarkdownHeading) {
-    return { title: null, remainingContent: content };
-  }
-
-  // Remove markdown heading markers (# ## ### etc.)
-  const cleanTitle = firstLine.replace(/^#+\s*/, "").trim();
-
-  // Only use as title if it's reasonably short (under ~60 chars for UI fit)
-  if (cleanTitle.length > 60) {
-    return { title: null, remainingContent: content };
-  }
-
-  // Remove the first line from content
-  const remainingContent = trimmed.slice(firstLine.length).replace(/^\n+/, "");
-
-  return { title: cleanTitle, remainingContent };
+interface ReasoningActivity {
+  hasStart: boolean;
+  hasEnd: boolean;
+  failed: boolean;
 }
 
-function constructCurrentReasoningState(packets: ReasoningPacket[]) {
-  const hasStart = packets.some(
-    (p) => p.obj.type === PacketType.REASONING_START
-  );
-  const hasEnd = packets.some(
-    (p) =>
-      p.obj.type === PacketType.SECTION_END ||
-      p.obj.type === PacketType.ERROR ||
-      // Support reasoning_done from backend
-      (p.obj as any).type === PacketType.REASONING_DONE
-  );
-  const deltas = packets
-    .filter((p) => p.obj.type === PacketType.REASONING_DELTA)
-    .map((p) => p.obj as ReasoningDelta);
+/**
+ * Reads only packet *types*. `REASONING_DELTA` is counted as neither start nor
+ * end and its `reasoning` field is never touched.
+ */
+function readReasoningActivity(packets: ReasoningPacket[]): ReasoningActivity {
+  let hasStart = false;
+  let hasEnd = false;
+  let failed = false;
 
-  const content = deltas.map((d) => d.reasoning).join("");
+  for (const packet of packets) {
+    switch (packet.obj.type) {
+      case PacketType.REASONING_START:
+        hasStart = true;
+        break;
+      case PacketType.ERROR:
+        failed = true;
+        hasEnd = true;
+        break;
+      case PacketType.REASONING_DONE:
+      case PacketType.SECTION_END:
+        hasEnd = true;
+        break;
+      default:
+        break;
+    }
+  }
 
-  return {
-    hasStart,
-    hasEnd,
-    content,
-  };
+  return { hasStart, hasEnd, failed };
 }
 
 export const ReasoningRenderer: MessageRenderer<
@@ -93,42 +74,25 @@ export const ReasoningRenderer: MessageRenderer<
   FullChatState
 > = ({ packets, onComplete, animate, children }) => {
   const t = useTranslations("chat.messages.timeline");
-  const thinkingStatus = t("reasoning.thinking.status");
 
-  const { hasStart, hasEnd, content } = useMemo(
-    () => constructCurrentReasoningState(packets),
+  const { hasStart, hasEnd, failed } = useMemo(
+    () => readReasoningActivity(packets),
     [packets]
   );
 
-  const { title, remainingContent } = useMemo(
-    () => extractFirstParagraph(content),
-    [content]
-  );
-
-  // Use extracted title if available, otherwise default
-  const displayStatus = title || thinkingStatus;
-  const displayContent = title ? remainingContent : content;
-
-  // Track reasoning timing for minimum display duration
-  const [reasoningStartTime, setReasoningStartTime] = useState<number | null>(
-    null
-  );
+  const [startedAt, setStartedAt] = useState<number | null>(null);
   const completionHandledRef = useRef(false);
 
-  // Track when reasoning starts
   useEffect(() => {
-    if ((hasStart || hasEnd) && reasoningStartTime === null) {
-      setReasoningStartTime(Date.now());
+    if ((hasStart || hasEnd) && startedAt === null) {
+      setStartedAt(Date.now());
     }
-  }, [hasStart, hasEnd, reasoningStartTime]);
+  }, [hasStart, hasEnd, startedAt]);
 
-  // Handle reasoning completion with minimum duration
+  // Completion signalling is load-bearing for the timeline: the step chain
+  // waits on it. Preserved exactly, including the minimum dwell.
   useEffect(() => {
-    if (
-      !hasEnd ||
-      reasoningStartTime === null ||
-      completionHandledRef.current
-    ) {
+    if (!hasEnd || startedAt === null || completionHandledRef.current) {
       return;
     }
 
@@ -139,65 +103,42 @@ export const ReasoningRenderer: MessageRenderer<
       }
     };
 
-    const elapsedTime = Date.now() - reasoningStartTime;
-    const minimumThinkingDuration = animate ? THINKING_MIN_DURATION_MS : 0;
+    const elapsed = Date.now() - startedAt;
+    const minimum = animate ? MIN_VISIBLE_DURATION_MS : 0;
 
-    if (elapsedTime >= minimumThinkingDuration) {
+    if (elapsed >= minimum) {
       complete();
       return;
     }
 
-    const remainingTime = minimumThinkingDuration - elapsedTime;
-    const timeout = setTimeout(complete, remainingTime);
+    const timeout = setTimeout(complete, minimum - elapsed);
     return () => clearTimeout(timeout);
-  }, [hasEnd, reasoningStartTime, animate, onComplete]);
+  }, [hasEnd, startedAt, animate, onComplete]);
 
-  // Markdown renderer callback for ExpandableTextDisplay
-  // Uses collapsed components (no spacing) in collapsed view, normal spacing in expanded modal
-  const renderMarkdown = useCallback(
-    (text: string, isExpanded: boolean) => (
-      <MinimalMarkdown
-        content={text}
-        components={
-          isExpanded ? mutedTextMarkdownComponents : collapsedMarkdownComponents
-        }
-      />
-    ),
-    []
-  );
+  const state: ActivityState = failed
+    ? "failed"
+    : hasEnd
+      ? "completed"
+      : "running";
+  const label = hasEnd
+    ? failed
+      ? t("activity.unknownDuration.label")
+      : t("activity.processed.label")
+    : t("activity.processing.label");
 
-  if (!hasStart && !hasEnd && content.length === 0) {
-    return children([
-      {
-        icon: SvgCircle,
-        status: thinkingStatus,
-        content: <></>,
-        noPaddingRight: true,
-      },
-    ]);
+  const result: RendererResult = {
+    icon: activityStateIcon(state),
+    status: <ActivityStatus state={state} label={label} />,
+    // No body: the runtime exposes no public detail for this phase, and an
+    // honest empty step beats a fabricated one.
+    content: <></>,
+    noPaddingRight: true,
+  };
+  if (failed) {
+    result.surfaceBackground = "error";
   }
 
-  const reasoningContent = (
-    <div className="ps-(--timeline-common-text-padding)">
-      <ExpandableTextDisplay
-        title={t("reasoning.fullText.title")}
-        content={content}
-        displayContent={displayContent}
-        renderContent={renderMarkdown}
-        isStreaming={!hasEnd}
-      />
-    </div>
-  );
-
-  return children([
-    {
-      icon: SvgCircle,
-      status: displayStatus,
-      content: reasoningContent,
-      expandedText: reasoningContent,
-      noPaddingRight: true,
-    },
-  ]);
+  return children([result]);
 };
 
 export default ReasoningRenderer;

@@ -23,11 +23,18 @@ import {
 } from "@/app/app/stores/useChatSessionStore";
 import { cn } from "@opal/utils";
 
-/** Width constraint for normal (non-multi-model) messages. */
-// Reading-width cap only applies at md and up — below that the window is too
-// narrow for it to matter, so chat is always full width (and the top-bar
-// toggle is hidden).
-const MSG_MAX_W = "md:max-w-[720px] md:min-w-[400px]";
+/**
+ * Width constraint for normal (non-multi-model) messages.
+ *
+ * `max-w-reading` is the VIS-001 semantic reading measure
+ * (`--app-page-main-content-width`, 45rem/720px). It resolves to the same value
+ * the hardcoded `md:max-w-[720px]` literal used, so the transcript does not move
+ * — the point is that the measure now has one owner instead of a duplicate.
+ *
+ * The cap only applies at md and up: below that the window is too narrow for it
+ * to matter, so chat is always full width (and the top-bar toggle is hidden).
+ */
+const MSG_MAX_W = "md:max-w-reading md:min-w-100";
 
 export interface ChatUIProps {
   activeAgent: MinimalAgent;

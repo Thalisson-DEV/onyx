@@ -4,7 +4,7 @@ import React from "react";
 import { useTranslations } from "next-intl";
 import { SvgFold, SvgExpand } from "@opal/icons";
 import { Button } from "@opal/components";
-import ShimmerText from "@/refresh-components/texts/ShimmerText";
+import ActivityIndicator from "@/app/app/message/messageComponents/timeline/ActivityIndicator";
 import { useStreamingDuration } from "../hooks/useStreamingDuration";
 import { formatDurationSeconds } from "@opal/time";
 
@@ -19,7 +19,7 @@ export interface StreamingHeaderProps {
   toolProcessingDuration?: number;
 }
 
-/** Header during streaming - shimmer text with current activity */
+/** Header during streaming: contained activity indicator plus the operation label. */
 export const StreamingHeader = React.memo(function StreamingHeader({
   headerText,
   collapsible,
@@ -42,7 +42,7 @@ export const StreamingHeader = React.memo(function StreamingHeader({
   return (
     <>
       <div className="px-(--timeline-header-text-padding-x) py-(--timeline-header-text-padding-y)">
-        <ShimmerText>{headerText}</ShimmerText>
+        <ActivityIndicator>{headerText}</ActivityIndicator>
       </div>
 
       {collapsible &&

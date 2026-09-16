@@ -9753,7 +9753,6 @@
       },
       "codeBlock": {
         "copyButton": {
-          "copiedLabel": "コピーしました！",
           "label": "コピー"
         }
       },
@@ -9792,10 +9791,10 @@
           "label": "レスポンス"
         },
         "runningStatus": {
-          "text": "{toolName} を実行中..."
+          "text": "{toolName} を実行中…"
         },
         "waitingIndicator": {
-          "text": "レスポンスを待っています..."
+          "text": "応答を待っています…"
         }
       },
       "customToolAuth": {
@@ -9970,11 +9969,33 @@
         }
       },
       "text": {
-        "thinkingPlaceholder": {
-          "text": "思考中"
+        "processingPlaceholder": {
+          "text": "応答を準備中…"
         }
       },
       "timeline": {
+        "activity": {
+          "duration": {
+            "label": "実行時間 {duration}"
+          },
+          "interrupted": {
+            "label": "実行が中断されました"
+          },
+          "processed": {
+            "label": "処理済み"
+          },
+          "processing": {
+            "label": "処理中…"
+          },
+          "state": {
+            "running": "実行中",
+            "completed": "完了",
+            "failed": "失敗"
+          },
+          "unknownDuration": {
+            "label": "実行が完了しました"
+          }
+        },
         "codingAgent": {
           "bashExit": {
             "header": "Bash · 終了コード {exitCode}"
@@ -9994,6 +10015,9 @@
           "noOutput": {
             "text": "出力なし"
           },
+          "processing": {
+            "header": "処理"
+          },
           "response": {
             "header": "レスポンス"
           },
@@ -10002,9 +10026,6 @@
           },
           "taskWithRepo": {
             "text": "{query}\n\nリポジトリ: {repo}"
-          },
-          "thinking": {
-            "header": "思考中"
           }
         },
         "collapseButton": {
@@ -10015,10 +10036,10 @@
             "title": "リサーチプラン"
           },
           "generated": {
-            "status": "プランを生成しました"
+            "status": "計画を作成しました"
           },
           "generating": {
-            "status": "プランを生成中"
+            "status": "計画を作成中…"
           }
         },
         "doneStep": {
@@ -10029,7 +10050,7 @@
         },
         "fetch": {
           "reading": {
-            "status": "読み取り中"
+            "status": "リンクを開いています…"
           }
         },
         "fileReader": {
@@ -10040,51 +10061,51 @@
             "status": "{fileName} を読み取りました ({total, number} 文字中 {start, number}–{end, number} 文字目)"
           },
           "reading": {
-            "status": "ファイルを読み取り中"
+            "status": "ファイルを読み込み中…"
           }
         },
         "generatedImages": {
           "label": "{count, plural, one {# 枚の画像を生成しました} other {# 枚の画像を生成しました}}"
         },
         "header": {
+          "consultingSources": {
+            "label": "情報源を参照中…"
+          },
           "executingCode": {
-            "label": "コードを実行中"
+            "label": "コードを実行中…"
           },
           "executingNamedTool": {
-            "label": "{toolName} を実行中"
+            "label": "{toolName} を実行中…"
           },
           "executingTool": {
-            "label": "ツールを実行中"
+            "label": "ツールを実行中…"
           },
           "generatingImage": {
-            "label": "画像を生成中..."
+            "label": "画像を生成中…"
           },
           "generatingImages": {
-            "label": "画像を生成中"
+            "label": "画像を生成中…"
           },
           "generatingPlan": {
-            "label": "プランを生成中"
+            "label": "計画を作成中…"
           },
-          "reading": {
-            "label": "読み取り中"
+          "openingUrls": {
+            "label": "リンクを開いています…"
+          },
+          "processing": {
+            "label": "処理中…"
           },
           "readingFile": {
-            "label": "ファイルを読み取り中"
+            "label": "ファイルを読み込み中…"
           },
           "researching": {
-            "label": "リサーチ中"
+            "label": "調査中…"
           },
           "searchingWeb": {
-            "label": "ウェブを検索中"
-          },
-          "thinking": {
-            "label": "思考中"
-          },
-          "thinkingEllipsis": {
-            "label": "思考中..."
+            "label": "ウェブを検索中…"
           },
           "updatingMemory": {
-            "label": "メモリを更新中..."
+            "label": "メモリを更新中…"
           }
         },
         "internalSearch": {
@@ -10092,7 +10113,7 @@
             "text": "結果が見つかりません"
           },
           "reading": {
-            "status": "読み取り中"
+            "status": "情報源を参照中…"
           },
           "header": {
             "default": "社内ドキュメントを検索中",
@@ -10106,9 +10127,6 @@
             "between": "{start}から{end}まで"
           }
         },
-        "interruptedThinking": {
-          "label": "中断された思考"
-        },
         "memory": {
           "default": {
             "status": "メモリ"
@@ -10117,7 +10135,7 @@
             "text": "メモリツールは無効です"
           },
           "updating": {
-            "status": "メモリを更新中"
+            "status": "メモリを更新中…"
           },
           "viewMemoriesButton": {
             "tooltip": "メモリを表示"
@@ -10133,19 +10151,19 @@
         },
         "python": {
           "completed": {
-            "status": "Python の実行が完了しました"
+            "status": "コードを実行しました"
           },
           "default": {
-            "status": "Python の実行"
+            "status": "コードの実行"
           },
           "error": {
             "label": "エラー:"
           },
           "executing": {
-            "status": "Python コードを実行中..."
+            "status": "コードを実行中…"
           },
           "failed": {
-            "status": "Python の実行に失敗しました"
+            "status": "コードの実行に失敗しました"
           },
           "generatedFiles": {
             "label": "{count, plural, one {# 件のファイルを生成しました} other {# 件のファイルを生成しました}}"
@@ -10157,18 +10175,10 @@
             "label": "出力:"
           },
           "runningCode": {
-            "label": "コードを実行中..."
+            "label": "コードを実行中…"
           },
           "writingCode": {
-            "status": "コードを作成中..."
-          }
-        },
-        "reasoning": {
-          "fullText": {
-            "title": "全文"
-          },
-          "thinking": {
-            "status": "思考中"
+            "status": "コードを作成中…"
           }
         },
         "researchAgent": {
@@ -10191,16 +10201,7 @@
           "label": "{count, plural, one {# ステップ} other {# ステップ}}"
         },
         "stoppedStep": {
-          "header": "停止しました"
-        },
-        "thoughtDuration": {
-          "label": "{duration} 思考しました"
-        },
-        "thoughtUnknownDuration": {
-          "label": "しばらく思考しました"
-        },
-        "toggleRow": {
-          "ariaLabel": "タイムラインを切り替え"
+          "header": "中断"
         },
         "toolNames": {
           "codeInterpreter": "コードインタープリター",
@@ -10211,14 +10212,14 @@
           "internalSearch": "社内検索",
           "memory": "メモリ",
           "openUrls": "URL を開く",
+          "processing": "処理",
           "researchAgent": "リサーチエージェント",
-          "thinking": "思考",
           "tool": "ツール",
           "webSearch": "ウェブ検索"
         },
         "webSearch": {
           "searching": {
-            "status": "ウェブを検索中"
+            "status": "ウェブを検索中…"
           }
         }
       },
@@ -10226,6 +10227,9 @@
         "dislikeButton": {
           "removeTooltip": "低評価を取り消す",
           "tooltip": "良くない応答"
+        },
+        "group": {
+          "ariaLabel": "メッセージの操作"
         },
         "likeButton": {
           "removeTooltip": "高評価を取り消す",

@@ -3,19 +3,23 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SvgChevronDown, SvgChevronRight } from "@opal/icons";
 import { Button } from "@opal/components";
 import { CopyButton } from "@opal/components";
+import Text from "@/refresh-components/texts/Text";
 import { getErrorIcon, getErrorTitle } from "./errorHelpers";
 import {
   RateLimitDetails,
   RATE_LIMITED_ERROR_CODE,
 } from "@/app/app/interfaces";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 
 const COUNTDOWN_TICK_MS = 1_000;
 
-// The countdown as data, so the component owns the translated sentence.
+// The countdown as data, so the component owns both the translated sentence and
+// the locale formatting. `at` stays a Date here: formatting it belongs to
+// next-intl's `useFormatter`, not to a bare `toLocale*String` with an implicit
+// locale.
 type RateLimitReset =
   | { unit: "now" }
-  | { unit: "minutes" | "hours" | "days"; count: number; at: string };
+  | { unit: "minutes" | "hours" | "days"; count: number; at: Date };
 
 function describeRateLimitReset(
   resetMs: number,
@@ -27,18 +31,8 @@ function describeRateLimitReset(
   const minutes = Math.ceil(remainingMs / 60_000);
   const hours = Math.ceil(remainingMs / 3_600_000);
   const days = Math.ceil(remainingMs / 86_400_000);
-  const resetDate = new Date(resetMs);
-  // For multi-day resets a date is clearer than just a clock time.
-  const at =
-    days >= 2
-      ? resetDate.toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-        })
-      : resetDate.toLocaleTimeString(undefined, {
-          hour: "numeric",
-          minute: "2-digit",
-        });
+  const at = new Date(resetMs);
+
   if (minutes < 60) return { unit: "minutes", count: minutes, at };
   if (hours < 48) return { unit: "hours", count: hours, at };
   return { unit: "days", count: days, at };
@@ -72,6 +66,7 @@ function RateLimitBanner({
   details,
 }: RateLimitBannerProps) {
   const t = useTranslations("chat.messages");
+  const format = useFormatter();
   const [nowMs, setNowMs] = useState(Date.now());
   const resetMs = useMemo(
     () => resolveResetMs(details.reset_at, details.retry_after_seconds),
@@ -90,23 +85,29 @@ function RateLimitBanner({
   }, [resetMs]);
 
   function resetLineFor(reset: RateLimitReset): string {
+    if (reset.unit === "now") return t("rateLimitBanner.tryAgainNow.text");
+
+    // A reset two or more days out reads better as a date than a clock time.
+    const at =
+      reset.unit === "days"
+        ? format.dateTime(reset.at, { month: "short", day: "numeric" })
+        : format.dateTime(reset.at, { hour: "numeric", minute: "2-digit" });
+
     switch (reset.unit) {
-      case "now":
-        return t("rateLimitBanner.tryAgainNow.text");
       case "minutes":
         return t("rateLimitBanner.resetsInMinutes.text", {
           count: reset.count,
-          at: reset.at,
+          at,
         });
       case "hours":
         return t("rateLimitBanner.resetsInHours.text", {
           count: reset.count,
-          at: reset.at,
+          at,
         });
       case "days":
         return t("rateLimitBanner.resetsInDays.text", {
           count: reset.count,
-          at: reset.at,
+          at,
         });
     }
   }
@@ -116,14 +117,18 @@ function RateLimitBanner({
       ? null
       : resetLineFor(describeRateLimitReset(resetMs, nowMs));
   return (
-    <div className="text-red-700 mt-4 text-sm my-auto">
+    <div className="mt-4 my-auto">
       <Alert variant="broken">
         {getErrorIcon(errorCode)}
         <AlertTitle>{title}</AlertTitle>
         <AlertDescription className="flex flex-col gap-y-1">
-          <span>{error || t("rateLimitBanner.defaultError.text")}</span>
+          <Text as="span" secondaryBody text04>
+            {error || t("rateLimitBanner.defaultError.text")}
+          </Text>
           {resetLine && (
-            <span className="text-xs text-muted-foreground">{resetLine}</span>
+            <Text as="span" secondaryBody text03>
+              {resetLine}
+            </Text>
           )}
         </AlertDescription>
       </Alert>
@@ -139,9 +144,9 @@ export const Resubmit: React.FC<ResubmitProps> = ({ resubmit }) => {
   const t = useTranslations("chat.messages");
   return (
     <div className="flex flex-col items-center justify-center gap-y-2 mt-4">
-      <p className="text-sm text-neutral-700 dark:text-neutral-300">
+      <Text as="p" secondaryBody text03>
         {t("resubmit.responseError.text")}
-      </p>
+      </Text>
       <Button onClick={resubmit}>{t("resubmit.regenerateButton.label")}</Button>
     </div>
   );
@@ -197,29 +202,33 @@ export const ErrorBanner = ({
   }
 
   return (
-    <div className="text-red-700 mt-4 text-sm my-auto">
+    <div className="mt-4 my-auto">
       <Alert variant="broken">
         {getErrorIcon(errorCode)}
         <AlertTitle>{title}</AlertTitle>
         <AlertDescription className="flex flex-col gap-y-1">
-          <span>{error}</span>
+          <Text as="span" secondaryBody text04>
+            {error}
+          </Text>
           {details?.model && (
-            <span className="text-xs text-muted-foreground">
+            <Text as="span" secondaryBody text03>
               {details.provider
                 ? t("errorBanner.modelWithProvider.label", {
                     model: details.model,
                     provider: details.provider,
                   })
                 : t("errorBanner.model.label", { model: details.model })}
-            </span>
+            </Text>
           )}
           {details?.tool_name && (
-            <span className="text-xs text-muted-foreground">
+            <Text as="span" secondaryBody text03>
               {t("errorBanner.tool.label", { tool: details.tool_name })}
-            </span>
+            </Text>
           )}
+          {/* Technical detail stays available but secondary: collapsed by
+              default, and only rendered when the server actually sent one. */}
           {stackTrace && (
-            <div className="mt-2 border-t border-neutral-200 dark:border-neutral-700 pt-2">
+            <div className="mt-2 border-t border-border-subtle pt-2">
               <div className="flex flex-1 items-center justify-between">
                 <Button
                   prominence="tertiary"
@@ -234,7 +243,7 @@ export const ErrorBanner = ({
                 />
               </div>
               {isStackTraceExpanded && (
-                <pre className="mt-2 p-3 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-sm text-xs text-neutral-700 dark:text-neutral-300 overflow-auto max-h-48 whitespace-pre-wrap font-mono">
+                <pre className="mt-2 p-3 bg-background-code-01 border border-border-subtle rounded-04 text-xs text-text-03 overflow-auto max-h-48 whitespace-pre-wrap font-secondary-mono">
                   {stackTrace}
                 </pre>
               )}

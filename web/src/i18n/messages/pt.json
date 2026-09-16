@@ -9753,7 +9753,6 @@
       },
       "codeBlock": {
         "copyButton": {
-          "copiedLabel": "Copiado!",
           "label": "Copiar"
         }
       },
@@ -9792,10 +9791,10 @@
           "label": "Resposta"
         },
         "runningStatus": {
-          "text": "{toolName} em execução..."
+          "text": "{toolName} em execução…"
         },
         "waitingIndicator": {
-          "text": "Aguardando resposta..."
+          "text": "Aguardando resposta…"
         }
       },
       "customToolAuth": {
@@ -9970,11 +9969,33 @@
         }
       },
       "text": {
-        "thinkingPlaceholder": {
-          "text": "Pensando"
+        "processingPlaceholder": {
+          "text": "Preparando resposta…"
         }
       },
       "timeline": {
+        "activity": {
+          "duration": {
+            "label": "Executado em {duration}"
+          },
+          "interrupted": {
+            "label": "Execução interrompida"
+          },
+          "processed": {
+            "label": "Processado"
+          },
+          "processing": {
+            "label": "Processando…"
+          },
+          "state": {
+            "running": "Em execução",
+            "completed": "Concluído",
+            "failed": "Falhou"
+          },
+          "unknownDuration": {
+            "label": "Execução concluída"
+          }
+        },
         "codingAgent": {
           "bashExit": {
             "header": "Bash · saída {exitCode}"
@@ -9994,6 +10015,9 @@
           "noOutput": {
             "text": "Sem saída"
           },
+          "processing": {
+            "header": "Processamento"
+          },
           "response": {
             "header": "Resposta"
           },
@@ -10002,9 +10026,6 @@
           },
           "taskWithRepo": {
             "text": "{query}\n\nRepositório: {repo}"
-          },
-          "thinking": {
-            "header": "Pensando"
           }
         },
         "collapseButton": {
@@ -10015,10 +10036,10 @@
             "title": "Plano de pesquisa"
           },
           "generated": {
-            "status": "Plano gerado"
+            "status": "Plano montado"
           },
           "generating": {
-            "status": "Gerando plano"
+            "status": "Montando plano…"
           }
         },
         "doneStep": {
@@ -10029,7 +10050,7 @@
         },
         "fetch": {
           "reading": {
-            "status": "Lendo"
+            "status": "Abrindo endereços…"
           }
         },
         "fileReader": {
@@ -10040,51 +10061,51 @@
             "status": "Leu {fileName} (caracteres {start, number}–{end, number} de {total, number})"
           },
           "reading": {
-            "status": "Lendo arquivo"
+            "status": "Lendo arquivo…"
           }
         },
         "generatedImages": {
           "label": "{count, plural, one {# imagem gerada} other {# imagens geradas}}"
         },
         "header": {
+          "consultingSources": {
+            "label": "Consultando fontes…"
+          },
           "executingCode": {
-            "label": "Executando código"
+            "label": "Executando código…"
           },
           "executingNamedTool": {
-            "label": "Executando {toolName}"
+            "label": "Executando {toolName}…"
           },
           "executingTool": {
-            "label": "Executando ferramenta"
+            "label": "Executando ferramenta…"
           },
           "generatingImage": {
-            "label": "Gerando imagem..."
+            "label": "Gerando imagem…"
           },
           "generatingImages": {
-            "label": "Gerando imagens"
+            "label": "Gerando imagens…"
           },
           "generatingPlan": {
-            "label": "Gerando plano"
+            "label": "Montando plano…"
           },
-          "reading": {
-            "label": "Lendo"
+          "openingUrls": {
+            "label": "Abrindo endereços…"
+          },
+          "processing": {
+            "label": "Processando…"
           },
           "readingFile": {
-            "label": "Lendo arquivo"
+            "label": "Lendo arquivo…"
           },
           "researching": {
-            "label": "Pesquisando"
+            "label": "Pesquisando…"
           },
           "searchingWeb": {
-            "label": "Pesquisando na web"
-          },
-          "thinking": {
-            "label": "Pensando"
-          },
-          "thinkingEllipsis": {
-            "label": "Pensando..."
+            "label": "Pesquisando na web…"
           },
           "updatingMemory": {
-            "label": "Atualizando memória..."
+            "label": "Atualizando memória…"
           }
         },
         "internalSearch": {
@@ -10092,7 +10113,7 @@
             "text": "Nenhum resultado encontrado"
           },
           "reading": {
-            "status": "Lendo"
+            "status": "Consultando fontes…"
           },
           "header": {
             "default": "Pesquisando documentos internos",
@@ -10106,9 +10127,6 @@
             "between": "de {start} a {end}"
           }
         },
-        "interruptedThinking": {
-          "label": "Pensamento interrompido"
-        },
         "memory": {
           "default": {
             "status": "Memória"
@@ -10117,7 +10135,7 @@
             "text": "Ferramenta de memória desativada"
           },
           "updating": {
-            "status": "Atualizando memória"
+            "status": "Atualizando memória…"
           },
           "viewMemoriesButton": {
             "tooltip": "Ver memórias"
@@ -10133,19 +10151,19 @@
         },
         "python": {
           "completed": {
-            "status": "Execução do Python concluída"
+            "status": "Código executado"
           },
           "default": {
-            "status": "Execução do Python"
+            "status": "Execução de código"
           },
           "error": {
             "label": "Erro:"
           },
           "executing": {
-            "status": "Executando código Python..."
+            "status": "Executando código…"
           },
           "failed": {
-            "status": "Falha na execução do Python"
+            "status": "Falha na execução do código"
           },
           "generatedFiles": {
             "label": "{count, plural, one {# arquivo gerado} other {# arquivos gerados}}"
@@ -10157,18 +10175,10 @@
             "label": "Saída:"
           },
           "runningCode": {
-            "label": "Executando código..."
+            "label": "Executando código…"
           },
           "writingCode": {
-            "status": "Escrevendo código..."
-          }
-        },
-        "reasoning": {
-          "fullText": {
-            "title": "Texto completo"
-          },
-          "thinking": {
-            "status": "Pensando"
+            "status": "Escrevendo código…"
           }
         },
         "researchAgent": {
@@ -10193,15 +10203,6 @@
         "stoppedStep": {
           "header": "Interrompido"
         },
-        "thoughtDuration": {
-          "label": "Pensou por {duration}"
-        },
-        "thoughtUnknownDuration": {
-          "label": "Pensou por algum tempo"
-        },
-        "toggleRow": {
-          "ariaLabel": "Alternar a linha do tempo"
-        },
         "toolNames": {
           "codeInterpreter": "Interpretador de código",
           "codingAgent": "Agente de código",
@@ -10211,14 +10212,14 @@
           "internalSearch": "Pesquisa interna",
           "memory": "Memória",
           "openUrls": "Abrir URLs",
+          "processing": "Processamento",
           "researchAgent": "Agente de pesquisa",
-          "thinking": "Pensando",
           "tool": "Ferramenta",
           "webSearch": "Pesquisa na web"
         },
         "webSearch": {
           "searching": {
-            "status": "Pesquisando na web"
+            "status": "Pesquisando na web…"
           }
         }
       },
@@ -10226,6 +10227,9 @@
         "dislikeButton": {
           "removeTooltip": "Remover descurtida",
           "tooltip": "Resposta ruim"
+        },
+        "group": {
+          "ariaLabel": "Ações da mensagem"
         },
         "likeButton": {
           "removeTooltip": "Remover curtida",

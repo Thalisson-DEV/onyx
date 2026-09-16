@@ -9753,7 +9753,6 @@
       },
       "codeBlock": {
         "copyButton": {
-          "copiedLabel": "已复制！",
           "label": "复制"
         }
       },
@@ -9792,10 +9791,10 @@
           "label": "响应"
         },
         "runningStatus": {
-          "text": "{toolName} 正在运行..."
+          "text": "{toolName} 运行中…"
         },
         "waitingIndicator": {
-          "text": "正在等待响应..."
+          "text": "正在等待响应…"
         }
       },
       "customToolAuth": {
@@ -9970,11 +9969,33 @@
         }
       },
       "text": {
-        "thinkingPlaceholder": {
-          "text": "思考中"
+        "processingPlaceholder": {
+          "text": "正在准备回复…"
         }
       },
       "timeline": {
+        "activity": {
+          "duration": {
+            "label": "执行耗时 {duration}"
+          },
+          "interrupted": {
+            "label": "执行已中断"
+          },
+          "processed": {
+            "label": "已处理"
+          },
+          "processing": {
+            "label": "处理中…"
+          },
+          "state": {
+            "running": "运行中",
+            "completed": "已完成",
+            "failed": "已失败"
+          },
+          "unknownDuration": {
+            "label": "执行完成"
+          }
+        },
         "codingAgent": {
           "bashExit": {
             "header": "Bash · 退出码 {exitCode}"
@@ -9994,6 +10015,9 @@
           "noOutput": {
             "text": "无输出"
           },
+          "processing": {
+            "header": "处理"
+          },
           "response": {
             "header": "响应"
           },
@@ -10002,9 +10026,6 @@
           },
           "taskWithRepo": {
             "text": "{query}\n\n仓库：{repo}"
-          },
-          "thinking": {
-            "header": "思考"
           }
         },
         "collapseButton": {
@@ -10015,21 +10036,21 @@
             "title": "研究计划"
           },
           "generated": {
-            "status": "已生成计划"
+            "status": "计划已制定"
           },
           "generating": {
-            "status": "正在生成计划"
+            "status": "正在制定计划…"
           }
         },
         "doneStep": {
-          "header": "完成"
+          "header": "已完成"
         },
         "expandButton": {
           "ariaLabel": "展开时间线"
         },
         "fetch": {
           "reading": {
-            "status": "正在读取"
+            "status": "正在打开链接…"
           }
         },
         "fileReader": {
@@ -10040,51 +10061,51 @@
             "status": "已读取 {fileName}（第 {start, number}–{end, number} 个字符，共 {total, number} 个）"
           },
           "reading": {
-            "status": "正在读取文件"
+            "status": "正在读取文件…"
           }
         },
         "generatedImages": {
           "label": "{count, plural, one {已生成 # 张图片} other {已生成 # 张图片}}"
         },
         "header": {
+          "consultingSources": {
+            "label": "正在查询来源…"
+          },
           "executingCode": {
-            "label": "正在执行代码"
+            "label": "正在运行代码…"
           },
           "executingNamedTool": {
-            "label": "正在执行 {toolName}"
+            "label": "正在运行 {toolName}…"
           },
           "executingTool": {
-            "label": "正在执行工具"
+            "label": "正在运行工具…"
           },
           "generatingImage": {
-            "label": "正在生成图片..."
+            "label": "正在生成图片…"
           },
           "generatingImages": {
-            "label": "正在生成图片"
+            "label": "正在生成图片…"
           },
           "generatingPlan": {
-            "label": "正在生成计划"
+            "label": "正在制定计划…"
           },
-          "reading": {
-            "label": "正在读取"
+          "openingUrls": {
+            "label": "正在打开链接…"
+          },
+          "processing": {
+            "label": "处理中…"
           },
           "readingFile": {
-            "label": "正在读取文件"
+            "label": "正在读取文件…"
           },
           "researching": {
-            "label": "正在研究"
+            "label": "正在研究…"
           },
           "searchingWeb": {
-            "label": "正在搜索网页"
-          },
-          "thinking": {
-            "label": "思考中"
-          },
-          "thinkingEllipsis": {
-            "label": "思考中..."
+            "label": "正在搜索网页…"
           },
           "updatingMemory": {
-            "label": "正在更新记忆..."
+            "label": "正在更新记忆…"
           }
         },
         "internalSearch": {
@@ -10092,7 +10113,7 @@
             "text": "未找到结果"
           },
           "reading": {
-            "status": "正在读取"
+            "status": "正在查询来源…"
           },
           "header": {
             "default": "正在搜索内部文档",
@@ -10106,9 +10127,6 @@
             "between": "从 {start} 到 {end}"
           }
         },
-        "interruptedThinking": {
-          "label": "思考已中断"
-        },
         "memory": {
           "default": {
             "status": "记忆"
@@ -10117,7 +10135,7 @@
             "text": "记忆工具已禁用"
           },
           "updating": {
-            "status": "正在更新记忆"
+            "status": "正在更新记忆…"
           },
           "viewMemoriesButton": {
             "tooltip": "查看记忆"
@@ -10133,19 +10151,19 @@
         },
         "python": {
           "completed": {
-            "status": "Python 执行完成"
+            "status": "代码已执行"
           },
           "default": {
-            "status": "Python 执行"
+            "status": "代码执行"
           },
           "error": {
             "label": "错误："
           },
           "executing": {
-            "status": "正在执行 Python 代码..."
+            "status": "正在运行代码…"
           },
           "failed": {
-            "status": "Python 执行失败"
+            "status": "代码执行失败"
           },
           "generatedFiles": {
             "label": "{count, plural, one {已生成 # 个文件} other {已生成 # 个文件}}"
@@ -10157,18 +10175,10 @@
             "label": "输出："
           },
           "runningCode": {
-            "label": "正在运行代码..."
+            "label": "正在运行代码…"
           },
           "writingCode": {
-            "status": "正在编写代码..."
-          }
-        },
-        "reasoning": {
-          "fullText": {
-            "title": "完整文本"
-          },
-          "thinking": {
-            "status": "思考中"
+            "status": "正在编写代码…"
           }
         },
         "researchAgent": {
@@ -10191,16 +10201,7 @@
           "label": "{count, plural, one {# 个步骤} other {# 个步骤}}"
         },
         "stoppedStep": {
-          "header": "已停止"
-        },
-        "thoughtDuration": {
-          "label": "思考了 {duration}"
-        },
-        "thoughtUnknownDuration": {
-          "label": "思考了一段时间"
-        },
-        "toggleRow": {
-          "ariaLabel": "切换时间线"
+          "header": "已中断"
         },
         "toolNames": {
           "codeInterpreter": "代码解释器",
@@ -10211,14 +10212,14 @@
           "internalSearch": "内部搜索",
           "memory": "记忆",
           "openUrls": "打开 URL",
+          "processing": "处理",
           "researchAgent": "研究智能体",
-          "thinking": "思考",
           "tool": "工具",
           "webSearch": "网页搜索"
         },
         "webSearch": {
           "searching": {
-            "status": "正在搜索网页"
+            "status": "正在搜索网页…"
           }
         }
       },
@@ -10226,6 +10227,9 @@
         "dislikeButton": {
           "removeTooltip": "取消踩",
           "tooltip": "回复不佳"
+        },
+        "group": {
+          "ariaLabel": "消息操作"
         },
         "likeButton": {
           "removeTooltip": "取消赞",

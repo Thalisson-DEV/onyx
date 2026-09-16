@@ -9199,11 +9199,30 @@
   },
   "cards": {
     "file": {
+      "category": {
+        "archive": "アーカイブ",
+        "audio": "音声",
+        "document": "ドキュメント",
+        "image": "画像",
+        "other": "ファイル",
+        "presentation": "プレゼンテーション",
+        "spreadsheet": "スプレッドシート",
+        "video": "動画"
+      },
+      "deleting": {
+        "description": "削除中…"
+      },
+      "failed": {
+        "description": "アップロードに失敗しました"
+      },
       "processing": {
         "description": "処理中..."
       },
       "remove": {
-        "label": "削除"
+        "ariaLabel": "{name} を削除"
+      },
+      "status": {
+        "announcement": "{name}: {status}"
       },
       "uploading": {
         "description": "アップロード中..."
@@ -9267,6 +9286,10 @@
   },
   "chat": {
     "app": {
+      "dropzone": {
+        "description": "この会話に添付されます。",
+        "instruction": "ここにファイルをドロップ"
+      },
       "failedFiles": {
         "toast": "{count, plural, one {ファイルの処理に失敗したため削除しました：{names}} other {ファイルの処理に失敗したため削除しました：{names}}}"
       },
@@ -10458,7 +10481,8 @@
           "label": "完了"
         },
         "emptyState": {
-          "description": "ファイルが見つかりません"
+          "description": "ファイルが見つかりません",
+          "title": "ファイルなし"
         },
         "fileCount": {
           "label": "{count, plural, one {# 件のファイル} other {# 件のファイル}}"
@@ -10677,7 +10701,8 @@
           "message": "ここにファイルをドロップしてこのプロジェクトに追加"
         },
         "emptyFiles": {
-          "message": "プロジェクトで使用するドキュメント、テキスト、画像を追加します。ドラッグ&ドロップに対応しています。"
+          "message": "プロジェクトで使用するドキュメント、テキスト、画像を追加します。ドラッグ&ドロップに対応しています。",
+          "title": "まだファイルがありません"
         },
         "fileCount": {
           "description": "{count, plural, one {# 件のファイル} other {# 件のファイル}}"

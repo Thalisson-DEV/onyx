@@ -9229,11 +9229,30 @@
   },
   "cards": {
     "file": {
+      "category": {
+        "archive": "Archive",
+        "audio": "Audio",
+        "document": "Document",
+        "image": "Image",
+        "other": "File",
+        "presentation": "Presentation",
+        "spreadsheet": "Spreadsheet",
+        "video": "Video"
+      },
+      "deleting": {
+        "description": "Removing…"
+      },
+      "failed": {
+        "description": "Upload failed"
+      },
       "processing": {
         "description": "Processing..."
       },
       "remove": {
-        "label": "Remove"
+        "ariaLabel": "Remove {name}"
+      },
+      "status": {
+        "announcement": "{name}: {status}"
       },
       "uploading": {
         "description": "Uploading..."
@@ -9297,6 +9316,10 @@
   },
   "chat": {
     "app": {
+      "dropzone": {
+        "description": "They are attached to this conversation.",
+        "instruction": "Drop files here"
+      },
       "failedFiles": {
         "toast": "{count, plural, one {File failed and was removed: {names}} other {Files failed and were removed: {names}}}"
       },
@@ -10488,7 +10511,8 @@
           "label": "Done"
         },
         "emptyState": {
-          "description": "No files found"
+          "description": "No files found",
+          "title": "No files"
         },
         "fileCount": {
           "label": "{count, plural, one {# File} other {# Files}}"
@@ -10707,7 +10731,8 @@
           "message": "Drop files here to add to this project"
         },
         "emptyFiles": {
-          "message": "Add documents, texts, or images to use in the project. Drag & drop supported."
+          "message": "Add documents, texts, or images to use in the project. Drag & drop supported.",
+          "title": "No files yet"
         },
         "fileCount": {
           "description": "{count, plural, one {# file} other {# files}}"

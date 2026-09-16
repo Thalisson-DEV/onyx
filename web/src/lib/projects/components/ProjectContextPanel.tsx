@@ -8,7 +8,7 @@ import FilePickerPopover from "@/refresh-components/popovers/FilePickerPopover";
 import { UserFileStatus, type ProjectFile } from "@/lib/projects/types";
 import { MinimalOnyxDocument } from "@/lib/search/interfaces";
 import { Button, Divider, LineItemButton, Text } from "@opal/components";
-import { Content, ContentAction } from "@opal/layouts";
+import { Content, ContentAction, IllustrationContent } from "@opal/layouts";
 import AddInstructionModal from "@/sections/modals/AddInstructionModal";
 import UserFilesModal from "@/sections/modals/UserFilesModal";
 import { useCreateModal } from "@opal/components";
@@ -259,7 +259,7 @@ export default function ProjectContextPanel({
                   />
                 )}
                 {isDragActive && (
-                  <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-dashed border-action-selection-05" />
+                  <div className="pointer-events-none absolute inset-0 rounded-12 border border-dashed border-border-selected" />
                 )}
               </div>
 
@@ -270,19 +270,25 @@ export default function ProjectContextPanel({
               )}
             </>
           ) : (
+            /* Empty state and drag target in one frame. The dashed edge is the
+               same signal the chat viewport uses, so dropping a file reads the
+               same wherever the user does it. */
             <div
               className={cn(
-                "h-12 rounded-xl border border-dashed flex items-center ps-2",
+                "rounded-12 border border-dashed",
                 isDragActive
-                  ? "bg-action-selection-01 border-action-selection-05 text-action-selection-05"
-                  : "border-border-01 text-text-02"
+                  ? "border-border-selected bg-background-tint-01"
+                  : "border-border-01"
               )}
             >
-              <Text as="p" font="secondary-body" color="inherit">
-                {isDragActive
-                  ? t("projects.contextPanel.dropFiles.message")
-                  : t("projects.contextPanel.emptyFiles.message")}
-              </Text>
+              <IllustrationContent
+                title={t("projects.contextPanel.emptyFiles.title")}
+                description={
+                  isDragActive
+                    ? t("projects.contextPanel.dropFiles.message")
+                    : t("projects.contextPanel.emptyFiles.message")
+                }
+              />
             </div>
           )}
         </div>

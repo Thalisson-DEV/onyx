@@ -9199,11 +9199,30 @@
   },
   "cards": {
     "file": {
+      "category": {
+        "archive": "Archivo comprimido",
+        "audio": "Audio",
+        "document": "Documento",
+        "image": "Imagen",
+        "other": "Archivo",
+        "presentation": "Presentación",
+        "spreadsheet": "Hoja de cálculo",
+        "video": "Vídeo"
+      },
+      "deleting": {
+        "description": "Eliminando…"
+      },
+      "failed": {
+        "description": "Error al subir"
+      },
       "processing": {
         "description": "Procesando..."
       },
       "remove": {
-        "label": "Quitar"
+        "ariaLabel": "Eliminar {name}"
+      },
+      "status": {
+        "announcement": "{name}: {status}"
       },
       "uploading": {
         "description": "Subiendo..."
@@ -9267,6 +9286,10 @@
   },
   "chat": {
     "app": {
+      "dropzone": {
+        "description": "Se adjuntan a esta conversación.",
+        "instruction": "Suelta los archivos aquí"
+      },
       "failedFiles": {
         "toast": "{count, plural, one {Un archivo falló y fue eliminado: {names}} other {Algunos archivos fallaron y fueron eliminados: {names}}}"
       },
@@ -10458,7 +10481,8 @@
           "label": "Listo"
         },
         "emptyState": {
-          "description": "No se encontraron archivos"
+          "description": "No se encontraron archivos",
+          "title": "Sin archivos"
         },
         "fileCount": {
           "label": "{count, plural, one {# archivo} other {# archivos}}"
@@ -10677,7 +10701,8 @@
           "message": "Suelta archivos aquí para añadirlos a este proyecto"
         },
         "emptyFiles": {
-          "message": "Añade documentos, textos o imágenes para usarlos en el proyecto. Se admite arrastrar y soltar."
+          "message": "Añade documentos, textos o imágenes para usarlos en el proyecto. Se admite arrastrar y soltar.",
+          "title": "Aún no hay archivos"
         },
         "fileCount": {
           "description": "{count, plural, one {# archivo} other {# archivos}}"

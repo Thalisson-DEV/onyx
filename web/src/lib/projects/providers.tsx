@@ -645,17 +645,18 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
 
         // Merge statuses into whatever the files are now. A snapshot here
         // would clobber adds/removes that landed during the fetch.
+        //
+        // A failed file keeps its place in the list. Dropping it used to make
+        // the attachment vanish with only a toast to explain it, and the user
+        // could not tell which file had failed. It is safe to keep: FAILED is
+        // neither UPLOADING nor PROCESSING, so it does not hold the send gate,
+        // and `projectFilesToFileDescriptors` does not attach it to a message.
         setCurrentMessageFiles((prev) => {
           let changed = false;
           const next: ProjectFile[] = [];
           for (const f of prev) {
             const latest = statusById.get(f.id);
             if (latest) {
-              const latestStatus = String(latest.status).toLowerCase();
-              if (latestStatus === "failed") {
-                changed = true;
-                continue;
-              }
               if (
                 latest.status !== f.status ||
                 latest.name !== f.name ||

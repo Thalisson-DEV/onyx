@@ -9199,11 +9199,30 @@
   },
   "cards": {
     "file": {
+      "category": {
+        "archive": "Arquivo compactado",
+        "audio": "Áudio",
+        "document": "Documento",
+        "image": "Imagem",
+        "other": "Arquivo",
+        "presentation": "Apresentação",
+        "spreadsheet": "Planilha",
+        "video": "Vídeo"
+      },
+      "deleting": {
+        "description": "Removendo…"
+      },
+      "failed": {
+        "description": "Falha no envio"
+      },
       "processing": {
         "description": "Processando..."
       },
       "remove": {
-        "label": "Remover"
+        "ariaLabel": "Remover {name}"
+      },
+      "status": {
+        "announcement": "{name}: {status}"
       },
       "uploading": {
         "description": "Enviando..."
@@ -9267,6 +9286,10 @@
   },
   "chat": {
     "app": {
+      "dropzone": {
+        "description": "Eles são anexados a esta conversa.",
+        "instruction": "Solte os arquivos aqui"
+      },
       "failedFiles": {
         "toast": "{count, plural, one {Um arquivo falhou e foi removido: {names}} other {Alguns arquivos falharam e foram removidos: {names}}}"
       },
@@ -10458,7 +10481,8 @@
           "label": "Concluído"
         },
         "emptyState": {
-          "description": "Nenhum arquivo encontrado"
+          "description": "Nenhum arquivo encontrado",
+          "title": "Nenhum arquivo"
         },
         "fileCount": {
           "label": "{count, plural, one {# arquivo} other {# arquivos}}"
@@ -10677,7 +10701,8 @@
           "message": "Solte arquivos aqui para adicioná-los a este projeto"
         },
         "emptyFiles": {
-          "message": "Adicione documentos, textos ou imagens para usar no projeto. Arrastar e soltar é compatível."
+          "message": "Adicione documentos, textos ou imagens para usar no projeto. Arrastar e soltar é compatível.",
+          "title": "Nenhum arquivo ainda"
         },
         "fileCount": {
           "description": "{count, plural, one {# arquivo} other {# arquivos}}"

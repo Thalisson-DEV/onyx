@@ -331,7 +331,7 @@ Três níveis, como hoje (`shadow.json`), com raio reduzido:
 | composer | **[VIS-004] feito** — borda de 1px (`border-01`) sobre superfície `field`, `elevation-0` | os três hacks de 14px saíram junto |
 | cartão de especialista | `hover:shadow-box-00` | remover; usar borda |
 | waveform "speaking" | `shadow-box-01` | removido com o TTS |
-| badge de remover anexo | `shadow-xs` | remover |
+| badge de remover anexo | **[VIS-005] feito** — `shadow-xs` removido; o badge flutuante virou `Button` do Opal no slot de ação da linha | — |
 
 ### 6.4 Escuro
 
@@ -574,18 +574,32 @@ O problema atual é forma: imagem enviada → **círculo**; ícone → **octógo
 letra → **octógono**; fallback → **octógono**; agente padrão → **diamante sem
 moldura**. Quatro tratamentos para uma entidade.
 
-### 10.3 Identidade semântica de arquivo
+### 10.3 Identidade semântica de arquivo — **[VIS-005] implementado**
 
-Categorias candidatas: planilha · documento · imagem · apresentação · áudio ·
-vídeo · arquivo compactado · outro.
+Oito categorias, fechadas: planilha · documento · imagem · apresentação · áudio ·
+vídeo · arquivo compactado · outro. Uma função,
+`fileCategory(name, mime)` em `web/src/lib/utils.ts`, consumida pelas quatro
+superfícies que duplicavam o mapeamento de ícone. Precedência: MIME exato quando
+nomeia um formato → extensão → família MIME → `outro`. Detalhe do contrato em
+[`005-attachments-context.md`](./005-attachments-context.md) §4.
 
-Cores são **semânticas TON**, não valores copiados de referência.
+**Correção de rumo: categoria não usa cor.** A proposta original dizia "cores são
+semânticas TON, não valores copiados de referência". Na implementação, a decisão
+foi não usar cor nenhuma para categoria, por duas razões medidas em §5 do
+documento da fatia: (1) não existe significado TON que faça planilha verde e
+vídeo azul — oito matizes para oito categorias seriam decoração; (2) com a cor
+livre, ela fica inteira para **estado**, que é a única coisa urgente num anexo.
 
-Viabilidade confirmada: `ProjectFile` já carrega `name` e `file_type` (MIME), e
-`SPREADSHEET_MIME_TYPES` já existe em
-`PreviewModal/variants/xlsxVariant.tsx:11-23`. **Nenhum trabalho de backend é
-necessário.** O que falta é uma função única, porque hoje o mapeamento de ícone
-está duplicado em quatro lugares.
+Categoria é comunicada por **glifo distinto + rótulo textual**, dois canais,
+nenhum deles cor. Cor semântica fica reservada a `FAILED`, onde a aresta
+`border-error` sobre superfície `status-error-00` foi medida em 4.56:1 no claro e
+4.00:1 no escuro.
+
+Viabilidade confirmada e usada: `ProjectFile` já carrega `name` e `file_type`
+(MIME), e `SPREADSHEET_MIME_TYPES` semeou a lista de planilha. **Nenhum trabalho
+de backend foi necessário.** `xlsxVariant.tsx` manteve a própria lista de
+propósito: a pergunta dele é o que `parseSpreadsheetPreview` consegue ler, não o
+que o arquivo significa.
 
 ### 10.4 Marca
 

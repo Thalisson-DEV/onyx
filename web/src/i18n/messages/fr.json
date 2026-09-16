@@ -9199,11 +9199,30 @@
   },
   "cards": {
     "file": {
+      "category": {
+        "archive": "Archive",
+        "audio": "Audio",
+        "document": "Document",
+        "image": "Image",
+        "other": "Fichier",
+        "presentation": "Présentation",
+        "spreadsheet": "Feuille de calcul",
+        "video": "Vidéo"
+      },
+      "deleting": {
+        "description": "Suppression…"
+      },
+      "failed": {
+        "description": "Échec de l’envoi"
+      },
       "processing": {
         "description": "Traitement..."
       },
       "remove": {
-        "label": "Retirer"
+        "ariaLabel": "Supprimer {name}"
+      },
+      "status": {
+        "announcement": "{name} : {status}"
       },
       "uploading": {
         "description": "Téléversement en cours..."
@@ -9267,6 +9286,10 @@
   },
   "chat": {
     "app": {
+      "dropzone": {
+        "description": "Ils sont joints à cette conversation.",
+        "instruction": "Déposez les fichiers ici"
+      },
       "failedFiles": {
         "toast": "{count, plural, one {Un fichier a échoué et a été supprimé : {names}} other {Des fichiers ont échoué et ont été supprimés : {names}}}"
       },
@@ -10458,7 +10481,8 @@
           "label": "Terminé"
         },
         "emptyState": {
-          "description": "Aucun fichier trouvé"
+          "description": "Aucun fichier trouvé",
+          "title": "Aucun fichier"
         },
         "fileCount": {
           "label": "{count, plural, one {# fichier} other {# fichiers}}"
@@ -10677,7 +10701,8 @@
           "message": "Déposez des fichiers ici pour les ajouter à ce projet"
         },
         "emptyFiles": {
-          "message": "Ajoutez des documents, des textes ou des images à utiliser dans le projet. Le glisser-déposer est pris en charge."
+          "message": "Ajoutez des documents, des textes ou des images à utiliser dans le projet. Le glisser-déposer est pris en charge.",
+          "title": "Aucun fichier pour l’instant"
         },
         "fileCount": {
           "description": "{count, plural, one {# fichier} other {# fichiers}}"

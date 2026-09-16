@@ -8,6 +8,11 @@ import {
 } from "@/components/tools/SpreadsheetContent";
 import { Text } from "@opal/components";
 
+/**
+ * Narrower than the shared `fileCategory`, and deliberately so: this list is
+ * the set of formats `parseSpreadsheetPreview` can actually read, not the set
+ * of files that mean "spreadsheet" to the user.
+ */
 const SPREADSHEET_MIME_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel.sheet.macroenabled.12",

@@ -9199,11 +9199,30 @@
   },
   "cards": {
     "file": {
+      "category": {
+        "archive": "ملف مضغوط",
+        "audio": "صوت",
+        "document": "مستند",
+        "image": "صورة",
+        "other": "ملف",
+        "presentation": "عرض تقديمي",
+        "spreadsheet": "جدول بيانات",
+        "video": "فيديو"
+      },
+      "deleting": {
+        "description": "جارٍ الإزالة…"
+      },
+      "failed": {
+        "description": "فشل التحميل"
+      },
       "processing": {
         "description": "جارٍ المعالجة..."
       },
       "remove": {
-        "label": "إزالة"
+        "ariaLabel": "إزالة {name}"
+      },
+      "status": {
+        "announcement": "{name}: {status}"
       },
       "uploading": {
         "description": "جارٍ الرفع..."
@@ -9267,6 +9286,10 @@
   },
   "chat": {
     "app": {
+      "dropzone": {
+        "description": "يتم إرفاقها بهذه المحادثة.",
+        "instruction": "أفلِت الملفات هنا"
+      },
       "failedFiles": {
         "toast": "{count, plural, one {فشل ملف وتمت إزالته: {names}} other {فشلت ملفات وتمت إزالتها: {names}}}"
       },
@@ -10458,7 +10481,8 @@
           "label": "تم"
         },
         "emptyState": {
-          "description": "لم يتم العثور على ملفات"
+          "description": "لم يتم العثور على ملفات",
+          "title": "لا توجد ملفات"
         },
         "fileCount": {
           "label": "{count, plural, one {# ملف} other {# ملفات}}"
@@ -10677,7 +10701,8 @@
           "message": "أسقط الملفات هنا لإضافتها إلى هذا المشروع"
         },
         "emptyFiles": {
-          "message": "أضف مستندات أو نصوصًا أو صورًا لاستخدامها في المشروع. السحب والإفلات مدعوم."
+          "message": "أضف مستندات أو نصوصًا أو صورًا لاستخدامها في المشروع. السحب والإفلات مدعوم.",
+          "title": "لا توجد ملفات بعد"
         },
         "fileCount": {
           "description": "{count, plural, one {# ملف} other {# ملفات}}"

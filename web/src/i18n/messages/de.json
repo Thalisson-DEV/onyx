@@ -9199,11 +9199,30 @@
   },
   "cards": {
     "file": {
+      "category": {
+        "archive": "Archiv",
+        "audio": "Audio",
+        "document": "Dokument",
+        "image": "Bild",
+        "other": "Datei",
+        "presentation": "Präsentation",
+        "spreadsheet": "Tabelle",
+        "video": "Video"
+      },
+      "deleting": {
+        "description": "Wird entfernt…"
+      },
+      "failed": {
+        "description": "Upload fehlgeschlagen"
+      },
       "processing": {
         "description": "Wird verarbeitet..."
       },
       "remove": {
-        "label": "Entfernen"
+        "ariaLabel": "{name} entfernen"
+      },
+      "status": {
+        "announcement": "{name}: {status}"
       },
       "uploading": {
         "description": "Wird hochgeladen..."
@@ -9267,6 +9286,10 @@
   },
   "chat": {
     "app": {
+      "dropzone": {
+        "description": "Sie werden an diese Unterhaltung angehängt.",
+        "instruction": "Dateien hier ablegen"
+      },
       "failedFiles": {
         "toast": "{count, plural, one {Eine Datei ist fehlgeschlagen und wurde entfernt: {names}} other {Dateien sind fehlgeschlagen und wurden entfernt: {names}}}"
       },
@@ -10458,7 +10481,8 @@
           "label": "Fertig"
         },
         "emptyState": {
-          "description": "Keine Dateien gefunden"
+          "description": "Keine Dateien gefunden",
+          "title": "Keine Dateien"
         },
         "fileCount": {
           "label": "{count, plural, one {# Datei} other {# Dateien}}"
@@ -10677,7 +10701,8 @@
           "message": "Dateien hier ablegen, um sie diesem Projekt hinzuzufügen"
         },
         "emptyFiles": {
-          "message": "Fügen Sie Dokumente, Texte oder Bilder zur Verwendung im Projekt hinzu. Drag & Drop wird unterstützt."
+          "message": "Fügen Sie Dokumente, Texte oder Bilder zur Verwendung im Projekt hinzu. Drag & Drop wird unterstützt.",
+          "title": "Noch keine Dateien"
         },
         "fileCount": {
           "description": "{count, plural, one {# Datei} other {# Dateien}}"

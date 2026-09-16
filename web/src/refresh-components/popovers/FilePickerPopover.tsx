@@ -18,22 +18,19 @@ import { toast } from "@opal/layouts";
 import { useProjectsContext } from "@/lib/projects/providers";
 import Text from "@/refresh-components/texts/Text";
 import { MAX_FILES_TO_SHOW } from "@/lib/constants";
-import { isImageFile } from "@/lib/utils";
 import {
+  FILE_CATEGORY_LABEL_KEYS,
+  fileCategory,
+  fileCategoryIcon,
+} from "@/lib/utils";
+import { AttachmentState, attachmentState } from "@/lib/projects/utils";
+import {
+  SvgAlertCircle,
   SvgExternalLink,
-  SvgFileText,
-  SvgImage,
   SvgLoader,
   SvgMoreHorizontal,
   SvgUploadSquare,
 } from "@opal/icons";
-const getFileExtension = (fileName: string): string => {
-  const idx = fileName.lastIndexOf(".");
-  if (idx === -1) return "";
-  const ext = fileName.slice(idx + 1).toLowerCase();
-  if (ext === "txt") return "PLAINTEXT";
-  return ext.toUpperCase();
-};
 
 interface FileLineItemProps {
   projectFile: ProjectFile;
@@ -41,19 +38,49 @@ interface FileLineItemProps {
   onFileClick: (file: ProjectFile) => void;
 }
 
+/**
+ * A picker row speaks the same attachment language as the composer card: the
+ * category glyph on the start edge, the file name as the label, and the
+ * category (or the live state) where the raw extension used to sit.
+ */
 function FileLineItem({
   projectFile,
   onPickRecent,
   onFileClick,
 }: FileLineItemProps) {
   const t = useTranslations("common.filePicker");
-  const showLoader = useMemo(
-    () =>
-      String(projectFile.status) === UserFileStatus.PROCESSING ||
-      String(projectFile.status) === UserFileStatus.UPLOADING ||
-      String(projectFile.status) === UserFileStatus.DELETING,
-    [projectFile.status]
-  );
+  const tCards = useTranslations("cards");
+
+  // A row inherits its colour from the interactive palette, so state here is
+  // carried by the glyph and the label rather than by a colour override.
+  const { Icon, stateLabel } = useMemo(() => {
+    const state = attachmentState(projectFile.status);
+    const category = fileCategory(projectFile.name, projectFile.file_type);
+    const failed = state === AttachmentState.FAILED;
+    const busy =
+      state === AttachmentState.PROCESSING ||
+      state === AttachmentState.UPLOADING ||
+      state === AttachmentState.DELETING;
+
+    return {
+      Icon: failed
+        ? SvgAlertCircle
+        : busy
+          ? ({ className }: { className?: string }) => (
+              <SvgLoader className={cn(className, "animate-spin")} />
+            )
+          : fileCategoryIcon(category),
+      stateLabel: failed
+        ? tCards("file.failed.description")
+        : state === AttachmentState.UPLOADING
+          ? tCards("file.uploading.description")
+          : state === AttachmentState.PROCESSING
+            ? tCards("file.processing.description")
+            : state === AttachmentState.DELETING
+              ? tCards("file.deleting.description")
+              : tCards(`file.category.${FILE_CATEGORY_LABEL_KEYS[category]}`),
+    };
+  }, [projectFile.name, projectFile.file_type, projectFile.status, tCards]);
 
   const disableActionButton = useMemo(
     () =>
@@ -69,15 +96,7 @@ function FileLineItem({
         rounding={2}
         key={projectFile.id}
         onClick={noProp(() => onPickRecent(projectFile))}
-        icon={
-          showLoader
-            ? ({ className }) => (
-                <SvgLoader className={cn(className, "animate-spin")} />
-              )
-            : isImageFile(projectFile.name)
-              ? SvgImage
-              : SvgFileText
-        }
+        icon={Icon}
         rightChildren={
           <div className="h-4 flex flex-col justify-center">
             <Hoverable.Item
@@ -85,7 +104,7 @@ function FileLineItem({
               variant="replace-on-hover"
               resting={
                 <Text as="p" secondaryBody text03>
-                  {getFileExtension(projectFile.name)}
+                  {stateLabel}
                 </Text>
               }
             >

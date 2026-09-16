@@ -8,13 +8,11 @@ import { Button, Text, Tooltip } from "@opal/components";
 import {
   SvgAlertCircle,
   SvgClock,
-  SvgFileText,
-  SvgImage,
   SvgLoader,
   SvgSparkle,
   SvgX,
 } from "@opal/icons";
-import { isImageFile } from "@/lib/utils";
+import { fileCategory, fileCategoryIcon } from "@/lib/utils";
 import {
   type BuildFile,
   UploadFileStatus,
@@ -40,8 +38,11 @@ function InputChip({
   const t = useTranslations("chat.input");
   const chipRef = useRef<HTMLDivElement>(null);
 
+  // `rounded-04` rather than `rounded-08`: the visual language assigns the
+  // smallest radius to compact controls, and a chip nested in a `radius-12`
+  // composer must sit inside its parent's curve, not echo it.
   const chipClassName = cn(
-    "flex items-center gap-1 px-1 py-px rounded-08 border",
+    "flex items-center gap-1 px-1 py-px rounded-04 border",
     colorClassName,
     onClick && "cursor-pointer"
   );
@@ -109,21 +110,21 @@ function BuildFileCard({
   onRemove: (id: string) => void;
 }) {
   const t = useTranslations("chat.input");
-  const isImage = isImageFile(file.name);
   const isUploading = file.status === UploadFileStatus.UPLOADING;
   const isPending = file.status === UploadFileStatus.PENDING;
   const isFailed = file.status === UploadFileStatus.FAILED;
 
+  // Same glyph set as `FileCard`: the state while the file is busy or failed,
+  // the shared category glyph once it is ready.
+  const CategoryIcon = fileCategoryIcon(fileCategory(file.name));
   const icon = isUploading ? (
     <SvgLoader className="h-3 w-3 shrink-0 animate-spin" />
   ) : isPending ? (
     <SvgClock className="h-3 w-3 shrink-0" />
   ) : isFailed ? (
-    <SvgAlertCircle className="h-3 w-3 shrink-0 text-status-error-02" />
-  ) : isImage ? (
-    <SvgImage className="h-3 w-3 shrink-0" />
+    <SvgAlertCircle className="h-3 w-3 shrink-0 stroke-status-error-05" />
   ) : (
-    <SvgFileText className="h-3 w-3 shrink-0" />
+    <CategoryIcon className="h-3 w-3 shrink-0" />
   );
 
   const chip = (
@@ -132,7 +133,7 @@ function BuildFileCard({
       label={file.name}
       colorClassName={cn(
         "bg-background-neutral-01 text-text-04",
-        isFailed ? "border-status-error-02" : "border-border-01"
+        isFailed ? "border-border-error" : "border-border-01"
       )}
       onRemove={() => onRemove(file.id)}
     />

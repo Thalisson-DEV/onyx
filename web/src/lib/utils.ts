@@ -1,10 +1,15 @@
 import type { ComponentType } from "react";
-import type { IconProps } from "@opal/types";
+import type { IconFunctionComponent, IconProps } from "@opal/types";
 import {
-  SvgImage,
-  SvgFileChartPie,
+  SvgAudioFile,
+  SvgFile,
   SvgFileBraces,
+  SvgFileChartPie,
+  SvgFiles,
   SvgFileText,
+  SvgImage,
+  SvgSpreadsheetFile,
+  SvgVideoFile,
 } from "@opal/icons";
 import { ALLOWED_URL_PROTOCOLS } from "./constants";
 import { DEFAULT_LOCALE } from "@/i18n/config";
@@ -184,6 +189,242 @@ export function isImageFile(fileName: string | null | undefined): boolean {
   return IMAGE_EXTENSIONS.some((ext) => lowerFileName.endsWith(`.${ext}`));
 }
 
+// ---------------------------------------------------------------------------
+// Semantic file categories
+// ---------------------------------------------------------------------------
+
+/**
+ * What a file *is*, as far as the client can tell from its name and MIME type.
+ *
+ * One enum for the whole app: the attachment surfaces (composer, file picker,
+ * user-file modal, project context) all read their icon and their type label
+ * from here, so a `.xlsx` looks like a spreadsheet everywhere or nowhere.
+ */
+export enum FileCategory {
+  SPREADSHEET = "SPREADSHEET",
+  DOCUMENT = "DOCUMENT",
+  IMAGE = "IMAGE",
+  PRESENTATION = "PRESENTATION",
+  AUDIO = "AUDIO",
+  VIDEO = "VIDEO",
+  ARCHIVE = "ARCHIVE",
+  OTHER = "OTHER",
+}
+
+/**
+ * MIME types that name a container rather than a format. They are true of far
+ * too many files to decide a category, so `fileCategory` steps over them and
+ * lets the extension answer instead.
+ */
+const UNINFORMATIVE_MIME_TYPES: ReadonlySet<string> = new Set([
+  "",
+  "application/octet-stream",
+  "binary/octet-stream",
+  "application/binary",
+  "application/x-empty",
+  // Servers and browsers fall back to text/plain for csv, md and tsv alike.
+  "text/plain",
+]);
+
+/**
+ * Spreadsheet MIME types. The first two seed from the preview modal's own list
+ * (`PreviewModal/variants/xlsxVariant.tsx`), which is the knowledge this
+ * function replaced rather than duplicated.
+ */
+export const SPREADSHEET_MIME_TYPES = [
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel.sheet.macroenabled.12",
+  "application/vnd.ms-excel",
+  "application/vnd.oasis.opendocument.spreadsheet",
+  "text/csv",
+  "text/tab-separated-values",
+] as const;
+
+const DOCUMENT_MIME_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.oasis.opendocument.text",
+  "application/rtf",
+  "text/rtf",
+  "text/markdown",
+] as const;
+
+const PRESENTATION_MIME_TYPES = [
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.oasis.opendocument.presentation",
+] as const;
+
+const ARCHIVE_MIME_TYPES = [
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/vnd.rar",
+  "application/x-rar-compressed",
+  "application/x-7z-compressed",
+  "application/x-tar",
+  "application/gzip",
+  "application/x-gzip",
+] as const;
+
+/** Exact MIME type to category. Only entries that genuinely name a format. */
+const MIME_TYPE_CATEGORIES: ReadonlyMap<string, FileCategory> = new Map([
+  ...SPREADSHEET_MIME_TYPES.map(
+    (mime) => [mime, FileCategory.SPREADSHEET] as const
+  ),
+  ...DOCUMENT_MIME_TYPES.map((mime) => [mime, FileCategory.DOCUMENT] as const),
+  ...PRESENTATION_MIME_TYPES.map(
+    (mime) => [mime, FileCategory.PRESENTATION] as const
+  ),
+  ...ARCHIVE_MIME_TYPES.map((mime) => [mime, FileCategory.ARCHIVE] as const),
+]);
+
+/**
+ * The `type/` half of a MIME type, for the families where the top-level type
+ * alone already carries the category. Consulted only after the extension, so
+ * it catches the long tail (`image/heic`, `audio/flac`) without overriding a
+ * name the user can see.
+ */
+const MIME_FAMILY_CATEGORIES: ReadonlyMap<string, FileCategory> = new Map([
+  ["image", FileCategory.IMAGE],
+  ["audio", FileCategory.AUDIO],
+  ["video", FileCategory.VIDEO],
+  ["text", FileCategory.DOCUMENT],
+]);
+
+const SPREADSHEET_EXTENSIONS = ["xlsx", "xlsm", "xls", "csv", "tsv", "ods"];
+const DOCUMENT_EXTENSIONS = [
+  "pdf",
+  "doc",
+  "docx",
+  "odt",
+  "rtf",
+  "txt",
+  "md",
+  "markdown",
+];
+const PRESENTATION_EXTENSIONS = ["ppt", "pptx", "odp"];
+const AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "ogg", "oga", "flac", "aac"];
+const VIDEO_EXTENSIONS = ["mp4", "mov", "webm", "avi", "mkv", "m4v"];
+const ARCHIVE_EXTENSIONS = ["zip", "rar", "7z", "tar", "gz", "tgz", "bz2"];
+
+/** Extension (lowercase, no dot) to category. */
+const EXTENSION_CATEGORIES: ReadonlyMap<string, FileCategory> = new Map([
+  ...SPREADSHEET_EXTENSIONS.map(
+    (ext) => [ext, FileCategory.SPREADSHEET] as const
+  ),
+  ...DOCUMENT_EXTENSIONS.map((ext) => [ext, FileCategory.DOCUMENT] as const),
+  // Seeded from IMAGE_EXTENSIONS so `isImageFile` and `fileCategory` cannot
+  // disagree about what an image is.
+  ...IMAGE_EXTENSIONS.map((ext) => [ext, FileCategory.IMAGE] as const),
+  ...PRESENTATION_EXTENSIONS.map(
+    (ext) => [ext, FileCategory.PRESENTATION] as const
+  ),
+  ...AUDIO_EXTENSIONS.map((ext) => [ext, FileCategory.AUDIO] as const),
+  ...VIDEO_EXTENSIONS.map((ext) => [ext, FileCategory.VIDEO] as const),
+  ...ARCHIVE_EXTENSIONS.map((ext) => [ext, FileCategory.ARCHIVE] as const),
+]);
+
+/** Lowercase extension without the dot, or `""` when the name carries none. */
+function normalizeExtension(fileName: string | null | undefined): string {
+  if (!fileName) return "";
+  const name = String(fileName).trim();
+  const lastDot = name.lastIndexOf(".");
+  if (lastDot <= 0 || lastDot === name.length - 1) return "";
+  return name.slice(lastDot + 1).toLowerCase();
+}
+
+/** MIME type without parameters, lowercased. */
+function normalizeMimeType(mimeType: string | null | undefined): string {
+  if (!mimeType) return "";
+  return String(mimeType).split(";")[0]?.trim().toLowerCase() ?? "";
+}
+
+/**
+ * The category of a file, from its name and MIME type.
+ *
+ * Precedence, in order:
+ *
+ * 1. **Exact MIME type**, when it names a format. `application/pdf` is a
+ *    stronger signal than any extension, because the extension can lie.
+ * 2. **Extension**, lowercased. This is what catches the common case of a
+ *    server handing back `application/octet-stream` or `text/plain` for a
+ *    `.xlsx` or a `.csv`.
+ * 3. **MIME family** (`image/`, `audio/`, `video/`, `text/`), for formats too
+ *    new or too rare to enumerate.
+ * 4. `OTHER`.
+ *
+ * A file is never `DOCUMENT` merely because it has a name: an unrecognised
+ * extension with an uninformative MIME type is `OTHER`.
+ */
+export function fileCategory(
+  fileName: string | null | undefined,
+  mimeType?: string | null | undefined
+): FileCategory {
+  const mime = normalizeMimeType(mimeType);
+
+  if (!UNINFORMATIVE_MIME_TYPES.has(mime)) {
+    const byMimeType = MIME_TYPE_CATEGORIES.get(mime);
+    if (byMimeType) return byMimeType;
+  }
+
+  const byExtension = EXTENSION_CATEGORIES.get(normalizeExtension(fileName));
+  if (byExtension) return byExtension;
+
+  if (!UNINFORMATIVE_MIME_TYPES.has(mime)) {
+    const family = mime.split("/")[0] ?? "";
+    const byFamily = MIME_FAMILY_CATEGORIES.get(family);
+    if (byFamily) return byFamily;
+  }
+
+  return FileCategory.OTHER;
+}
+
+/**
+ * The category glyph. Eight distinct shapes, so category never rides on colour
+ * alone — see `plans/ton/frontend/005-attachments-context.md`.
+ */
+export function fileCategoryIcon(
+  category: FileCategory
+): IconFunctionComponent {
+  switch (category) {
+    case FileCategory.SPREADSHEET:
+      return SvgSpreadsheetFile;
+    case FileCategory.DOCUMENT:
+      return SvgFileText;
+    case FileCategory.IMAGE:
+      return SvgImage;
+    case FileCategory.PRESENTATION:
+      return SvgFileChartPie;
+    case FileCategory.AUDIO:
+      return SvgAudioFile;
+    case FileCategory.VIDEO:
+      return SvgVideoFile;
+    case FileCategory.ARCHIVE:
+      return SvgFiles;
+    case FileCategory.OTHER:
+      return SvgFile;
+  }
+}
+
+/**
+ * The `cards.file.category.*` catalog segment for a category, so every surface
+ * spells the same category the same way.
+ */
+export const FILE_CATEGORY_LABEL_KEYS = {
+  [FileCategory.SPREADSHEET]: "spreadsheet",
+  [FileCategory.DOCUMENT]: "document",
+  [FileCategory.IMAGE]: "image",
+  [FileCategory.PRESENTATION]: "presentation",
+  [FileCategory.AUDIO]: "audio",
+  [FileCategory.VIDEO]: "video",
+  [FileCategory.ARCHIVE]: "archive",
+  [FileCategory.OTHER]: "other",
+} as const satisfies Record<FileCategory, string>;
+
+export type FileCategoryLabelKey =
+  (typeof FILE_CATEGORY_LABEL_KEYS)[FileCategory];
+
 /**
  * Typical code/config file extensions (lowercase, no leading dots)
  */
@@ -249,16 +490,19 @@ export function isCodeFile(fileName: string | null | undefined): boolean {
 /**
  * Returns the icon component for a file based on its name/path.
  * Used for file tree and preview tab icons.
+ *
+ * Defers to `fileCategory` for the type, then keeps the one distinction the
+ * category enum does not draw: source files get the braces glyph rather than
+ * the generic document glyph, because these call sites list code.
  */
 export function getFileIcon(
   fileName: string | null | undefined
 ): ComponentType<IconProps> {
   if (!fileName) return SvgFileText;
-  if (isImageFile(fileName)) return SvgImage;
-  if (/\.pptx?$/i.test(fileName)) return SvgFileChartPie;
-  if (/\.pdf$/i.test(fileName)) return SvgFileText;
   if (isCodeFile(fileName)) return SvgFileBraces;
-  return SvgFileText;
+  const category = fileCategory(fileName);
+  if (category === FileCategory.OTHER) return SvgFileText;
+  return fileCategoryIcon(category);
 }
 
 /**

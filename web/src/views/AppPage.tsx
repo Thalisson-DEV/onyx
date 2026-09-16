@@ -64,7 +64,7 @@ import OnboardingFlow from "@/sections/onboarding/OnboardingFlow";
 import { OnboardingStep } from "@/interfaces/onboarding";
 import { useShowOnboarding } from "@/hooks/useShowOnboarding";
 import { SvgChevronDown, SvgFileText } from "@opal/icons";
-import { Button, ShadowDiv, Spacer } from "@opal/components";
+import { Button, ShadowDiv, Spacer, Text } from "@opal/components";
 import {
   IllustrationContent,
   RootLayout,
@@ -107,6 +107,47 @@ function Fade({ show, children, className }: FadeProps) {
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+/**
+ * Drag feedback for the whole chat viewport (TON-VIS-005).
+ *
+ * The `Dropzone` already wrapped this entire area, but nothing read
+ * `isDragActive`, so the biggest drop target in the product gave no sign it
+ * would accept a file. This is that sign: a restrained neutral veil, a dashed
+ * edge inside the existing relative root, and one instruction.
+ *
+ * `absolute inset-0` and `pointer-events-none` mean it neither reflows the grid
+ * nor intercepts the drop it is describing. `aria-hidden` is deliberate: the
+ * overlay narrates a pointer gesture that assistive technology is not
+ * performing, and the accessible route to attaching a file is the file picker
+ * button in the composer.
+ */
+function ChatDropOverlay({ active }: { active: boolean }) {
+  const t = useTranslations("chat.app");
+
+  if (!active) return null;
+
+  return (
+    <div
+      aria-hidden
+      className={cn(
+        "pointer-events-none absolute inset-0 z-20",
+        "flex items-center justify-center",
+        "bg-mask-02 motion-safe:animate-in motion-safe:fade-in-0"
+      )}
+    >
+      <div className="absolute inset-2 rounded-12 border border-dashed border-border-selected" />
+      <div className="relative flex flex-col items-center gap-1 px-4 text-center">
+        <Text font="main-content-emphasis" color="text-04">
+          {t("dropzone.instruction")}
+        </Text>
+        <Text font="secondary-body" color="text-03">
+          {t("dropzone.description")}
+        </Text>
+      </div>
+    </div>
   );
 }
 
@@ -793,11 +834,12 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
           noClick
           noPaste
         >
-          {({ getRootProps }) => (
+          {({ getRootProps, isDragActive }) => (
             <div
               className="h-full w-full flex flex-col items-center outline-hidden relative"
               {...getRootProps({ tabIndex: -1 })}
             >
+              <ChatDropOverlay active={isDragActive} />
               {/* Main content grid — 3 rows, animated */}
               <div
                 className="flex-1 w-full grid min-h-0 transition-[grid-template-rows] duration-150 ease-in-out"

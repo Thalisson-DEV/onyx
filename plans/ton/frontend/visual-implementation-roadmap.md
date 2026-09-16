@@ -4,15 +4,16 @@ Sequenciamento derivado de
 [`000-de-onyx-visual-audit.md`](./000-de-onyx-visual-audit.md). A linguagem alvo
 está em [`visual-language.md`](./visual-language.md).
 
-**Estado: VIS-001, VIS-004 e VIS-002 DONE. As demais não implementadas.** Após
-VIS-002, **PARAR**; VIS-005 não começa automaticamente.
+**Estado: VIS-001, VIS-004, VIS-002 e VIS-005 DONE. As demais não implementadas.**
+Após VIS-005, **PARAR**; VIS-006 não começa automaticamente.
 
 | Fatia | Estado |
 |---|---|
 | VIS-001 | **DONE** — [`001-visual-foundations.md`](./001-visual-foundations.md) |
 | VIS-004 | **DONE** — [`004-composer.md`](./004-composer.md) |
 | VIS-002 | **DONE** — [`002-shell-navigation.md`](./002-shell-navigation.md) |
-| VIS-003, VIS-005 … VIS-010 | não iniciadas |
+| VIS-005 | **DONE** — [`005-attachments-context.md`](./005-attachments-context.md) |
+| VIS-003, VIS-006 … VIS-010 | não iniciadas |
 
 ---
 
@@ -43,6 +44,8 @@ VIS-002, **PARAR**; VIS-005 não começa automaticamente.
 ```text
 VIS-001 → VIS-004 → VIS-002 → VIS-005 → VIS-006 → VIS-003 → VIS-007 → VIS-008 → VIS-009 → VIS-010
 ```
+
+As quatro primeiras estão feitas. A próxima é VIS-006.
 
 VIS-004 vem antes de VIS-002 porque trocar a aresta do composer de sombra para
 borda **elimina o hack de 14px espalhado por três arquivos** e resolve a
@@ -411,12 +414,43 @@ confirmar id único no DOM em modo busca e em chat.
 
 ---
 
-## VIS-005 — Anexos e contexto
+## VIS-005 — Anexos e contexto — **DONE**
 
-**Nível máximo: 3.**
+**Nível máximo: 3.** Resultado, decisões, contraste medido e trabalho deferido em
+[`005-attachments-context.md`](./005-attachments-context.md).
+
+Entregue: uma função `fileCategory(name, mime)` compartilhada com oito
+categorias, precedência MIME exato → extensão → família MIME → `OTHER`, semeada
+por `IMAGE_EXTENSIONS` e por `SPREADSHEET_MIME_TYPES`, consumida pelas quatro
+superfícies que duplicavam o mapeamento de ícone; uma geometria de anexo
+convergida sobre `AttachmentItemButton` (`radius-12`, borda de 1px,
+`elevation-0`), com o chip Craft em `radius-04` para ficar dentro da curva do
+composer; um modelo de estado único (`attachmentState`) cobrindo
+`UPLOADING`/`PROCESSING`/`READY`/`FAILED`/`DELETING` e insensível à caixa do
+status; **arquivo com falha permanece visível**, com aresta `border-error`,
+superfície `status-error-00`, glifo de alerta e remoção explícita; o descritor de
+transporte passou a filtrar a falha, para que ela apareça ao usuário e nunca vá
+para o servidor; overlay de arrastar em todo o viewport do chat lendo o
+`isDragActive` que já existia; estados vazios em `IllustrationContent`; alvo de
+remoção de 16px para 24px.
+
+Duas decisões que **não** seguiram a proposta original, com a medição no
+documento: **categoria não usa cor** — glifo mais rótulo textual, deixando cor
+inteira para estado (§5 do documento) — e o raio do cartão-linha ficou em
+`radius-12`, não `radius-08`, porque é o valor nativo de `AttachmentItemButton` e
+mudá-lo seria nível 4 (§6.1). `svc.ts` **não** foi alterado: as mensagens que a
+auditoria apontou nunca chegam à tela, e os toasts que chegam já passam por
+next-intl (§12.1). Arraste inválido **não** foi implementado: o dropzone do chat
+não declara `accept`, então `isDragReject` é sempre falso e o componente não tem
+como saber (§9.1).
+
+Playwright de aplicação ficou **deferido** pelo mesmo conflito de runtime
+compartilhado de VIS-002 e VIS-004; a validação visual foi feita em Chromium
+isolado sobre o CSS do build, com a página gerada pelo `FileCard` real. Detalhes
+em `005-attachments-context.md` §17.
 
 ### Pré-requisitos
-VIS-001, VIS-004.
+VIS-001, VIS-004. — **atendidos.**
 
 ### Escopo permitido
 

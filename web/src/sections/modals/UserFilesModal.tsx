@@ -4,18 +4,22 @@ import React, { useRef, useState, useEffect, useMemo } from "react";
 import { InputTypeIn } from "@opal/components";
 import { ProjectFile } from "@/lib/projects/providers";
 import Text from "@/refresh-components/texts/Text";
-import type { IconProps } from "@opal/types";
-import { getFileExtension, isImageExtension } from "@/lib/utils";
-import { UserFileStatus } from "@/lib/projects/types";
+import type { IconFunctionComponent } from "@opal/types";
+import {
+  FILE_CATEGORY_LABEL_KEYS,
+  fileCategory,
+  fileCategoryIcon,
+} from "@/lib/utils";
+import { AttachmentState, attachmentState } from "@/lib/projects/utils";
 import { Modal } from "@opal/components";
 import { useModal } from "@opal/components";
 import TextSeparator from "@/refresh-components/TextSeparator";
+import { IllustrationContent } from "@opal/layouts";
 import {
+  SvgAlertCircle,
   SvgExternalLink,
   SvgEye,
   SvgFiles,
-  SvgFileText,
-  SvgImage,
   SvgPlusCircle,
   SvgTrash,
   SvgXCircle,
@@ -30,32 +34,44 @@ import ScrollIndicatorDiv from "@/refresh-components/ScrollIndicatorDiv";
 import { timeAgo } from "@opal/time";
 import { useLocale, useTranslations } from "next-intl";
 
+/**
+ * The row's glyph: the state while the file is busy or failed, the category
+ * otherwise. Same rule as the composer card and the file picker.
+ */
 function getIcon(
   file: ProjectFile,
-  isProcessing: boolean
-): React.FunctionComponent<IconProps> {
-  if (isProcessing) return SvgSimpleLoader;
-  const ext = getFileExtension(file.name).toLowerCase();
-  if (isImageExtension(ext)) return SvgImage;
-  return SvgFileText;
+  state: AttachmentState
+): IconFunctionComponent {
+  if (state === AttachmentState.FAILED) return SvgAlertCircle;
+  if (state !== AttachmentState.READY) return SvgSimpleLoader;
+  return fileCategoryIcon(fileCategory(file.name, file.file_type));
 }
 
-// Translated labels for the in-progress statuses; the rest fall back to the
-// file's own extension or raw status, which are data rather than copy.
+/** Translated state, or the file's category once it is ready. */
 interface FileStatusLabels {
   processing: string;
   uploading: string;
   deleting: string;
+  failed: string;
 }
 
-function getDescription(file: ProjectFile, labels: FileStatusLabels): string {
-  const s = String(file.status || "");
-  const typeLabel = getFileExtension(file.name);
-  if (s === UserFileStatus.PROCESSING) return labels.processing;
-  if (s === UserFileStatus.UPLOADING) return labels.uploading;
-  if (s === UserFileStatus.DELETING) return labels.deleting;
-  if (s === UserFileStatus.COMPLETED) return typeLabel;
-  return file.status ?? typeLabel;
+function getDescription(
+  state: AttachmentState,
+  categoryLabel: string,
+  labels: FileStatusLabels
+): string {
+  switch (state) {
+    case AttachmentState.PROCESSING:
+      return labels.processing;
+    case AttachmentState.UPLOADING:
+      return labels.uploading;
+    case AttachmentState.DELETING:
+      return labels.deleting;
+    case AttachmentState.FAILED:
+      return labels.failed;
+    case AttachmentState.READY:
+      return categoryLabel;
+  }
 }
 
 interface FileAttachmentProps {
@@ -74,18 +90,25 @@ function FileAttachment({
   onDelete,
 }: FileAttachmentProps) {
   const t = useTranslations("chat.modals.userFiles");
+  const tCards = useTranslations("cards");
   const locale = useLocale();
-  const isProcessing =
-    String(file.status) === UserFileStatus.PROCESSING ||
-    String(file.status) === UserFileStatus.UPLOADING ||
-    String(file.status) === UserFileStatus.DELETING;
+  const state = attachmentState(file.status);
 
-  const Icon = getIcon(file, isProcessing);
-  const description = getDescription(file, {
-    processing: t("fileStatus.processing.label"),
-    uploading: t("fileStatus.uploading.label"),
-    deleting: t("fileStatus.deleting.label"),
-  });
+  const Icon = getIcon(file, state);
+  const description = getDescription(
+    state,
+    tCards(
+      `file.category.${
+        FILE_CATEGORY_LABEL_KEYS[fileCategory(file.name, file.file_type)]
+      }`
+    ),
+    {
+      processing: t("fileStatus.processing.label"),
+      uploading: t("fileStatus.uploading.label"),
+      deleting: t("fileStatus.deleting.label"),
+      failed: tCards("file.failed.description"),
+    }
+  );
   const rightText = file.last_accessed_at
     ? (timeAgo(file.last_accessed_at, locale) ?? "")
     : "";
@@ -258,7 +281,10 @@ export default function UserFilesModal({
           >
             {/* File display section */}
             {filtered.length === 0 ? (
-              <Text text03>{t("emptyState.description")}</Text>
+              <IllustrationContent
+                title={t("emptyState.title")}
+                description={t("emptyState.description")}
+              />
             ) : (
               <ScrollIndicatorDiv className="p-1 gap-1 max-h-[70vh]">
                 {filtered.map((projectFle) => {

@@ -26,8 +26,7 @@
    TON markdown theme
    ==========================================================================
    `.prose-ton` is the single markdown theme path for the transcript. Every
-   value is a semantic token, so both themes come from the token layer and no
-   `dark:` modifier or `.dark` duplicate is needed anywhere below.
+   value is a semantic token, so the token layer controls both themes.
 
    Note: text-05 = highest contrast, text-01 = lowest.
    ========================================================================== */
@@ -284,11 +283,7 @@
   width: 2rem;
   pointer-events: none;
   z-index: 2;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--background-tint-01)
-  );
+  background: linear-gradient(to right, transparent, var(--background-tint-01));
   opacity: 0;
   transition: opacity 0.15s;
 }
@@ -407,18 +402,24 @@ pre[class*="language-"] {
 }
 
 .prose
-  :where(pre):not(:where([class~="not-prose"], [class~="not-prose"] *))::-webkit-scrollbar {
+  :where(pre):not(
+    :where([class~="not-prose"], [class~="not-prose"] *)
+  )::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 .prose
-  :where(pre):not(:where([class~="not-prose"], [class~="not-prose"] *))::-webkit-scrollbar-track {
+  :where(pre):not(
+    :where([class~="not-prose"], [class~="not-prose"] *)
+  )::-webkit-scrollbar-track {
   background: var(--scrollbar-track);
 }
 
 .prose
-  :where(pre):not(:where([class~="not-prose"], [class~="not-prose"] *))::-webkit-scrollbar-thumb {
+  :where(pre):not(
+    :where([class~="not-prose"], [class~="not-prose"] *)
+  )::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   border-radius: var(--radius-02);
 }

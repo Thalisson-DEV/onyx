@@ -1,6 +1,11 @@
 import { JSX, Key, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { SvgCheckCircle, SvgCircle, SvgTerminal, SvgXCircle } from "@opal/icons";
+import {
+  SvgCheckCircle,
+  SvgCircle,
+  SvgTerminal,
+  SvgXCircle,
+} from "@opal/icons";
 import hljs from "highlight.js/lib/core";
 import bash from "highlight.js/lib/languages/bash";
 import {
@@ -148,11 +153,12 @@ interface ProcessingStepProps {
   isHover: boolean;
 }
 
-/**
- * Observable "the agent worked here" step: a glyph and a label, no body. The
- * decorative `SvgSparkle` is gone — the state icon reports execution, not magic.
- */
-function ProcessingStep({ isActive, isLastStep, isHover }: ProcessingStepProps) {
+/** Observable coding step with a state icon and label. */
+function ProcessingStep({
+  isActive,
+  isLastStep,
+  isHover,
+}: ProcessingStepProps) {
   const t = useTranslations("chat.messages.timeline");
   const state: ActivityState = isActive ? "running" : "completed";
 

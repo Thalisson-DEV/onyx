@@ -5838,7 +5838,9 @@
       "panel": {
         "description": "{start} – {end} · システム使用状況とは、特定のユーザー向けではなく、Onyx がバックグラウンドで実行する LLM 処理です。例として、画像要約、コンテキスト RAG 処理、ナレッジグラフ抽出があります。",
         "emptyDescription": "システム使用状況とは、特定のユーザー向けではなく、Onyx がバックグラウンドで実行する LLM 処理です。例として、画像要約、コンテキスト RAG 処理、ナレッジグラフ抽出があります。",
-        "error": { "title": "この期間のシステム使用状況を読み込めませんでした。" },
+        "error": {
+          "title": "この期間のシステム使用状況を読み込めませんでした。"
+        },
         "title": "システム使用状況"
       },
       "summary": {
@@ -9769,6 +9771,9 @@
         "failedStatus": {
           "text": "{toolName} が失敗しました (HTTP {statusCode})"
         },
+        "failedWithoutStatus": {
+          "text": "{toolName} が失敗しました"
+        },
         "fallbackName": {
           "label": "ツール"
         },
@@ -9977,6 +9982,9 @@
         "activity": {
           "duration": {
             "label": "実行時間 {duration}"
+          },
+          "failed": {
+            "label": "実行に失敗しました"
           },
           "interrupted": {
             "label": "実行が中断されました"

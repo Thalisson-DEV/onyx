@@ -9799,6 +9799,9 @@
         "failedStatus": {
           "text": "{toolName} failed (HTTP {statusCode})"
         },
+        "failedWithoutStatus": {
+          "text": "{toolName} failed"
+        },
         "fallbackName": {
           "label": "Tool"
         },
@@ -10007,6 +10010,9 @@
         "activity": {
           "duration": {
             "label": "Executed in {duration}"
+          },
+          "failed": {
+            "label": "Execution failed"
           },
           "interrupted": {
             "label": "Execution interrupted"

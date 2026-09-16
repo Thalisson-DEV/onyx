@@ -5838,7 +5838,9 @@
       "panel": {
         "description": "{start} – {end} · Systemnutzung ist LLM-Aktivität, die Onyx im Hintergrund statt für einen bestimmten Benutzer ausführt. Beispiele sind Bildzusammenfassungen, kontextbezogene RAG-Verarbeitung und Knowledge-Graph-Extraktion.",
         "emptyDescription": "Systemnutzung ist LLM-Aktivität, die Onyx im Hintergrund statt für einen bestimmten Benutzer ausführt. Beispiele sind Bildzusammenfassungen, kontextbezogene RAG-Verarbeitung und Knowledge-Graph-Extraktion.",
-        "error": { "title": "Die Systemnutzung für diesen Zeitraum konnte nicht geladen werden." },
+        "error": {
+          "title": "Die Systemnutzung für diesen Zeitraum konnte nicht geladen werden."
+        },
         "title": "Systemnutzung"
       },
       "summary": {
@@ -9769,6 +9771,9 @@
         "failedStatus": {
           "text": "{toolName} fehlgeschlagen (HTTP {statusCode})"
         },
+        "failedWithoutStatus": {
+          "text": "{toolName} fehlgeschlagen"
+        },
         "fallbackName": {
           "label": "Werkzeug"
         },
@@ -9977,6 +9982,9 @@
         "activity": {
           "duration": {
             "label": "Ausgeführt in {duration}"
+          },
+          "failed": {
+            "label": "Ausführung fehlgeschlagen"
           },
           "interrupted": {
             "label": "Ausführung unterbrochen"

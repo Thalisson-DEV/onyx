@@ -5822,7 +5822,9 @@
           "label": "Résumés contextuels des documents RAG"
         },
         "imageSummarization": { "label": "Résumé des images" },
-        "kgDeepExtraction": { "label": "Extraction du graphe de connaissances" },
+        "kgDeepExtraction": {
+          "label": "Extraction du graphe de connaissances"
+        },
         "kgDocumentClassification": {
           "label": "Classification du graphe de connaissances"
         },
@@ -5838,7 +5840,9 @@
       "panel": {
         "description": "{start} – {end} · L’utilisation système correspond à l’activité LLM exécutée par Onyx en arrière-plan plutôt que pour un utilisateur spécifique. Cela inclut les résumés d’images, le traitement RAG contextuel et l’extraction du graphe de connaissances.",
         "emptyDescription": "L’utilisation système correspond à l’activité LLM exécutée par Onyx en arrière-plan plutôt que pour un utilisateur spécifique. Cela inclut les résumés d’images, le traitement RAG contextuel et l’extraction du graphe de connaissances.",
-        "error": { "title": "Échec du chargement de l'utilisation système pour cette période." },
+        "error": {
+          "title": "Échec du chargement de l'utilisation système pour cette période."
+        },
         "title": "Utilisation système"
       },
       "summary": {
@@ -9769,6 +9773,9 @@
         "failedStatus": {
           "text": "{toolName} a échoué (HTTP {statusCode})"
         },
+        "failedWithoutStatus": {
+          "text": "Échec de {toolName}"
+        },
         "fallbackName": {
           "label": "Outil"
         },
@@ -9977,6 +9984,9 @@
         "activity": {
           "duration": {
             "label": "Exécuté en {duration}"
+          },
+          "failed": {
+            "label": "Échec de l’exécution"
           },
           "interrupted": {
             "label": "Exécution interrompue"

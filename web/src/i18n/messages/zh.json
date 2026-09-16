@@ -9769,6 +9769,9 @@
         "failedStatus": {
           "text": "{toolName} 失败（HTTP {statusCode}）"
         },
+        "failedWithoutStatus": {
+          "text": "{toolName} 失败"
+        },
         "fallbackName": {
           "label": "工具"
         },
@@ -9977,6 +9980,9 @@
         "activity": {
           "duration": {
             "label": "执行耗时 {duration}"
+          },
+          "failed": {
+            "label": "执行失败"
           },
           "interrupted": {
             "label": "执行已中断"

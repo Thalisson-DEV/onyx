@@ -22,8 +22,7 @@ import {
  * exactly three observable things — a deliberation phase started, it is still
  * running, and it ended — so that is all this step reports. The text carried by
  * `REASONING_DELTA` is never read, never accumulated and never rendered, so it
- * cannot reach the DOM, the accessibility tree, a tooltip, a copy buffer or a
- * download. See `plans/ton/frontend/006-messages-streaming-tools.md` §4.
+ * cannot reach the DOM, accessibility tree, or user actions.
  *
  * The packets themselves stay untouched in the stream: `packetProcessor` still
  * groups them and still uses `REASONING_START` to open a step, so sequencing and
@@ -122,7 +121,7 @@ export const ReasoningRenderer: MessageRenderer<
       : "running";
   const label = hasEnd
     ? failed
-      ? t("activity.unknownDuration.label")
+      ? t("activity.failed.label")
       : t("activity.processed.label")
     : t("activity.processing.label");
 

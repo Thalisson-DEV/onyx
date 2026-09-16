@@ -7,6 +7,7 @@ import {
   CustomToolArgs,
   CustomToolDelta,
   CustomToolErrorInfo,
+  PacketError,
   SectionEnd,
 } from "../../../services/streamingModels";
 import { MessageRenderer, RenderType } from "../interfaces";
@@ -78,10 +79,13 @@ function constructCustomToolState(
   )?.obj as CustomToolArgs | null;
   const toolArgs = toolArgsPacket?.tool_args ?? null;
   const latestDelta = toolDeltas[toolDeltas.length - 1] || null;
+  const packetError = packets.find((p) => p.obj.type === PacketType.ERROR)
+    ?.obj as PacketError | undefined;
   const responseType = latestDelta?.response_type || null;
   const data = latestDelta?.data;
   const fileIds = latestDelta?.file_ids || null;
   const error = latestDelta?.error || null;
+  const failed = error !== null || packetError !== undefined;
 
   const isRunning = Boolean(toolStart && !toolEnd);
   const isComplete = Boolean(toolStart && toolEnd);
@@ -93,6 +97,8 @@ function constructCustomToolState(
     data,
     fileIds,
     error,
+    packetError,
+    failed,
     isRunning,
     isComplete,
   };
@@ -112,6 +118,8 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
     data,
     fileIds,
     error,
+    packetError,
+    failed,
     isRunning,
     isComplete,
   } = constructCustomToolState(packets, t("customTool.fallbackName.label"));
@@ -124,7 +132,7 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
 
   // Custom tools are the one surface with a genuine three-state signal: the
   // delta carries an `error`, so failure is real rather than inferred.
-  const activityState: ActivityState = error
+  const activityState: ActivityState = failed
     ? "failed"
     : isComplete
       ? "completed"
@@ -143,6 +151,9 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
               statusCode: error.status_code,
             });
       }
+      if (packetError) {
+        return t("customTool.failedWithoutStatus.text", { toolName });
+      }
       if (responseType === "image")
         return t("customTool.imagesStatus.text", { toolName });
       if (responseType === "csv")
@@ -151,7 +162,7 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
     }
     if (isRunning) return t("customTool.runningStatus.text", { toolName });
     return null;
-  }, [toolName, responseType, error, isComplete, isRunning, t]);
+  }, [toolName, responseType, error, packetError, isComplete, isRunning, t]);
 
   const status =
     statusLabel === null ? null : (
@@ -189,10 +200,10 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
           )}
 
         {/* Error display */}
-        {error && (
+        {(error || packetError?.message) && (
           <div className="ps-(--timeline-common-text-padding)">
             <Text text03 mainUiMuted>
-              {error.message}
+              {error?.message || packetError?.message}
             </Text>
           </div>
         )}
@@ -226,10 +237,9 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
             ))}
           </div>
         )}
-
       </div>
     ),
-    [data, fileIds, error, isRunning, t]
+    [data, fileIds, error, packetError, isRunning, t]
   );
 
   /**
@@ -286,7 +296,7 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
 
   // Any failure — not just an auth failure — gets the error surface, which also
   // renders the error glyph in the step header's right slot.
-  const surface = error ? { surfaceBackground: "error" as const } : {};
+  const surface = failed ? { surfaceBackground: "error" as const } : {};
 
   // An auth failure is terminal and actionable, so it stays open.
   if (error?.is_auth_error) {

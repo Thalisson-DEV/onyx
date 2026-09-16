@@ -230,13 +230,7 @@ const HumanMessage = React.memo(function HumanMessage({
           <div className="flex justify-end">
             {!isMobile && copyEditButton}
             <div className="md:max-w-150">
-              {/* Restrained surface, not a messenger bubble. `radius-08`
-                  uniformly, replacing the asymmetric `rounded-t-16
-                  rounded-es-16` tail that read as a chat app. No border: the
-                  `surface` role already steps off the canvas in both themes
-                  (#f0f0f0 on #fafafa, #404040 on #333333), so an edge would be
-                  redundant. No shadow, no gradient. Width tracks the content
-                  and long text wraps inside the transcript. */}
+              {/* Use a restrained surface with no tail, border, or shadow. */}
               <div
                 className={
                   "max-w-120 md:max-w-150 whitespace-break-spaces break-anywhere rounded-08 bg-surface py-2 px-3"

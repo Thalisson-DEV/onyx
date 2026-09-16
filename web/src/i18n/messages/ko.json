@@ -9769,6 +9769,9 @@
         "failedStatus": {
           "text": "{toolName} 실패 (HTTP {statusCode})"
         },
+        "failedWithoutStatus": {
+          "text": "{toolName} 실패"
+        },
         "fallbackName": {
           "label": "도구"
         },
@@ -9977,6 +9980,9 @@
         "activity": {
           "duration": {
             "label": "{duration} 동안 실행"
+          },
+          "failed": {
+            "label": "실행 실패"
           },
           "interrupted": {
             "label": "실행이 중단되었습니다"

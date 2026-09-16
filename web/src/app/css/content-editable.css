@@ -1,3 +1,44 @@
+/* ==========================================================================
+   TON composer chrome — TON-VIS-004.
+
+   The composer edge is a 1px semantic border plus field-against-canvas surface
+   contrast. It replaces `shadow-box-01`, which used to be the composer's only
+   edge and whose ~14px spread forced layout compensation in three files. The
+   composer is elevation-0: surface and border, no decorative shadow.
+
+   The state ladder mirrors `.opal-input[data-variant="primary"]`, so the main
+   control of the product focuses like every other field in the app. Declaration
+   order matters: hover comes before focus-within, so a focused composer keeps
+   its focus edge while the pointer rests on it.
+
+   `.ton-composer` is the static chrome and is shared by the app, Craft and
+   shared-chat composers. `.ton-composer-interactive` adds the states, and only
+   the two composers a user can type in use it. Motion honours the global
+   reduced-motion floor in `globals.css`.
+   ========================================================================== */
+.ton-composer {
+  background-color: var(--background-neutral-00);
+  border: calc(var(--weight-line-border) * 1px) solid var(--border-01);
+  border-radius: var(--radius-12);
+  transition:
+    border-color var(--duration-instant) var(--easing-standard),
+    box-shadow var(--duration-instant) var(--easing-standard);
+}
+
+.ton-composer-interactive:hover {
+  border-color: var(--border-02);
+}
+
+/* Focus sits on the container, not on the editable. The editable's wrapper is
+   `overflow-hidden` so autosize can measure it, which clips the global
+   `:focus-visible` outline and its 1px offset. The ring is inset, so focus
+   changes colour only: the composer's box never moves and nothing reflows. */
+.ton-composer-interactive:focus-within {
+  border-color: var(--border-05);
+  box-shadow: inset 0 0 0 calc(var(--weight-line-focus) * 1px)
+    var(--background-tint-04);
+}
+
 /* contentEditable placeholder */
 [data-placeholder][data-empty] {
   position: relative;

@@ -609,19 +609,42 @@ const AppInputBar = React.memo(
       }
     }
 
+    // One icon-only button carries three actions, so it needs an accessible
+    // name that follows the action. This mirrors the icon chain below; the
+    // classifying state only swaps in a loader and does not change the action.
+    const sendButtonAriaLabel =
+      chatState !== "input" && message.trim()
+        ? t("appInputBar.sendButton.queueAriaLabel")
+        : chatState === "streaming" || isVoicePlaybackControllable
+          ? t("appInputBar.stopButton.ariaLabel")
+          : t("appInputBar.sendButton.ariaLabel");
+
+    // Toolbar priority, which is what makes narrow screens deterministic:
+    //
+    //   PRIMARY     attachment entry, send/stop — never shrink, never scroll
+    //               out of view at rest.
+    //   SECONDARY   tools, Deep Research / tab reading.
+    //   CONTEXTUAL  the forced-tool chip, which only exists in that state.
+    //
+    // `h-11` stays because the collapse in search mode animates height, and
+    // `auto` is not animatable.
     const chatControls = (
       <div
         {...(isSearchMode ? { inert: true } : {})}
         className={cn(
-          "flex justify-between items-center w-full",
+          "flex justify-between items-center w-full gap-1",
           isSearchMode
             ? "opacity-0 p-0 h-0 overflow-hidden pointer-events-none"
             : "opacity-100 p-1 h-11 pointer-events-auto",
-          "transition-all duration-150"
+          "transition-all duration-fast"
         )}
       >
-        {/* Bottom left controls */}
-        <div className="flex flex-row items-center">
+        {/* Bottom left controls. `min-w-0` lets this group shrink instead of
+            pushing send/stop off a 375px screen, and it scrolls rather than
+            hiding a control. The attachment entry is first, so it stays visible
+            at rest. `-my-1 py-1` cancels out, leaving the scroll box taller
+            than its buttons so it never clips a focus outline. */}
+        <div className="flex flex-row items-center min-w-0 flex-1 overflow-x-auto no-scrollbar -my-1 py-1">
           {/* (+) button - always visible */}
           <FilePickerPopover
             onFileClick={handleFileClick}
@@ -696,7 +719,16 @@ const AppInputBar = React.memo(
               showDeepResearch && (
                 <SelectButton
                   disabled={disabled || isMultiModelActive}
-                  variant="select-light"
+                  // Inactive is quiet: `select-light` rests transparent and
+                  // folds to the icon alone. Active is institutional:
+                  // `select-heavy` adds the restrained `action-selection-01`
+                  // wash under the `theme-primary-04` selection ring that
+                  // VIS-001 gives every selected variant. No glow, and three
+                  // signals carry the state — ring, surface and an unfolded
+                  // label — so it never rests on colour alone.
+                  variant={
+                    deepResearchEnabled ? "select-heavy" : "select-light"
+                  }
                   icon={SvgHourglass}
                   onClick={toggleDeepResearch}
                   state={deepResearchEnabled ? "selected" : "empty"}
@@ -734,8 +766,9 @@ const AppInputBar = React.memo(
           </div>
         </div>
 
-        {/* Bottom right controls */}
-        <div className="flex flex-row items-center gap-1">
+        {/* Bottom right controls. `shrink-0` is what guarantees send/stop stays
+            reachable at 375px, whatever the left group holds. */}
+        <div className="flex flex-row items-center gap-1 shrink-0">
           {showMicButton &&
             (sttEnabled ? (
               <MicrophoneButton
@@ -780,7 +813,12 @@ const AppInputBar = React.memo(
                 ? t("appInputBar.sendButton.processingFilesTooltip")
                 : undefined
             }
+            // This is the composer's send/stop control and the owner of the
+            // stable id: it is always mounted, and the app plus the e2e page
+            // object address it. The search row's inline button is a different
+            // action and carries its own id.
             id="onyx-chat-input-send-button"
+            aria-label={sendButtonAriaLabel}
             icon={
               isClassifying
                 ? SvgSimpleLoader
@@ -826,19 +864,12 @@ const AppInputBar = React.memo(
           <div
             ref={containerRef}
             id="onyx-chat-input"
-            className={cn(
-              "relative w-full flex flex-col shadow-box-01 bg-background-neutral-00 rounded-16"
-              // # Note (from @raunakab):
-              //
-              // `shadow-box-01` extends ~14px below the element (2px offset + 12px blur).
-              // Because the content area in `Root` (app-layouts.tsx) uses `overflow-auto`,
-              // shadows that exceed the container bounds are clipped.
-              //
-              // The 14px breathing room is now applied externally via animated spacer
-              // divs in `AppPage.tsx` (above and below the AppInputBar) so that the
-              // spacing can transition smoothly when switching between search and chat
-              // modes. See the corresponding note there for details.
-            )}
+            // Surface, border, radius and the hover/focus-within edge come from
+            // `.ton-composer*` in `app/css/content-editable.css`. Keeping the
+            // whole visual contract in one rule lets the Craft and shared-chat
+            // composers reuse it, and lets focus-within layer over hover
+            // deterministically. Only layout lives here.
+            className="ton-composer ton-composer-interactive relative w-full flex flex-col"
           >
             {/* Voice waveform overlay (positioned outside normal flow to avoid resizing input) */}
             {isTTSActuallySpeaking ? (
@@ -926,7 +957,11 @@ const AppInputBar = React.memo(
                       onInput={handleContentEditableInput}
                       onCompositionStart={handleCompositionStart}
                       onCompositionEnd={handleCompositionEnd}
-                      className="p-[2px] w-full h-full outline-hidden bg-transparent whitespace-pre-wrap wrap-break-word overflow-y-auto"
+                      // `outline-hidden` stays: the focus edge belongs to the
+                      // composer container, and this element's wrapper is
+                      // `overflow-hidden` for autosize, which would clip an
+                      // offset outline drawn here.
+                      className="p-0.5 w-full h-full outline-hidden bg-transparent whitespace-pre-wrap wrap-break-word overflow-y-auto"
                       tabIndex={disabled ? -1 : 0}
                       style={{
                         scrollbarWidth: "thin",
@@ -1035,13 +1070,18 @@ const AppInputBar = React.memo(
                 <Section flexDirection="row" width="fit" gap={0}>
                   <Button
                     disabled={!message || isClassifying}
+                    aria-label={t("appInputBar.clearButton.ariaLabel")}
                     icon={SvgX}
                     onClick={() => clearMessage()}
                     prominence="tertiary"
                   />
                   <Button
                     disabled={!message || isClassifying || hasUploadingFiles}
-                    id="onyx-chat-input-send-button"
+                    // A distinct id, not the send button's. `chatControls` stays
+                    // mounted while search mode collapses it, so sharing the id
+                    // put two nodes with the same id in the DOM at once.
+                    id="onyx-chat-input-search-button"
+                    aria-label={t("appInputBar.searchButton.ariaLabel")}
                     icon={isClassifying ? SvgSimpleLoader : SvgSearch}
                     onClick={() => {
                       if (chatState == "streaming") {

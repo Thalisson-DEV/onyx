@@ -9482,6 +9482,9 @@
         "attachFilesButton": {
           "tooltip": "إرفاق ملفات"
         },
+        "clearButton": {
+          "ariaLabel": "مسح البحث"
+        },
         "createPromptItem": {
           "title": "إنشاء مطالبة جديدة"
         },
@@ -9503,8 +9506,16 @@
           "searchPlaceholder": "البحث في المصادر المتصلة",
           "speakingPlaceholder": "Onyx يتحدث..."
         },
+        "searchButton": {
+          "ariaLabel": "بحث"
+        },
         "sendButton": {
-          "processingFilesTooltip": "في انتظار انتهاء معالجة الملفات المرفقة"
+          "ariaLabel": "إرسال الرسالة",
+          "processingFilesTooltip": "في انتظار انتهاء معالجة الملفات المرفقة",
+          "queueAriaLabel": "إضافة إلى قائمة الانتظار"
+        },
+        "stopButton": {
+          "ariaLabel": "إيقاف التوليد"
         },
         "tabReadingButton": {
           "readLabel": "قراءة هذا التبويب",

@@ -691,6 +691,18 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     (showOnboarding || !user?.personalization?.name) &&
     !onboardingDismissed;
 
+  // TON-VIS-004 folded two model-selector placements into one. This gate is the
+  // union of the two it replaced, so the states each used to cover are
+  // unchanged: hidden in search and on the project page, and the new-session row
+  // still waits for a provider before offering a choice. `isWelcomeFocus`
+  // already excludes the search phases, so it carries no `isSearch` term.
+  const modelSelectorVisible =
+    !!activeAgent &&
+    (appPosition.isChat() ||
+      (isWelcomeFocus &&
+        llmManager.hasAnyProvider &&
+        !(state.phase === "idle" && state.appMode === "search")));
+
   const gridStyle = {
     // minmax(0, 1fr) (instead of "1fr") lets the single column shrink to the
     // grid's width. A bare "1fr" is minmax(auto, 1fr), whose auto minimum is
@@ -897,25 +909,13 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                           "max-w-(--app-page-main-content-width)"
                       )}
                     >
+                      {/* Model selection used to sit here as well, with a
+                          different visual treatment. It now has one position,
+                          above the composer. */}
                       <WelcomeMessage
                         agent={activeAgent}
                         isDefaultAgent={isPlainChat}
                       />
-                      {!isSearch &&
-                        !(
-                          state.phase === "idle" && state.appMode === "search"
-                        ) &&
-                        activeAgent &&
-                        llmManager.hasAnyProvider && (
-                          <MultiModelSelector
-                            selectedModels={multiModel.selectedModels}
-                            onAdd={multiModel.addModel}
-                            onRemove={multiModel.removeModel}
-                            onReplace={multiModel.replaceModel}
-                            temperatureManager={llmManager}
-                            reasoningManager={llmManager}
-                          />
-                        )}
                     </Section>
                     <Spacer rem={1.5} />
                   </Fade>
@@ -962,32 +962,11 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       </ShadowDiv>
                     )}
 
-                    {/*
-                      # Note (@raunakab)
-
-                      `shadow-box-01` on AppInputBar extends ~14px below the element
-                      (2px offset + 12px blur). Because the content area in
-                      `RootLayout` (@opal/layouts) uses `overflow-auto`, shadows
-                      that exceed the container bounds are clipped.
-
-                      The animated spacer divs above and below the AppInputBar
-                      provide 14px of breathing room so the shadow renders fully.
-                      They transition between h-0 and h-[14px] depending on whether
-                      the classification is "search" (spacer above) or "chat"
-                      (spacer below).
-
-                      There is a corresponding note inside the Footer in
-                      `AppChrome.tsx` that explains why the Footer removes its
-                      top padding during chat to compensate for this extra space.
-                    */}
                     <div className={cn(onboardingVisible && "shrink-0 pt-6")}>
-                      <div
-                        className={cn(
-                          "transition-all duration-150 ease-in-out overflow-hidden",
-                          isSearch ? "h-[14px]" : "h-0"
-                        )}
-                      />
-                      {appPosition.isChat() && activeAgent && (
+                      {/* The single model-selection position (TON-VIS-004):
+                          contained, directly above the composer, in every state
+                          that offers model choice. */}
+                      {modelSelectorVisible && (
                         <div className="pb-1">
                           <MultiModelSelector
                             selectedModels={multiModel.selectedModels}
@@ -1034,12 +1013,6 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                             onboardingState.currentStep !==
                               OnboardingStep.Complete)
                         }
-                      />
-                      <div
-                        className={cn(
-                          "transition-all duration-150 ease-in-out overflow-hidden",
-                          appPosition.isChat() ? "h-[14px]" : "h-0"
-                        )}
                       />
                     </div>
                   </div>

@@ -9482,6 +9482,9 @@
         "attachFilesButton": {
           "tooltip": "Anexar arquivos"
         },
+        "clearButton": {
+          "ariaLabel": "Limpar a busca"
+        },
         "createPromptItem": {
           "title": "Criar novo prompt"
         },
@@ -9503,8 +9506,16 @@
           "searchPlaceholder": "Pesquisar nas fontes conectadas",
           "speakingPlaceholder": "Onyx está falando..."
         },
+        "searchButton": {
+          "ariaLabel": "Buscar"
+        },
         "sendButton": {
-          "processingFilesTooltip": "Aguardando o processamento dos arquivos anexados"
+          "ariaLabel": "Enviar a mensagem",
+          "processingFilesTooltip": "Aguardando o processamento dos arquivos anexados",
+          "queueAriaLabel": "Colocar mensagem na fila"
+        },
+        "stopButton": {
+          "ariaLabel": "Parar a geração"
         },
         "tabReadingButton": {
           "readLabel": "Ler esta aba",

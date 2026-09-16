@@ -283,9 +283,13 @@ const BaseInputBar = memo(
             />
           )}
           <div
+            // Same border-defined TON edge as the app composer; see
+            // `.ton-composer` in `app/css/content-editable.css`. `rounded-b-none`
+            // is a utility, so it overrides the rule's radius when this composer
+            // docks to a panel below it.
             className={cn(
-              "w-full flex flex-col shadow-box-01 bg-background-neutral-00",
-              noBottomRounding ? "rounded-t-16 rounded-b-none" : "rounded-16"
+              "ton-composer ton-composer-interactive w-full flex flex-col",
+              noBottomRounding && "rounded-b-none"
             )}
           >
             {/* Slot owns its own padding so it can animate (e.g. collapse). */}
@@ -312,8 +316,10 @@ const BaseInputBar = memo(
                 onKeyUp={handleSelectionChange}
                 onMouseUp={handleSelectionChange}
                 onBlur={() => queueNav.setHighlightedIndex(null)}
+                // `outline-hidden` stays: the focus edge belongs to the
+                // composer container, via `.ton-composer-interactive`.
                 className={cn(
-                  "w-full h-full min-h-[44px] outline-hidden bg-transparent",
+                  "w-full h-full min-h-11 outline-hidden bg-transparent",
                   "whitespace-pre-wrap wrap-break-word overscroll-contain",
                   "overflow-y-auto px-3 pb-2 pt-3"
                 )}
@@ -336,7 +342,7 @@ const BaseInputBar = memo(
               />
             </div>
 
-            <div className="flex justify-between items-center w-full p-1 min-h-[40px]">
+            <div className="flex justify-between items-center w-full p-1 min-h-10">
               <div className="flex flex-row items-center gap-2">
                 {bottomLeftSlot}
                 {pasteExpandHintVisible ? (

@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import Text from "@/refresh-components/texts/Text";
 import { Button, OpenButton, SelectButton } from "@opal/components";
+import { Disabled } from "@opal/core";
 import { SvgOpenai } from "@opal/logos";
 import {
   SvgPlusCircle,
@@ -17,36 +18,41 @@ export default function SharedAppInputBar() {
 
   return (
     <div className="relative w-full">
-      <div className="w-full flex flex-col shadow-box-01 bg-background-neutral-00 rounded-16">
-        {/* Textarea area */}
-        <div className="flex flex-row items-center w-full">
-          <Text text03 className="w-full px-3 pt-3 pb-2 select-none">
-            {t("sharedAppInputBar.input.placeholder")}
-          </Text>
-        </div>
-
-        {/* Bottom toolbar */}
-        <div className="flex justify-between items-center w-full p-1 min-h-[40px]">
-          {/* Left side controls */}
-          <div className="flex flex-row items-center">
-            <Button disabled icon={SvgPlusCircle} prominence="tertiary" />
-            <Button disabled icon={SvgSliders} prominence="tertiary" />
-            <SelectButton disabled icon={SvgHourglass} />
+      {/* An inert stand-in for the composer, so a shared transcript keeps the
+          shape of the real thing. `Disabled` is the repository's own disabled
+          treatment: it states the state quietly, keeps the content readable and
+          announces it through `aria-disabled`. It replaced a blurred scrim that
+          obscured the content decoratively while the surface underneath still
+          read as enabled. */}
+      <Disabled disabled>
+        <div className="ton-composer w-full flex flex-col">
+          {/* Textarea area */}
+          <div className="flex flex-row items-center w-full">
+            <Text text03 className="w-full px-3 pt-3 pb-2 select-none">
+              {t("sharedAppInputBar.input.placeholder")}
+            </Text>
           </div>
 
-          {/* Right side controls */}
-          <div className="flex flex-row items-center gap-1">
-            <OpenButton disabled icon={SvgOpenai}>
-              {/* oxlint-disable-next-line i18n/no-raw-jsx-text -- model name, not copy */}
-              GPT-4o
-            </OpenButton>
-            <Button disabled icon={SvgArrowUp} />
+          {/* Bottom toolbar */}
+          <div className="flex justify-between items-center w-full p-1 min-h-10">
+            {/* Left side controls */}
+            <div className="flex flex-row items-center">
+              <Button disabled icon={SvgPlusCircle} prominence="tertiary" />
+              <Button disabled icon={SvgSliders} prominence="tertiary" />
+              <SelectButton disabled icon={SvgHourglass} />
+            </div>
+
+            {/* Right side controls */}
+            <div className="flex flex-row items-center gap-1">
+              <OpenButton disabled icon={SvgOpenai}>
+                {/* oxlint-disable-next-line i18n/no-raw-jsx-text -- model name, not copy */}
+                GPT-4o
+              </OpenButton>
+              <Button disabled icon={SvgArrowUp} />
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Fade overlay */}
-      <div className="absolute inset-0 rounded-16 backdrop-blur-xs bg-background-neutral-00/50" />
+      </Disabled>
 
       {/* CTA button */}
       <div className="absolute inset-0 flex items-center justify-center">

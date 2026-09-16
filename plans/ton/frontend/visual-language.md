@@ -274,8 +274,9 @@ A escala existente é boa e fica (`size.json:286-313`): `radius-02` 2px ·
 
 | Superfície | Hoje | Alvo | Arquivo |
 |---|---|---|---|
-| composer | 16px | 12px | `AppInputBar.tsx:831` |
-| composer Craft | 16px topo | 12px | `BaseInputBar.tsx:283-286` |
+| composer | **[VIS-004] 12px** | feito | `.ton-composer` em `app/css/content-editable.css` |
+| composer Craft | **[VIS-004] 12px** | feito | idem, via `.ton-composer` |
+| composer compartilhado | **[VIS-004] 12px** | feito | idem, via `.ton-composer` |
 | bolha do usuário | 16px assimétrico | 8–12px simétrico | `HumanMessage.tsx:224-226` |
 | cartão de edição | 16px | 12px | `HumanMessage.tsx:51-55` |
 | cartão de especialista | 16px | 8–12px | `web/src/app/css/card.css:1-3` |
@@ -327,7 +328,7 @@ Três níveis, como hoje (`shadow.json`), com raio reduzido:
 
 | Superfície | Hoje | Ação |
 |---|---|---|
-| composer | `shadow-box-01` **é a única aresta** | trocar por borda 1px; **remove o hack de 14px em 3 arquivos** |
+| composer | **[VIS-004] feito** — borda de 1px (`border-01`) sobre superfície `field`, `elevation-0` | os três hacks de 14px saíram junto |
 | cartão de especialista | `hover:shadow-box-00` | remover; usar borda |
 | waveform "speaking" | `shadow-box-01` | removido com o TTS |
 | badge de remover anexo | `shadow-xs` | remover |
@@ -375,11 +376,13 @@ Estes três são defeitos reais encontrados na auditoria, não preferências:
    Correção: hover de item selecionado mantém o sinal de seleção e só intensifica.
 2. **`PRESSED` não existe** nas variantes de sidebar (sem célula `:active`).
    Pressionado é indistinguível de hover.
-3. **`FOCUS_VISIBLE` ausente no composer.** O controle principal do produto não
-   tem tratamento de foco: `outline-hidden` no editável, nada no contêiner.
-   Correção: borda de foco + anel interno, exatamente o padrão que
-   `ton-theme.test.ts:211-233` já prescreve para `border-05` +
-   `background-tint-04`.
+3. **[VIS-004] Foco do composer: resolvido.** Era o achado de a11y mais grave —
+   `outline-hidden` no editável e nada no contêiner. A correção é
+   `.ton-composer-interactive:focus-within`, com borda `border-05` mais anel
+   interno `background-tint-04`, o par que `ton-theme.test.ts:211-233` prescreve.
+   `outline-hidden` **fica** no editável de propósito: o wrapper dele é
+   `overflow-hidden` para o autosize e recortaria o `outline-offset` da fundação
+   global. Medido em 21.00:1 no claro e 19.17:1 no escuro, sem deslocar layout.
 
 ### 7.2 Publicação de estado
 
@@ -713,7 +716,8 @@ Toda recomendação visual precisa preservar ou melhorar:
 
 ### 13.1 A corrigir
 
-Foco do composer · `id` duplicado do botão enviar · menu de projeto no toque ·
+~~Foco do composer~~ **[VIS-004] feito** · ~~`id` duplicado do botão enviar~~
+**[VIS-004] feito** · menu de projeto no toque ·
 `"Open Sidebar"`/`"Close Sidebar"` sem i18n · `aria-label="share-chat-button"` ·
 `"AgentsPage/new-agent-button"` como `aria-label` · `role="button"` envolvendo
 `Button` · reset global de reduced-motion · `role="status"` nos skeletons ·

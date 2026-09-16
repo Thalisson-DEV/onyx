@@ -9482,6 +9482,9 @@
         "attachFilesButton": {
           "tooltip": "附加文件"
         },
+        "clearButton": {
+          "ariaLabel": "清除搜索"
+        },
         "createPromptItem": {
           "title": "创建新提示词"
         },
@@ -9503,8 +9506,16 @@
           "searchPlaceholder": "搜索已连接的来源",
           "speakingPlaceholder": "Onyx 正在朗读..."
         },
+        "searchButton": {
+          "ariaLabel": "搜索"
+        },
         "sendButton": {
-          "processingFilesTooltip": "正在等待附件处理完成"
+          "ariaLabel": "发送消息",
+          "processingFilesTooltip": "正在等待附件处理完成",
+          "queueAriaLabel": "将消息加入队列"
+        },
+        "stopButton": {
+          "ariaLabel": "停止生成"
         },
         "tabReadingButton": {
           "readLabel": "读取此标签页",

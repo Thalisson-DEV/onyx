@@ -4,13 +4,14 @@ Sequenciamento derivado de
 [`000-de-onyx-visual-audit.md`](./000-de-onyx-visual-audit.md). A linguagem alvo
 está em [`visual-language.md`](./visual-language.md).
 
-**Estado: VIS-001 DONE. VIS-002 a VIS-010 não implementadas.** Após VIS-001,
-**PARAR**; VIS-004 não começa automaticamente.
+**Estado: VIS-001 e VIS-004 DONE. As demais não implementadas.** Após VIS-004,
+**PARAR**; VIS-002 e VIS-005 não começam automaticamente.
 
 | Fatia | Estado |
 |---|---|
 | VIS-001 | **DONE** — [`001-visual-foundations.md`](./001-visual-foundations.md) |
-| VIS-002 … VIS-010 | não iniciadas |
+| VIS-004 | **DONE** — [`004-composer.md`](./004-composer.md) |
+| VIS-002, VIS-003, VIS-005 … VIS-010 | não iniciadas |
 
 ---
 
@@ -310,9 +311,19 @@ confirmando que nenhuma métrica é inventada · `/nrf` verificado.
 
 ---
 
-## VIS-004 — Composer
+## VIS-004 — Composer — **DONE**
 
-**Nível máximo: 3.**
+**Nível máximo: 3.** Resultado, decisões e evidência de estilo computado em
+[`004-composer.md`](./004-composer.md).
+
+Entregue: aresta por borda (`border-01` → `border-02` no hover → `border-05` mais
+anel `background-tint-04` no foco), `radius-12`, `elevation-0`, `focus-within` no
+contêiner, barra com prioridade PRIMARY/SECONDARY/CONTEXTUAL e overflow por
+rolagem, Deep Research institucional sem glow, posição única do seletor de modelo,
+`id` de envio único, e estado desabilitado sem vidro. Os três hacks de sombra
+saíram. Playwright de aplicação ficou **deferido** por conflito de runtime
+compartilhado; a validação visual foi feita em Chromium isolado sobre o CSS do
+build. Detalhes em `004-composer.md` §24.
 
 ### Pré-requisitos
 VIS-001.

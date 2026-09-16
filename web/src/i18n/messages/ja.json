@@ -9482,6 +9482,9 @@
         "attachFilesButton": {
           "tooltip": "ファイルを添付"
         },
+        "clearButton": {
+          "ariaLabel": "検索をクリア"
+        },
         "createPromptItem": {
           "title": "新しいプロンプトを作成"
         },
@@ -9503,8 +9506,16 @@
           "searchPlaceholder": "接続済みのソースを検索",
           "speakingPlaceholder": "Onyx が話しています..."
         },
+        "searchButton": {
+          "ariaLabel": "検索"
+        },
         "sendButton": {
-          "processingFilesTooltip": "添付ファイルの処理が完了するのを待っています"
+          "ariaLabel": "メッセージを送信",
+          "processingFilesTooltip": "添付ファイルの処理が完了するのを待っています",
+          "queueAriaLabel": "メッセージをキューに追加"
+        },
+        "stopButton": {
+          "ariaLabel": "生成を停止"
         },
         "tabReadingButton": {
           "readLabel": "このタブを読み取る",

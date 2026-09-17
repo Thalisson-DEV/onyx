@@ -135,7 +135,7 @@ function ChatDropOverlay({ active }: { active: boolean }) {
       className={cn(
         "pointer-events-none absolute inset-0 z-20",
         "flex items-center justify-center",
-        "bg-mask-02 motion-safe:animate-in motion-safe:fade-in-0"
+        "bg-mask-02 motion-safe:animate-in motion-safe:fade-in-0",
       )}
     >
       <div className="absolute inset-2 rounded-12 border border-dashed border-border-selected" />
@@ -174,6 +174,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   // });
 
   const t = useTranslations("chat.app");
+  const centralHomeT = useTranslations("chat.welcome.home");
   const router = useRouter();
   const appPosition = useAppPosition();
   const { isMobile } = useScreenSize();
@@ -264,7 +265,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const llmManager = useLlmManager(
     currentChatSession ?? undefined,
-    activeAgent
+    activeAgent,
   );
 
   const {
@@ -287,7 +288,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     if (lastFailedFiles && lastFailedFiles.length > 0) {
       const names = lastFailedFiles.map((f) => f.name).join(", ");
       toast.error(
-        t("failedFiles.toast", { count: lastFailedFiles.length, names })
+        t("failedFiles.toast", { count: lastFailedFiles.length, names }),
       );
       clearLastFailedFiles();
     }
@@ -322,7 +323,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const submitOnLoadPerformed = useRef<boolean>(false);
 
   const [selectedDocuments, setSelectedDocuments] = useState<OnyxDocument[]>(
-    []
+    [],
   );
 
   // Access chat state directly from the store
@@ -330,7 +331,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const isReady = useIsReady();
   const documentSidebarVisible = useDocumentSidebarVisible();
   const updateCurrentDocumentSidebarVisible = useChatSessionStore(
-    (state) => state.updateCurrentDocumentSidebarVisible
+    (state) => state.updateCurrentDocumentSidebarVisible,
   );
   const messageHistory = useCurrentMessageHistory();
   const messageTree = useCurrentMessageTree();
@@ -339,7 +340,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   // even an empty one: submitting would reuse it with its pinned mode.
   useEffect(() => {
     setIncognitoLocked(
-      messageHistory.length > 0 || currentChatSessionId !== null
+      messageHistory.length > 0 || currentChatSessionId !== null,
     );
   }, [messageHistory.length, currentChatSessionId, setIncognitoLocked]);
 
@@ -358,7 +359,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     void endIncognitoSession(previous).then((tornDown) => {
       if (!tornDown) {
         console.error(
-          `Incognito teardown failed for ${previous}; leaving it to the server sweep`
+          `Incognito teardown failed for ${previous}; leaving it to the server sweep`,
         );
       }
     });
@@ -593,7 +594,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       showOnboarding,
       onboardingDismissed,
       finishOnboarding,
-    ]
+    ],
   );
   const { submit: submitQuery, state, setAppMode } = useQueryController();
 
@@ -621,7 +622,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const handleSearchDocumentClick = useCallback(
     (doc: MinimalOnyxDocument) => setPresentingDocument(doc),
-    []
+    [],
   );
 
   const handleAppInputBarSubmit = useCallback(
@@ -673,7 +674,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       finishOnboarding,
       multiModel.isMultiModelActive,
       multiModel.selectedModels,
-    ]
+    ],
   );
 
   // Memoized callbacks for DocumentsSidebar
@@ -722,6 +723,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const hasAgentStarterMessages =
     (activeAgent?.starter_messages?.length ?? 0) > 0;
+  const hasHomeSuggestions = isPlainChat || hasAgentStarterMessages;
 
   const isWelcomeFocus =
     (appPosition.isNewSession() || appPosition.isAgent()) &&
@@ -760,7 +762,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
           ? "1fr auto 0fr"
           : appPosition.isProject()
             ? "auto auto 1fr"
-            : "1fr auto 1fr",
+            : "minmax(0, 4fr) auto minmax(0, 5fr)",
   };
 
   if (!isReady) return <OnyxInitializingLoader />;
@@ -810,7 +812,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
             <div
               className={cn(
                 "overflow-hidden transition-all duration-300 ease-in-out h-full",
-                documentSidebarVisible ? "w-100" : "w-0"
+                documentSidebarVisible ? "w-100" : "w-0",
               )}
             >
               <DocumentsSidebar
@@ -948,7 +950,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       alignItems="end"
                       className={cn(
                         !fullWidthActive &&
-                          "max-w-(--app-page-main-content-width)"
+                          "max-w-(--app-page-main-content-width)",
                       )}
                     >
                       {/* Model selection used to sit here as well, with a
@@ -968,7 +970,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                   className={cn(
                     "row-start-2 flex flex-col items-center px-2 sm:px-4",
                     onboardingVisible && "min-h-0",
-                    sessionFetchError && "hidden"
+                    sessionFetchError && "hidden",
                   )}
                 >
                   <div
@@ -976,7 +978,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       "relative w-full flex flex-col",
                       onboardingVisible && "min-h-0",
                       !fullWidthActive &&
-                        "md:max-w-(--app-page-main-content-width)"
+                        "md:max-w-(--app-page-main-content-width)",
                     )}
                   >
                     {/* Scroll to bottom button - positioned absolutely above AppInputBar */}
@@ -1021,6 +1023,11 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                         </div>
                       )}
                       <AppInputBar
+                        placeholder={
+                          isPlainChat
+                            ? centralHomeT("inputPlaceholder")
+                            : undefined
+                        }
                         toolConfiguration={toolConfiguration}
                         ref={chatInputBarRef}
                         deepResearchEnabled={
@@ -1061,7 +1068,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                 </div>
 
                 {/* ── Bottom: SearchResults + SourceFilter / Suggestions / ProjectChatList ── */}
-                <div className="row-start-3 min-h-0 overflow-hidden flex flex-col items-center w-full px-2 sm:px-4">
+                <div className="row-start-3 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col items-center w-full px-2 sm:px-4">
                   {/* Agent description below input */}
                   {(appPosition.isNewSession() || appPosition.isAgent()) &&
                     !isPlainChat && (
@@ -1082,12 +1089,16 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                   <Fade
                     show={
                       (appPosition.isNewSession() || appPosition.isAgent()) &&
-                      hasAgentStarterMessages
+                      hasHomeSuggestions
                     }
                     className="h-full flex-1 w-full max-w-(--app-page-main-content-width)"
                   >
                     <Spacer rem={0.5} />
-                    <Suggestions onSubmit={onSubmit} />
+                    <Suggestions
+                      onSubmit={onSubmit}
+                      isDefaultAgent={isPlainChat}
+                      currentMessageFiles={currentMessageFiles}
+                    />
                   </Fade>
 
                   {/* SearchUI */}

@@ -80,6 +80,7 @@ export interface AppInputBarHandle {
 
 export interface AppInputBarProps {
   initialMessage?: string;
+  placeholder?: string;
   stopGenerating: () => void;
   onSubmit: (message: string) => void;
   llmManager: LlmManager;
@@ -111,6 +112,7 @@ export interface AppInputBarProps {
 const AppInputBar = React.memo(
   ({
     initialMessage = "",
+    placeholder,
     stopGenerating,
     onSubmit,
     chatState,
@@ -137,16 +139,16 @@ const AppInputBar = React.memo(
     const [isMuted, setIsMuted] = useState(false);
     const [audioLevel, setAudioLevel] = useState(0);
     const stopRecordingRef = useRef<(() => Promise<string | null>) | null>(
-      null
+      null,
     );
     const setMutedRef = useRef<((muted: boolean) => void) | null>(null);
     const queuedMessages = useCurrentQueuedMessages();
     const latestMessageRenderComplete = useCurrentLatestMessageRenderComplete();
     const enqueueCurrentMessage = useChatSessionStore(
-      (state) => state.enqueueCurrentMessage
+      (state) => state.enqueueCurrentMessage,
     );
     const removeCurrentQueuedMessage = useChatSessionStore(
-      (state) => state.removeCurrentQueuedMessage
+      (state) => state.removeCurrentQueuedMessage,
     );
     const { user, isAdmin } = useUser();
     const isAutoSending = useRef(false);
@@ -223,7 +225,7 @@ const AppInputBar = React.memo(
             ? t("appInputBar.input.speakingPlaceholder")
             : isSearchMode
               ? t("appInputBar.input.searchPlaceholder")
-              : t("appInputBar.input.placeholder");
+              : (placeholder ?? t("appInputBar.input.placeholder"));
 
     // Keyed by chat session id, or "new" until the session is created.
     const chatSessionId = appPosition.chat();
@@ -293,7 +295,7 @@ const AppInputBar = React.memo(
         stopTTS();
         onSubmit(text);
       },
-      [stopTTS, onSubmit]
+      [stopTTS, onSubmit],
     );
     const submitMessage = useCallback(
       (text: string) => {
@@ -303,7 +305,7 @@ const AppInputBar = React.memo(
         handleSubmit(text);
         clearChatDraft();
       },
-      [handleSubmit, clearChatDraft]
+      [handleSubmit, clearChatDraft],
     );
 
     // Expose reset and focus methods to parent via ref
@@ -347,13 +349,13 @@ const AppInputBar = React.memo(
 
     const currentIndexingFiles = useMemo(() => {
       return currentMessageFiles.filter(
-        (file) => file.status === UserFileStatus.PROCESSING
+        (file) => file.status === UserFileStatus.PROCESSING,
       );
     }, [currentMessageFiles]);
 
     const hasUploadingFiles = useMemo(() => {
       return currentMessageFiles.some(
-        (file) => file.status === UserFileStatus.UPLOADING
+        (file) => file.status === UserFileStatus.UPLOADING,
       );
     }, [currentMessageFiles]);
 
@@ -372,7 +374,7 @@ const AppInputBar = React.memo(
 
         setPresentingDocument(documentForViewer);
       },
-      [setPresentingDocument]
+      [setPresentingDocument],
     );
 
     const handleUploadChange = useCallback(
@@ -382,7 +384,7 @@ const AppInputBar = React.memo(
         handleFileUpload(Array.from(files));
         e.target.value = "";
       },
-      [handleFileUpload]
+      [handleFileUpload],
     );
 
     const combinedSettingsData = useSettings();
@@ -456,7 +458,7 @@ const AppInputBar = React.memo(
       (fileId: string) => {
         setCurrentMessageFiles((prev) => prev.filter((f) => f.id !== fileId));
       },
-      [setCurrentMessageFiles]
+      [setCurrentMessageFiles],
     );
 
     const { activePromptShortcuts } = usePromptShortcuts();
@@ -489,7 +491,7 @@ const AppInputBar = React.memo(
     // Memoize sorted prompts to avoid re-sorting on every render
     const sortedFilteredPrompts = useMemo(
       () => [...filteredPrompts].sort((a, b) => a.id - b.id),
-      [filteredPrompts]
+      [filteredPrompts],
     );
 
     // Reset tabbingIconIndex when filtered prompts change to avoid out-of-bounds
@@ -508,7 +510,7 @@ const AppInputBar = React.memo(
           setPromptFilterQuery("");
         }
       },
-      [handleInput, hidePrompts, setPromptFilterQuery]
+      [handleInput, hidePrompts, setPromptFilterQuery],
     );
 
     // Determine if we should hide processing state based on context limits
@@ -517,14 +519,14 @@ const AppInputBar = React.memo(
         // token_count is null until indexing finishes; don't hide the
         // processing indicator while a file's size is still unknown.
         const allTokenCountsKnown = currentIndexingFiles.every(
-          (file) => file.token_count !== null
+          (file) => file.token_count !== null,
         );
         if (!allTokenCountsKnown) {
           return false;
         }
         const currentFilesTokenTotal = currentMessageFiles.reduce(
           (acc, file) => acc + (file.token_count || 0),
-          0
+          0,
         );
         const totalTokens =
           (currentSessionFileTokenCount || 0) + currentFilesTokenTotal;
@@ -573,7 +575,7 @@ const AppInputBar = React.memo(
     ]);
 
     function handleKeyDownForPromptShortcuts(
-      e: React.KeyboardEvent<HTMLDivElement>
+      e: React.KeyboardEvent<HTMLDivElement>,
     ) {
       if (!user?.preferences?.shortcut_enabled || !showPrompts) return;
 
@@ -596,12 +598,12 @@ const AppInputBar = React.memo(
         // Tab: cycle forward
         e.preventDefault();
         setTabbingIconIndex((prev) =>
-          Math.min(prev + 1, sortedFilteredPrompts.length)
+          Math.min(prev + 1, sortedFilteredPrompts.length),
         );
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
         setTabbingIconIndex((prev) =>
-          Math.min(prev + 1, sortedFilteredPrompts.length)
+          Math.min(prev + 1, sortedFilteredPrompts.length),
         );
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
@@ -636,7 +638,7 @@ const AppInputBar = React.memo(
           isSearchMode
             ? "opacity-0 p-0 h-0 overflow-hidden pointer-events-none"
             : "opacity-100 p-1 h-11 pointer-events-auto",
-          "transition-all duration-fast"
+          "transition-all duration-fast",
         )}
       >
         {/* Bottom left controls. `min-w-0` lets this group shrink instead of
@@ -652,7 +654,7 @@ const AppInputBar = React.memo(
               // Check if file with same ID already exists
               if (
                 !currentMessageFiles.some(
-                  (existingFile) => existingFile.file_id === file.file_id
+                  (existingFile) => existingFile.file_id === file.file_id,
                 )
               ) {
                 setCurrentMessageFiles((prev) => [...prev, file]);
@@ -661,8 +663,8 @@ const AppInputBar = React.memo(
             onUnpickRecent={(file: ProjectFile) => {
               setCurrentMessageFiles((prev) =>
                 prev.filter(
-                  (existingFile) => existingFile.file_id !== file.file_id
-                )
+                  (existingFile) => existingFile.file_id !== file.file_id,
+                ),
               );
             }}
             handleUploadChange={handleUploadChange}
@@ -683,7 +685,7 @@ const AppInputBar = React.memo(
             data-testid="actions-container"
             className={cn(
               "flex flex-row items-center",
-              controlsLoading && "invisible"
+              controlsLoading && "invisible",
             )}
           >
             {activeAgent && (
@@ -747,7 +749,7 @@ const AppInputBar = React.memo(
             {(() => {
               if (!activeAgent || forcedToolId === null) return null;
               const tool = activeAgent.tools.find(
-                (tool) => tool.id === forcedToolId
+                (tool) => tool.id === forcedToolId,
               );
               if (!tool) return null;
               return (
@@ -905,7 +907,7 @@ const AppInputBar = React.memo(
                 "transition-all duration-150",
                 showFiles
                   ? "opacity-100 p-1"
-                  : "opacity-0 p-0 overflow-hidden pointer-events-none"
+                  : "opacity-0 p-0 overflow-hidden pointer-events-none",
               )}
             >
               <div ref={filesContentRef} className="flex flex-wrap gap-1">
@@ -969,7 +971,7 @@ const AppInputBar = React.memo(
                       }}
                       aria-multiline={true}
                       aria-disabled={disabled}
-                      aria-placeholder={t("appInputBar.input.placeholder")}
+                      aria-placeholder={activePlaceholder}
                       data-placeholder={activePlaceholder}
                       data-empty={!message ? "" : undefined}
                       onKeyDown={(event) => {
@@ -1144,7 +1146,7 @@ const AppInputBar = React.memo(
         )}
       </>
     );
-  }
+  },
 );
 AppInputBar.displayName = "AppInputBar";
 

@@ -4,8 +4,8 @@ Sequenciamento derivado de
 [`000-de-onyx-visual-audit.md`](./000-de-onyx-visual-audit.md). A linguagem alvo
 está em [`visual-language.md`](./visual-language.md).
 
-**Estado: VIS-001, VIS-004, VIS-002, VIS-005 e VIS-006 DONE. As demais não implementadas.**
-Após VIS-006, **PARAR**; VIS-003 não começa automaticamente.
+**Estado: VIS-001, VIS-004, VIS-002, VIS-005 e VIS-006 DONE. VIS-003 está em
+validação de runtime. As demais não foram implementadas.**
 
 | Fatia | Estado |
 |---|---|
@@ -14,7 +14,8 @@ Após VIS-006, **PARAR**; VIS-003 não começa automaticamente.
 | VIS-002 | **DONE** — [`002-shell-navigation.md`](./002-shell-navigation.md) |
 | VIS-005 | **DONE** — [`005-attachments-context.md`](./005-attachments-context.md) |
 | VIS-006 | **DONE** — [`006-messages-streaming-tools.md`](./006-messages-streaming-tools.md) |
-| VIS-003, VIS-007 … VIS-010 | não iniciadas |
+| VIS-003 | **EM VALIDAÇÃO** — [`003-home-new-chat.md`](./003-home-new-chat.md) |
+| VIS-007 … VIS-010 | não iniciadas |
 
 ---
 
@@ -266,7 +267,12 @@ toque: menu de projeto alcançável.
 
 ---
 
-## VIS-003 — Home / nova conversa
+## VIS-003 — Home / nova conversa — **EM VALIDAÇÃO**
+
+Implementação, decisões e gates em
+[`003-home-new-chat.md`](./003-home-new-chat.md). O build local e 419 testes
+passam. A imagem Docker está ativa e saudável. A validação visual pelo usuário
+está pendente. Marcar `DONE` somente após essa validação.
 
 **Nível máximo: 3.**
 

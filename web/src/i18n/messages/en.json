@@ -10872,8 +10872,32 @@
         "helpText": "How can I help?",
         "startText": "Let's get started."
       },
+      "home": {
+        "description": "Upload files or describe the situation you want to investigate.",
+        "inputPlaceholder": "Describe what you want to investigate...",
+        "title": "What needs to be analyzed?"
+      },
       "incognito": {
         "title": "You're incognito"
+      },
+      "quickActions": {
+        "contextLabel": "Start with",
+        "analyzeFile": {
+          "label": "Analyze a file",
+          "prompt": "Analyze the file I will attach and identify the main points."
+        },
+        "analyzeResult": {
+          "label": "Analyze a result",
+          "prompt": "Analyze the result I will provide and explain the main conclusions."
+        },
+        "investigateDifference": {
+          "label": "Investigate a difference",
+          "prompt": "Investigate the difference in the information I will provide and identify possible causes."
+        },
+        "reviewContract": {
+          "label": "Review a contract",
+          "prompt": "Review the contract I will provide and highlight relevant clauses, risks, and questions."
+        }
       }
     }
   },
@@ -12731,6 +12755,9 @@
     }
   },
   "onboarding": {
+    "flow": {
+      "ariaLabel": "Initial setup"
+    },
     "finalStep": {
       "imageGeneration": {
         "button": {

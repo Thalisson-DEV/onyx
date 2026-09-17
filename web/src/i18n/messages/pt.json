@@ -10844,8 +10844,32 @@
         "helpText": "Como posso ajudar?",
         "startText": "Vamos começar."
       },
+      "home": {
+        "description": "Envie arquivos ou descreva a situação que deseja investigar.",
+        "inputPlaceholder": "Descreva o que deseja investigar...",
+        "title": "O que precisa ser analisado?"
+      },
       "incognito": {
         "title": "Você está no modo anônimo"
+      },
+      "quickActions": {
+        "contextLabel": "Começar por",
+        "analyzeFile": {
+          "label": "Analisar arquivo",
+          "prompt": "Analise o arquivo que vou enviar e identifique os pontos principais."
+        },
+        "analyzeResult": {
+          "label": "Analisar resultado",
+          "prompt": "Analise o resultado que vou fornecer e explique as principais conclusões."
+        },
+        "investigateDifference": {
+          "label": "Investigar divergência",
+          "prompt": "Investigue a divergência nas informações que vou fornecer e identifique possíveis causas."
+        },
+        "reviewContract": {
+          "label": "Revisar contrato",
+          "prompt": "Revise o contrato que vou fornecer e destaque cláusulas, riscos e dúvidas relevantes."
+        }
       }
     }
   },
@@ -12703,6 +12727,9 @@
     }
   },
   "onboarding": {
+    "flow": {
+      "ariaLabel": "Configuração inicial"
+    },
     "finalStep": {
       "imageGeneration": {
         "button": {

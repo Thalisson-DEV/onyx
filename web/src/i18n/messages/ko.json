@@ -10842,8 +10842,32 @@
         "helpText": "무엇을 도와드릴까요?",
         "startText": "시작해 볼까요."
       },
+      "home": {
+        "description": "파일을 보내거나 조사할 상황을 설명하세요.",
+        "inputPlaceholder": "조사할 내용을 설명하세요...",
+        "title": "무엇을 분석해야 합니까?"
+      },
       "incognito": {
         "title": "시크릿 모드입니다"
+      },
+      "quickActions": {
+        "contextLabel": "시작하기",
+        "analyzeFile": {
+          "label": "파일 분석",
+          "prompt": "첨부할 파일을 분석하고 주요 내용을 파악해 주세요."
+        },
+        "analyzeResult": {
+          "label": "결과 분석",
+          "prompt": "제공할 결과를 분석하고 주요 결론을 설명해 주세요."
+        },
+        "investigateDifference": {
+          "label": "차이 조사",
+          "prompt": "제공할 정보의 차이를 조사하고 가능한 원인을 파악해 주세요."
+        },
+        "reviewContract": {
+          "label": "계약 검토",
+          "prompt": "제공할 계약을 검토하고 중요한 조항, 위험, 질문을 알려 주세요."
+        }
       }
     }
   },
@@ -12701,6 +12725,9 @@
     }
   },
   "onboarding": {
+    "flow": {
+      "ariaLabel": "초기 설정"
+    },
     "finalStep": {
       "imageGeneration": {
         "button": {

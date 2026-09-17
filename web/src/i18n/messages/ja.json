@@ -10844,8 +10844,32 @@
         "helpText": "何かお手伝いできることはありますか？",
         "startText": "始めましょう。"
       },
+      "home": {
+        "description": "ファイルを送信するか、調査したい状況を説明してください。",
+        "inputPlaceholder": "調査したい内容を説明してください...",
+        "title": "何を分析する必要がありますか？"
+      },
       "incognito": {
         "title": "シークレットモードです"
+      },
+      "quickActions": {
+        "contextLabel": "ここから始める",
+        "analyzeFile": {
+          "label": "ファイルを分析",
+          "prompt": "添付するファイルを分析し、要点を特定してください。"
+        },
+        "analyzeResult": {
+          "label": "結果を分析",
+          "prompt": "提供する結果を分析し、主な結論を説明してください。"
+        },
+        "investigateDifference": {
+          "label": "差異を調査",
+          "prompt": "提供する情報の差異を調査し、考えられる原因を特定してください。"
+        },
+        "reviewContract": {
+          "label": "契約を確認",
+          "prompt": "提供する契約を確認し、重要な条項、リスク、質問を示してください。"
+        }
       }
     }
   },
@@ -12703,6 +12727,9 @@
     }
   },
   "onboarding": {
+    "flow": {
+      "ariaLabel": "初期設定"
+    },
     "finalStep": {
       "imageGeneration": {
         "button": {

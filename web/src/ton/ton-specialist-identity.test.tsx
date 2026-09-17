@@ -379,4 +379,12 @@ describe("TON-VIS-007.1: Specialist Surface Productization Contract", () => {
     expect(editorSrc).toContain("sticky top-0");
     expect(editorSrc).not.toContain("Editar agente");
   });
+
+  test("33. editor avatar is compact and stays inside the identity flow", () => {
+    const editorSource = readSource("src/views/AgentEditorPage.tsx");
+    expect(editorSource).toContain("size={64}");
+    expect(editorSource).toContain("sm:grid-cols-[minmax(12rem,1fr)_auto]");
+    expect(editorSource).not.toContain("h-30 w-30");
+    expect(editorSource).not.toContain('group="inputAvatar"');
+  });
 });

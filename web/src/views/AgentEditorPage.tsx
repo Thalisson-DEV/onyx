@@ -60,6 +60,7 @@ import { ChatFileType } from "@/app/app/interfaces";
 import {
   SvgActions,
   SvgArrowLeft,
+  SvgEdit,
   SvgExpand,
   SvgEye,
   SvgEyeOff,
@@ -77,7 +78,6 @@ import {
 import CustomAgentAvatar, {
   agentAvatarIconMap,
 } from "@/refresh-components/avatars/CustomAgentAvatar";
-import { InputAvatar } from "@opal/components";
 import SquareButton from "@/refresh-components/buttons/SquareButton";
 import { useAgents, useAgentLabels } from "@/lib/agents/hooks";
 import { createAgent, updateAgent } from "@/lib/agents/svc";
@@ -228,24 +228,25 @@ function AgentIconEditor({ existingAgent }: AgentIconEditorProps) {
       />
 
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-        <Popover.Trigger asChild>
-          <button
-            type="button"
-            data-testid="SpecialistAvatarPicker/trigger"
-            aria-label={t("editor.general.avatar.title")}
-            className="group relative flex flex-col items-center justify-center p-2 rounded-lg border border-border-default hover:border-border-hover bg-background-tint-00 hover:bg-background-tint-01 transition-colors focus:outline-none focus:ring-1 focus:ring-border-focused shrink-0"
-          >
-            <CustomAgentAvatar
-              size={52}
-              src={imageSrc}
-              iconName={values.icon_name ?? undefined}
-              name={values.name}
-            />
-            <span className="mt-1.5 text-[11px] font-medium text-text-03 group-hover:text-text-04 transition-colors">
+        <div className="flex min-h-16 items-center gap-3">
+          <CustomAgentAvatar
+            size={64}
+            src={imageSrc}
+            iconName={values.icon_name ?? undefined}
+            name={values.name}
+          />
+          <Popover.Trigger asChild>
+            <Button
+              icon={SvgEdit}
+              prominence="secondary"
+              size="sm"
+              data-testid="SpecialistAvatarPicker/trigger"
+              aria-label={t("editor.general.avatar.title")}
+            >
               {t("editor.avatar.edit.label")}
-            </span>
-          </button>
-        </Popover.Trigger>
+            </Button>
+          </Popover.Trigger>
+        </div>
         <Popover.Content>
           <div className="w-64 p-2.5 bg-background-tint-00 border border-border-default rounded-lg shadow-box-01 flex flex-col gap-2">
             <LineItemButton
@@ -1456,43 +1457,40 @@ export default function AgentEditorPage({
 
                       <div className="flex flex-col gap-8 w-full max-w-4xl mx-auto">
                         {/* IDENTIDADE */}
-                        <div className="flex flex-col gap-3">
+                        <div className="flex flex-col gap-4">
                           <EditorSectionHeader
                             title={t("editor.sections.identity")}
                           />
-                          <div className="flex flex-col md:flex-row gap-5 items-start">
-                            <div className="flex flex-col items-start gap-1.5 shrink-0">
-                              <label className="text-xs font-medium text-text-03">
-                                {t("editor.general.avatar.title")}
-                              </label>
+                          <div className="grid w-full grid-cols-1 items-end gap-4 sm:grid-cols-[minmax(12rem,1fr)_auto]">
+                            <InputVertical
+                              withLabel="name"
+                              title={t("editor.general.name.title")}
+                            >
+                              <InputTypeInField
+                                name="name"
+                                placeholder={t("editor.general.name.placeholder")}
+                              />
+                            </InputVertical>
+
+                            <InputVertical
+                              title={t("editor.general.avatar.title")}
+                            >
                               <AgentIconEditor existingAgent={existingAgent} />
-                            </div>
-
-                            <div className="flex-1 w-full flex flex-col gap-4">
-                              <InputVertical
-                                withLabel="name"
-                                title={t("editor.general.name.title")}
-                              >
-                                <InputTypeInField
-                                  name="name"
-                                  placeholder={t("editor.general.name.placeholder")}
-                                />
-                              </InputVertical>
-
-                              <InputVertical
-                                withLabel="description"
-                                title={t("editor.general.descriptionField.title")}
-                                suffix={t("editor.suffix.optional")}
-                              >
-                                <InputTextAreaField
-                                  name="description"
-                                  placeholder={t(
-                                    "editor.general.descriptionField.placeholder"
-                                  )}
-                                />
-                              </InputVertical>
-                            </div>
+                            </InputVertical>
                           </div>
+
+                          <InputVertical
+                            withLabel="description"
+                            title={t("editor.general.descriptionField.title")}
+                            suffix={t("editor.suffix.optional")}
+                          >
+                            <InputTextAreaField
+                              name="description"
+                              placeholder={t(
+                                "editor.general.descriptionField.placeholder"
+                              )}
+                            />
+                          </InputVertical>
                         </div>
 
                         {/* COMPORTAMENTO */}

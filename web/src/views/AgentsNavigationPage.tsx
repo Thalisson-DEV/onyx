@@ -13,7 +13,8 @@ import { MinimalAgent } from "@/lib/agents/types";
 import Text from "@/refresh-components/texts/Text";
 import { IllustrationContent, SettingsLayouts } from "@opal/layouts";
 import TextSeparator from "@/refresh-components/TextSeparator";
-import { Button, InputTypeIn, Tabs } from "@opal/components";
+import { Button, InputTypeIn } from "@opal/components";
+import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { SvgPlus } from "@opal/icons";
 import useOnMount from "@/hooks/useOnMount";
 import { useAgentsFilters } from "@/sections/agents/AgentsFilters";
@@ -164,26 +165,47 @@ export default function AgentsNavigationPage() {
         </div>
 
         {/* Quiet Secondary Filter Row: Tabs (Todos / Seus) + Subordinate Filters */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-0.5">
-          <div className="w-auto">
-            <Tabs
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between pt-1">
+          <div className="w-full sm:w-auto">
+            <TabsPrimitive.Root
               value={activeTab}
               // SAFETY: value matches one of the declared trigger values
-              onValueChange={(value) => setActiveTab(value as "all" | "your")}
-              variant="underline"
+              onValueChange={(value) => {
+                if (value === "all" || value === "your") {
+                  setActiveTab(value);
+                }
+              }}
             >
-              <Tabs.List>
-                <Tabs.Trigger value="all">
-                  {t("navigation.tabs.all.label")}
-                </Tabs.Trigger>
-                <Tabs.Trigger value="your">
-                  {t("navigation.tabs.your.label")}
-                </Tabs.Trigger>
-              </Tabs.List>
-            </Tabs>
+              <TabsPrimitive.List
+                aria-label={t("navigation.tabs.all.label")}
+                className="flex items-center gap-6 bg-transparent border-none p-0"
+              >
+                <TabsPrimitive.Trigger
+                  value="all"
+                  className="group relative pb-2 text-sm transition-colors cursor-pointer bg-transparent border-none p-0 select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focused rounded-sm data-[state=active]:font-semibold data-[state=active]:text-text-04 data-[state=inactive]:font-normal data-[state=inactive]:text-text-03 hover:data-[state=inactive]:text-text-04"
+                >
+                  <span>{t("navigation.tabs.all.label")}</span>
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-0 bottom-0 h-[2px] bg-text-04 transition-all opacity-0 group-data-[state=active]:opacity-100"
+                  />
+                </TabsPrimitive.Trigger>
+
+                <TabsPrimitive.Trigger
+                  value="your"
+                  className="group relative pb-2 text-sm transition-colors cursor-pointer bg-transparent border-none p-0 select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focused rounded-sm data-[state=active]:font-semibold data-[state=active]:text-text-04 data-[state=inactive]:font-normal data-[state=inactive]:text-text-03 hover:data-[state=inactive]:text-text-04"
+                >
+                  <span>{t("navigation.tabs.your.label")}</span>
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-0 bottom-0 h-[2px] bg-text-04 transition-all opacity-0 group-data-[state=active]:opacity-100"
+                  />
+                </TabsPrimitive.Trigger>
+              </TabsPrimitive.List>
+            </TabsPrimitive.Root>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end pb-0.5">
             {filterBar}
           </div>
         </div>

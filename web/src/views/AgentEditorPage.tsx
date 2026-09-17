@@ -59,6 +59,7 @@ import { ProjectFile, UserFileStatus } from "@/lib/projects/types";
 import { ChatFileType } from "@/app/app/interfaces";
 import {
   SvgActions,
+  SvgArrowLeft,
   SvgExpand,
   SvgEye,
   SvgEyeOff,
@@ -228,64 +229,84 @@ function AgentIconEditor({ existingAgent }: AgentIconEditorProps) {
 
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
         <Popover.Trigger asChild>
-          <Hoverable.Root group="inputAvatar" width="fit">
-            <InputAvatar className="relative flex flex-col items-center justify-center h-30 w-30">
-              {/* We take the `InputAvatar`'s height/width (in REM) and multiply it by 16 (the REM -> px conversion factor). */}
-              <CustomAgentAvatar
-                size={imageSrc ? 7.5 * 16 : 40}
-                src={imageSrc}
-                iconName={values.icon_name ?? undefined}
-                name={values.name}
-              />
-              {/* TODO(@raunakab): migrate to opal Button once className/iconClassName is resolved */}
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 mb-2">
-                <Hoverable.Item group="inputAvatar" variant="appear-on-hover">
-                  <Button prominence="secondary" size="md">
-                    {t("editor.avatar.edit.label")}
-                  </Button>
-                </Hoverable.Item>
-              </div>
-            </InputAvatar>
-          </Hoverable.Root>
+          <button
+            type="button"
+            data-testid="SpecialistAvatarPicker/trigger"
+            aria-label={t("editor.general.avatar.title")}
+            className="group relative flex flex-col items-center justify-center p-2 rounded-lg border border-border-default hover:border-border-hover bg-background-tint-00 hover:bg-background-tint-01 transition-colors focus:outline-none focus:ring-1 focus:ring-border-focused shrink-0"
+          >
+            <CustomAgentAvatar
+              size={52}
+              src={imageSrc}
+              iconName={values.icon_name ?? undefined}
+              name={values.name}
+            />
+            <span className="mt-1.5 text-[11px] font-medium text-text-03 group-hover:text-text-04 transition-colors">
+              {t("editor.avatar.edit.label")}
+            </span>
+          </button>
         </Popover.Trigger>
         <Popover.Content>
-          <PopoverMenu>
-            {[
-              <LineItemButton
-                sizePreset="main-ui"
-                rounding={2}
-                key="upload-image"
-                icon={SvgImage}
-                onClick={() => fileInputRef.current?.click()}
-                selectVariant="select-heavy"
-                title={t("editor.avatar.uploadImage.label")}
-              />,
-              null,
-              <div key="icon-grid" className="grid grid-cols-4 gap-1">
+          <div className="w-64 p-2.5 bg-background-tint-00 border border-border-default rounded-lg shadow-box-01 flex flex-col gap-2">
+            <LineItemButton
+              sizePreset="main-ui"
+              rounding={2}
+              key="upload-image"
+              icon={SvgImage}
+              onClick={() => {
+                setPopoverOpen(false);
+                fileInputRef.current?.click();
+              }}
+              selectVariant="select-heavy"
+              title={t("editor.avatar.uploadImage.label")}
+            />
+            <div className="h-px bg-border-default/50 my-0.5" />
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-text-02 px-1">
+              {t("editor.general.avatar.title")}
+            </div>
+            <div className="grid grid-cols-5 gap-1.5 p-1 max-h-56 overflow-y-auto">
+              <SquareButton
+                key="default-icon"
+                icon={() => (
+                  <CustomAgentAvatar name={values.name} size={26} />
+                )}
+                onClick={() => handleIconClick(null)}
+                transient={!imageSrc && values.icon_name === null}
+              />
+              {Object.keys(agentAvatarIconMap).map((iconName) => (
                 <SquareButton
-                  key="default-icon"
+                  key={iconName}
+                  onClick={() => handleIconClick(iconName)}
                   icon={() => (
-                    <CustomAgentAvatar name={values.name} size={30} />
+                    <CustomAgentAvatar iconName={iconName} size={26} />
                   )}
-                  onClick={() => handleIconClick(null)}
-                  transient={!imageSrc && values.icon_name === null}
+                  transient={values.icon_name === iconName}
                 />
-                {Object.keys(agentAvatarIconMap).map((iconName) => (
-                  <SquareButton
-                    key={iconName}
-                    onClick={() => handleIconClick(iconName)}
-                    icon={() => (
-                      <CustomAgentAvatar iconName={iconName} size={30} />
-                    )}
-                    transient={values.icon_name === iconName}
-                  />
-                ))}
-              </div>,
-            ]}
-          </PopoverMenu>
+              ))}
+            </div>
+          </div>
         </Popover.Content>
       </Popover>
     </>
+  );
+}
+
+function EditorSectionHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5 pt-2 pb-1">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-text-03">
+        {title}
+      </h2>
+      {description && (
+        <p className="text-xs text-text-02 leading-relaxed">{description}</p>
+      )}
+    </div>
   );
 }
 
@@ -1362,56 +1383,66 @@ export default function AgentEditorPage({
                 </deleteAgentModal.Provider>
 
                 <Form className="h-full w-full">
-                  <SettingsLayouts.Root>
-                    <SettingsLayouts.Header
-                      icon={SvgManageAgent}
-                      title={
-                        existingAgent
-                          ? t("editor.header.editTitle")
-                          : t("editor.header.createTitle")
-                      }
-                      rightChildren={
-                        <div className="flex gap-2">
-                          <Button
-                            prominence="secondary"
+                  <SettingsLayouts.Root width="md">
+                    {/* Operational TON sticky header */}
+                    <div className="sticky top-0 z-settings-header bg-background-tint-01/95 backdrop-blur-sm border-b border-border-default/40 py-4 px-4 sm:px-6">
+                      <div className="flex flex-col gap-2.5 max-w-4xl mx-auto w-full">
+                        <div>
+                          <button
                             type="button"
-                            onClick={() => router.back()}
+                            onClick={() => router.push("/app/agents")}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium text-text-03 hover:text-text-04 transition-colors"
                           >
-                            {t("editor.header.cancel.label")}
-                          </Button>
-                          <Tooltip
-                            tooltip={
-                              isSubmitting
-                                ? t("editor.saveTooltip.saving")
-                                : !isValid
-                                  ? t("editor.saveTooltip.fixErrors")
-                                  : !dirty
-                                    ? t("editor.saveTooltip.noChanges")
-                                    : hasUploadingFiles
-                                      ? t("editor.saveTooltip.uploading")
-                                      : undefined
-                            }
-                            side="bottom"
-                          >
-                            <Button
-                              disabled={
-                                isSubmitting ||
-                                !isValid ||
-                                !dirty ||
-                                hasUploadingFiles
-                              }
-                              type="submit"
-                            >
-                              {existingAgent
-                                ? t("editor.header.save.label")
-                                : t("editor.header.create.label")}
-                            </Button>
-                          </Tooltip>
+                            <SvgArrowLeft className="w-3.5 h-3.5" />
+                            {t("navigation.header.title")}
+                          </button>
                         </div>
-                      }
-                      backButton
-                      divider
-                    />
+                        <div className="flex items-center justify-between gap-4">
+                          <h1 className="text-xl sm:text-2xl font-semibold text-text-04">
+                            {existingAgent
+                              ? t("editor.header.editTitle")
+                              : t("editor.header.createTitle")}
+                          </h1>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                              prominence="secondary"
+                              type="button"
+                              onClick={() => router.back()}
+                            >
+                              {t("editor.header.cancel.label")}
+                            </Button>
+                            <Tooltip
+                              tooltip={
+                                isSubmitting
+                                  ? t("editor.saveTooltip.saving")
+                                  : !isValid
+                                    ? t("editor.saveTooltip.fixErrors")
+                                    : !dirty
+                                      ? t("editor.saveTooltip.noChanges")
+                                      : hasUploadingFiles
+                                        ? t("editor.saveTooltip.uploading")
+                                        : undefined
+                              }
+                              side="bottom"
+                            >
+                              <Button
+                                disabled={
+                                  isSubmitting ||
+                                  !isValid ||
+                                  !dirty ||
+                                  hasUploadingFiles
+                                }
+                                type="submit"
+                              >
+                                {existingAgent
+                                  ? t("editor.header.save.label")
+                                  : t("editor.header.create.label")}
+                              </Button>
+                            </Tooltip>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
                     {/* Agent Form Content */}
                     <SettingsLayouts.Body>
@@ -1423,79 +1454,90 @@ export default function AgentEditorPage({
                         />
                       )}
 
-                      <GeneralLayouts.Section
-                        flexDirection="row"
-                        gap={10}
-                        alignItems="start"
-                      >
-                        <GeneralLayouts.Section>
-                          <InputVertical
-                            withLabel="name"
-                            title={t("editor.general.name.title")}
-                          >
-                            <InputTypeInField
-                              name="name"
-                              placeholder={t("editor.general.name.placeholder")}
-                            />
-                          </InputVertical>
+                      <div className="flex flex-col gap-8 w-full max-w-4xl mx-auto">
+                        {/* IDENTIDADE */}
+                        <div className="flex flex-col gap-3">
+                          <EditorSectionHeader
+                            title={t("editor.sections.identity")}
+                          />
+                          <div className="flex flex-col md:flex-row gap-5 items-start">
+                            <div className="flex flex-col items-start gap-1.5 shrink-0">
+                              <label className="text-xs font-medium text-text-03">
+                                {t("editor.general.avatar.title")}
+                              </label>
+                              <AgentIconEditor existingAgent={existingAgent} />
+                            </div>
 
+                            <div className="flex-1 w-full flex flex-col gap-4">
+                              <InputVertical
+                                withLabel="name"
+                                title={t("editor.general.name.title")}
+                              >
+                                <InputTypeInField
+                                  name="name"
+                                  placeholder={t("editor.general.name.placeholder")}
+                                />
+                              </InputVertical>
+
+                              <InputVertical
+                                withLabel="description"
+                                title={t("editor.general.descriptionField.title")}
+                                suffix={t("editor.suffix.optional")}
+                              >
+                                <InputTextAreaField
+                                  name="description"
+                                  placeholder={t(
+                                    "editor.general.descriptionField.placeholder"
+                                  )}
+                                />
+                              </InputVertical>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* COMPORTAMENTO */}
+                        <div className="flex flex-col gap-3">
+                          <EditorSectionHeader
+                            title={t("editor.sections.behavior")}
+                            description={t("editor.prompts.instructions.description")}
+                          />
                           <InputVertical
-                            withLabel="description"
-                            title={t("editor.general.descriptionField.title")}
+                            withLabel="instructions"
+                            title={t("editor.prompts.instructions.title")}
                             suffix={t("editor.suffix.optional")}
                           >
                             <InputTextAreaField
-                              name="description"
+                              name="instructions"
                               placeholder={t(
-                                "editor.general.descriptionField.placeholder"
+                                "editor.prompts.instructions.placeholder"
                               )}
+                              rightSection={
+                                <InsertUserVariableMenu fieldName="instructions" />
+                              }
                             />
                           </InputVertical>
-                        </GeneralLayouts.Section>
+                        </div>
 
-                        <GeneralLayouts.Section width="fit">
-                          <InputVertical
-                            withLabel="agent_avatar"
-                            title={t("editor.general.avatar.title")}
-                          >
-                            <AgentIconEditor existingAgent={existingAgent} />
-                          </InputVertical>
-                        </GeneralLayouts.Section>
-                      </GeneralLayouts.Section>
-
-                      <Divider paddingParallel={0} paddingPerpendicular={0} />
-
-                      <GeneralLayouts.Section>
-                        <InputVertical
-                          withLabel="instructions"
-                          title={t("editor.prompts.instructions.title")}
-                          suffix={t("editor.suffix.optional")}
-                          description={t(
-                            "editor.prompts.instructions.description"
-                          )}
-                        >
-                          <InputTextAreaField
-                            name="instructions"
-                            placeholder={t(
-                              "editor.prompts.instructions.placeholder"
-                            )}
-                            rightSection={
-                              <InsertUserVariableMenu fieldName="instructions" />
-                            }
+                        {/* INICIADORES DE CONVERSA */}
+                        <div className="flex flex-col gap-3">
+                          <EditorSectionHeader
+                            title={t("editor.sections.starters")}
+                            description={t("editor.prompts.starters.description")}
                           />
-                        </InputVertical>
+                          <InputVertical
+                            withLabel="starter_messages"
+                            title={t("editor.prompts.starters.title")}
+                            suffix={t("editor.suffix.optional")}
+                          >
+                            <AgentStarterMessages />
+                          </InputVertical>
+                        </div>
 
-                        <InputVertical
-                          withLabel="starter_messages"
-                          title={t("editor.prompts.starters.title")}
-                          description={t("editor.prompts.starters.description")}
-                          suffix={t("editor.suffix.optional")}
-                        >
-                          <AgentStarterMessages />
-                        </InputVertical>
-                      </GeneralLayouts.Section>
-
-                      <Divider paddingParallel={0} paddingPerpendicular={0} />
+                        {/* CONHECIMENTO */}
+                        <div className="flex flex-col gap-3">
+                          <EditorSectionHeader
+                            title={t("editor.sections.knowledge")}
+                          />
 
                       <AgentKnowledgePane
                         enableKnowledge={values.enable_knowledge}
@@ -1539,119 +1581,117 @@ export default function AgentEditorPage({
                         initialHierarchyNodes={existingAgent?.hierarchy_nodes}
                         vectorDbEnabled={vectorDbEnabled}
                       />
+                        </div>
 
-                      <Divider paddingParallel={0} paddingPerpendicular={0} />
-
-                      <GeneralLayouts.Section
-                        gap={2}
-                        alignItems="stretch"
-                        height="auto"
-                      >
-                        <Content
-                          title={t("editor.share.title")}
-                          sizePreset="main-content"
-                          variant="section"
-                        />
-                        <Card border="solid" rounding={4}>
-                          <GeneralLayouts.Section>
-                            {canShare && (
-                              <InputHorizontal
-                                title={t("editor.share.share.title")}
-                                description={t(
-                                  "editor.share.share.description"
-                                )}
-                                center
-                              >
-                                <Button
-                                  prominence="secondary"
-                                  icon={shareStatusIcon}
-                                  onClick={() => shareAgentModal.toggle(true)}
-                                >
-                                  {t("editor.share.share.button.label")}
-                                </Button>
-                              </InputHorizontal>
-                            )}
-                            {canUpdateFeaturedStatus && (
-                              <>
+                        {/* COMPARTILHAMENTO */}
+                        <div className="flex flex-col gap-3">
+                          <EditorSectionHeader
+                            title={t("editor.sections.sharing")}
+                          />
+                          <Card border="solid" rounding={4}>
+                            <GeneralLayouts.Section>
+                              {canShare && (
                                 <InputHorizontal
-                                  withLabel="is_featured"
-                                  title={t("editor.share.feature.title")}
+                                  title={t("editor.share.share.title")}
                                   description={t(
-                                    "editor.share.feature.description"
+                                    "editor.share.share.description"
                                   )}
+                                  center
                                 >
-                                  <SwitchField name="is_featured" />
+                                  <Button
+                                    prominence="secondary"
+                                    icon={shareStatusIcon}
+                                    onClick={() => shareAgentModal.toggle(true)}
+                                  >
+                                    {t("editor.share.share.button.label")}
+                                  </Button>
                                 </InputHorizontal>
-                                {values.is_featured &&
-                                  sharingStatus === "PRIVATE" && (
-                                    <MessageCard
-                                      title={t(
-                                        "editor.share.feature.privateNotice.title"
-                                      )}
-                                    />
-                                  )}
-                                {values.is_featured &&
-                                  existingAgent &&
-                                  !existingAgent.is_listed && (
-                                    <MessageCard
-                                      variant="warning"
-                                      title={t(
-                                        "editor.share.feature.unlistedWarning.title"
-                                      )}
-                                    />
-                                  )}
-                              </>
-                            )}
-                            <GeneralLayouts.Section
-                              gap={1}
-                              alignItems="stretch"
-                            >
-                              <InputMultiSelect
-                                tags={(allLabels ?? [])
-                                  .filter((label) =>
-                                    values.label_ids.includes(label.id)
-                                  )
-                                  .map((label) => ({
-                                    id: String(label.id),
-                                    label: label.name,
-                                  }))}
-                                onRemoveTag={(id) =>
-                                  setFieldValue(
-                                    "label_ids",
-                                    values.label_ids.filter(
-                                      (labelId) => labelId !== Number(id)
+                              )}
+                              {canUpdateFeaturedStatus && (
+                                <>
+                                  <InputHorizontal
+                                    withLabel="is_featured"
+                                    title={t("editor.share.feature.title")}
+                                    description={t(
+                                      "editor.share.feature.description"
+                                    )}
+                                  >
+                                    <SwitchField name="is_featured" />
+                                  </InputHorizontal>
+                                  {values.is_featured &&
+                                    sharingStatus === "PRIVATE" && (
+                                      <MessageCard
+                                        title={t(
+                                          "editor.share.feature.privateNotice.title"
+                                        )}
+                                      />
+                                    )}
+                                  {values.is_featured &&
+                                    existingAgent &&
+                                    !existingAgent.is_listed && (
+                                      <MessageCard
+                                        variant="warning"
+                                        title={t(
+                                          "editor.share.feature.unlistedWarning.title"
+                                        )}
+                                      />
+                                    )}
+                                </>
+                              )}
+                              <GeneralLayouts.Section
+                                gap={1}
+                                alignItems="stretch"
+                              >
+                                <InputMultiSelect
+                                  tags={(allLabels ?? [])
+                                    .filter((label) =>
+                                      values.label_ids.includes(label.id)
                                     )
-                                  )
-                                }
-                                onAdd={(name) =>
-                                  addAgentLabel(
-                                    name,
-                                    values.label_ids,
-                                    setFieldValue
-                                  )
-                                }
-                                value={labelInputValue}
-                                onChange={setLabelInputValue}
-                                placeholder={t(
-                                  "editor.share.labels.placeholder"
-                                )}
-                                icon={SvgTag}
-                              />
-                              <Text text03 secondaryBody>
-                                {t("editor.share.labels.description")}
-                              </Text>
+                                    .map((label) => ({
+                                      id: String(label.id),
+                                      label: label.name,
+                                    }))}
+                                  onRemoveTag={(id) =>
+                                    setFieldValue(
+                                      "label_ids",
+                                      values.label_ids.filter(
+                                        (labelId) => labelId !== Number(id)
+                                      )
+                                    )
+                                  }
+                                  onAdd={(name) =>
+                                    addAgentLabel(
+                                      name,
+                                      values.label_ids,
+                                      setFieldValue
+                                    )
+                                  }
+                                  value={labelInputValue}
+                                  onChange={setLabelInputValue}
+                                  placeholder={t(
+                                    "editor.share.labels.placeholder"
+                                  )}
+                                  icon={SvgTag}
+                                />
+                                <Text text03 secondaryBody>
+                                  {t("editor.share.labels.description")}
+                                </Text>
+                              </GeneralLayouts.Section>
                             </GeneralLayouts.Section>
-                          </GeneralLayouts.Section>
-                        </Card>
-                      </GeneralLayouts.Section>
+                          </Card>
+                        </div>
 
-                      <Divider paddingParallel={0} paddingPerpendicular={0} />
-
-                      <SimpleCollapsible>
-                        <SimpleCollapsible.Header
-                          title={t("editor.actions.title")}
-                          description={t("editor.actions.description")}
-                        />
+                        {/* AÇÕES E FERRAMENTAS */}
+                        <div className="flex flex-col gap-3">
+                          <EditorSectionHeader
+                            title={t("editor.sections.actions")}
+                            description={t("editor.actions.description")}
+                          />
+                          <SimpleCollapsible>
+                            <SimpleCollapsible.Header
+                              title={t("editor.actions.title")}
+                              description={t("editor.actions.description")}
+                            />
                         <SimpleCollapsible.Content>
                           <GeneralLayouts.Section gap={2} alignItems="stretch">
                             <Disabled
@@ -1796,160 +1836,166 @@ export default function AgentEditorPage({
                           </GeneralLayouts.Section>
                         </SimpleCollapsible.Content>
                       </SimpleCollapsible>
+                    </div>
 
-                      <Divider paddingParallel={0} paddingPerpendicular={0} />
+                        {/* OPÇÕES AVANÇADAS */}
+                        <div className="flex flex-col gap-3">
+                          <EditorSectionHeader
+                            title={t("editor.sections.advanced")}
+                          />
+                          <SimpleCollapsible>
+                            <SimpleCollapsible.Header
+                              title={t("editor.advanced.title")}
+                              description={t("editor.advanced.description")}
+                            />
+                            <SimpleCollapsible.Content>
+                              <GeneralLayouts.Section>
+                                <Card border="solid" rounding={4}>
+                                  <GeneralLayouts.Section>
+                                    <InputHorizontal
+                                      withLabel="llm_model"
+                                      title={t("modals.viewer.defaultModel.title")}
+                                      description={t(
+                                        "modals.viewer.defaultModel.description"
+                                      )}
+                                    >
+                                      <ModelSelector
+                                        value={
+                                          // SAFETY: Formik value holds model config id or null
+                                          (values.default_model_configuration_id as
+                                            | number
+                                            | null) ?? null
+                                        }
+                                        onChange={(opt) =>
+                                          setFieldValue(
+                                            "default_model_configuration_id",
+                                            opt.modelConfigurationId ?? null
+                                          )
+                                        }
+                                        includeGlobalDefault
+                                      />
+                                    </InputHorizontal>
+                                    <InputHorizontal
+                                      withLabel="knowledge_cutoff_date"
+                                      title={t(
+                                        "modals.viewer.knowledgeCutoff.title"
+                                      )}
+                                      suffix={t("editor.suffix.optional")}
+                                      description={t(
+                                        "modals.viewer.knowledgeCutoff.description"
+                                      )}
+                                    >
+                                      <InputDatePickerField
+                                        name="knowledge_cutoff_date"
+                                        maxDate={new Date()}
+                                      />
+                                    </InputHorizontal>
+                                    <InputHorizontal
+                                      withLabel="replace_base_system_prompt"
+                                      title={t(
+                                        "editor.advanced.overwritePrompt.title"
+                                      )}
+                                      suffix={t(
+                                        "editor.advanced.overwritePrompt.suffix"
+                                      )}
+                                      description={t(
+                                        "modals.viewer.overwritePrompts.description"
+                                      )}
+                                    >
+                                      <SwitchField name="replace_base_system_prompt" />
+                                    </InputHorizontal>
+                                  </GeneralLayouts.Section>
+                                </Card>
 
-                      <SimpleCollapsible>
-                        <SimpleCollapsible.Header
-                          title={t("editor.advanced.title")}
-                          description={t("editor.advanced.description")}
-                        />
-                        <SimpleCollapsible.Content>
-                          <GeneralLayouts.Section>
+                                <GeneralLayouts.Section gap={1}>
+                                  <InputVertical
+                                    withLabel="reminders"
+                                    title={t("editor.advanced.reminders.title")}
+                                    suffix={t("editor.suffix.optional")}
+                                  >
+                                    <InputTextAreaField
+                                      name="reminders"
+                                      placeholder={t(
+                                        "editor.advanced.reminders.placeholder"
+                                      )}
+                                      rightSection={
+                                        <InsertUserVariableMenu fieldName="reminders" />
+                                      }
+                                    />
+                                  </InputVertical>
+                                  <Text text03 secondaryBody>
+                                    {t("editor.advanced.reminders.description")}
+                                  </Text>
+                                </GeneralLayouts.Section>
+                              </GeneralLayouts.Section>
+                            </SimpleCollapsible.Content>
+                          </SimpleCollapsible>
+                        </div>
+
+                        {/* EXCLUIR / VISIBILIDADE */}
+                        {existingAgent && canDelete && (
+                          <div className="flex flex-col gap-3 pt-4 border-t border-border-default/40">
+                            <EditorSectionHeader
+                              title={t("editor.sections.dangerZone")}
+                            />
                             <Card border="solid" rounding={4}>
                               <GeneralLayouts.Section>
-                                <InputHorizontal
-                                  withLabel="llm_model"
-                                  title={t("modals.viewer.defaultModel.title")}
-                                  description={t(
-                                    "modals.viewer.defaultModel.description"
-                                  )}
-                                >
-                                  <ModelSelector
-                                    value={
-                                      (values.default_model_configuration_id as
-                                        | number
-                                        | null) ?? null
+                                {canUpdateFeaturedStatus && (
+                                  <InputHorizontal
+                                    title={
+                                      existingAgent.is_listed
+                                        ? t("editor.visibility.unlist.title")
+                                        : t("editor.visibility.relist.title")
                                     }
-                                    onChange={(opt) =>
-                                      setFieldValue(
-                                        "default_model_configuration_id",
-                                        opt.modelConfigurationId ?? null
-                                      )
+                                    description={
+                                      existingAgent.is_listed
+                                        ? t(
+                                            "editor.visibility.unlist.description"
+                                          )
+                                        : t(
+                                            "editor.visibility.relist.description"
+                                          )
                                     }
-                                    includeGlobalDefault
-                                  />
-                                </InputHorizontal>
+                                    center
+                                  >
+                                    <Button
+                                      prominence="tertiary"
+                                      icon={
+                                        existingAgent.is_listed
+                                          ? SvgEyeOff
+                                          : SvgEye
+                                      }
+                                      disabled={isTogglingListed}
+                                      onClick={handleToggleListed}
+                                    >
+                                      {existingAgent.is_listed
+                                        ? t(
+                                            "editor.visibility.unlist.button.label"
+                                          )
+                                        : t(
+                                            "editor.visibility.relist.button.label"
+                                          )}
+                                    </Button>
+                                  </InputHorizontal>
+                                )}
                                 <InputHorizontal
-                                  withLabel="knowledge_cutoff_date"
-                                  title={t(
-                                    "modals.viewer.knowledgeCutoff.title"
-                                  )}
-                                  suffix={t("editor.suffix.optional")}
-                                  description={t(
-                                    "modals.viewer.knowledgeCutoff.description"
-                                  )}
-                                >
-                                  <InputDatePickerField
-                                    name="knowledge_cutoff_date"
-                                    maxDate={new Date()}
-                                  />
-                                </InputHorizontal>
-                                <InputHorizontal
-                                  withLabel="replace_base_system_prompt"
-                                  title={t(
-                                    "editor.advanced.overwritePrompt.title"
-                                  )}
-                                  suffix={t(
-                                    "editor.advanced.overwritePrompt.suffix"
-                                  )}
-                                  description={t(
-                                    "modals.viewer.overwritePrompts.description"
-                                  )}
-                                >
-                                  <SwitchField name="replace_base_system_prompt" />
-                                </InputHorizontal>
-                              </GeneralLayouts.Section>
-                            </Card>
-
-                            <GeneralLayouts.Section gap={1}>
-                              <InputVertical
-                                withLabel="reminders"
-                                title={t("editor.advanced.reminders.title")}
-                                suffix={t("editor.suffix.optional")}
-                              >
-                                <InputTextAreaField
-                                  name="reminders"
-                                  placeholder={t(
-                                    "editor.advanced.reminders.placeholder"
-                                  )}
-                                  rightSection={
-                                    <InsertUserVariableMenu fieldName="reminders" />
-                                  }
-                                />
-                              </InputVertical>
-                              <Text text03 secondaryBody>
-                                {t("editor.advanced.reminders.description")}
-                              </Text>
-                            </GeneralLayouts.Section>
-                          </GeneralLayouts.Section>
-                        </SimpleCollapsible.Content>
-                      </SimpleCollapsible>
-
-                      {existingAgent && canDelete && (
-                        <>
-                          <Divider
-                            paddingParallel={0}
-                            paddingPerpendicular={0}
-                          />
-
-                          <Card border="solid" rounding={4}>
-                            <GeneralLayouts.Section>
-                              {canUpdateFeaturedStatus && (
-                                <InputHorizontal
-                                  title={
-                                    existingAgent.is_listed
-                                      ? t("editor.visibility.unlist.title")
-                                      : t("editor.visibility.relist.title")
-                                  }
-                                  description={
-                                    existingAgent.is_listed
-                                      ? t(
-                                          "editor.visibility.unlist.description"
-                                        )
-                                      : t(
-                                          "editor.visibility.relist.description"
-                                        )
-                                  }
+                                  title={t("editor.delete.title")}
+                                  description={t("editor.delete.description")}
                                   center
                                 >
                                   <Button
-                                    prominence="tertiary"
-                                    icon={
-                                      existingAgent.is_listed
-                                        ? SvgEyeOff
-                                        : SvgEye
-                                    }
-                                    disabled={isTogglingListed}
-                                    onClick={handleToggleListed}
+                                    variant="danger"
+                                    prominence="secondary"
+                                    onClick={() => deleteAgentModal.toggle(true)}
                                   >
-                                    {existingAgent.is_listed
-                                      ? t(
-                                          "editor.visibility.unlist.button.label"
-                                        )
-                                      : t(
-                                          "editor.visibility.relist.button.label"
-                                        )}
+                                    {t("editor.delete.button.label")}
                                   </Button>
                                 </InputHorizontal>
-                              )}
-                              <InputHorizontal
-                                title={t("editor.delete.title")}
-                                description={t("editor.delete.description")}
-                                center
-                              >
-                                <Button
-                                  variant="danger"
-                                  prominence="secondary"
-                                  onClick={() => deleteAgentModal.toggle(true)}
-                                >
-                                  {t("editor.delete.button.label")}
-                                </Button>
-                              </InputHorizontal>
-                            </GeneralLayouts.Section>
-                          </Card>
-                        </>
-                      )}
+                              </GeneralLayouts.Section>
+                            </Card>
+                          </div>
+                        )}
+                      </div>
                     </SettingsLayouts.Body>
                   </SettingsLayouts.Root>
                 </Form>

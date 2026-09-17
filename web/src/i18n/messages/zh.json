@@ -8355,22 +8355,22 @@
         "label": "{count, plural, =0 {无操作} one {# 个操作} other {# 个操作}}"
       },
       "edit": {
-        "tooltip": "编辑智能体"
+        "tooltip": "编辑专家"
       },
       "pin": {
         "tooltip": "固定到侧边栏"
       },
       "share": {
-        "tooltip": "分享智能体"
+        "tooltip": "共享专家"
       },
       "startChat": {
-        "label": "开始聊天"
+        "label": "开始对话"
       },
       "unpin": {
         "tooltip": "从侧边栏取消固定"
       },
       "viewStats": {
-        "tooltip": "查看智能体统计"
+        "tooltip": "查看专家统计数据"
       }
     },
     "editor": {
@@ -8443,7 +8443,7 @@
       },
       "general": {
         "avatar": {
-          "title": "智能体头像"
+          "title": "专家头像"
         },
         "descriptionField": {
           "placeholder": "此智能体有什么用途？",
@@ -8461,8 +8461,8 @@
         "create": {
           "label": "创建"
         },
-        "createTitle": "创建智能体",
-        "editTitle": "编辑智能体",
+        "createTitle": "新建专家",
+        "editTitle": "编辑专家",
         "save": {
           "label": "保存"
         }
@@ -8569,6 +8569,16 @@
       },
       "warnings": {
         "openUrl": "没有打开 URL 能力的网络搜索可能会导致网络结果明显变差。"
+      },
+      "sections": {
+        "identity": "身份",
+        "behavior": "行为",
+        "starters": "对话开场白",
+        "knowledge": "知识",
+        "sharing": "共享",
+        "actions": "操作与工具",
+        "advanced": "高级选项",
+        "dangerZone": "删除专家"
       }
     },
     "filters": {
@@ -8762,7 +8772,7 @@
         "title": "未找到专家"
       },
       "header": {
-        "description": "为您和团队的使用场景定制 AI 的行为和知识。",
+        "description": "为特定上下文、文档和分析配置专家。",
         "title": "专家"
       },
       "newAgent": {
@@ -8789,10 +8799,10 @@
       },
       "tabs": {
         "all": {
-          "label": "所有专家"
+          "label": "全部"
         },
         "your": {
-          "label": "我的专家"
+          "label": "我的"
         }
       }
     },
@@ -8800,6 +8810,9 @@
       "insert": {
         "tooltip": "插入用户变量"
       }
+    },
+    "image": {
+      "altFallback": "专家头像"
     }
   },
   "auth": {
@@ -10917,7 +10930,7 @@
     },
     "agentAvatar": {
       "image": {
-        "altFallback": "智能体头像"
+        "altFallback": "专家头像"
       },
       "logo": {
         "alt": "徽标"

@@ -347,3 +347,36 @@ describe("TON-VIS-007: Specialist Product Surfaces", () => {
     expect(specialistSrc).toContain("border-border-attention");
   });
 });
+
+describe("TON-VIS-007.1: Specialist Surface Productization Contract", () => {
+  test("29. no forbidden 'Editar agente' or 'Avatar do agente' in Portuguese messages", () => {
+    const ptJson = readSource("src/i18n/messages/pt.json");
+    expect(ptJson).not.toContain("Editar agente");
+    expect(ptJson).not.toContain("Avatar do agente");
+    expect(ptJson).toContain("Editar especialista");
+    expect(ptJson).toContain("Avatar do especialista");
+  });
+
+  test("30. AgentCard renders as compact operational row, not elevated SaaS card", () => {
+    const cardSrc = readSource("src/sections/agents/AgentCard.tsx");
+    expect(cardSrc).toContain("SpecialistRow");
+    expect(cardSrc).toContain("group/agent-row");
+    expect(cardSrc).not.toContain("rounded-3xl");
+    expect(cardSrc).not.toContain("shadow-box");
+  });
+
+  test("31. AgentsNavigationPage has quiet operational header and search", () => {
+    const navSrc = readSource("src/views/AgentsNavigationPage.tsx");
+    expect(navSrc).not.toContain("radial-00");
+    expect(navSrc).not.toContain("shadow-box-00");
+    expect(navSrc).toContain("divide-border-default");
+    expect(navSrc).toContain("InputTypeIn");
+  });
+
+  test("32. AgentEditorPage has calm section headers and sticky header", () => {
+    const editorSrc = readSource("src/views/AgentEditorPage.tsx");
+    expect(editorSrc).toContain("EditorSectionHeader");
+    expect(editorSrc).toContain("sticky top-0");
+    expect(editorSrc).not.toContain("Editar agente");
+  });
+});

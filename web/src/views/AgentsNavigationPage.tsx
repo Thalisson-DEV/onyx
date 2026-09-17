@@ -14,7 +14,7 @@ import Text from "@/refresh-components/texts/Text";
 import { IllustrationContent, SettingsLayouts } from "@opal/layouts";
 import TextSeparator from "@/refresh-components/TextSeparator";
 import { Button, InputTypeIn, Tabs } from "@opal/components";
-import { SvgManageAgent, SvgPlus } from "@opal/icons";
+import { SvgPlus } from "@opal/icons";
 import useOnMount from "@/hooks/useOnMount";
 import { useAgentsFilters } from "@/sections/agents/AgentsFilters";
 
@@ -22,6 +22,7 @@ interface AgentsSectionProps {
   title: string;
   description?: string;
   agents: MinimalAgent[];
+  viewedAgentId: number | null;
   onView: (agentId: number) => void;
 }
 
@@ -29,27 +30,31 @@ function AgentsSection({
   title,
   description,
   agents,
+  viewedAgentId,
   onView,
 }: AgentsSectionProps) {
   if (agents.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2.5">
       <div>
         <Text as="p" headingH3>
           {title}
         </Text>
-        <Text as="p" secondaryBody text03>
-          {description}
-        </Text>
+        {description && (
+          <Text as="p" secondaryBody text03>
+            {description}
+          </Text>
+        )}
       </div>
-      <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div className="w-full flex flex-col divide-y divide-border-default/60 border border-border-default rounded-lg overflow-hidden bg-background-tint-00">
         {agents
           .sort((a, b) => b.id - a.id)
           .map((agent) => (
             <AgentCard
               key={agent.id}
               agent={agent}
+              isSelected={agent.id === viewedAgentId}
               onView={() => onView(agent.id)}
             />
           ))}
@@ -111,64 +116,80 @@ export default function AgentsNavigationPage() {
     <SettingsLayouts.Root
       data-testid="AgentsPage/container"
       aria-label={t("navigation.page.ariaLabel")}
+      width="lg"
     >
       <AgentViewer
         agentId={viewedAgentId}
         onClose={() => setViewedAgentId(null)}
       />
-      <SettingsLayouts.Header
-        icon={SvgManageAgent}
-        title={t("navigation.header.title")}
-        description={t("navigation.header.description")}
-        rightChildren={
-          <Button
-            href={canCreateAgent ? "/app/agents/create" : undefined}
-            icon={SvgPlus}
-            data-testid="AgentsPage/new-agent-button"
-            aria-label={t("navigation.newAgent.ariaLabel")}
-            disabled={!canCreateAgent}
-            tooltip={
-              !canCreateAgent
-                ? t("navigation.newAgent.noPermission.tooltip")
-                : undefined
-            }
-          >
-            {t("navigation.newAgent.label")}
-          </Button>
-        }
-      >
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-row items-center gap-2">
-            <div className="flex-2">
-              <InputTypeIn
-                ref={searchInputRef}
-                placeholder={t("navigation.search.placeholder")}
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                searchIcon
-              />
-            </div>
-            <div className="flex-1">
-              <Tabs
-                value={activeTab}
-                onValueChange={(value) => setActiveTab(value as "all" | "your")}
-              >
-                <Tabs.List>
-                  <Tabs.Trigger value="all">
-                    {t("navigation.tabs.all.label")}
-                  </Tabs.Trigger>
-                  <Tabs.Trigger value="your">
-                    {t("navigation.tabs.your.label")}
-                  </Tabs.Trigger>
-                </Tabs.List>
-              </Tabs>
-            </div>
-          </div>
-          <div className="flex flex-row gap-2">{filterBar}</div>
-        </div>
-      </SettingsLayouts.Header>
 
-      {/* Agents List */}
+      {/* Operational, quiet page header — no oversized brand icons */}
+      <div className="w-full pt-8 pb-4 px-4 flex flex-col gap-5 border-b border-border-default/40">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-2xl font-semibold tracking-tight text-text-04">
+              {t("navigation.header.title")}
+            </h1>
+            <p className="text-sm text-text-03 max-w-xl leading-relaxed">
+              {t("navigation.header.description")}
+            </p>
+          </div>
+          <div className="shrink-0">
+            <Button
+              href={canCreateAgent ? "/app/agents/create" : undefined}
+              icon={SvgPlus}
+              data-testid="AgentsPage/new-agent-button"
+              aria-label={t("navigation.newAgent.ariaLabel")}
+              disabled={!canCreateAgent}
+              tooltip={
+                !canCreateAgent
+                  ? t("navigation.newAgent.noPermission.tooltip")
+                  : undefined
+              }
+            >
+              {t("navigation.newAgent.label")}
+            </Button>
+          </div>
+        </div>
+
+        {/* Primary Search Input */}
+        <div className="w-full">
+          <InputTypeIn
+            ref={searchInputRef}
+            placeholder={t("navigation.search.placeholder")}
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            searchIcon
+          />
+        </div>
+
+        {/* Quiet Secondary Filter Row: Tabs (Todos / Seus) + Subordinate Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-0.5">
+          <div className="w-auto">
+            <Tabs
+              value={activeTab}
+              // SAFETY: value matches one of the declared trigger values
+              onValueChange={(value) => setActiveTab(value as "all" | "your")}
+              variant="underline"
+            >
+              <Tabs.List>
+                <Tabs.Trigger value="all">
+                  {t("navigation.tabs.all.label")}
+                </Tabs.Trigger>
+                <Tabs.Trigger value="your">
+                  {t("navigation.tabs.your.label")}
+                </Tabs.Trigger>
+              </Tabs.List>
+            </Tabs>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {filterBar}
+          </div>
+        </div>
+      </div>
+
+      {/* Specialists List Body */}
       <SettingsLayouts.Body>
         {agentCount === 0 ? (
           <div className="w-full flex items-center justify-center py-12">
@@ -183,11 +204,13 @@ export default function AgentsNavigationPage() {
               title={t("navigation.sections.featured.title")}
               description={t("navigation.sections.featured.description")}
               agents={featuredAgents}
+              viewedAgentId={viewedAgentId}
               onView={setViewedAgentId}
             />
             <AgentsSection
               title={t("navigation.sections.all.title")}
               agents={allAgents}
+              viewedAgentId={viewedAgentId}
               onView={setViewedAgentId}
             />
             <TextSeparator

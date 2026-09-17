@@ -863,15 +863,15 @@
           "description": "Are you sure you want to delete <emphasis>{name}</emphasis>? This action cannot be undone."
         },
         "header": {
-          "title": "Delete Agent"
+          "title": "Delete specialist"
         },
         "submitButton": {
           "label": "Delete"
         }
       },
       "emptyState": {
-        "description": "No agents match the current search.",
-        "title": "No agents found"
+        "description": "No specialists match the current search.",
+        "title": "No specialists found"
       },
       "featuredModal": {
         "addBody": {
@@ -894,8 +894,8 @@
         }
       },
       "header": {
-        "description": "Customize AI behavior and knowledge with agents. Manage agents in your organization.",
-        "title": "Agents"
+        "description": "Configure and manage specialists in your organization.",
+        "title": "Specialists"
       },
       "modals": {
         "accessNote": {
@@ -903,7 +903,7 @@
         }
       },
       "newAgentButton": {
-        "label": "New Agent"
+        "label": "New specialist"
       },
       "reorderError": {
         "message": "Failed to update agent order"
@@ -913,19 +913,19 @@
           "title": "Delete"
         },
         "editAgentButton": {
-          "label": "Edit Agent"
+          "label": "Edit specialist"
         },
         "genericError": {
           "message": "An error occurred"
         },
         "listItem": {
-          "title": "List Agent"
+          "title": "List specialist"
         },
         "menuButton": {
-          "ariaLabel": "Agent actions"
+          "ariaLabel": "Specialist actions"
         },
         "relistAgentButton": {
-          "label": "Re-list Agent"
+          "label": "Relist specialist"
         },
         "removeFeaturedButton": {
           "label": "Remove Featured"
@@ -940,7 +940,7 @@
           "title": "Stats"
         },
         "unlistItem": {
-          "title": "Unlist Agent"
+          "title": "Unlist specialist"
         },
         "updateSuccess": {
           "message": "{name} updated successfully."
@@ -8355,22 +8355,22 @@
         "label": "{count, plural, =0 {No Actions} one {# Action} other {# Actions}}"
       },
       "edit": {
-        "tooltip": "Edit Agent"
+        "tooltip": "Edit specialist"
       },
       "pin": {
         "tooltip": "Pin to Sidebar"
       },
       "share": {
-        "tooltip": "Share Agent"
+        "tooltip": "Share specialist"
       },
       "startChat": {
-        "label": "Start Chat"
+        "label": "Start conversation"
       },
       "unpin": {
         "tooltip": "Unpin from Sidebar"
       },
       "viewStats": {
-        "tooltip": "View Agent Stats"
+        "tooltip": "View specialist statistics"
       }
     },
     "editor": {
@@ -8383,7 +8383,7 @@
           "description": "Investigate a GitHub repository and answer questions about its code.",
           "title": "Coding Agent"
         },
-        "description": "Tools and capabilities available for this agent to use.",
+        "description": "Tools and capabilities available for this specialist to use.",
         "imageGeneration": {
           "description": "Generate and manipulate images using AI-powered tools.",
           "title": "Image Generation",
@@ -8424,17 +8424,17 @@
       },
       "delete": {
         "button": {
-          "label": "Delete Agent"
+          "label": "Delete Specialist"
         },
-        "description": "Anyone using this agent will no longer be able to access it.",
-        "title": "Delete This Agent"
+        "description": "Anyone using this specialist will no longer have access.",
+        "title": "Delete this specialist"
       },
       "deleteModal": {
         "body": {
-          "confirm": "Are you sure you want to delete this agent?",
-          "warning": "Anyone using this agent will no longer be able to access it. Deletion cannot be undone."
+          "confirm": "Are you sure you want to delete this specialist?",
+          "warning": "Anyone using this specialist will no longer have access. This cannot be undone."
         },
-        "title": "Delete Agent"
+        "title": "Delete Specialist"
       },
       "filesModal": {
         "description": "All files selected for this agent",
@@ -8443,14 +8443,14 @@
       },
       "general": {
         "avatar": {
-          "title": "Agent Avatar"
+          "title": "Specialist Avatar"
         },
         "descriptionField": {
-          "placeholder": "What does this agent do?",
+          "placeholder": "What does this specialist do?",
           "title": "Description"
         },
         "name": {
-          "placeholder": "Name your agent",
+          "placeholder": "Name your specialist",
           "title": "Name"
         }
       },
@@ -8461,8 +8461,8 @@
         "create": {
           "label": "Create"
         },
-        "createTitle": "Create Agent",
-        "editTitle": "Edit Agent",
+        "createTitle": "New Specialist",
+        "editTitle": "Edit Specialist",
         "save": {
           "label": "Save"
         }
@@ -8476,16 +8476,16 @@
         }
       },
       "page": {
-        "ariaLabel": "Agents Editor Page"
+        "ariaLabel": "Specialist editor page"
       },
       "prompts": {
         "instructions": {
-          "description": "Add instructions to tailor the response for this agent.",
+          "description": "Add instructions to customize this specialist's responses.",
           "placeholder": "Think step by step and show reasoning for complex problems. Use specific examples. Emphasize action items, and leave blanks for the human to fill in when you have unknown. Use a polite enthusiastic tone.",
           "title": "Instructions"
         },
         "starters": {
-          "description": "Example messages that help users understand what this agent can do and how to interact with it effectively.",
+          "description": "Sample messages that show what this specialist can do and how to interact effectively.",
           "title": "Conversation Starters"
         }
       },
@@ -8497,17 +8497,17 @@
       },
       "share": {
         "feature": {
-          "description": "Show this agent at the top of the explore agents list and automatically pin it to the sidebar for new users with access.",
+          "description": "Show this specialist at the top of the list and automatically pin it to the sidebar for users with access.",
           "privateNotice": {
-            "title": "This agent is private to you and will only be featured for yourself."
+            "title": "This specialist is private and will only be featured for you."
           },
-          "title": "Feature This Agent",
+          "title": "Feature this specialist",
           "unlistedWarning": {
-            "title": "This agent is unlisted and won't be shown in the featured list."
+            "title": "This specialist is unlisted and will not be featured."
           }
         },
         "labels": {
-          "description": "Add labels and categories to help people better discover this agent.",
+          "description": "Add labels and categories to help discover this specialist.",
           "placeholder": "Add labels..."
         },
         "share": {
@@ -8515,9 +8515,9 @@
             "label": "Share"
           },
           "description": "with other users, groups, or everyone in your organization.",
-          "title": "Share This Agent"
+          "title": "Share this specialist"
         },
-        "title": "Share Agent"
+        "title": "Share Specialist"
       },
       "starters": {
         "examples": {
@@ -8532,23 +8532,23 @@
         "optional": "optional"
       },
       "toasts": {
-        "createFailed": "Failed to create agent - {detail}",
-        "created": "Agent \"{name}\" created successfully",
-        "deleteFailed": "Failed to delete agent: {error}",
-        "deleted": "Agent deleted successfully",
+        "createFailed": "Failed to create specialist - {detail}",
+        "created": "Specialist \"{name}\" created successfully",
+        "deleteFailed": "Failed to delete specialist: {error}",
+        "deleted": "Specialist deleted successfully",
         "genericError": "An error occurred: {error}",
         "noResponse": "no response received",
-        "sharingFailed": "Agent created, but sharing failed: {error}",
+        "sharingFailed": "Specialist created, but sharing failed: {error}",
         "toggleListedFailed": "Failed to toggle visibility",
         "unknownDetail": "unknown error",
         "unknownError": "Unknown error",
-        "updateFailed": "Failed to update agent - {detail}",
-        "updated": "Agent \"{name}\" updated successfully"
+        "updateFailed": "Failed to update specialist - {detail}",
+        "updated": "Specialist \"{name}\" updated successfully"
       },
       "validation": {
         "cutoffInFuture": "Knowledge cutoff date must be today or earlier.",
         "descriptionMax": "Description must be {max} characters or less",
-        "nameRequired": "Agent name is required.",
+        "nameRequired": "Specialist name is required.",
         "starterMax": "Conversation starter must be {max} characters or less"
       },
       "visibility": {
@@ -8569,6 +8569,16 @@
       },
       "warnings": {
         "openUrl": "Web Search without the ability to open URLs can lead to significantly worse web based results."
+      },
+      "sections": {
+        "identity": "Identity",
+        "behavior": "Behavior",
+        "starters": "Conversation Starters",
+        "knowledge": "Knowledge",
+        "sharing": "Sharing",
+        "actions": "Actions & Tools",
+        "advanced": "Advanced Options",
+        "dangerZone": "Delete Specialist"
       }
     },
     "filters": {
@@ -8711,7 +8721,7 @@
           "title": "Conversation Starters"
         },
         "defaultModel": {
-          "description": "This model will be used by Onyx by default in your chats.",
+          "description": "This model will be used by default in your chats.",
           "title": "Default Model"
         },
         "featured": {
@@ -8762,13 +8772,13 @@
         "title": "No specialists found"
       },
       "header": {
-        "description": "Customize AI behavior and knowledge for you and your team's use cases.",
+        "description": "Configure specialists for specific contexts, documents, and analysis.",
         "title": "Specialists"
       },
       "newAgent": {
         "label": "New specialist",
         "noPermission": {
-          "tooltip": "You don't have permission to create agents. Contact your admin to request access."
+          "tooltip": "You don't have permission to create specialists. Contact your admin to request access."
         },
         "ariaLabel": "New specialist"
       },
@@ -8789,10 +8799,10 @@
       },
       "tabs": {
         "all": {
-          "label": "All Specialists"
+          "label": "All"
         },
         "your": {
-          "label": "Your Specialists"
+          "label": "Yours"
         }
       }
     },
@@ -8800,6 +8810,9 @@
       "insert": {
         "tooltip": "Insert user variable"
       }
+    },
+    "image": {
+      "altFallback": "Specialist avatar"
     }
   },
   "auth": {
@@ -10917,7 +10930,7 @@
     },
     "agentAvatar": {
       "image": {
-        "altFallback": "Agent avatar"
+        "altFallback": "Specialist avatar"
       },
       "logo": {
         "alt": "Logo"

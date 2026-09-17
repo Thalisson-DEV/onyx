@@ -8355,22 +8355,22 @@
         "label": "{count, plural, =0 {액션 없음} one {액션 #개} other {액션 #개}}"
       },
       "edit": {
-        "tooltip": "에이전트 편집"
+        "tooltip": "스페셜리스트 편집"
       },
       "pin": {
         "tooltip": "사이드바에 고정"
       },
       "share": {
-        "tooltip": "에이전트 공유"
+        "tooltip": "스페셜리스트 공유"
       },
       "startChat": {
-        "label": "채팅 시작"
+        "label": "대화 시작"
       },
       "unpin": {
         "tooltip": "사이드바에서 고정 해제"
       },
       "viewStats": {
-        "tooltip": "에이전트 통계 보기"
+        "tooltip": "스페셜리스트 통계 보기"
       }
     },
     "editor": {
@@ -8443,7 +8443,7 @@
       },
       "general": {
         "avatar": {
-          "title": "에이전트 아바타"
+          "title": "스페셜리스트 아바타"
         },
         "descriptionField": {
           "placeholder": "이 에이전트는 어떤 역할을 하나요?",
@@ -8461,8 +8461,8 @@
         "create": {
           "label": "만들기"
         },
-        "createTitle": "에이전트 만들기",
-        "editTitle": "에이전트 편집",
+        "createTitle": "새 스페셜리스트",
+        "editTitle": "스페셜리스트 편집",
         "save": {
           "label": "저장"
         }
@@ -8569,6 +8569,16 @@
       },
       "warnings": {
         "openUrl": "URL을 열 수 없는 웹 검색은 웹 기반 결과가 크게 나빠질 수 있습니다."
+      },
+      "sections": {
+        "identity": "아이덴티티",
+        "behavior": "동작",
+        "starters": "대화 시작 문구",
+        "knowledge": "지식",
+        "sharing": "공유",
+        "actions": "작업 및 도구",
+        "advanced": "고급 옵션",
+        "dangerZone": "스페셜리스트 삭제"
       }
     },
     "filters": {
@@ -8762,7 +8772,7 @@
         "title": "전문가를 찾을 수 없습니다"
       },
       "header": {
-        "description": "나와 팀의 사용 사례에 맞게 AI의 동작과 지식을 맞춤 설정하세요.",
+        "description": "특정 컨텍스트, 문서 및 분석을 위한 스페셜리스트를 설정하세요.",
         "title": "전문가"
       },
       "newAgent": {
@@ -8789,10 +8799,10 @@
       },
       "tabs": {
         "all": {
-          "label": "모든 전문가"
+          "label": "전체"
         },
         "your": {
-          "label": "내 전문가"
+          "label": "내 스페셜리스트"
         }
       }
     },
@@ -8800,6 +8810,9 @@
       "insert": {
         "tooltip": "사용자 변수 삽입"
       }
+    },
+    "image": {
+      "altFallback": "스페셜리스트 아바타"
     }
   },
   "auth": {
@@ -10917,7 +10930,7 @@
     },
     "agentAvatar": {
       "image": {
-        "altFallback": "에이전트 아바타"
+        "altFallback": "스페셜리스트 아바타"
       },
       "logo": {
         "alt": "로고"

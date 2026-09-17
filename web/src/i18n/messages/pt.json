@@ -863,15 +863,15 @@
           "description": "Tem certeza de que deseja excluir <emphasis>{name}</emphasis>? Esta ação não pode ser desfeita."
         },
         "header": {
-          "title": "Excluir agente"
+          "title": "Excluir especialista"
         },
         "submitButton": {
           "label": "Excluir"
         }
       },
       "emptyState": {
-        "description": "Nenhum agente corresponde à pesquisa atual.",
-        "title": "Nenhum agente encontrado"
+        "description": "Nenhum especialista corresponde à pesquisa atual.",
+        "title": "Nenhum especialista encontrado"
       },
       "featuredModal": {
         "addBody": {
@@ -894,8 +894,8 @@
         }
       },
       "header": {
-        "description": "Personalize o comportamento e o conhecimento da IA com agentes. Gerencie os agentes da sua organização.",
-        "title": "Agentes"
+        "description": "Configure e gerencie os especialistas da sua organização.",
+        "title": "Especialistas"
       },
       "modals": {
         "accessNote": {
@@ -903,7 +903,7 @@
         }
       },
       "newAgentButton": {
-        "label": "Novo agente"
+        "label": "Novo especialista"
       },
       "reorderError": {
         "message": "Falha ao atualizar a ordem dos agentes"
@@ -913,19 +913,19 @@
           "title": "Excluir"
         },
         "editAgentButton": {
-          "label": "Editar agente"
+          "label": "Editar especialista"
         },
         "genericError": {
           "message": "Ocorreu um erro"
         },
         "listItem": {
-          "title": "Listar agente"
+          "title": "Listar especialista"
         },
         "menuButton": {
-          "ariaLabel": "Ações do agente"
+          "ariaLabel": "Ações do especialista"
         },
         "relistAgentButton": {
-          "label": "Listar agente novamente"
+          "label": "Listar especialista novamente"
         },
         "removeFeaturedButton": {
           "label": "Remover destaque"
@@ -940,7 +940,7 @@
           "title": "Estatísticas"
         },
         "unlistItem": {
-          "title": "Remover agente da lista"
+          "title": "Remover especialista da lista"
         },
         "updateSuccess": {
           "message": "{name} atualizado com sucesso."
@@ -8355,22 +8355,22 @@
         "label": "{count, plural, =0 {Nenhuma ação} one {# ação} other {# ações}}"
       },
       "edit": {
-        "tooltip": "Editar agente"
+        "tooltip": "Editar especialista"
       },
       "pin": {
         "tooltip": "Fixar na barra lateral"
       },
       "share": {
-        "tooltip": "Compartilhar agente"
+        "tooltip": "Compartilhar especialista"
       },
       "startChat": {
-        "label": "Iniciar chat"
+        "label": "Iniciar conversa"
       },
       "unpin": {
         "tooltip": "Desafixar da barra lateral"
       },
       "viewStats": {
-        "tooltip": "Ver estatísticas do agente"
+        "tooltip": "Ver estatísticas do especialista"
       }
     },
     "editor": {
@@ -8383,7 +8383,7 @@
           "description": "Investigue um repositório do GitHub e responda perguntas sobre seu código.",
           "title": "Agente de programação"
         },
-        "description": "Ferramentas e capacidades disponíveis para este agente usar.",
+        "description": "Ferramentas e capacidades disponíveis para este especialista usar.",
         "imageGeneration": {
           "description": "Gere e manipule imagens usando ferramentas com tecnologia de IA.",
           "title": "Geração de imagens",
@@ -8424,17 +8424,17 @@
       },
       "delete": {
         "button": {
-          "label": "Excluir agente"
+          "label": "Excluir especialista"
         },
-        "description": "Qualquer pessoa que use este agente não poderá mais acessá-lo.",
-        "title": "Excluir este agente"
+        "description": "Qualquer pessoa que use este especialista não poderá mais acessá-lo.",
+        "title": "Excluir este especialista"
       },
       "deleteModal": {
         "body": {
-          "confirm": "Tem certeza de que deseja excluir este agente?",
-          "warning": "Qualquer pessoa que use este agente não poderá mais acessá-lo. A exclusão não pode ser desfeita."
+          "confirm": "Tem certeza de que deseja excluir este especialista?",
+          "warning": "Qualquer pessoa que use este especialista não poderá mais acessá-lo. A exclusão não pode ser desfeita."
         },
-        "title": "Excluir agente"
+        "title": "Excluir especialista"
       },
       "filesModal": {
         "description": "Todos os arquivos selecionados para este agente",
@@ -8443,14 +8443,14 @@
       },
       "general": {
         "avatar": {
-          "title": "Avatar do agente"
+          "title": "Avatar do especialista"
         },
         "descriptionField": {
-          "placeholder": "O que este agente faz?",
+          "placeholder": "O que este especialista faz?",
           "title": "Descrição"
         },
         "name": {
-          "placeholder": "Dê um nome ao seu agente",
+          "placeholder": "Dê um nome ao seu especialista",
           "title": "Nome"
         }
       },
@@ -8461,8 +8461,8 @@
         "create": {
           "label": "Criar"
         },
-        "createTitle": "Criar agente",
-        "editTitle": "Editar agente",
+        "createTitle": "Novo especialista",
+        "editTitle": "Editar especialista",
         "save": {
           "label": "Salvar"
         }
@@ -8476,16 +8476,16 @@
         }
       },
       "page": {
-        "ariaLabel": "Página do editor de agentes"
+        "ariaLabel": "Página do editor de especialistas"
       },
       "prompts": {
         "instructions": {
-          "description": "Adicione instruções para personalizar as respostas deste agente.",
+          "description": "Adicione instruções para personalizar as respostas deste especialista.",
           "placeholder": "Pense passo a passo e mostre o raciocínio em problemas complexos. Use exemplos específicos. Enfatize itens de ação e deixe lacunas para o humano preencher quando houver incertezas. Use um tom educado e entusiasmado.",
           "title": "Instruções"
         },
         "starters": {
-          "description": "Mensagens de exemplo que ajudam os usuários a entender o que este agente pode fazer e como interagir com ele de forma eficaz.",
+          "description": "Mensagens de exemplo que ajudam a entender o que este especialista pode fazer e como interagir com ele de forma eficaz.",
           "title": "Iniciadores de conversa"
         }
       },
@@ -8497,17 +8497,17 @@
       },
       "share": {
         "feature": {
-          "description": "Mostre este agente no topo da lista de exploração de agentes e fixe-o automaticamente na barra lateral para novos usuários com acesso.",
+          "description": "Mostre este especialista no topo da lista e fixe-o automaticamente na barra lateral para novos usuários com acesso.",
           "privateNotice": {
-            "title": "Este agente é privado e será destacado apenas para você."
+            "title": "Este especialista é privado e será destacado apenas para você."
           },
-          "title": "Destacar este agente",
+          "title": "Destacar este especialista",
           "unlistedWarning": {
-            "title": "Este agente não está listado e não será mostrado na lista de destaques."
+            "title": "Este especialista não está listado e não será mostrado na lista de destaques."
           }
         },
         "labels": {
-          "description": "Adicione rótulos e categorias para ajudar as pessoas a descobrir melhor este agente.",
+          "description": "Adicione rótulos e categorias para ajudar a descobrir melhor este especialista.",
           "placeholder": "Adicionar rótulos..."
         },
         "share": {
@@ -8515,9 +8515,9 @@
             "label": "Compartilhar"
           },
           "description": "com outros usuários, grupos ou todos na sua organização.",
-          "title": "Compartilhar este agente"
+          "title": "Compartilhar este especialista"
         },
-        "title": "Compartilhar agente"
+        "title": "Compartilhar especialista"
       },
       "starters": {
         "examples": {
@@ -8532,23 +8532,23 @@
         "optional": "opcional"
       },
       "toasts": {
-        "createFailed": "Falha ao criar o agente - {detail}",
-        "created": "Agente \"{name}\" criado com sucesso",
-        "deleteFailed": "Falha ao excluir o agente: {error}",
-        "deleted": "Agente excluído com sucesso",
+        "createFailed": "Falha ao criar o especialista - {detail}",
+        "created": "Especialista \"{name}\" criado com sucesso",
+        "deleteFailed": "Falha ao excluir o especialista: {error}",
+        "deleted": "Especialista excluído com sucesso",
         "genericError": "Ocorreu um erro: {error}",
         "noResponse": "nenhuma resposta recebida",
-        "sharingFailed": "Agente criado, mas o compartilhamento falhou: {error}",
+        "sharingFailed": "Especialista criado, mas o compartilhamento falhou: {error}",
         "toggleListedFailed": "Falha ao alternar a visibilidade",
         "unknownDetail": "erro desconhecido",
         "unknownError": "Erro desconhecido",
-        "updateFailed": "Falha ao atualizar o agente - {detail}",
-        "updated": "Agente \"{name}\" atualizado com sucesso"
+        "updateFailed": "Falha ao atualizar o especialista - {detail}",
+        "updated": "Especialista \"{name}\" atualizado com sucesso"
       },
       "validation": {
         "cutoffInFuture": "A data de corte de conhecimento deve ser hoje ou anterior.",
         "descriptionMax": "A descrição deve ter no máximo {max} caracteres",
-        "nameRequired": "O nome do agente é obrigatório.",
+        "nameRequired": "O nome do especialista é obrigatório.",
         "starterMax": "O iniciador de conversa deve ter no máximo {max} caracteres"
       },
       "visibility": {
@@ -8569,6 +8569,16 @@
       },
       "warnings": {
         "openUrl": "A pesquisa na web sem a capacidade de abrir URLs pode levar a resultados da web significativamente piores."
+      },
+      "sections": {
+        "identity": "Identidade",
+        "behavior": "Comportamento",
+        "starters": "Iniciadores de conversa",
+        "knowledge": "Conhecimento",
+        "sharing": "Compartilhamento",
+        "actions": "Ações e ferramentas",
+        "advanced": "Opções avançadas",
+        "dangerZone": "Excluir especialista"
       }
     },
     "filters": {
@@ -8711,7 +8721,7 @@
           "title": "Iniciadores de conversa"
         },
         "defaultModel": {
-          "description": "Este modelo será usado pelo Onyx por padrão nos seus chats.",
+          "description": "Este modelo será usado por padrão nos seus chats.",
           "title": "Modelo padrão"
         },
         "featured": {
@@ -8762,13 +8772,13 @@
         "title": "Nenhum especialista encontrado"
       },
       "header": {
-        "description": "Personalize o comportamento e o conhecimento da IA para os casos de uso seus e da sua equipe.",
+        "description": "Configure especialistas para contextos, documentos e análises específicas.",
         "title": "Especialistas"
       },
       "newAgent": {
         "label": "Novo especialista",
         "noPermission": {
-          "tooltip": "Você não tem permissão para criar agentes. Entre em contato com seu administrador para solicitar acesso."
+          "tooltip": "Você não tem permissão para criar especialistas. Entre em contato com seu administrador para solicitar acesso."
         },
         "ariaLabel": "Novo especialista"
       },
@@ -8789,10 +8799,10 @@
       },
       "tabs": {
         "all": {
-          "label": "Todos os especialistas"
+          "label": "Todos"
         },
         "your": {
-          "label": "Seus especialistas"
+          "label": "Seus"
         }
       }
     },
@@ -8800,6 +8810,9 @@
       "insert": {
         "tooltip": "Inserir variável de usuário"
       }
+    },
+    "image": {
+      "altFallback": "Avatar do especialista"
     }
   },
   "auth": {
@@ -10917,7 +10930,7 @@
     },
     "agentAvatar": {
       "image": {
-        "altFallback": "Avatar do agente"
+        "altFallback": "Avatar do especialista"
       },
       "logo": {
         "alt": "Logotipo"

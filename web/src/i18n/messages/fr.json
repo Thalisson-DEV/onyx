@@ -8355,22 +8355,22 @@
         "label": "{count, plural, =0 {Aucune action} one {# action} other {# actions}}"
       },
       "edit": {
-        "tooltip": "Modifier l'agent"
+        "tooltip": "Modifier le spécialiste"
       },
       "pin": {
         "tooltip": "Épingler à la barre latérale"
       },
       "share": {
-        "tooltip": "Partager l'agent"
+        "tooltip": "Partager le spécialiste"
       },
       "startChat": {
-        "label": "Démarrer une discussion"
+        "label": "Démarrer la conversation"
       },
       "unpin": {
         "tooltip": "Détacher de la barre latérale"
       },
       "viewStats": {
-        "tooltip": "Voir les statistiques de l'agent"
+        "tooltip": "Voir les statistiques du spécialiste"
       }
     },
     "editor": {
@@ -8443,7 +8443,7 @@
       },
       "general": {
         "avatar": {
-          "title": "Avatar de l'agent"
+          "title": "Avatar du spécialiste"
         },
         "descriptionField": {
           "placeholder": "Que fait cet agent ?",
@@ -8461,8 +8461,8 @@
         "create": {
           "label": "Créer"
         },
-        "createTitle": "Créer un agent",
-        "editTitle": "Modifier l'agent",
+        "createTitle": "Nouveau spécialiste",
+        "editTitle": "Modifier le spécialiste",
         "save": {
           "label": "Enregistrer"
         }
@@ -8569,6 +8569,16 @@
       },
       "warnings": {
         "openUrl": "La recherche Web sans la possibilité d'ouvrir des URL peut donner des résultats Web nettement moins bons."
+      },
+      "sections": {
+        "identity": "Identité",
+        "behavior": "Comportement",
+        "starters": "Amorces de conversation",
+        "knowledge": "Connaissances",
+        "sharing": "Partage",
+        "actions": "Actions et outils",
+        "advanced": "Options avancées",
+        "dangerZone": "Supprimer le spécialiste"
       }
     },
     "filters": {
@@ -8762,7 +8772,7 @@
         "title": "Aucun spécialiste trouvé"
       },
       "header": {
-        "description": "Personnalisez le comportement et les connaissances de l'IA pour vos cas d'usage et ceux de votre équipe.",
+        "description": "Configurez des spécialistes pour des contextes, documents et analyses spécifiques.",
         "title": "Spécialistes"
       },
       "newAgent": {
@@ -8789,10 +8799,10 @@
       },
       "tabs": {
         "all": {
-          "label": "Tous les spécialistes"
+          "label": "Tous"
         },
         "your": {
-          "label": "Vos spécialistes"
+          "label": "Les vôtres"
         }
       }
     },
@@ -8800,6 +8810,9 @@
       "insert": {
         "tooltip": "Insérer une variable utilisateur"
       }
+    },
+    "image": {
+      "altFallback": "Avatar du spécialiste"
     }
   },
   "auth": {
@@ -10917,7 +10930,7 @@
     },
     "agentAvatar": {
       "image": {
-        "altFallback": "Avatar de l'agent"
+        "altFallback": "Avatar du spécialiste"
       },
       "logo": {
         "alt": "Logo"

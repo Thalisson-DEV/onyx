@@ -24,18 +24,26 @@ import {
 import { useCreateModal } from "@opal/components";
 import { useAppPosition } from "@/lib/position/hooks";
 import { ShareAgentModal } from "@/lib/agents/components";
-import { CardItemLayout } from "@/layouts/general-layouts";
-import { Content } from "@opal/layouts";
-import { Hoverable, Interactive } from "@opal/core";
-import { Card } from "@/refresh-components/cards";
+import { cn } from "@opal/utils";
 
 export interface AgentCardProps {
   agent: MinimalAgent;
+  isSelected?: boolean;
   /** Opens this agent's viewer, which the listing renders. */
   onView: () => void;
 }
 
-export default function AgentCard({ agent, onView }: AgentCardProps) {
+/**
+ * AgentCard — operational specialist row for TON.
+ *
+ * Designed as a restrained, quiet, single-zone flat row:
+ * - Content-driven height (no arbitrary fixed box).
+ * - Identity + Name + Description as primary hierarchy.
+ * - Actions and Start Conversation aligned to the right.
+ * - Selected state indicated via semantic background and border tokens.
+ * - No multi-zone card split, no decorative gradients, no elevated tile shadows.
+ */
+export default function AgentCard({ agent, isSelected = false, onView }: AgentCardProps) {
   const t = useTranslations("agents");
   const appPosition = useAppPosition();
   const router = useRouter();
@@ -55,16 +63,6 @@ export default function AgentCard({ agent, onView }: AgentCardProps) {
     appPosition.openAgent(agent.id);
   }, [pinned, togglePinnedAgent, agent, appPosition]);
 
-  // Declared once because it renders both bare and wrapped, depending on `pinned`.
-  const pinButton = (
-    <Button
-      icon={pinned ? SvgPinned : SvgPin}
-      prominence="tertiary"
-      onClick={noProp(() => togglePinnedAgent(agent, !pinned))}
-      tooltip={pinned ? t("card.unpin.tooltip") : t("card.pin.tooltip")}
-    />
-  );
-
   return (
     <>
       <shareAgentModal.Provider>
@@ -72,105 +70,113 @@ export default function AgentCard({ agent, onView }: AgentCardProps) {
         <ShareAgentModal agentId={agent.id} />
       </shareAgentModal.Provider>
 
-      <Interactive.Simple onClick={onView} group="group/AgentCard">
-        <Hoverable.Root group="AgentCard" height="full">
-          {/* Border-defined card: hierarchy through surface + 1px border + typography. */}
-          <Card padding={0} gap={0} height="full">
-            <div className="flex self-stretch">
-              <CardItemLayout
-                icon={(props) => <AgentAvatar agent={agent} {...props} />}
-                title={agent.name}
-                description={agent.description}
-                rightChildren={
-                  <>
-                    {can(agent, "view_stats") && businessTier && (
-                      <Hoverable.Item group="AgentCard">
-                        <Button
-                          icon={SvgBarChart}
-                          prominence="tertiary"
-                          onClick={noProp(() =>
-                            router.push(`/ee/agents/stats/${agent.id}`)
-                          )}
-                          tooltip={t("card.viewStats.tooltip")}
-                        />
-                      </Hoverable.Item>
-                    )}
-                    {can(agent, "edit") && (
-                      <Hoverable.Item group="AgentCard">
-                        <Button
-                          icon={SvgEdit}
-                          prominence="tertiary"
-                          onClick={noProp(() =>
-                            router.push(`/app/agents/edit/${agent.id}`)
-                          )}
-                          tooltip={t("card.edit.tooltip")}
-                        />
-                      </Hoverable.Item>
-                    )}
-                    {can(agent, "share") && (
-                      <Hoverable.Item group="AgentCard">
-                        <Button
-                          icon={SvgShare}
-                          prominence="tertiary"
-                          onClick={noProp(() => shareAgentModal.toggle(true))}
-                          tooltip={t("card.share.tooltip")}
-                        />
-                      </Hoverable.Item>
-                    )}
-                    {/* A pinned agent shows its pin at rest; an unpinned one
-                      only offers the action on hover. */}
-                    {pinned ? (
-                      pinButton
-                    ) : (
-                      <Hoverable.Item group="AgentCard">
-                        {pinButton}
-                      </Hoverable.Item>
-                    )}
-                  </>
-                }
-              />
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onView}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onView();
+          }
+        }}
+        data-testid={`SpecialistRow/${agent.id}`}
+        data-selected={isSelected ? "true" : undefined}
+        className={cn(
+          "group/agent-row flex self-stretch flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 cursor-pointer transition-colors text-left select-none",
+          isSelected
+            ? "bg-background-tint-02 border-l-2 border-l-border-selected"
+            : "hover:bg-background-tint-01/80 border-l-2 border-l-transparent"
+        )}
+      >
+        {/* Left: Identity + Primary Info */}
+        <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+          <div className="shrink-0 pt-0.5 sm:pt-0">
+            <AgentAvatar agent={agent} size={32} />
+          </div>
+
+          <div className="flex flex-col min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold text-text-04 truncate">
+                {agent.name}
+              </span>
+              {agent.owner?.email && (
+                <span className="text-xs text-text-02 truncate flex items-center gap-1">
+                  <SvgUser className="w-3 h-3 text-text-02 shrink-0" />
+                  {agent.owner.email}
+                </span>
+              )}
             </div>
 
-            {/* Footer section - bg-background-tint-01 */}
-            <div className="bg-background-tint-01 p-1 flex flex-row items-end justify-between w-full">
-              {/* Left side - creator and actions */}
-              <div className="flex flex-col gap-1 py-1 px-2">
-                {/* Owner row: only rendered when owner data is present.
-                    Neutral behavior: omitting is preferable to a fallback string. */}
-                {agent.owner?.email && (
-                  <Content
-                    icon={SvgUser}
-                    title={agent.owner.email}
-                    sizePreset="secondary"
-                    variant="body"
-                    color="muted"
-                  />
+            {agent.description && (
+              <p className="text-xs text-text-03 line-clamp-1 leading-relaxed mt-0.5">
+                {agent.description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Actions aligned to the right */}
+        <div className="flex items-center justify-between sm:justify-end gap-1.5 shrink-0 pt-1 sm:pt-0">
+          <div className="flex items-center gap-0.5">
+            {can(agent, "view_stats") && businessTier && (
+              <Button
+                icon={SvgBarChart}
+                prominence="tertiary"
+                size="sm"
+                onClick={noProp(() =>
+                  router.push(`/ee/agents/stats/${agent.id}`)
                 )}
-                <Content
-                  icon={SvgActions}
-                  title={t("card.actionsCount.label", {
-                    count: agent.tools.length,
-                  })}
-                  sizePreset="secondary"
-                  variant="body"
-                  color="muted"
-                />
-              </div>
+                tooltip={t("card.viewStats.tooltip")}
+              />
+            )}
+            {can(agent, "edit") && (
+              <Button
+                icon={SvgEdit}
+                prominence="tertiary"
+                size="sm"
+                onClick={noProp(() =>
+                  router.push(`/app/agents/edit/${agent.id}`)
+                )}
+                tooltip={t("card.edit.tooltip")}
+              />
+            )}
+            {can(agent, "share") && (
+              <Button
+                icon={SvgShare}
+                prominence="tertiary"
+                size="sm"
+                onClick={noProp(() => shareAgentModal.toggle(true))}
+                tooltip={t("card.share.tooltip")}
+              />
+            )}
+            <span
+              className={cn(
+                !pinned &&
+                  "opacity-0 group-hover/agent-row:opacity-100 focus-within:opacity-100 transition-opacity"
+              )}
+            >
+              <Button
+                icon={pinned ? SvgPinned : SvgPin}
+                prominence="tertiary"
+                size="sm"
+                onClick={noProp(() => togglePinnedAgent(agent, !pinned))}
+                tooltip={pinned ? t("card.unpin.tooltip") : t("card.pin.tooltip")}
+              />
+            </span>
+          </div>
 
-              {/* Right side - Start Chat button */}
-              <div className="p-0.5">
-                <Button
-                  prominence="tertiary"
-                  rightIcon={SvgBubbleText}
-                  onClick={noProp(handleStartChat)}
-                >
-                  {t("card.startChat.label")}
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </Hoverable.Root>
-      </Interactive.Simple>
+          {/* Start Conversation button */}
+          <Button
+            prominence="tertiary"
+            size="sm"
+            rightIcon={SvgBubbleText}
+            onClick={noProp(handleStartChat)}
+          >
+            {t("card.startChat.label")}
+          </Button>
+        </div>
+      </div>
     </>
   );
 }

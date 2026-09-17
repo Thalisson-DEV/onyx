@@ -8355,22 +8355,22 @@
         "label": "{count, plural, =0 {アクションなし} one {# 個のアクション} other {# 個のアクション}}"
       },
       "edit": {
-        "tooltip": "エージェントを編集"
+        "tooltip": "スペシャリストを編集"
       },
       "pin": {
         "tooltip": "サイドバーにピン留め"
       },
       "share": {
-        "tooltip": "エージェントを共有"
+        "tooltip": "スペシャリストを共有"
       },
       "startChat": {
-        "label": "チャットを開始"
+        "label": "会話を開始"
       },
       "unpin": {
         "tooltip": "サイドバーのピン留めを解除"
       },
       "viewStats": {
-        "tooltip": "エージェントの統計を表示"
+        "tooltip": "スペシャリストの統計を表示"
       }
     },
     "editor": {
@@ -8443,7 +8443,7 @@
       },
       "general": {
         "avatar": {
-          "title": "エージェントのアバター"
+          "title": "スペシャリストのアバター"
         },
         "descriptionField": {
           "placeholder": "このエージェントは何をしますか？",
@@ -8461,8 +8461,8 @@
         "create": {
           "label": "作成"
         },
-        "createTitle": "エージェントを作成",
-        "editTitle": "エージェントを編集",
+        "createTitle": "新規スペシャリスト",
+        "editTitle": "スペシャリストを編集",
         "save": {
           "label": "保存"
         }
@@ -8569,6 +8569,16 @@
       },
       "warnings": {
         "openUrl": "URLを開く機能なしのウェブ検索では、ウェブベースの結果が大幅に悪化する可能性があります。"
+      },
+      "sections": {
+        "identity": "アイデンティティ",
+        "behavior": "動作",
+        "starters": "会話スターター",
+        "knowledge": "ナレッジ",
+        "sharing": "共有",
+        "actions": "アクションとツール",
+        "advanced": "詳細設定",
+        "dangerZone": "スペシャリストを削除"
       }
     },
     "filters": {
@@ -8762,7 +8772,7 @@
         "title": "スペシャリストが見つかりません"
       },
       "header": {
-        "description": "あなたとチームのユースケースに合わせてAIの動作と知識をカスタマイズします。",
+        "description": "特定のコンテキスト、ドキュメント、分析用にスペシャリストを設定します。",
         "title": "スペシャリスト"
       },
       "newAgent": {
@@ -8789,10 +8799,10 @@
       },
       "tabs": {
         "all": {
-          "label": "すべてのスペシャリスト"
+          "label": "すべて"
         },
         "your": {
-          "label": "マイ スペシャリスト"
+          "label": "作成したもの"
         }
       }
     },
@@ -8800,6 +8810,9 @@
       "insert": {
         "tooltip": "ユーザー変数を挿入"
       }
+    },
+    "image": {
+      "altFallback": "スペシャリストのアバター"
     }
   },
   "auth": {
@@ -10917,7 +10930,7 @@
     },
     "agentAvatar": {
       "image": {
-        "altFallback": "エージェントのアバター"
+        "altFallback": "スペシャリストのアバター"
       },
       "logo": {
         "alt": "ロゴ"

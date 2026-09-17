@@ -9571,8 +9571,7 @@
           "listeningPlaceholder": "Ouvindo...",
           "placeholder": "Como posso ajudar você hoje?",
           "queuedPlaceholder": "Pressione a seta para cima para editar as mensagens na fila",
-          "searchPlaceholder": "Pesquisar nas fontes conectadas",
-          "speakingPlaceholder": "Onyx está falando..."
+          "searchPlaceholder": "Pesquisar nas fontes conectadas"
         },
         "searchButton": {
           "ariaLabel": "Buscar"
@@ -9591,7 +9590,7 @@
         },
         "voiceSetupButton": {
           "ariaLabel": "Configurar voz",
-          "tooltip": "A voz não está configurada. Configure nas configurações de administração."
+          "tooltip": "Ditado não disponível neste navegador."
         }
       },
       "baseInputBar": {
@@ -9668,6 +9667,10 @@
         },
         "stopRecording": {
           "ariaLabel": "Parar gravação"
+        },
+        "unsupported": {
+          "ariaLabel": "Ditado não disponível",
+          "tooltip": "Ditado não disponível neste navegador."
         }
       },
       "pasteTilePopover": {
@@ -9706,6 +9709,15 @@
         "startSessionButton": {
           "label": "Iniciar nova sessão"
         }
+      },
+      "waveform": {
+        "muteButton": {
+          "muteAriaLabel": "Silenciar microfone",
+          "unmuteAriaLabel": "Ativar microfone",
+          "muteTooltip": "Silenciar",
+          "unmuteTooltip": "Ativar"
+        },
+        "dictating": "Ditando..."
       }
     },
     "mcpApiKey": {
@@ -13420,21 +13432,6 @@
         "description": "{amount} gasto",
         "title": "Uso neste período"
       }
-    },
-    "voice": {
-      "autoPlayback": {
-        "description": "Reproduz automaticamente as respostas de voz.",
-        "title": "Reprodução automática"
-      },
-      "autoSend": {
-        "description": "Envia automaticamente a entrada de voz quando você para de falar.",
-        "title": "Envio automático ao pausar"
-      },
-      "playbackSpeed": {
-        "description": "Ajuste a velocidade da reprodução de voz.",
-        "title": "Velocidade de reprodução"
-      },
-      "title": "Voz"
     }
   },
   "sidebar": {

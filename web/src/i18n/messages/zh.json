@@ -9571,8 +9571,7 @@
           "listeningPlaceholder": "正在聆听...",
           "placeholder": "今天我能帮您做些什么？",
           "queuedPlaceholder": "按上箭头键编辑排队的消息",
-          "searchPlaceholder": "搜索已连接的来源",
-          "speakingPlaceholder": "Onyx 正在朗读..."
+          "searchPlaceholder": "搜索已连接的来源"
         },
         "searchButton": {
           "ariaLabel": "搜索"
@@ -9591,7 +9590,7 @@
         },
         "voiceSetupButton": {
           "ariaLabel": "设置语音",
-          "tooltip": "未配置语音。请在管理员设置中配置。"
+          "tooltip": "当前浏览器不支持语音听写。"
         }
       },
       "baseInputBar": {
@@ -9668,6 +9667,10 @@
         },
         "stopRecording": {
           "ariaLabel": "停止录音"
+        },
+        "unsupported": {
+          "ariaLabel": "听写不可用",
+          "tooltip": "当前浏览器不支持语音听写。"
         }
       },
       "pasteTilePopover": {
@@ -9706,6 +9709,15 @@
         "startSessionButton": {
           "label": "开始新会话"
         }
+      },
+      "waveform": {
+        "muteButton": {
+          "muteAriaLabel": "静音麦克风",
+          "unmuteAriaLabel": "取消麦克风静音",
+          "muteTooltip": "静音",
+          "unmuteTooltip": "取消静音"
+        },
+        "dictating": "正在听写..."
       }
     },
     "mcpApiKey": {
@@ -13420,21 +13432,6 @@
         "description": "已花费 {amount}",
         "title": "本期使用情况"
       }
-    },
-    "voice": {
-      "autoPlayback": {
-        "description": "自动播放语音回复。",
-        "title": "自动播放"
-      },
-      "autoSend": {
-        "description": "在您停止说话时自动发送语音输入。",
-        "title": "停顿时自动发送"
-      },
-      "playbackSpeed": {
-        "description": "调整语音播放速度。",
-        "title": "播放速度"
-      },
-      "title": "语音"
     }
   },
   "sidebar": {

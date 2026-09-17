@@ -1,45 +1,37 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { cn } from "@opal/utils";
+import { useTranslations } from "next-intl";
 import { formatElapsedTime } from "@/lib/dateUtils";
 import { Button } from "@opal/components";
-import {
-  SvgMicrophone,
-  SvgMicrophoneOff,
-  SvgVolume,
-  SvgVolumeOff,
-} from "@opal/icons";
+import { SvgMicrophone, SvgMicrophoneOff } from "@opal/icons";
 
 // Recording waveform constants
-const RECORDING_BAR_COUNT = 120;
+export const RECORDING_BAR_COUNT = 120;
 const MIN_BAR_HEIGHT = 2;
 const MAX_BAR_HEIGHT = 16;
 
-// Speaking waveform constants
-const SPEAKING_BAR_COUNT = 28;
-
 interface WaveformProps {
-  /** Visual style and behavior variant */
-  variant: "speaking" | "recording";
+  /** Visual style and behavior variant. Speaking variant removed in TON-VIS-008. */
+  variant?: "recording" | "speaking";
   /** Whether the waveform is actively animating */
   isActive: boolean;
   /** Whether audio is muted */
   isMuted?: boolean;
-  /** Current microphone audio level (0-1), only used for recording variant */
+  /** Current microphone audio level (0-1), used when audio level stream is present */
   audioLevel?: number;
   /** Callback when mute button is clicked */
   onMuteToggle?: () => void;
 }
 
 function Waveform({
-  variant,
+  variant = "recording",
   isActive,
   isMuted = false,
   audioLevel = 0,
   onMuteToggle,
 }: WaveformProps) {
-  // ─── Recording variant state ───────────────────────────────────────────────
+  const t = useTranslations("chat.input.waveform");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [barHeights, setBarHeights] = useState<number[]>(() =>
     Array.from({ length: RECORDING_BAR_COUNT }, () => MIN_BAR_HEIGHT)
@@ -52,19 +44,12 @@ function Waveform({
     audioLevelRef.current = audioLevel;
   }, [audioLevel]);
 
-  // ─── Speaking variant bars ─────────────────────────────────────────────────
-  const speakingBars = useMemo(() => {
-    return Array.from({ length: SPEAKING_BAR_COUNT }, (_, i) => ({
-      id: i,
-      // Create a natural wave pattern with height variation
-      baseHeight: Math.sin(i * 0.4) * 5 + 8,
-      delay: i * 0.025,
-    }));
-  }, []);
+  // Speaking waveform removed in TON-VIS-008 (conversational voice disabled)
+  const isSpeakingVariant = variant === "speaking";
 
   // ─── Recording: Timer effect ───────────────────────────────────────────────
   useEffect(() => {
-    if (variant !== "recording") return;
+    if (isSpeakingVariant) return;
 
     if (!isActive) {
       setElapsedSeconds(0);
@@ -76,13 +61,13 @@ function Waveform({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [variant, isActive]);
+  }, [isSpeakingVariant, isActive]);
 
-  // ─── Recording: Audio level visualization effect ───────────────────────────
+  // ─── Recording: Audio level visualization effect (when real audio level > 0) ──
   useEffect(() => {
-    if (variant !== "recording") return;
+    if (isSpeakingVariant) return;
 
-    if (!isActive) {
+    if (!isActive || audioLevelRef.current <= 0) {
       setBarHeights(
         Array.from({ length: RECORDING_BAR_COUNT }, () => MIN_BAR_HEIGHT)
       );
@@ -116,76 +101,45 @@ function Waveform({
         animationRef.current = null;
       }
     };
-  }, [variant, isActive, isMuted]);
+  }, [isSpeakingVariant, isActive, isMuted, audioLevel]);
 
   const formattedTime = useMemo(
     () => formatElapsedTime(elapsedSeconds),
     [elapsedSeconds]
   );
 
-  if (!isActive) {
+  if (!isActive || isSpeakingVariant) {
     return null;
   }
 
-  // ─── Speaking variant render ───────────────────────────────────────────────
-  if (variant === "speaking") {
-    return (
-      <div className="flex items-center gap-0.5 p-1.5 bg-background-tint-00 rounded-16 shadow-box-01">
-        {/* Waveform container */}
-        <div className="flex items-center p-1 bg-background-tint-00 rounded-12 max-w-[144px] min-h-[32px]">
-          <div className="flex items-center p-1">
-            {/* Waveform bars */}
-            <div className="flex items-center justify-center gap-[2px] h-4 w-[120px] overflow-hidden">
-              {speakingBars.map((bar) => (
-                <div
-                  key={bar.id}
-                  className={cn(
-                    "w-[3px] rounded-full",
-                    isMuted ? "bg-text-03" : "bg-theme-blue-05",
-                    !isMuted && "animate-waveform"
-                  )}
-                  style={{
-                    height: isMuted ? "2px" : `${bar.baseHeight}px`,
-                    animationDelay: isMuted ? undefined : `${bar.delay}s`,
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="w-0.5 self-stretch bg-border-02" />
-
-        {/* Volume button */}
-        {onMuteToggle && (
-          <div className="flex items-center p-1 bg-background-tint-00 rounded-12">
-            <Button
-              icon={isMuted ? SvgVolumeOff : SvgVolume}
-              onClick={onMuteToggle}
-              prominence="tertiary"
-              size="sm"
-              tooltip={isMuted ? "Unmute" : "Mute"}
-            />
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ─── Recording variant render ──────────────────────────────────────────────
+  // ─── Honest recording indicator render ──────────────────────────────────────
   return (
     <div className="flex items-center gap-3 px-3 py-2 bg-background-tint-00 rounded-12 min-h-[32px]">
-      {/* Waveform visualization driven by real audio levels */}
-      <div className="flex-1 flex items-center justify-between h-4 overflow-hidden">
-        {barHeights.map((height, i) => (
-          <div
-            key={i}
-            className="w-[1.5px] bg-text-03 rounded-full shrink-0 transition-[height] duration-75"
-            style={{ height: `${height}px` }}
+      {audioLevel > 0 ? (
+        <div className="flex-1 flex items-center justify-between h-4 overflow-hidden">
+          {barHeights.map((height, i) => (
+            <div
+              key={i}
+              className="w-[1.5px] bg-text-03 rounded-full shrink-0 transition-[height] duration-75"
+              style={{ height: `${height}px` }}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 flex-1">
+          <span
+            className={
+              isMuted
+                ? "w-2 h-2 rounded-full bg-text-03 shrink-0"
+                : "w-2 h-2 rounded-full bg-status-destructive animate-pulse shrink-0"
+            }
+            aria-hidden="true"
           />
-        ))}
-      </div>
+          <span className="text-xs text-text-02 font-medium select-none">
+            {t("dictating")}
+          </span>
+        </div>
+      )}
 
       {/* Timer */}
       <span className="font-mono text-xs text-text-03 tabular-nums shrink-0">
@@ -199,7 +153,16 @@ function Waveform({
           onClick={onMuteToggle}
           prominence="tertiary"
           size="sm"
-          aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
+          aria-label={
+            isMuted
+              ? t("muteButton.unmuteAriaLabel")
+              : t("muteButton.muteAriaLabel")
+          }
+          tooltip={
+            isMuted
+              ? t("muteButton.unmuteTooltip")
+              : t("muteButton.muteTooltip")
+          }
         />
       )}
     </div>

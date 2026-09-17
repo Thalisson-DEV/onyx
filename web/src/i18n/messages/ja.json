@@ -9571,8 +9571,7 @@
           "listeningPlaceholder": "聞き取り中...",
           "placeholder": "今日はどのようなご用件でしょうか？",
           "queuedPlaceholder": "上キーを押すとキュー内のメッセージを編集できます",
-          "searchPlaceholder": "接続済みのソースを検索",
-          "speakingPlaceholder": "Onyx が話しています..."
+          "searchPlaceholder": "接続済みのソースを検索"
         },
         "searchButton": {
           "ariaLabel": "検索"
@@ -9591,7 +9590,7 @@
         },
         "voiceSetupButton": {
           "ariaLabel": "音声を設定",
-          "tooltip": "音声が未設定です。管理設定で設定してください。"
+          "tooltip": "このブラウザでは音声入力をご利用いただけません。"
         }
       },
       "baseInputBar": {
@@ -9668,6 +9667,10 @@
         },
         "stopRecording": {
           "ariaLabel": "録音を停止"
+        },
+        "unsupported": {
+          "ariaLabel": "音声入力は利用できません",
+          "tooltip": "このブラウザでは音声入力をご利用いただけません。"
         }
       },
       "pasteTilePopover": {
@@ -9706,6 +9709,15 @@
         "startSessionButton": {
           "label": "新しいセッションを開始"
         }
+      },
+      "waveform": {
+        "muteButton": {
+          "muteAriaLabel": "マイクをミュート",
+          "unmuteAriaLabel": "マイクのミュートを解除",
+          "muteTooltip": "ミュート",
+          "unmuteTooltip": "ミュート解除"
+        },
+        "dictating": "音声入力中..."
       }
     },
     "mcpApiKey": {
@@ -13420,21 +13432,6 @@
         "description": "{amount} 消費",
         "title": "この期間の使用状況"
       }
-    },
-    "voice": {
-      "autoPlayback": {
-        "description": "音声応答を自動で再生します。",
-        "title": "自動再生"
-      },
-      "autoSend": {
-        "description": "話し終わったときに音声入力を自動で送信します。",
-        "title": "停止時に自動送信"
-      },
-      "playbackSpeed": {
-        "description": "音声再生の速度を調整します。",
-        "title": "再生速度"
-      },
-      "title": "音声"
     }
   },
   "sidebar": {

@@ -9571,8 +9571,7 @@
           "listeningPlaceholder": "Listening...",
           "placeholder": "How can I help you today?",
           "queuedPlaceholder": "Press up to edit queued messages",
-          "searchPlaceholder": "Search connected sources",
-          "speakingPlaceholder": "Onyx is speaking..."
+          "searchPlaceholder": "Search connected sources"
         },
         "searchButton": {
           "ariaLabel": "Search"
@@ -9591,7 +9590,7 @@
         },
         "voiceSetupButton": {
           "ariaLabel": "Set up voice",
-          "tooltip": "Voice not configured. Set up in admin settings."
+          "tooltip": "Dictation is not available in this browser."
         }
       },
       "baseInputBar": {
@@ -9668,6 +9667,10 @@
         },
         "stopRecording": {
           "ariaLabel": "Stop recording"
+        },
+        "unsupported": {
+          "ariaLabel": "Dictation not available",
+          "tooltip": "Dictation is not available in this browser."
         }
       },
       "pasteTilePopover": {
@@ -9706,6 +9709,15 @@
         "startSessionButton": {
           "label": "Start New Session"
         }
+      },
+      "waveform": {
+        "muteButton": {
+          "muteAriaLabel": "Mute microphone",
+          "unmuteAriaLabel": "Unmute microphone",
+          "muteTooltip": "Mute",
+          "unmuteTooltip": "Unmute"
+        },
+        "dictating": "Dictating..."
       }
     },
     "mcpApiKey": {
@@ -13420,21 +13432,6 @@
         "description": "{amount} spent",
         "title": "Usage this period"
       }
-    },
-    "voice": {
-      "autoPlayback": {
-        "description": "Automatically play voice responses.",
-        "title": "Auto-Playback"
-      },
-      "autoSend": {
-        "description": "Automatically send voice input when you stop speaking.",
-        "title": "Auto-Send on Pause"
-      },
-      "playbackSpeed": {
-        "description": "Adjust the speed of voice playback.",
-        "title": "Playback Speed"
-      },
-      "title": "Voice"
     }
   },
   "sidebar": {

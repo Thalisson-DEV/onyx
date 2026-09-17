@@ -9571,8 +9571,7 @@
           "listeningPlaceholder": "Escuchando...",
           "placeholder": "¿En qué puedo ayudarte hoy?",
           "queuedPlaceholder": "Pulsa la flecha arriba para editar los mensajes en cola",
-          "searchPlaceholder": "Buscar en las fuentes conectadas",
-          "speakingPlaceholder": "Onyx está hablando..."
+          "searchPlaceholder": "Buscar en las fuentes conectadas"
         },
         "searchButton": {
           "ariaLabel": "Buscar"
@@ -9591,7 +9590,7 @@
         },
         "voiceSetupButton": {
           "ariaLabel": "Configurar voz",
-          "tooltip": "La voz no está configurada. Actívala en la configuración de administración."
+          "tooltip": "El dictado no está disponible en este navegador."
         }
       },
       "baseInputBar": {
@@ -9668,6 +9667,10 @@
         },
         "stopRecording": {
           "ariaLabel": "Detener grabación"
+        },
+        "unsupported": {
+          "ariaLabel": "Dictado no disponible",
+          "tooltip": "El dictado no está disponible en este navegador."
         }
       },
       "pasteTilePopover": {
@@ -9706,6 +9709,15 @@
         "startSessionButton": {
           "label": "Iniciar nueva sesión"
         }
+      },
+      "waveform": {
+        "muteButton": {
+          "muteAriaLabel": "Silenciar micrófono",
+          "unmuteAriaLabel": "Activar micrófono",
+          "muteTooltip": "Silenciar",
+          "unmuteTooltip": "Activar"
+        },
+        "dictating": "Dictando..."
       }
     },
     "mcpApiKey": {
@@ -13420,21 +13432,6 @@
         "description": "{amount} gastado",
         "title": "Uso en este período"
       }
-    },
-    "voice": {
-      "autoPlayback": {
-        "description": "Reproduce automáticamente las respuestas de voz.",
-        "title": "Reproducción automática"
-      },
-      "autoSend": {
-        "description": "Envía automáticamente la entrada de voz cuando dejas de hablar.",
-        "title": "Envío automático al pausar"
-      },
-      "playbackSpeed": {
-        "description": "Ajusta la velocidad de reproducción de voz.",
-        "title": "Velocidad de reproducción"
-      },
-      "title": "Voz"
     }
   },
   "sidebar": {

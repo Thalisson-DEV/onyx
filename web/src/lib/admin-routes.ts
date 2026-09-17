@@ -130,11 +130,11 @@ export const ADMIN_ROUTES = {
     path: "/admin/voice",
     icon: SvgAudio,
     title: "Voice",
-    sidebarLabel: "Voice",
+    sidebarLabel: "",
     requiredPermission: Permission.FULL_ADMIN_PANEL_ACCESS,
     section: "",
     requiredTier: null,
-    visibleWhen: null,
+    visibleWhen: (_flags: FeatureFlags) => false,
   },
   CODE_INTERPRETER: {
     path: "/admin/code-interpreter",

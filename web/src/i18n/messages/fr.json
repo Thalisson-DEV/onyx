@@ -9571,8 +9571,7 @@
           "listeningPlaceholder": "Écoute en cours...",
           "placeholder": "Comment puis-je vous aider aujourd'hui ?",
           "queuedPlaceholder": "Appuyez sur la flèche haut pour modifier les messages en attente",
-          "searchPlaceholder": "Rechercher dans les sources connectées",
-          "speakingPlaceholder": "Onyx parle..."
+          "searchPlaceholder": "Rechercher dans les sources connectées"
         },
         "searchButton": {
           "ariaLabel": "Rechercher"
@@ -9591,7 +9590,7 @@
         },
         "voiceSetupButton": {
           "ariaLabel": "Configurer la voix",
-          "tooltip": "La voix n'est pas configurée. Configurez-la dans les paramètres d'administration."
+          "tooltip": "La dictée n'est pas disponible sur ce navigateur."
         }
       },
       "baseInputBar": {
@@ -9668,6 +9667,10 @@
         },
         "stopRecording": {
           "ariaLabel": "Arrêter l'enregistrement"
+        },
+        "unsupported": {
+          "ariaLabel": "Dictée non disponible",
+          "tooltip": "La dictée n'est pas disponible sur ce navigateur."
         }
       },
       "pasteTilePopover": {
@@ -9706,6 +9709,15 @@
         "startSessionButton": {
           "label": "Démarrer une nouvelle session"
         }
+      },
+      "waveform": {
+        "muteButton": {
+          "muteAriaLabel": "Couper le micro",
+          "unmuteAriaLabel": "Réactiver le micro",
+          "muteTooltip": "Couper",
+          "unmuteTooltip": "Réactiver"
+        },
+        "dictating": "Dictée en cours..."
       }
     },
     "mcpApiKey": {
@@ -13420,21 +13432,6 @@
         "description": "{amount} dépensé",
         "title": "Utilisation sur cette période"
       }
-    },
-    "voice": {
-      "autoPlayback": {
-        "description": "Lisez automatiquement les réponses vocales.",
-        "title": "Lecture automatique"
-      },
-      "autoSend": {
-        "description": "Envoyez automatiquement la saisie vocale lorsque vous arrêtez de parler.",
-        "title": "Envoi automatique à la pause"
-      },
-      "playbackSpeed": {
-        "description": "Ajustez la vitesse de lecture vocale.",
-        "title": "Vitesse de lecture"
-      },
-      "title": "Voix"
     }
   },
   "sidebar": {

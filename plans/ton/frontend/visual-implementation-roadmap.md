@@ -4,7 +4,7 @@ Sequenciamento derivado de
 [`000-de-onyx-visual-audit.md`](./000-de-onyx-visual-audit.md). A linguagem alvo
 está em [`visual-language.md`](./visual-language.md).
 
-**Estado: VIS-001, VIS-004, VIS-002, VIS-005, VIS-006, VIS-003 e VIS-007 DONE. As demais não foram implementadas.**
+**Estado: VIS-001, VIS-004, VIS-002, VIS-005, VIS-006, VIS-003, VIS-007 e VIS-008 DONE. As demais não foram implementadas.**
 
 | Fatia | Estado |
 |---|---|
@@ -15,7 +15,8 @@ está em [`visual-language.md`](./visual-language.md).
 | VIS-006 | **DONE** — [`006-messages-streaming-tools.md`](./006-messages-streaming-tools.md) |
 | VIS-003 | **DONE** — [`003-home-new-chat.md`](./003-home-new-chat.md) |
 | VIS-007 | **DONE** — [`007-specialist-runtime-identity.md`](./007-specialist-runtime-identity.md) |
-| VIS-008 … VIS-010 | não iniciadas |
+| VIS-008 | **DONE** — [`008-dictation-only-voice.md`](./008-dictation-only-voice.md) |
+| VIS-009 … VIS-010 | não iniciadas |
 
 ---
 
@@ -711,7 +712,9 @@ ficou desincronizado · `A11Y` de contraste dos acentos · Playwright de
 
 ---
 
-## VIS-008 — Voz apenas por ditado
+## VIS-008 — Voz apenas por ditado (DONE)
+
+Documentação: [`008-dictation-only-voice.md`](./008-dictation-only-voice.md)
 
 **Nível máximo: 3.**
 
@@ -771,24 +774,20 @@ Estes são achados verificados, não precauções genéricas:
    (`MicrophoneButton.tsx:307-312`). Se algum travar em `true` e a UI de parar
    tiver sido removida, o microfone fica desabilitado sem saída. Remover esses
    três termos ou garantir que fiquem falsos.
-5. **Não implementar `SpeechRecognition` nesta fatia.** O ditado atual usa
-   `getUserMedia` + `AudioContext` + `ScriptProcessorNode` streamando PCM16 por
-   WebSocket para `/api/voice/transcribe/stream`, e depende de `stt_enabled`. Um
-   caminho de navegador substituiria `VoiceRecorderSession` inteira e **perderia
-   o RMS que alimenta a waveform**.
+5. **Decisão de produto atualizada: `SpeechRecognition` adotado para ditado normal.**
+   Em correção de produto para TON-VIS-008, o microfone comum do navegador foi
+   migrado para a Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`),
+   eliminando a necessidade de o cliente configurar provedores STT externos
+   (Whisper, Azure Speech, ElevenLabs). A infraestrutura de servidor STT foi
+   retida internamente para usos internos futuros, e navegadores sem suporte
+   exibem estado desabilitado gracioso com tooltip informativo.
 
-Precedente útil: `MultiModelPanel.tsx:309` já passa `disableTTS` e
-`AgentMessage.tsx:233` já curto-circuita nele — o caminho sem voz já é
-exercitado.
+### Contrato de ditado nativo (implementado em TON-VIS-008)
 
-### Contrato futuro de ditado
-
-Requisitos, para quando `SpeechRecognition` for avaliado: detecção de capacidade
-graciosa; esconder o microfone se não houver suporte; consciência de contexto
-seguro; transcrição intermediária; transcrição final inserida no composer;
-inserção consciente do cursor onde praticável; sem perda de foco; parar ao
-enviar; watchdog de inatividade (já existe, 10s); pt-BR primeiro; considerações
-de Safari e iOS.
+Requisitos atendidos: detecção de capacidade graciosa; botão desabilitado com tooltip
+explicativo se não houver suporte; transcrição intermediária em tempo real; transcrição
+final inserida e acumulada no composer sem apagar rascunhos; sem perda de foco; parar ao
+enviar; pt-BR como padrão derivado de next-intl; zero provedores terceiros exigidos.
 
 ### Resultado visual esperado
 

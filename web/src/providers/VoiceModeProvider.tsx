@@ -146,8 +146,10 @@ function findChunkBoundary(text: string): number {
 export function VoiceModeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   const { ttsEnabled } = useVoiceStatus();
-  const autoPlayback =
-    (user?.preferences?.voice_auto_playback ?? false) && ttsEnabled;
+  // Product decision (TON-VIS-008): Conversational voice mode is disabled; voice is dictation only.
+  // Gating autoPlayback to false ensures assistant responses are never automatically spoken,
+  // while preserving the full VoiceModeContextType contract for existing consumers.
+  const autoPlayback = false;
   const playbackSpeed = user?.preferences?.voice_playback_speed ?? 1.0;
 
   const [isTTSPlaying, setIsTTSPlaying] = useState(false);
@@ -224,6 +226,7 @@ export function VoiceModeProvider({ children }: { children: React.ReactNode }) {
     if (chunk) {
       isAppendingRef.current = true;
       try {
+        // SAFETY: ArrayBufferView.buffer sliced produces an ArrayBuffer compatible with SourceBuffer.
         const buffer = chunk.buffer.slice(
           chunk.byteOffset,
           chunk.byteOffset + chunk.byteLength

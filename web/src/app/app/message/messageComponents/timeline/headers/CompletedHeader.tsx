@@ -11,7 +11,6 @@ import { Section } from "@/layouts/general-layouts";
 import { ContentAction } from "@opal/layouts";
 import { formatDurationSeconds } from "@opal/time";
 import { noProp } from "@/lib/utils";
-import { clickOnKeyDown } from "@opal/utils";
 import MemoriesModal from "@/refresh-components/modals/MemoriesModal";
 import { useCreateModal } from "@opal/components";
 
@@ -162,11 +161,14 @@ export const CompletedHeader = React.memo(function CompletedHeader({
     );
   }
 
+  // `pre_answer_processing_seconds` measures observable execution: the wall time
+  // from request to the first answer token. It is reported as execution time, not
+  // as time spent thinking.
   const durationText = processingDurationSeconds
-    ? t("thoughtDuration.label", {
+    ? t("activity.duration.label", {
         duration: formatDurationSeconds(processingDurationSeconds),
       })
-    : t("thoughtUnknownDuration.label");
+    : t("activity.unknownDuration.label");
 
   const imageText =
     generatedImageCount > 0
@@ -196,17 +198,14 @@ export const CompletedHeader = React.memo(function CompletedHeader({
     return <div className={className}>{summary}</div>;
   }
 
+  // The row is presentational; the button is the control. One tab stop, one
+  // accessible name, one `aria-expanded`. The previous `role="button"` +
+  // `tabIndex` wrapper nested a control inside a control, announced the row's
+  // name over the button's, and created a second tab stop that did the same
+  // thing. Making the row itself clickable again would just reintroduce that as
+  // a static element with a handler, so the affordance stays on the button.
   return (
-    // The row holds its own expand button, so it stays a div with button
-    // semantics rather than a <button> wrapping a <button>.
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label={t("toggleRow.ariaLabel")}
-      onKeyDown={clickOnKeyDown(onToggle)}
-      onClick={onToggle}
-      className={className}
-    >
+    <div className={className}>
       {summary}
 
       <Button

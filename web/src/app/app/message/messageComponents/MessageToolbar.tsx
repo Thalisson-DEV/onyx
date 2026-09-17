@@ -256,9 +256,23 @@ export default function MessageToolbar({
         <FeedbackModal {...feedbackModalProps!} />
       </modal.Provider>
 
+      {/* The inert classes are gone: `transition-transform duration-300
+          ease-in-out transform` never had a transform to animate and
+          `opacity-100` is the default.
+
+          The toolbar deliberately stays visible rather than hover-revealed.
+          `Hoverable`'s `appear-on-hover` sets `pointer-events: none` at rest,
+          which makes copy, feedback and regenerate fail Playwright's
+          receives-events check — and every action here is primary to an
+          operational transcript (copy an analysis, regenerate it, open its
+          sources), not secondary decoration. Keeping it visible is also what
+          keeps it tab-reachable and reachable on touch. See
+          plans/ton/frontend/006-messages-streaming-tools.md §9. */}
       <div
         data-testid="AgentMessage/toolbar"
-        className="flex justify-between items-center w-full transition-transform duration-300 ease-in-out transform opacity-100 ps-1"
+        role="group"
+        aria-label={t("toolbar.group.ariaLabel")}
+        className="flex justify-between items-center w-full ps-1"
       >
         <TooltipGroup>
           <div className="flex items-center">

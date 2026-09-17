@@ -1,4 +1,3 @@
-import { FiCircle, FiList, FiTool } from "react-icons/fi";
 import type { useTranslations } from "next-intl";
 import {
   Packet,
@@ -15,9 +14,11 @@ import {
   SvgUser,
   SvgCircle,
   SvgBookOpen,
-  SvgSlowTime,
+  SvgActivity,
   SvgXCircle,
   SvgCode,
+  SvgListTree,
+  SvgActions,
 } from "@opal/icons";
 
 /**
@@ -123,7 +124,7 @@ export function getToolName(packets: Packet[], t: TimelineTranslate): string {
     case PacketType.CODING_AGENT_START:
       return t("toolNames.codingAgent");
     case PacketType.REASONING_START:
-      return t("toolNames.thinking");
+      return t("toolNames.processing");
     case PacketType.MEMORY_TOOL_START:
     case PacketType.MEMORY_TOOL_NO_ACCESS:
       return t("toolNames.memory");
@@ -134,7 +135,7 @@ export function getToolName(packets: Packet[], t: TimelineTranslate): string {
 
 export function getToolIcon(packets: Packet[]): React.ReactNode {
   const firstPacket = packets[0];
-  if (!firstPacket) return <FiCircle className="w-3.5 h-3.5" />;
+  if (!firstPacket) return <SvgCircle className="w-3.5 h-3.5" />;
 
   switch (firstPacket.obj.type) {
     case PacketType.SEARCH_TOOL_START: {
@@ -152,17 +153,19 @@ export function getToolIcon(packets: Packet[]): React.ReactNode {
     case PacketType.FETCH_TOOL_START:
       return <SvgLink className="w-3.5 h-3.5" />;
     case PacketType.CUSTOM_TOOL_START:
-      return <FiTool className="w-3.5 h-3.5" />;
+      // Matches the glyph CustomToolRenderer picks for the same packet.
+      return <SvgActions className="w-3.5 h-3.5" />;
     case PacketType.IMAGE_GENERATION_TOOL_START:
       return <SvgImage className="w-3.5 h-3.5" />;
     case PacketType.DEEP_RESEARCH_PLAN_START:
-      return <FiList className="w-3.5 h-3.5" />;
+      return <SvgListTree className="w-3.5 h-3.5" />;
     case PacketType.RESEARCH_AGENT_START:
       return <SvgUser className="w-3.5 h-3.5" />;
     case PacketType.CODING_AGENT_START:
       return <SvgCode className="w-3.5 h-3.5" />;
+    // Generic execution glyph: the runtime reports activity, not a subject.
     case PacketType.REASONING_START:
-      return <SvgSlowTime className="w-3.5 h-3.5" />;
+      return <SvgActivity className="w-3.5 h-3.5" />;
     case PacketType.MEMORY_TOOL_START:
     case PacketType.MEMORY_TOOL_NO_ACCESS:
       return <SvgBookOpen className="w-3.5 h-3.5" />;

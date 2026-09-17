@@ -5822,7 +5822,9 @@
           "label": "Résumés contextuels des documents RAG"
         },
         "imageSummarization": { "label": "Résumé des images" },
-        "kgDeepExtraction": { "label": "Extraction du graphe de connaissances" },
+        "kgDeepExtraction": {
+          "label": "Extraction du graphe de connaissances"
+        },
         "kgDocumentClassification": {
           "label": "Classification du graphe de connaissances"
         },
@@ -5838,7 +5840,9 @@
       "panel": {
         "description": "{start} – {end} · L’utilisation système correspond à l’activité LLM exécutée par Onyx en arrière-plan plutôt que pour un utilisateur spécifique. Cela inclut les résumés d’images, le traitement RAG contextuel et l’extraction du graphe de connaissances.",
         "emptyDescription": "L’utilisation système correspond à l’activité LLM exécutée par Onyx en arrière-plan plutôt que pour un utilisateur spécifique. Cela inclut les résumés d’images, le traitement RAG contextuel et l’extraction du graphe de connaissances.",
-        "error": { "title": "Échec du chargement de l'utilisation système pour cette période." },
+        "error": {
+          "title": "Échec du chargement de l'utilisation système pour cette période."
+        },
         "title": "Utilisation système"
       },
       "summary": {
@@ -9753,7 +9757,6 @@
       },
       "codeBlock": {
         "copyButton": {
-          "copiedLabel": "Copié !",
           "label": "Copier"
         }
       },
@@ -9769,6 +9772,9 @@
         },
         "failedStatus": {
           "text": "{toolName} a échoué (HTTP {statusCode})"
+        },
+        "failedWithoutStatus": {
+          "text": "Échec de {toolName}"
         },
         "fallbackName": {
           "label": "Outil"
@@ -9792,10 +9798,10 @@
           "label": "Réponse"
         },
         "runningStatus": {
-          "text": "{toolName} en cours d'exécution..."
+          "text": "{toolName} en cours…"
         },
         "waitingIndicator": {
-          "text": "En attente de réponse..."
+          "text": "En attente de réponse…"
         }
       },
       "customToolAuth": {
@@ -9970,11 +9976,36 @@
         }
       },
       "text": {
-        "thinkingPlaceholder": {
-          "text": "Réflexion"
+        "processingPlaceholder": {
+          "text": "Préparation de la réponse…"
         }
       },
       "timeline": {
+        "activity": {
+          "duration": {
+            "label": "Exécuté en {duration}"
+          },
+          "failed": {
+            "label": "Échec de l’exécution"
+          },
+          "interrupted": {
+            "label": "Exécution interrompue"
+          },
+          "processed": {
+            "label": "Traité"
+          },
+          "processing": {
+            "label": "Traitement…"
+          },
+          "state": {
+            "running": "En cours",
+            "completed": "Terminé",
+            "failed": "En échec"
+          },
+          "unknownDuration": {
+            "label": "Exécution terminée"
+          }
+        },
         "codingAgent": {
           "bashExit": {
             "header": "Bash · sortie {exitCode}"
@@ -9994,6 +10025,9 @@
           "noOutput": {
             "text": "Aucune sortie"
           },
+          "processing": {
+            "header": "Traitement"
+          },
           "response": {
             "header": "Réponse"
           },
@@ -10002,9 +10036,6 @@
           },
           "taskWithRepo": {
             "text": "{query}\n\nDépôt : {repo}"
-          },
-          "thinking": {
-            "header": "Réflexion"
           }
         },
         "collapseButton": {
@@ -10015,10 +10046,10 @@
             "title": "Plan de recherche"
           },
           "generated": {
-            "status": "Plan généré"
+            "status": "Plan construit"
           },
           "generating": {
-            "status": "Génération du plan"
+            "status": "Construction du plan…"
           }
         },
         "doneStep": {
@@ -10029,7 +10060,7 @@
         },
         "fetch": {
           "reading": {
-            "status": "Lecture"
+            "status": "Ouverture des liens…"
           }
         },
         "fileReader": {
@@ -10040,51 +10071,51 @@
             "status": "A lu {fileName} (caractères {start, number}–{end, number} sur {total, number})"
           },
           "reading": {
-            "status": "Lecture du fichier"
+            "status": "Lecture du fichier…"
           }
         },
         "generatedImages": {
           "label": "{count, plural, one {# image générée} other {# images générées}}"
         },
         "header": {
+          "consultingSources": {
+            "label": "Consultation des sources…"
+          },
           "executingCode": {
-            "label": "Exécution du code"
+            "label": "Exécution du code…"
           },
           "executingNamedTool": {
-            "label": "Exécution de {toolName}"
+            "label": "Exécution de {toolName}…"
           },
           "executingTool": {
-            "label": "Exécution de l'outil"
+            "label": "Exécution de l'outil…"
           },
           "generatingImage": {
-            "label": "Génération de l'image..."
+            "label": "Génération de l'image…"
           },
           "generatingImages": {
-            "label": "Génération des images"
+            "label": "Génération des images…"
           },
           "generatingPlan": {
-            "label": "Génération du plan"
+            "label": "Construction du plan…"
           },
-          "reading": {
-            "label": "Lecture"
+          "openingUrls": {
+            "label": "Ouverture des liens…"
+          },
+          "processing": {
+            "label": "Traitement…"
           },
           "readingFile": {
-            "label": "Lecture du fichier"
+            "label": "Lecture du fichier…"
           },
           "researching": {
-            "label": "Recherche en cours"
+            "label": "Recherche…"
           },
           "searchingWeb": {
-            "label": "Recherche sur le web"
-          },
-          "thinking": {
-            "label": "Réflexion"
-          },
-          "thinkingEllipsis": {
-            "label": "Réflexion..."
+            "label": "Recherche sur le web…"
           },
           "updatingMemory": {
-            "label": "Mise à jour de la mémoire..."
+            "label": "Mise à jour de la mémoire…"
           }
         },
         "internalSearch": {
@@ -10092,7 +10123,7 @@
             "text": "Aucun résultat trouvé"
           },
           "reading": {
-            "status": "Lecture"
+            "status": "Consultation des sources…"
           },
           "header": {
             "default": "Recherche dans les documents internes",
@@ -10106,9 +10137,6 @@
             "between": "du {start} au {end}"
           }
         },
-        "interruptedThinking": {
-          "label": "Réflexion interrompue"
-        },
         "memory": {
           "default": {
             "status": "Mémoire"
@@ -10117,7 +10145,7 @@
             "text": "Outil de mémoire désactivé"
           },
           "updating": {
-            "status": "Mise à jour de la mémoire"
+            "status": "Mise à jour de la mémoire…"
           },
           "viewMemoriesButton": {
             "tooltip": "Voir les mémoires"
@@ -10133,19 +10161,19 @@
         },
         "python": {
           "completed": {
-            "status": "Exécution Python terminée"
+            "status": "Code exécuté"
           },
           "default": {
-            "status": "Exécution Python"
+            "status": "Exécution de code"
           },
           "error": {
             "label": "Erreur :"
           },
           "executing": {
-            "status": "Exécution du code Python..."
+            "status": "Exécution du code…"
           },
           "failed": {
-            "status": "Échec de l'exécution Python"
+            "status": "Échec de l'exécution du code"
           },
           "generatedFiles": {
             "label": "{count, plural, one {# fichier généré} other {# fichiers générés}}"
@@ -10157,18 +10185,10 @@
             "label": "Sortie :"
           },
           "runningCode": {
-            "label": "Exécution du code..."
+            "label": "Exécution du code…"
           },
           "writingCode": {
-            "status": "Écriture du code..."
-          }
-        },
-        "reasoning": {
-          "fullText": {
-            "title": "Texte intégral"
-          },
-          "thinking": {
-            "status": "Réflexion"
+            "status": "Écriture du code…"
           }
         },
         "researchAgent": {
@@ -10191,16 +10211,7 @@
           "label": "{count, plural, one {# étape} other {# étapes}}"
         },
         "stoppedStep": {
-          "header": "Arrêté"
-        },
-        "thoughtDuration": {
-          "label": "A réfléchi pendant {duration}"
-        },
-        "thoughtUnknownDuration": {
-          "label": "A réfléchi pendant un certain temps"
-        },
-        "toggleRow": {
-          "ariaLabel": "Basculer la chronologie"
+          "header": "Interrompu"
         },
         "toolNames": {
           "codeInterpreter": "Interpréteur de code",
@@ -10211,14 +10222,14 @@
           "internalSearch": "Recherche interne",
           "memory": "Mémoire",
           "openUrls": "Ouvrir des URL",
+          "processing": "Traitement",
           "researchAgent": "Agent de recherche",
-          "thinking": "Réflexion",
           "tool": "Outil",
           "webSearch": "Recherche web"
         },
         "webSearch": {
           "searching": {
-            "status": "Recherche sur le web"
+            "status": "Recherche sur le web…"
           }
         }
       },
@@ -10226,6 +10237,9 @@
         "dislikeButton": {
           "removeTooltip": "Retirer le je n'aime pas",
           "tooltip": "Mauvaise réponse"
+        },
+        "group": {
+          "ariaLabel": "Actions du message"
         },
         "likeButton": {
           "removeTooltip": "Retirer le j'aime",

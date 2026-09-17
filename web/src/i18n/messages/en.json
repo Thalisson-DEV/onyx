@@ -9783,7 +9783,6 @@
       },
       "codeBlock": {
         "copyButton": {
-          "copiedLabel": "Copied!",
           "label": "Copy"
         }
       },
@@ -9799,6 +9798,9 @@
         },
         "failedStatus": {
           "text": "{toolName} failed (HTTP {statusCode})"
+        },
+        "failedWithoutStatus": {
+          "text": "{toolName} failed"
         },
         "fallbackName": {
           "label": "Tool"
@@ -9822,10 +9824,10 @@
           "label": "Response"
         },
         "runningStatus": {
-          "text": "{toolName} running..."
+          "text": "{toolName} running…"
         },
         "waitingIndicator": {
-          "text": "Waiting for response..."
+          "text": "Waiting for response…"
         }
       },
       "customToolAuth": {
@@ -10000,11 +10002,36 @@
         }
       },
       "text": {
-        "thinkingPlaceholder": {
-          "text": "Thinking"
+        "processingPlaceholder": {
+          "text": "Preparing response…"
         }
       },
       "timeline": {
+        "activity": {
+          "duration": {
+            "label": "Executed in {duration}"
+          },
+          "failed": {
+            "label": "Execution failed"
+          },
+          "interrupted": {
+            "label": "Execution interrupted"
+          },
+          "processed": {
+            "label": "Processed"
+          },
+          "processing": {
+            "label": "Processing…"
+          },
+          "state": {
+            "running": "Running",
+            "completed": "Completed",
+            "failed": "Failed"
+          },
+          "unknownDuration": {
+            "label": "Execution completed"
+          }
+        },
         "codingAgent": {
           "bashExit": {
             "header": "Bash · exit {exitCode}"
@@ -10024,6 +10051,9 @@
           "noOutput": {
             "text": "No output"
           },
+          "processing": {
+            "header": "Processing"
+          },
           "response": {
             "header": "Response"
           },
@@ -10032,9 +10062,6 @@
           },
           "taskWithRepo": {
             "text": "{query}\n\nRepository: {repo}"
-          },
-          "thinking": {
-            "header": "Thinking"
           }
         },
         "collapseButton": {
@@ -10045,21 +10072,21 @@
             "title": "Research Plan"
           },
           "generated": {
-            "status": "Generated plan"
+            "status": "Plan built"
           },
           "generating": {
-            "status": "Generating plan"
+            "status": "Building plan…"
           }
         },
         "doneStep": {
-          "header": "Done"
+          "header": "Completed"
         },
         "expandButton": {
           "ariaLabel": "Expand timeline"
         },
         "fetch": {
           "reading": {
-            "status": "Reading"
+            "status": "Opening links…"
           }
         },
         "fileReader": {
@@ -10070,51 +10097,51 @@
             "status": "Read {fileName} (chars {start, number}–{end, number} of {total, number})"
           },
           "reading": {
-            "status": "Reading file"
+            "status": "Reading file…"
           }
         },
         "generatedImages": {
           "label": "{count, plural, one {Generated # image} other {Generated # images}}"
         },
         "header": {
+          "consultingSources": {
+            "label": "Consulting sources…"
+          },
           "executingCode": {
-            "label": "Executing code"
+            "label": "Running code…"
           },
           "executingNamedTool": {
-            "label": "Executing {toolName}"
+            "label": "Running {toolName}…"
           },
           "executingTool": {
-            "label": "Executing tool"
+            "label": "Running tool…"
           },
           "generatingImage": {
-            "label": "Generating image..."
+            "label": "Generating image…"
           },
           "generatingImages": {
-            "label": "Generating images"
+            "label": "Generating images…"
           },
           "generatingPlan": {
-            "label": "Generating plan"
+            "label": "Building plan…"
           },
-          "reading": {
-            "label": "Reading"
+          "openingUrls": {
+            "label": "Opening links…"
+          },
+          "processing": {
+            "label": "Processing…"
           },
           "readingFile": {
-            "label": "Reading file"
+            "label": "Reading file…"
           },
           "researching": {
-            "label": "Researching"
+            "label": "Researching…"
           },
           "searchingWeb": {
-            "label": "Searching the web"
-          },
-          "thinking": {
-            "label": "Thinking"
-          },
-          "thinkingEllipsis": {
-            "label": "Thinking..."
+            "label": "Searching the web…"
           },
           "updatingMemory": {
-            "label": "Updating memory..."
+            "label": "Updating memory…"
           }
         },
         "internalSearch": {
@@ -10122,7 +10149,7 @@
             "text": "No results found"
           },
           "reading": {
-            "status": "Reading"
+            "status": "Consulting sources…"
           },
           "header": {
             "default": "Searching internal documents",
@@ -10136,9 +10163,6 @@
             "between": "from {start} to {end}"
           }
         },
-        "interruptedThinking": {
-          "label": "Interrupted Thinking"
-        },
         "memory": {
           "default": {
             "status": "Memory"
@@ -10147,7 +10171,7 @@
             "text": "Memory tool disabled"
           },
           "updating": {
-            "status": "Updating memory"
+            "status": "Updating memory…"
           },
           "viewMemoriesButton": {
             "tooltip": "View Memories"
@@ -10163,19 +10187,19 @@
         },
         "python": {
           "completed": {
-            "status": "Python execution completed"
+            "status": "Code executed"
           },
           "default": {
-            "status": "Python execution"
+            "status": "Code execution"
           },
           "error": {
             "label": "Error:"
           },
           "executing": {
-            "status": "Executing Python code..."
+            "status": "Running code…"
           },
           "failed": {
-            "status": "Python execution failed"
+            "status": "Code execution failed"
           },
           "generatedFiles": {
             "label": "{count, plural, one {Generated # file} other {Generated # files}}"
@@ -10187,18 +10211,10 @@
             "label": "Output:"
           },
           "runningCode": {
-            "label": "Running code..."
+            "label": "Running code…"
           },
           "writingCode": {
-            "status": "Writing code..."
-          }
-        },
-        "reasoning": {
-          "fullText": {
-            "title": "Full text"
-          },
-          "thinking": {
-            "status": "Thinking"
+            "status": "Writing code…"
           }
         },
         "researchAgent": {
@@ -10221,16 +10237,7 @@
           "label": "{count, plural, one {# step} other {# steps}}"
         },
         "stoppedStep": {
-          "header": "Stopped"
-        },
-        "thoughtDuration": {
-          "label": "Thought for {duration}"
-        },
-        "thoughtUnknownDuration": {
-          "label": "Thought for some time"
-        },
-        "toggleRow": {
-          "ariaLabel": "Toggle timeline"
+          "header": "Interrupted"
         },
         "toolNames": {
           "codeInterpreter": "Code Interpreter",
@@ -10241,14 +10248,14 @@
           "internalSearch": "Internal Search",
           "memory": "Memory",
           "openUrls": "Open URLs",
+          "processing": "Processing",
           "researchAgent": "Research agent",
-          "thinking": "Thinking",
           "tool": "Tool",
           "webSearch": "Web Search"
         },
         "webSearch": {
           "searching": {
-            "status": "Searching the web"
+            "status": "Searching the web…"
           }
         }
       },
@@ -10256,6 +10263,9 @@
         "dislikeButton": {
           "removeTooltip": "Remove Dislike",
           "tooltip": "Bad Response"
+        },
+        "group": {
+          "ariaLabel": "Message actions"
         },
         "likeButton": {
           "removeTooltip": "Remove Like",

@@ -33,7 +33,9 @@ export function useTimelineHeader(
   return useMemo(() => {
     const hasPackets = turnGroups.length > 0;
     const userStopped = stopReason === StopReason.USER_CANCELLED;
-    const thinkingHeader = t("header.thinkingEllipsis.label");
+    // The conservative fallback: the runtime is active, and no packet has
+    // identified a more specific operation. It never claims a domain action.
+    const processingHeader = t("header.processing.label");
 
     // If generating image with no tool packets, show image generation header
     if (isGeneratingImage && !hasPackets) {
@@ -45,23 +47,23 @@ export function useTimelineHeader(
     }
 
     if (!hasPackets) {
-      return { headerText: thinkingHeader, hasPackets, userStopped };
+      return { headerText: processingHeader, hasPackets, userStopped };
     }
 
     // Get the last (current) turn group
     const currentTurn = turnGroups[turnGroups.length - 1];
     if (!currentTurn) {
-      return { headerText: thinkingHeader, hasPackets, userStopped };
+      return { headerText: processingHeader, hasPackets, userStopped };
     }
 
     const currentStep = currentTurn.steps[0];
     if (!currentStep?.packets?.length) {
-      return { headerText: thinkingHeader, hasPackets, userStopped };
+      return { headerText: processingHeader, hasPackets, userStopped };
     }
 
     const firstPacket = currentStep.packets[0];
     if (!firstPacket) {
-      return { headerText: thinkingHeader, hasPackets, userStopped };
+      return { headerText: processingHeader, hasPackets, userStopped };
     }
 
     const packetType = firstPacket.obj.type;
@@ -73,7 +75,7 @@ export function useTimelineHeader(
       );
       let headerText: string;
       if (searchState.hasResults && !searchState.isInternetSearch) {
-        headerText = t("header.reading.label");
+        headerText = t("header.consultingSources.label");
       } else if (searchState.isInternetSearch) {
         headerText = t("header.searchingWeb.label");
       } else {
@@ -88,7 +90,11 @@ export function useTimelineHeader(
     }
 
     if (packetType === PacketType.FETCH_TOOL_START) {
-      return { headerText: t("header.reading.label"), hasPackets, userStopped };
+      return {
+        headerText: t("header.openingUrls.label"),
+        hasPackets,
+        userStopped,
+      };
     }
 
     if (packetType === PacketType.PYTHON_TOOL_START) {
@@ -137,9 +143,12 @@ export function useTimelineHeader(
       };
     }
 
+    // A deliberation phase is observably running. The packets say nothing about
+    // what it concerns, so the label stays generic rather than naming a domain
+    // action the runtime cannot support.
     if (packetType === PacketType.REASONING_START) {
       return {
-        headerText: t("header.thinking.label"),
+        headerText: t("header.processing.label"),
         hasPackets,
         userStopped,
       };
@@ -161,6 +170,6 @@ export function useTimelineHeader(
       };
     }
 
-    return { headerText: thinkingHeader, hasPackets, userStopped };
+    return { headerText: processingHeader, hasPackets, userStopped };
   }, [turnGroups, stopReason, isGeneratingImage, t, locale]);
 }

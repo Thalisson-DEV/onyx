@@ -7,17 +7,23 @@ import {
   CustomToolArgs,
   CustomToolDelta,
   CustomToolErrorInfo,
+  PacketError,
   SectionEnd,
 } from "../../../services/streamingModels";
 import { MessageRenderer, RenderType } from "../interfaces";
 import { buildImgUrl } from "../../../components/files/images/utils";
 import Text from "@/refresh-components/texts/Text";
-import { SvgActions, SvgDownload, SvgExternalLink } from "@opal/icons";
+import { SvgDownload, SvgExternalLink } from "@opal/icons";
 import { CodeBlock } from "@/app/app/message/CodeBlock";
 import hljs from "highlight.js/lib/core";
 import json from "highlight.js/lib/languages/json";
-import FadingEdgeContainer from "@/refresh-components/FadingEdgeContainer";
 import { IoBlockLabel } from "@/app/app/message/messageComponents/IoBlockLabel";
+import ActivityIndicator from "@/app/app/message/messageComponents/timeline/ActivityIndicator";
+import {
+  ActivityStatus,
+  activityStateIcon,
+  type ActivityState,
+} from "@/app/app/message/messageComponents/timeline/ActivityStatus";
 
 // Lazy registration for hljs JSON language
 function ensureHljsRegistered() {
@@ -73,10 +79,13 @@ function constructCustomToolState(
   )?.obj as CustomToolArgs | null;
   const toolArgs = toolArgsPacket?.tool_args ?? null;
   const latestDelta = toolDeltas[toolDeltas.length - 1] || null;
+  const packetError = packets.find((p) => p.obj.type === PacketType.ERROR)
+    ?.obj as PacketError | undefined;
   const responseType = latestDelta?.response_type || null;
   const data = latestDelta?.data;
   const fileIds = latestDelta?.file_ids || null;
   const error = latestDelta?.error || null;
+  const failed = error !== null || packetError !== undefined;
 
   const isRunning = Boolean(toolStart && !toolEnd);
   const isComplete = Boolean(toolStart && toolEnd);
@@ -88,6 +97,8 @@ function constructCustomToolState(
     data,
     fileIds,
     error,
+    packetError,
+    failed,
     isRunning,
     isComplete,
   };
@@ -107,6 +118,8 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
     data,
     fileIds,
     error,
+    packetError,
+    failed,
     isRunning,
     isComplete,
   } = constructCustomToolState(packets, t("customTool.fallbackName.label"));
@@ -117,7 +130,15 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
     }
   }, [isComplete, onComplete]);
 
-  const status = useMemo(() => {
+  // Custom tools are the one surface with a genuine three-state signal: the
+  // delta carries an `error`, so failure is real rather than inferred.
+  const activityState: ActivityState = failed
+    ? "failed"
+    : isComplete
+      ? "completed"
+      : "running";
+
+  const statusLabel = useMemo(() => {
     if (isComplete) {
       if (error) {
         return error.is_auth_error
@@ -130,6 +151,9 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
               statusCode: error.status_code,
             });
       }
+      if (packetError) {
+        return t("customTool.failedWithoutStatus.text", { toolName });
+      }
       if (responseType === "image")
         return t("customTool.imagesStatus.text", { toolName });
       if (responseType === "csv")
@@ -138,9 +162,14 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
     }
     if (isRunning) return t("customTool.runningStatus.text", { toolName });
     return null;
-  }, [toolName, responseType, error, isComplete, isRunning, t]);
+  }, [toolName, responseType, error, packetError, isComplete, isRunning, t]);
 
-  const icon = SvgActions;
+  const status =
+    statusLabel === null ? null : (
+      <ActivityStatus state={activityState} label={statusLabel} />
+    );
+
+  const icon = activityStateIcon(activityState);
 
   const toolArgsJson = useMemo(
     () => (toolArgs ? JSON.stringify(toolArgs, null, 2) : null),
@@ -154,53 +183,27 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
     [data]
   );
 
-  const content = useMemo(
+  /**
+   * What every user sees: the observable state, the failure reason, and any file
+   * the tool returned. No payloads.
+   */
+  const humanReadable = useMemo(
     () => (
       <div className="flex flex-col gap-3">
-        {/* Loading indicator */}
         {isRunning &&
           !error &&
           !fileIds &&
           (data === undefined || data === null) && (
-            <div className="flex items-center gap-2 text-sm text-text-03">
-              <div className="flex gap-0.5">
-                <div className="w-1 h-1 bg-current rounded-full animate-pulse"></div>
-                <div
-                  className="w-1 h-1 bg-current rounded-full animate-pulse"
-                  style={{ animationDelay: "0.1s" }}
-                ></div>
-                <div
-                  className="w-1 h-1 bg-current rounded-full animate-pulse"
-                  style={{ animationDelay: "0.2s" }}
-                ></div>
-              </div>
-              <Text text03 secondaryBody>
-                {t("customTool.waitingIndicator.text")}
-              </Text>
-            </div>
+            <ActivityIndicator>
+              {t("customTool.waitingIndicator.text")}
+            </ActivityIndicator>
           )}
 
-        {/* Tool arguments */}
-        {toolArgsJson && (
-          <div>
-            <IoBlockLabel label={t("customTool.requestBlock.label")} />
-            <div className="prose max-w-full">
-              <CodeBlock
-                className="font-secondary-mono"
-                codeText={toolArgsJson}
-                noPadding
-              >
-                <HighlightedJsonCode code={toolArgsJson} />
-              </CodeBlock>
-            </div>
-          </div>
-        )}
-
         {/* Error display */}
-        {error && (
+        {(error || packetError?.message) && (
           <div className="ps-(--timeline-common-text-padding)">
             <Text text03 mainUiMuted>
-              {error.message}
+              {error?.message || packetError?.message}
             </Text>
           </div>
         )}
@@ -234,12 +237,38 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
             ))}
           </div>
         )}
+      </div>
+    ),
+    [data, fileIds, error, packetError, isRunning, t]
+  );
 
-        {/* JSON/Text responses */}
+  /**
+   * The request and response payloads. Progressive disclosure: this is only
+   * built for the expanded step, so a collapsed tool keeps the raw JSON out of
+   * the DOM entirely rather than clipping it with CSS.
+   */
+  const technicalDetail = useMemo(
+    () => (
+      <div className="flex flex-col gap-3">
+        {toolArgsJson && (
+          <div>
+            <IoBlockLabel label={t("customTool.requestBlock.label")} />
+            <div className="prose prose-ton max-w-full">
+              <CodeBlock
+                className="font-secondary-mono"
+                codeText={toolArgsJson}
+                noPadding
+              >
+                <HighlightedJsonCode code={toolArgsJson} />
+              </CodeBlock>
+            </div>
+          </div>
+        )}
+
         {!error && data !== undefined && data !== null && (
           <div>
             <IoBlockLabel label={t("customTool.responseBlock.label")} />
-            <div className="prose max-w-full">
+            <div className="prose prose-ton max-w-full">
               {dataJson ? (
                 <CodeBlock
                   className="font-secondary-mono"
@@ -262,10 +291,14 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
         )}
       </div>
     ),
-    [toolArgsJson, dataJson, data, fileIds, error, isRunning, t]
+    [toolArgsJson, dataJson, data, error, t]
   );
 
-  // Auth error: always render FULL with error surface
+  // Any failure — not just an auth failure — gets the error surface, which also
+  // renders the error glyph in the step header's right slot.
+  const surface = failed ? { surfaceBackground: "error" as const } : {};
+
+  // An auth failure is terminal and actionable, so it stays open.
   if (error?.is_auth_error) {
     return children([
       {
@@ -273,13 +306,13 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
         status,
         supportsCollapsible: false,
         noPaddingRight: true,
-        surfaceBackground: "error" as const,
-        content,
+        ...surface,
+        content: humanReadable,
       },
     ]);
   }
 
-  // FULL mode
+  // Expanded: state plus payloads.
   if (renderType === RenderType.FULL) {
     return children([
       {
@@ -287,25 +320,25 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
         status,
         supportsCollapsible: true,
         noPaddingRight: true,
-        content,
+        ...surface,
+        content: (
+          <div className="flex flex-col gap-3">
+            {humanReadable}
+            {technicalDetail}
+          </div>
+        ),
       },
     ]);
   }
 
-  // COMPACT mode: wrap in fading container
+  // Collapsed: state only. The payloads are not rendered at all.
   return children([
     {
       icon,
       status,
       supportsCollapsible: true,
-      content: (
-        <FadingEdgeContainer
-          direction="bottom"
-          className="max-h-24 overflow-hidden"
-        >
-          {content}
-        </FadingEdgeContainer>
-      ),
+      ...surface,
+      content: humanReadable,
     },
   ]);
 };

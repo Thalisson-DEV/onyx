@@ -85,7 +85,8 @@ export default function MinimalMarkdown({
     <div dir="auto">
       <ReactMarkdown
         className={cn(
-          "prose dark:prose-invert max-w-full text-sm wrap-break-word",
+          // Keep one transcript theme path for all timeline renderers.
+          "prose prose-ton max-w-full text-sm wrap-break-word",
           className
         )}
         components={markdownComponents}

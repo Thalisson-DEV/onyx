@@ -3,7 +3,6 @@ import { useTranslations } from "next-intl";
 import {
   SvgCheckCircle,
   SvgCircle,
-  SvgSparkle,
   SvgTerminal,
   SvgXCircle,
 } from "@opal/icons";
@@ -15,9 +14,13 @@ import {
   CodingAgentFinal,
   CodingAgentPacket,
   CodingAgentStart,
-  CodingAgentThinkingDelta,
   PacketType,
 } from "@/app/app/services/streamingModels";
+import {
+  ActivityStatus,
+  activityStateIcon,
+  type ActivityState,
+} from "@/app/app/message/messageComponents/timeline/ActivityStatus";
 import {
   MessageRenderer,
   RenderType,
@@ -61,10 +64,18 @@ function HighlightedBashCode({ code }: { code: string }) {
   );
 }
 
-// Agent alternates between thinking and bash; build a flat ordered list.
-interface ThinkingStepView {
-  kind: "thinking";
-  content: string;
+/**
+ * The agent alternates between deliberating and running bash; build a flat
+ * ordered list so the timeline keeps the real order.
+ *
+ * A deliberation step carries no `content`. `CODING_AGENT_THINKING_DELTA` is the
+ * agent's private chain-of-thought, and TON does not surface it, so the delta
+ * text is never copied into the view model — it cannot reach the DOM, the
+ * accessibility tree or a copy buffer. The step itself stays, because the fact
+ * that the agent worked between two commands is observable and ordering matters.
+ */
+interface ProcessingStepView {
+  kind: "processing";
 }
 
 interface BashStepView {
@@ -77,7 +88,7 @@ interface BashStepView {
   isComplete: boolean;
 }
 
-type AgentStep = ThinkingStepView | BashStepView;
+type AgentStep = ProcessingStepView | BashStepView;
 
 function buildAgentSteps(packets: CodingAgentPacket[]): AgentStep[] {
   const steps: AgentStep[] = [];
@@ -108,12 +119,11 @@ function buildAgentSteps(packets: CodingAgentPacket[]): AgentStep[] {
     if (open) open.isComplete = true;
 
     if (packet.obj.type === PacketType.CODING_AGENT_THINKING_DELTA) {
-      const delta = packet.obj as CodingAgentThinkingDelta;
+      // Consecutive deltas collapse into the one step they already were. The
+      // delta's `content` is deliberately not read.
       const last = steps[steps.length - 1];
-      if (last && last.kind === "thinking") {
-        last.content += delta.content;
-      } else {
-        steps.push({ kind: "thinking", content: delta.content });
+      if (!last || last.kind !== "processing") {
+        steps.push({ kind: "processing" });
       }
     } else if (packet.obj.type === PacketType.BASH_TOOL_START) {
       const start = packet.obj as BashToolStart;
@@ -132,30 +142,39 @@ function buildAgentSteps(packets: CodingAgentPacket[]): AgentStep[] {
   return steps;
 }
 
-interface ThinkingStepProps {
-  step: ThinkingStepView;
+interface ProcessingStepProps {
+  /**
+   * True when this is the step the agent is currently on. The call sites derive
+   * it from `lastStepIsActive`, which is the only running/finished signal the
+   * coding-agent packets expose for a deliberation step.
+   */
+  isActive: boolean;
   isLastStep: boolean;
   isHover: boolean;
 }
 
-function ThinkingStep({ step, isLastStep, isHover }: ThinkingStepProps) {
+/** Observable coding step with a state icon and label. */
+function ProcessingStep({
+  isActive,
+  isLastStep,
+  isHover,
+}: ProcessingStepProps) {
   const t = useTranslations("chat.messages.timeline");
+  const state: ActivityState = isActive ? "running" : "completed";
 
   return (
     <StepContainer
-      stepIcon={SvgSparkle}
-      header={t("codingAgent.thinking.header")}
+      stepIcon={activityStateIcon(state)}
+      header={
+        <ActivityStatus
+          state={state}
+          label={t("codingAgent.processing.header")}
+        />
+      }
       isLastStep={isLastStep}
       isHover={isHover}
-      collapsible={true}
-      supportsCollapsible={true}
-    >
-      <div className="ps-(--timeline-common-text-padding)">
-        <Text as="p" font="main-ui-muted" color="text-02">
-          {step.content}
-        </Text>
-      </div>
-    </StepContainer>
+      collapsible={false}
+    />
   );
 }
 
@@ -250,10 +269,10 @@ function renderAgentStep(
   isLastStep: boolean,
   isHover: boolean
 ): JSX.Element {
-  return step.kind === "thinking" ? (
-    <ThinkingStep
+  return step.kind === "processing" ? (
+    <ProcessingStep
       key={key}
-      step={step}
+      isActive={isLastStep}
       isLastStep={isLastStep}
       isHover={isHover}
     />
@@ -384,13 +403,10 @@ export const CodingAgentRenderer: MessageRenderer<CodingAgentPacket, {}> = ({
     } else if (latestStep?.kind === "bash") {
       header = bashStepHeader(latestStep, t);
       body = <BashStepBody call={latestStep} />;
-    } else if (latestStep?.kind === "thinking") {
-      header = t("codingAgent.thinking.header");
-      body = (
-        <Text as="p" font="main-ui-muted" color="text-02">
-          {latestStep.content}
-        </Text>
-      );
+    } else if (latestStep?.kind === "processing") {
+      // Label only. The deliberation text is not available here by design.
+      header = t("codingAgent.processing.header");
+      body = null;
     } else if (taskText) {
       header = t("codingAgent.task.header");
       body = (

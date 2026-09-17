@@ -4,7 +4,7 @@ import { SvgFold, SvgExpand } from "@opal/icons";
 import { Button } from "@opal/components";
 import Text from "@/refresh-components/texts/Text";
 import { noProp } from "@/lib/utils";
-import { cn, clickOnKeyDown } from "@opal/utils";
+import { cn } from "@opal/utils";
 
 export interface StoppedHeaderProps {
   totalSteps: number;
@@ -23,15 +23,12 @@ export const StoppedHeader = React.memo(function StoppedHeader({
   const t = useTranslations("chat.messages.timeline");
   const isInteractive = collapsible && totalSteps > 0;
 
-  const className = cn(
-    "flex items-center justify-between w-full rounded-12",
-    isInteractive ? "cursor-pointer" : "cursor-default"
-  );
+  const className = "flex items-center justify-between w-full rounded-12";
 
   const label = (
     <div className="px-(--timeline-header-text-padding-x) py-(--timeline-header-text-padding-y)">
       <Text as="p" mainUiAction text03>
-        {t("interruptedThinking.label")}
+        {t("activity.interrupted.label")}
       </Text>
     </div>
   );
@@ -44,17 +41,10 @@ export const StoppedHeader = React.memo(function StoppedHeader({
     );
   }
 
+  // Presentational row; the button is the control. See the note in
+  // CompletedHeader for why the row is not interactive.
   return (
-    // The row holds its own expand button, so it stays a div with button
-    // semantics rather than a <button> wrapping a <button>.
-    <div
-      role="button"
-      tabIndex={0}
-      aria-label={t("toggleRow.ariaLabel")}
-      onKeyDown={clickOnKeyDown(onToggle)}
-      onClick={onToggle}
-      className={className}
-    >
+    <div className={className}>
       {label}
 
       <Button

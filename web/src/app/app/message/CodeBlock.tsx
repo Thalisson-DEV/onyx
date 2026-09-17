@@ -1,7 +1,8 @@
 import { cn } from "@opal/utils";
 import Text from "@/refresh-components/texts/Text";
-import React, { useState, ReactNode, useCallback, useMemo, memo } from "react";
-import { SvgCheck, SvgCode, SvgCopy } from "@opal/icons";
+import React, { ReactNode, useMemo, memo } from "react";
+import { SvgCode } from "@opal/icons";
+import { CopyButton } from "@opal/components";
 import { useTranslations } from "next-intl";
 
 interface CodeBlockProps {
@@ -24,7 +25,6 @@ export const CodeBlock = memo(function CodeBlock({
   noPadding = false,
 }: CodeBlockProps) {
   const t = useTranslations("chat.messages");
-  const [copied, setCopied] = useState(false);
 
   const language = useMemo(() => {
     return className
@@ -33,38 +33,6 @@ export const CodeBlock = memo(function CodeBlock({
       .map((cls) => cls.replace("language-", ""))
       .join(" ");
   }, [className]);
-
-  const handleCopy = useCallback(() => {
-    if (!codeText) return;
-    navigator.clipboard.writeText(codeText).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }, [codeText]);
-
-  const CopyButton = () => (
-    <button
-      type="button"
-      className="ms-auto cursor-pointer select-none"
-      onClick={handleCopy}
-    >
-      {copied ? (
-        <div className="flex items-center space-x-2">
-          <SvgCheck height={14} width={14} stroke="currentColor" />
-          <Text as="p" secondaryMono>
-            {t("codeBlock.copyButton.copiedLabel")}
-          </Text>
-        </div>
-      ) : (
-        <div className="flex items-center space-x-2">
-          <SvgCopy height={14} width={14} stroke="currentColor" />
-          <Text as="p" secondaryMono>
-            {t("codeBlock.copyButton.label")}
-          </Text>
-        </div>
-      )}
-    </button>
-  );
 
   if (typeof children === "string" && !language) {
     return (
@@ -160,7 +128,21 @@ export const CodeBlock = memo(function CodeBlock({
                 className="my-auto"
               />
               <Text secondaryMono>{language}</Text>
-              {codeText && <CopyButton />}
+              {/* The shared Opal primitive owns the copied feedback (the icon
+                  swaps to a check for 3s), the accessible name and the error
+                  state, so the hand-rolled raw <button> that reimplemented
+                  them is gone. The label keeps the affordance visible. */}
+              {codeText && (
+                <div className="ms-auto">
+                  <CopyButton
+                    prominence="tertiary"
+                    size="sm"
+                    getCopyText={() => codeText}
+                  >
+                    {t("codeBlock.copyButton.label")}
+                  </CopyButton>
+                </div>
+              )}
             </div>
           )}
           <CodeContent />

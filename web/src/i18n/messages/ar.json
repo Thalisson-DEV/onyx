@@ -9753,7 +9753,6 @@
       },
       "codeBlock": {
         "copyButton": {
-          "copiedLabel": "تم النسخ!",
           "label": "نسخ"
         }
       },
@@ -9769,6 +9768,9 @@
         },
         "failedStatus": {
           "text": "فشل {toolName} (HTTP {statusCode})"
+        },
+        "failedWithoutStatus": {
+          "text": "فشل {toolName}"
         },
         "fallbackName": {
           "label": "أداة"
@@ -9792,10 +9794,10 @@
           "label": "الاستجابة"
         },
         "runningStatus": {
-          "text": "{toolName} قيد التشغيل..."
+          "text": "{toolName} قيد التشغيل…"
         },
         "waitingIndicator": {
-          "text": "في انتظار الاستجابة..."
+          "text": "في انتظار الرد…"
         }
       },
       "customToolAuth": {
@@ -9970,11 +9972,36 @@
         }
       },
       "text": {
-        "thinkingPlaceholder": {
-          "text": "جارٍ التفكير"
+        "processingPlaceholder": {
+          "text": "جارٍ تحضير الرد…"
         }
       },
       "timeline": {
+        "activity": {
+          "duration": {
+            "label": "تم التنفيذ في {duration}"
+          },
+          "failed": {
+            "label": "فشل التنفيذ"
+          },
+          "interrupted": {
+            "label": "تم إيقاف التنفيذ"
+          },
+          "processed": {
+            "label": "تمت المعالجة"
+          },
+          "processing": {
+            "label": "جارٍ المعالجة…"
+          },
+          "state": {
+            "running": "قيد التنفيذ",
+            "completed": "مكتمل",
+            "failed": "فشل"
+          },
+          "unknownDuration": {
+            "label": "اكتمل التنفيذ"
+          }
+        },
         "codingAgent": {
           "bashExit": {
             "header": "Bash · خرج بالرمز {exitCode}"
@@ -9994,6 +10021,9 @@
           "noOutput": {
             "text": "لا يوجد إخراج"
           },
+          "processing": {
+            "header": "المعالجة"
+          },
           "response": {
             "header": "الاستجابة"
           },
@@ -10002,9 +10032,6 @@
           },
           "taskWithRepo": {
             "text": "{query}\n\nالمستودع: {repo}"
-          },
-          "thinking": {
-            "header": "جارٍ التفكير"
           }
         },
         "collapseButton": {
@@ -10015,21 +10042,21 @@
             "title": "خطة البحث"
           },
           "generated": {
-            "status": "تم توليد الخطة"
+            "status": "تم إعداد الخطة"
           },
           "generating": {
-            "status": "جارٍ توليد الخطة"
+            "status": "جارٍ إعداد الخطة…"
           }
         },
         "doneStep": {
-          "header": "تم"
+          "header": "مكتمل"
         },
         "expandButton": {
           "ariaLabel": "توسيع الخط الزمني"
         },
         "fetch": {
           "reading": {
-            "status": "جارٍ القراءة"
+            "status": "جارٍ فتح الروابط…"
           }
         },
         "fileReader": {
@@ -10040,51 +10067,51 @@
             "status": "قرأ {fileName} (الأحرف {start, number}–{end, number} من {total, number})"
           },
           "reading": {
-            "status": "جارٍ قراءة الملف"
+            "status": "جارٍ قراءة الملف…"
           }
         },
         "generatedImages": {
           "label": "{count, plural, one {تم توليد صورة واحدة} other {تم توليد # صور}}"
         },
         "header": {
+          "consultingSources": {
+            "label": "جارٍ الرجوع إلى المصادر…"
+          },
           "executingCode": {
-            "label": "جارٍ تنفيذ الكود"
+            "label": "جارٍ تشغيل التعليمات البرمجية…"
           },
           "executingNamedTool": {
-            "label": "جارٍ تنفيذ {toolName}"
+            "label": "جارٍ تشغيل {toolName}…"
           },
           "executingTool": {
-            "label": "جارٍ تنفيذ الأداة"
+            "label": "جارٍ تشغيل الأداة…"
           },
           "generatingImage": {
-            "label": "جارٍ توليد الصورة..."
+            "label": "جارٍ إنشاء الصورة…"
           },
           "generatingImages": {
-            "label": "جارٍ توليد الصور"
+            "label": "جارٍ إنشاء الصور…"
           },
           "generatingPlan": {
-            "label": "جارٍ توليد الخطة"
+            "label": "جارٍ إعداد الخطة…"
           },
-          "reading": {
-            "label": "جارٍ القراءة"
+          "openingUrls": {
+            "label": "جارٍ فتح الروابط…"
+          },
+          "processing": {
+            "label": "جارٍ المعالجة…"
           },
           "readingFile": {
-            "label": "جارٍ قراءة الملف"
+            "label": "جارٍ قراءة الملف…"
           },
           "researching": {
-            "label": "جارٍ البحث"
+            "label": "جارٍ البحث…"
           },
           "searchingWeb": {
-            "label": "جارٍ البحث في الويب"
-          },
-          "thinking": {
-            "label": "جارٍ التفكير"
-          },
-          "thinkingEllipsis": {
-            "label": "جارٍ التفكير..."
+            "label": "جارٍ البحث على الويب…"
           },
           "updatingMemory": {
-            "label": "جارٍ تحديث الذاكرة..."
+            "label": "جارٍ تحديث الذاكرة…"
           }
         },
         "internalSearch": {
@@ -10092,7 +10119,7 @@
             "text": "لم يتم العثور على نتائج"
           },
           "reading": {
-            "status": "جارٍ القراءة"
+            "status": "جارٍ الرجوع إلى المصادر…"
           },
           "header": {
             "default": "جارٍ البحث في المستندات الداخلية",
@@ -10106,9 +10133,6 @@
             "between": "من {start} إلى {end}"
           }
         },
-        "interruptedThinking": {
-          "label": "تفكير متقطع"
-        },
         "memory": {
           "default": {
             "status": "الذاكرة"
@@ -10117,7 +10141,7 @@
             "text": "أداة الذاكرة معطّلة"
           },
           "updating": {
-            "status": "جارٍ تحديث الذاكرة"
+            "status": "جارٍ تحديث الذاكرة…"
           },
           "viewMemoriesButton": {
             "tooltip": "عرض الذكريات"
@@ -10133,19 +10157,19 @@
         },
         "python": {
           "completed": {
-            "status": "اكتمل تنفيذ Python"
+            "status": "تم تنفيذ التعليمات البرمجية"
           },
           "default": {
-            "status": "تنفيذ Python"
+            "status": "تنفيذ التعليمات البرمجية"
           },
           "error": {
             "label": "خطأ:"
           },
           "executing": {
-            "status": "جارٍ تنفيذ كود Python..."
+            "status": "جارٍ تشغيل التعليمات البرمجية…"
           },
           "failed": {
-            "status": "فشل تنفيذ Python"
+            "status": "فشل تنفيذ التعليمات البرمجية"
           },
           "generatedFiles": {
             "label": "{count, plural, one {تم توليد ملف واحد} other {تم توليد # ملفات}}"
@@ -10157,18 +10181,10 @@
             "label": "الإخراج:"
           },
           "runningCode": {
-            "label": "جارٍ تشغيل الكود..."
+            "label": "جارٍ تشغيل التعليمات البرمجية…"
           },
           "writingCode": {
-            "status": "جارٍ كتابة الكود..."
-          }
-        },
-        "reasoning": {
-          "fullText": {
-            "title": "النص الكامل"
-          },
-          "thinking": {
-            "status": "جارٍ التفكير"
+            "status": "جارٍ كتابة التعليمات البرمجية…"
           }
         },
         "researchAgent": {
@@ -10191,16 +10207,7 @@
           "label": "{count, plural, one {خطوة واحدة} other {# خطوات}}"
         },
         "stoppedStep": {
-          "header": "توقف"
-        },
-        "thoughtDuration": {
-          "label": "فكّر لمدة {duration}"
-        },
-        "thoughtUnknownDuration": {
-          "label": "فكّر لبعض الوقت"
-        },
-        "toggleRow": {
-          "ariaLabel": "تبديل الخط الزمني"
+          "header": "متوقف"
         },
         "toolNames": {
           "codeInterpreter": "مفسر الأكواد",
@@ -10211,14 +10218,14 @@
           "internalSearch": "بحث داخلي",
           "memory": "الذاكرة",
           "openUrls": "فتح عناوين URL",
+          "processing": "المعالجة",
           "researchAgent": "وكيل البحث",
-          "thinking": "التفكير",
           "tool": "أداة",
           "webSearch": "البحث في الويب"
         },
         "webSearch": {
           "searching": {
-            "status": "جارٍ البحث في الويب"
+            "status": "جارٍ البحث على الويب…"
           }
         }
       },
@@ -10226,6 +10233,9 @@
         "dislikeButton": {
           "removeTooltip": "إزالة عدم الإعجاب",
           "tooltip": "إجابة سيئة"
+        },
+        "group": {
+          "ariaLabel": "إجراءات الرسالة"
         },
         "likeButton": {
           "removeTooltip": "إزالة الإعجاب",

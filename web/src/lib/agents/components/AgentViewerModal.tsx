@@ -281,14 +281,16 @@ export function AgentViewerModal({ agent, onClose }: AgentViewerModalProps) {
                 width="fit"
               />
             )}
-            <Content
-              icon={SvgUser}
-              title={agent.owner?.email ?? "Onyx"}
-              sizePreset="main-ui"
-              variant="body"
-              color="muted"
-              width="fit"
-            />
+            {agent.owner?.email && (
+              <Content
+                icon={SvgUser}
+                title={agent.owner.email}
+                sizePreset="main-ui"
+                variant="body"
+                color="muted"
+                width="fit"
+              />
+            )}
             {agent.is_public && (
               <Content
                 icon={SvgOrganization}

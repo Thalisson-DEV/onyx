@@ -2,10 +2,11 @@
 
 import { cn } from "@opal/utils";
 import type { IconProps } from "@opal/types";
-import Text from "@/refresh-components/texts/Text";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { DEFAULT_AVATAR_SIZE_PX } from "@/lib/constants";
+import { SpecialistAvatar } from "@/refresh-components/avatars/SpecialistAvatar";
+import type { SpecialistState } from "@/refresh-components/avatars/SpecialistAvatar";
 import {
   SvgActivitySmall,
   SvgAudioEqSmall,
@@ -19,7 +20,6 @@ import {
   SvgImageSmall,
   SvgInfoSmall,
   SvgMusicSmall,
-  SvgOnyxOctagon,
   SvgPenSmall,
   SvgQuestionMarkSmall,
   SvgSearchSmall,
@@ -29,11 +29,20 @@ import {
   SvgTwoLineSmall,
 } from "@opal/icons";
 
+// ─── Icon Map ────────────────────────────────────────────────────────────────
+
 interface IconConfig {
   Icon: React.FunctionComponent<IconProps>;
   className?: string;
 }
 
+/**
+ * Mapping of icon names to icon components + stroke class.
+ *
+ * Colors are TON semantic tokens — NOT raw palette colors.
+ * The 4 "green" entries use stroke-theme-primary-05 (identity/selection)
+ * and NOT stroke-theme-green-05 (which is Onyx green, #008933, not Vale Norte).
+ */
 export const agentAvatarIconMap: Record<string, IconConfig> = {
   Info: { Icon: SvgInfoSmall, className: "stroke-theme-primary-05" },
   QuestionMark: {
@@ -47,11 +56,11 @@ export const agentAvatarIconMap: Record<string, IconConfig> = {
   ClockHands: { Icon: SvgClockHandsSmall, className: "stroke-theme-blue-05" },
   Hash: { Icon: SvgHashSmall, className: "stroke-theme-blue-05" },
 
-  // green
-  Search: { Icon: SvgSearchSmall, className: "stroke-theme-green-05" },
-  Check: { Icon: SvgCheckSmall, className: "stroke-theme-green-05" },
-  BarChart: { Icon: SvgBarChartSmall, className: "stroke-theme-green-05" },
-  Activity: { Icon: SvgActivitySmall, className: "stroke-theme-green-05" },
+  // primary (was erroneously using stroke-theme-green-05 / Onyx green)
+  Search: { Icon: SvgSearchSmall, className: "stroke-theme-primary-05" },
+  Check: { Icon: SvgCheckSmall, className: "stroke-theme-primary-05" },
+  BarChart: { Icon: SvgBarChartSmall, className: "stroke-theme-primary-05" },
+  Activity: { Icon: SvgActivitySmall, className: "stroke-theme-primary-05" },
 
   // purple
   File: { Icon: SvgFileSmall, className: "stroke-theme-purple-05" },
@@ -68,43 +77,69 @@ export const agentAvatarIconMap: Record<string, IconConfig> = {
   Music: { Icon: SvgMusicSmall, className: "stroke-theme-amber-04" },
 };
 
-interface SvgOctagonWrapperProps {
-  size: number;
-  children: React.ReactNode;
+// ─── Fallback Helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Returns the first user-perceived character (grapheme cluster) of the string.
+ * Accepts Latin letters, digits, emoji, CJK characters — not just /^[a-zA-Z]$/.
+ *
+ * VIS-007: the old restriction `/^[a-zA-Z]$/` excluded digits, emoji and CJK.
+ */
+function firstGrapheme(s: string): string | undefined {
+  const trimmed = s.trim();
+  if (trimmed.length === 0) return undefined;
+  const seg = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+  const [first] = seg.segment(trimmed);
+  return first?.segment ?? undefined;
 }
 
-function SvgOctagonWrapper({ size, children }: SvgOctagonWrapperProps) {
-  return (
-    <div className="relative flex flex-col items-center justify-center">
-      <div className="absolute inset-0 flex items-center justify-center">
-        {children}
-      </div>
-      <SvgOnyxOctagon className="stroke-text-04" height={size} width={size} />
-    </div>
-  );
-}
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export interface CustomAgentAvatarProps {
   name?: string;
   src?: string;
   iconName?: string;
-
   size?: number;
+  /** Runtime state. Only set when backed by real application data. */
+  state?: SpecialistState;
 }
 
+/**
+ * CustomAgentAvatar — renders a specialist identity for a user-configured agent.
+ *
+ * Fallback chain (deterministic, no randomized color):
+ *   1. uploaded image  → circular crop (preserves photographic intent)
+ *   2. configured icon → SpecialistAvatar with named icon
+ *   3. first grapheme  → SpecialistAvatar with initial (letter/digit/emoji/CJK)
+ *   4. empty/missing   → SpecialistAvatar with TwoLine glyph
+ *
+ * The image case retains circular geometry because a photograph is semantically
+ * an avatar; the surrounding specialist identity contract still applies at
+ * callsites that show state or selection.
+ */
 export default function CustomAgentAvatar({
   name,
   src,
   iconName,
-
   size = DEFAULT_AVATAR_SIZE_PX,
+  state = "idle",
 }: CustomAgentAvatarProps) {
   const t = useTranslations("common.agentAvatar");
+
   if (src) {
     return (
       <div
-        className="aspect-square rounded-full overflow-hidden relative"
+        className={cn(
+          "aspect-square rounded-full overflow-hidden relative shrink-0",
+          // Forward selected/attention border to the image container so the
+          // visual contract is coherent regardless of content type.
+          state === "selected" && "ring-1 ring-border-selected",
+          state === "attention" && "ring-1 ring-border-attention"
+        )}
         style={{ height: size, width: size }}
+        aria-selected={state === "selected" || undefined}
+        data-attention={state === "attention" || undefined}
+        data-running={state === "running" || undefined}
       >
         <Image
           alt={name || t("image.altFallback")}
@@ -119,39 +154,34 @@ export default function CustomAgentAvatar({
 
   const iconConfig = iconName && agentAvatarIconMap[iconName];
   if (iconConfig) {
-    const { Icon, className } = iconConfig;
-    const multiplier = 0.7;
+    const { Icon, className: iconClassName } = iconConfig;
     return (
-      <SvgOctagonWrapper size={size}>
-        <Icon
-          className={cn("stroke-text-04", className)}
-          style={{ width: size * multiplier, height: size * multiplier }}
-        />
-      </SvgOctagonWrapper>
+      <SpecialistAvatar
+        size={size}
+        Icon={Icon}
+        iconClassName={iconClassName}
+        state={state}
+      />
     );
   }
 
-  // Display first letter of name if available, otherwise fall back to two-line-small icon
-  const trimmedName = name?.trim();
-  const firstLetter =
-    trimmedName && trimmedName.length > 0
-      ? trimmedName[0]!.toUpperCase()
-      : undefined;
-  const validFirstLetter = !!firstLetter && /^[a-zA-Z]$/.test(firstLetter);
-  if (validFirstLetter) {
+  const initial = name ? firstGrapheme(name) : undefined;
+  if (initial) {
     return (
-      <SvgOctagonWrapper size={size}>
-        <Text style={{ fontSize: size * 0.5 }}>{firstLetter}</Text>
-      </SvgOctagonWrapper>
+      <SpecialistAvatar
+        size={size}
+        initial={initial.toUpperCase()}
+        state={state}
+      />
     );
   }
 
   return (
-    <SvgOctagonWrapper size={size}>
-      <SvgTwoLineSmall
-        className="stroke-text-04"
-        style={{ width: size * 0.8, height: size * 0.8 }}
-      />
-    </SvgOctagonWrapper>
+    <SpecialistAvatar
+      size={size}
+      Icon={SvgTwoLineSmall}
+      iconClassName="stroke-text-03"
+      state={state}
+    />
   );
 }

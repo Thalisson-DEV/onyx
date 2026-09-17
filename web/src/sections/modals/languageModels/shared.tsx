@@ -47,7 +47,7 @@ import { useSWRConfig } from "swr";
 import {
   SvgArrowExchange,
   SvgChevronDown,
-  SvgOnyxOctagon,
+  SvgManageAgent,
   SvgOrganization,
   SvgPlusCircle,
   SvgRefreshCw,
@@ -412,7 +412,7 @@ export function ModelAccessField() {
             ) : (
               <div className="w-full p-2">
                 <Content
-                  icon={SvgOnyxOctagon}
+                  icon={SvgManageAgent}
                   title={t("access.noAgents.title")}
                   description={t("access.noAgents.description")}
                   variant="section"

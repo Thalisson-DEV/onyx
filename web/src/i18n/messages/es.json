@@ -793,7 +793,9 @@
         "messaging": {
           "label": "Mensajería"
         },
-        "other": { "label": "Otros" },
+        "other": {
+          "label": "Otros"
+        },
         "sales": {
           "label": "Ventas"
         },
@@ -5821,19 +5823,29 @@
         "contextualRagDocumentSummary": {
           "label": "Resúmenes contextuales de documentos RAG"
         },
-        "imageSummarization": { "label": "Resumen de imágenes" },
-        "kgDeepExtraction": { "label": "Extracción del grafo de conocimiento" },
+        "imageSummarization": {
+          "label": "Resumen de imágenes"
+        },
+        "kgDeepExtraction": {
+          "label": "Extracción del grafo de conocimiento"
+        },
         "kgDocumentClassification": {
           "label": "Clasificación del grafo de conocimiento"
         },
         "other": {
           "label": "Otros"
         },
-        "unattributed": { "label": "Sin atribuir" }
+        "unattributed": {
+          "label": "Sin atribuir"
+        }
       },
       "filters": {
-        "allModels": { "label": "Todos los modelos" },
-        "allProviders": { "label": "Todos los proveedores" }
+        "allModels": {
+          "label": "Todos los modelos"
+        },
+        "allProviders": {
+          "label": "Todos los proveedores"
+        }
       },
       "panel": {
         "description": "{start} – {end} · El uso del sistema es actividad del LLM que Onyx ejecuta en segundo plano, no para un usuario específico. Algunos ejemplos son los resúmenes de imágenes, el procesamiento RAG contextual y la extracción del grafo de conocimiento.",
@@ -5844,17 +5856,33 @@
         "title": "Uso del sistema"
       },
       "summary": {
-        "spend": { "label": "Gasto del sistema" },
-        "tokens": { "label": "Tokens totales" },
-        "unattributed": { "label": "Gasto sin atribuir" }
+        "spend": {
+          "label": "Gasto del sistema"
+        },
+        "tokens": {
+          "label": "Tokens totales"
+        },
+        "unattributed": {
+          "label": "Gasto sin atribuir"
+        }
       },
       "table": {
         "columns": {
-          "category": { "header": "Categoría" },
-          "input": { "header": "Entrada" },
-          "output": { "header": "Salida" },
-          "spend": { "header": "Gasto" },
-          "tokens": { "header": "Tokens" }
+          "category": {
+            "header": "Categoría"
+          },
+          "input": {
+            "header": "Entrada"
+          },
+          "output": {
+            "header": "Salida"
+          },
+          "spend": {
+            "header": "Gasto"
+          },
+          "tokens": {
+            "header": "Tokens"
+          }
         },
         "empty": {
           "description": "Ningún uso del sistema coincide con los filtros actuales."
@@ -8727,42 +8755,44 @@
     },
     "navigation": {
       "countSeparator": {
-        "label": "{count, plural, one {Agente} other {Agentes}}"
+        "label": "{count, plural, one {Especialista} other {Especialistas}}"
       },
       "empty": {
-        "description": "No se encontraron agentes"
+        "description": "Configure o cree especialistas para casos de uso y análisis específicos.",
+        "title": "No se encontraron especialistas"
       },
       "header": {
         "description": "Personaliza el comportamiento y el conocimiento de la IA para tus casos de uso y los de tu equipo.",
-        "title": "Agentes"
+        "title": "Especialistas"
       },
       "newAgent": {
-        "label": "Nuevo agente",
+        "label": "Nuevo especialista",
         "noPermission": {
           "tooltip": "No tienes permiso para crear agentes. Contacta a tu administrador para solicitar acceso."
-        }
+        },
+        "ariaLabel": "Nuevo especialista"
       },
       "page": {
-        "ariaLabel": "Página de agentes"
+        "ariaLabel": "Página de especialistas"
       },
       "search": {
-        "placeholder": "Buscar agentes..."
+        "placeholder": "Buscar especialistas..."
       },
       "sections": {
         "all": {
-          "title": "Todos los agentes"
+          "title": "Todos los especialistas"
         },
         "featured": {
           "description": "Seleccionados por tu equipo",
-          "title": "Agentes destacados"
+          "title": "Especialistas destacados"
         }
       },
       "tabs": {
         "all": {
-          "label": "Todos los agentes"
+          "label": "Todos los especialistas"
         },
         "your": {
-          "label": "Tus agentes"
+          "label": "Tus especialistas"
         }
       }
     },

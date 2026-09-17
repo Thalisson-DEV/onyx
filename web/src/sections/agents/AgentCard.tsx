@@ -74,13 +74,9 @@ export default function AgentCard({ agent, onView }: AgentCardProps) {
 
       <Interactive.Simple onClick={onView} group="group/AgentCard">
         <Hoverable.Root group="AgentCard" height="full">
-          <Card
-            padding={0}
-            gap={0}
-            height="full"
-            className="radial-00 hover:shadow-box-00"
-          >
-            <div className="flex self-stretch h-24">
+          {/* Border-defined card: hierarchy through surface + 1px border + typography. */}
+          <Card padding={0} gap={0} height="full">
+            <div className="flex self-stretch">
               <CardItemLayout
                 icon={(props) => <AgentAvatar agent={agent} {...props} />}
                 title={agent.name}
@@ -139,13 +135,17 @@ export default function AgentCard({ agent, onView }: AgentCardProps) {
             <div className="bg-background-tint-01 p-1 flex flex-row items-end justify-between w-full">
               {/* Left side - creator and actions */}
               <div className="flex flex-col gap-1 py-1 px-2">
-                <Content
-                  icon={SvgUser}
-                  title={agent.owner?.email || "Onyx"}
-                  sizePreset="secondary"
-                  variant="body"
-                  color="muted"
-                />
+                {/* Owner row: only rendered when owner data is present.
+                    Neutral behavior: omitting is preferable to a fallback string. */}
+                {agent.owner?.email && (
+                  <Content
+                    icon={SvgUser}
+                    title={agent.owner.email}
+                    sizePreset="secondary"
+                    variant="body"
+                    color="muted"
+                  />
+                )}
                 <Content
                   icon={SvgActions}
                   title={t("card.actionsCount.label", {

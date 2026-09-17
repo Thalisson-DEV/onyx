@@ -793,7 +793,9 @@
         "messaging": {
           "label": "메시징"
         },
-        "other": { "label": "기타" },
+        "other": {
+          "label": "기타"
+        },
         "sales": {
           "label": "영업"
         },
@@ -5821,38 +5823,66 @@
         "contextualRagDocumentSummary": {
           "label": "컨텍스트 RAG 문서 요약"
         },
-        "imageSummarization": { "label": "이미지 요약" },
-        "kgDeepExtraction": { "label": "지식 그래프 추출" },
+        "imageSummarization": {
+          "label": "이미지 요약"
+        },
+        "kgDeepExtraction": {
+          "label": "지식 그래프 추출"
+        },
         "kgDocumentClassification": {
           "label": "지식 그래프 분류"
         },
         "other": {
           "label": "기타"
         },
-        "unattributed": { "label": "미귀속" }
+        "unattributed": {
+          "label": "미귀속"
+        }
       },
       "filters": {
-        "allModels": { "label": "모든 모델" },
-        "allProviders": { "label": "모든 제공업체" }
+        "allModels": {
+          "label": "모든 모델"
+        },
+        "allProviders": {
+          "label": "모든 제공업체"
+        }
       },
       "panel": {
         "description": "{start} – {end} · 시스템 사용량은 Onyx가 특정 사용자를 위해서가 아니라 백그라운드에서 실행하는 LLM 작업입니다. 이미지 요약, 컨텍스트 RAG 처리, 지식 그래프 추출 등이 포함됩니다.",
         "emptyDescription": "시스템 사용량은 Onyx가 특정 사용자를 위해서가 아니라 백그라운드에서 실행하는 LLM 작업입니다. 이미지 요약, 컨텍스트 RAG 처리, 지식 그래프 추출 등이 포함됩니다.",
-        "error": { "title": "이 기간의 시스템 사용량을 불러오지 못했습니다." },
+        "error": {
+          "title": "이 기간의 시스템 사용량을 불러오지 못했습니다."
+        },
         "title": "시스템 사용량"
       },
       "summary": {
-        "spend": { "label": "시스템 비용" },
-        "tokens": { "label": "총 토큰" },
-        "unattributed": { "label": "미귀속 비용" }
+        "spend": {
+          "label": "시스템 비용"
+        },
+        "tokens": {
+          "label": "총 토큰"
+        },
+        "unattributed": {
+          "label": "미귀속 비용"
+        }
       },
       "table": {
         "columns": {
-          "category": { "header": "카테고리" },
-          "input": { "header": "입력" },
-          "output": { "header": "출력" },
-          "spend": { "header": "비용" },
-          "tokens": { "header": "토큰" }
+          "category": {
+            "header": "카테고리"
+          },
+          "input": {
+            "header": "입력"
+          },
+          "output": {
+            "header": "출력"
+          },
+          "spend": {
+            "header": "비용"
+          },
+          "tokens": {
+            "header": "토큰"
+          }
         },
         "empty": {
           "description": "현재 필터와 일치하는 시스템 사용량이 없습니다."
@@ -8725,42 +8755,44 @@
     },
     "navigation": {
       "countSeparator": {
-        "label": "{count, plural, one {에이전트} other {에이전트}}"
+        "label": "{count, plural, other {전문가}}"
       },
       "empty": {
-        "description": "에이전트를 찾을 수 없음"
+        "description": "특정 운영 사용 사례에 맞는 전문가를 구성하거나 생성하세요.",
+        "title": "전문가를 찾을 수 없습니다"
       },
       "header": {
         "description": "나와 팀의 사용 사례에 맞게 AI의 동작과 지식을 맞춤 설정하세요.",
-        "title": "에이전트"
+        "title": "전문가"
       },
       "newAgent": {
-        "label": "새 에이전트",
+        "label": "새 전문가",
         "noPermission": {
           "tooltip": "에이전트를 생성할 권한이 없습니다. 관리자에게 문의하여 액세스를 요청하세요."
-        }
+        },
+        "ariaLabel": "새 전문가"
       },
       "page": {
-        "ariaLabel": "에이전트 페이지"
+        "ariaLabel": "전문가 페이지"
       },
       "search": {
-        "placeholder": "에이전트 검색..."
+        "placeholder": "전문가 검색..."
       },
       "sections": {
         "all": {
-          "title": "모든 에이전트"
+          "title": "모든 전문가"
         },
         "featured": {
           "description": "팀에서 선별함",
-          "title": "추천 에이전트"
+          "title": "추천 전문가"
         }
       },
       "tabs": {
         "all": {
-          "label": "모든 에이전트"
+          "label": "모든 전문가"
         },
         "your": {
-          "label": "내 에이전트"
+          "label": "내 전문가"
         }
       }
     },

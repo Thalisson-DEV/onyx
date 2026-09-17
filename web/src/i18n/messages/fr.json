@@ -793,7 +793,9 @@
         "messaging": {
           "label": "Messagerie"
         },
-        "other": { "label": "Autres" },
+        "other": {
+          "label": "Autres"
+        },
         "sales": {
           "label": "Ventes"
         },
@@ -5821,7 +5823,9 @@
         "contextualRagDocumentSummary": {
           "label": "Résumés contextuels des documents RAG"
         },
-        "imageSummarization": { "label": "Résumé des images" },
+        "imageSummarization": {
+          "label": "Résumé des images"
+        },
         "kgDeepExtraction": {
           "label": "Extraction du graphe de connaissances"
         },
@@ -5831,11 +5835,17 @@
         "other": {
           "label": "Autres"
         },
-        "unattributed": { "label": "Non attribué" }
+        "unattributed": {
+          "label": "Non attribué"
+        }
       },
       "filters": {
-        "allModels": { "label": "Tous les modèles" },
-        "allProviders": { "label": "Tous les fournisseurs" }
+        "allModels": {
+          "label": "Tous les modèles"
+        },
+        "allProviders": {
+          "label": "Tous les fournisseurs"
+        }
       },
       "panel": {
         "description": "{start} – {end} · L’utilisation système correspond à l’activité LLM exécutée par Onyx en arrière-plan plutôt que pour un utilisateur spécifique. Cela inclut les résumés d’images, le traitement RAG contextuel et l’extraction du graphe de connaissances.",
@@ -5846,17 +5856,33 @@
         "title": "Utilisation système"
       },
       "summary": {
-        "spend": { "label": "Dépenses système" },
-        "tokens": { "label": "Total des jetons" },
-        "unattributed": { "label": "Dépenses non attribuées" }
+        "spend": {
+          "label": "Dépenses système"
+        },
+        "tokens": {
+          "label": "Total des jetons"
+        },
+        "unattributed": {
+          "label": "Dépenses non attribuées"
+        }
       },
       "table": {
         "columns": {
-          "category": { "header": "Catégorie" },
-          "input": { "header": "Entrée" },
-          "output": { "header": "Sortie" },
-          "spend": { "header": "Dépenses" },
-          "tokens": { "header": "Jetons" }
+          "category": {
+            "header": "Catégorie"
+          },
+          "input": {
+            "header": "Entrée"
+          },
+          "output": {
+            "header": "Sortie"
+          },
+          "spend": {
+            "header": "Dépenses"
+          },
+          "tokens": {
+            "header": "Jetons"
+          }
         },
         "empty": {
           "description": "Aucune utilisation système ne correspond aux filtres actuels."
@@ -8729,42 +8755,44 @@
     },
     "navigation": {
       "countSeparator": {
-        "label": "{count, plural, one {Agent} other {Agents}}"
+        "label": "{count, plural, one {Spécialiste} other {Spécialistes}}"
       },
       "empty": {
-        "description": "Aucun agent trouvé"
+        "description": "Configurez ou créez des spécialistes pour des cas d'utilisation et des analyses ciblés.",
+        "title": "Aucun spécialiste trouvé"
       },
       "header": {
         "description": "Personnalisez le comportement et les connaissances de l'IA pour vos cas d'usage et ceux de votre équipe.",
-        "title": "Agents"
+        "title": "Spécialistes"
       },
       "newAgent": {
-        "label": "Nouvel agent",
+        "label": "Nouveau spécialiste",
         "noPermission": {
           "tooltip": "Vous n'avez pas l'autorisation de créer des agents. Contactez votre administrateur pour demander l'accès."
-        }
+        },
+        "ariaLabel": "Nouveau spécialiste"
       },
       "page": {
-        "ariaLabel": "Page des agents"
+        "ariaLabel": "Page des spécialistes"
       },
       "search": {
-        "placeholder": "Rechercher des agents..."
+        "placeholder": "Rechercher des spécialistes..."
       },
       "sections": {
         "all": {
-          "title": "Tous les agents"
+          "title": "Tous les spécialistes"
         },
         "featured": {
           "description": "Sélectionnés par votre équipe",
-          "title": "Agents à la une"
+          "title": "Spécialistes en vedette"
         }
       },
       "tabs": {
         "all": {
-          "label": "Tous les agents"
+          "label": "Tous les spécialistes"
         },
         "your": {
-          "label": "Vos agents"
+          "label": "Vos spécialistes"
         }
       }
     },

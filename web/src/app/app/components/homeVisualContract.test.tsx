@@ -13,7 +13,9 @@ import pt from "@/i18n/messages/pt.json";
 const WEB_ROOT = path.resolve(__dirname, "../../../..");
 
 function read(relativePath: string): string {
-  return fs.readFileSync(path.join(WEB_ROOT, relativePath), "utf8");
+  return fs
+    .readFileSync(path.join(WEB_ROOT, relativePath), "utf8")
+    .replace(/\r\n/g, "\n");
 }
 
 function stripComments(source: string): string {
@@ -81,22 +83,22 @@ describe("quick actions", () => {
       "analyzeResult",
     ];
     const positions = actionKeys.map((key) =>
-      suggestions.indexOf(`${key}.label`),
+      suggestions.indexOf(`${key}.label`)
     );
 
     expect(positions.every((position) => position >= 0)).toBe(true);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
     expect(pt.chat.welcome.quickActions.analyzeFile.label).toBe(
-      "Analisar arquivo",
+      "Analisar arquivo"
     );
     expect(pt.chat.welcome.quickActions.reviewContract.label).toBe(
-      "Revisar contrato",
+      "Revisar contrato"
     );
     expect(pt.chat.welcome.quickActions.investigateDifference.label).toBe(
-      "Investigar divergência",
+      "Investigar divergência"
     );
     expect(pt.chat.welcome.quickActions.analyzeResult.label).toBe(
-      "Analisar resultado",
+      "Analisar resultado"
     );
   });
 
@@ -148,7 +150,7 @@ describe("continuous home to conversation transition", () => {
 
   test("preserves the existing grid transition and restrained fade", () => {
     expect(appPage).toContain(
-      'appPosition.isChat()\n          ? "1fr auto 0fr"',
+      'appPosition.isChat()\n          ? "1fr auto 0fr"'
     );
     expect(appPage).toContain('"minmax(0, 4fr) auto minmax(0, 5fr)"');
     expect(appPage).toContain("transition-[grid-template-rows]");
@@ -208,7 +210,7 @@ describe("static safety", () => {
     expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     expect(source).not.toMatch(/\bdark:/);
     expect(source).not.toMatch(
-      /\b(bg|text|border)-(gray|slate|zinc|red|green|blue|amber|yellow)-\d{2,3}\b/,
+      /\b(bg|text|border)-(gray|slate|zinc|red|green|blue|amber|yellow)-\d{2,3}\b/
     );
   });
 
@@ -216,10 +218,10 @@ describe("static safety", () => {
     const source = changedProductionFiles.map(read).join("\n");
 
     expect(source).not.toMatch(
-      /\b(?:KPI|ROI|SLA)\b|health score|coverage percentage|risk counter/i,
+      /\b(?:KPI|ROI|SLA)\b|health score|coverage percentage|risk counter/i
     );
     expect(source).not.toMatch(
-      /findings count|occurrences count|report count/i,
+      /findings count|occurrences count|report count/i
     );
   });
 });

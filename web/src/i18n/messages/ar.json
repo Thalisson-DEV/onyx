@@ -793,7 +793,9 @@
         "messaging": {
           "label": "المراسلة"
         },
-        "other": { "label": "أخرى" },
+        "other": {
+          "label": "أخرى"
+        },
         "sales": {
           "label": "المبيعات"
         },
@@ -5821,38 +5823,66 @@
         "contextualRagDocumentSummary": {
           "label": "ملخصات مستندات RAG السياقية"
         },
-        "imageSummarization": { "label": "تلخيص الصور" },
-        "kgDeepExtraction": { "label": "استخراج الرسم البياني المعرفي" },
+        "imageSummarization": {
+          "label": "تلخيص الصور"
+        },
+        "kgDeepExtraction": {
+          "label": "استخراج الرسم البياني المعرفي"
+        },
         "kgDocumentClassification": {
           "label": "تصنيف الرسم البياني المعرفي"
         },
         "other": {
           "label": "أخرى"
         },
-        "unattributed": { "label": "غير منسوب" }
+        "unattributed": {
+          "label": "غير منسوب"
+        }
       },
       "filters": {
-        "allModels": { "label": "كل النماذج" },
-        "allProviders": { "label": "كل المزوّدين" }
+        "allModels": {
+          "label": "كل النماذج"
+        },
+        "allProviders": {
+          "label": "كل المزوّدين"
+        }
       },
       "panel": {
         "description": "{start} – {end} · استخدام النظام هو نشاط نماذج اللغة الكبيرة الذي يشغّله Onyx في الخلفية بدلًا من تشغيله لمستخدم محدد. تشمل الأمثلة تلخيص الصور ومعالجة RAG السياقية واستخراج الرسم البياني المعرفي.",
         "emptyDescription": "استخدام النظام هو نشاط نماذج اللغة الكبيرة الذي يشغّله Onyx في الخلفية بدلًا من تشغيله لمستخدم محدد. تشمل الأمثلة تلخيص الصور ومعالجة RAG السياقية واستخراج الرسم البياني المعرفي.",
-        "error": { "title": "تعذر تحميل استخدام النظام لهذه الفترة." },
+        "error": {
+          "title": "تعذر تحميل استخدام النظام لهذه الفترة."
+        },
         "title": "استخدام النظام"
       },
       "summary": {
-        "spend": { "label": "إنفاق النظام" },
-        "tokens": { "label": "إجمالي الرموز" },
-        "unattributed": { "label": "إنفاق غير منسوب" }
+        "spend": {
+          "label": "إنفاق النظام"
+        },
+        "tokens": {
+          "label": "إجمالي الرموز"
+        },
+        "unattributed": {
+          "label": "إنفاق غير منسوب"
+        }
       },
       "table": {
         "columns": {
-          "category": { "header": "الفئة" },
-          "input": { "header": "الإدخال" },
-          "output": { "header": "الإخراج" },
-          "spend": { "header": "الإنفاق" },
-          "tokens": { "header": "الرموز" }
+          "category": {
+            "header": "الفئة"
+          },
+          "input": {
+            "header": "الإدخال"
+          },
+          "output": {
+            "header": "الإخراج"
+          },
+          "spend": {
+            "header": "الإنفاق"
+          },
+          "tokens": {
+            "header": "الرموز"
+          }
         },
         "empty": {
           "description": "لا يوجد استخدام للنظام يطابق عوامل التصفية الحالية."
@@ -8725,42 +8755,44 @@
     },
     "navigation": {
       "countSeparator": {
-        "label": "{count, plural, one {وكيل} other {وكلاء}}"
+        "label": "{count, plural, one {متخصص} other {متخصصون}}"
       },
       "empty": {
-        "description": "لم يتم العثور على وكلاء"
+        "description": "قم بتهيئة أو إنشاء متخصصين لحالات الاستخدام والتحليلات المركزة.",
+        "title": "لم يتم العثور على متخصصين"
       },
       "header": {
         "description": "خصص سلوك الذكاء الاصطناعي ومعرفته لحالات الاستخدام الخاصة بك وبفريقك.",
-        "title": "الوكلاء"
+        "title": "المتخصصون"
       },
       "newAgent": {
-        "label": "وكيل جديد",
+        "label": "متخصص جديد",
         "noPermission": {
           "tooltip": "ليست لديك صلاحية إنشاء الوكلاء. تواصل مع المسؤول لطلب الوصول."
-        }
+        },
+        "ariaLabel": "متخصص جديد"
       },
       "page": {
-        "ariaLabel": "صفحة الوكلاء"
+        "ariaLabel": "صفحة المتخصصين"
       },
       "search": {
-        "placeholder": "البحث عن وكلاء..."
+        "placeholder": "البحث عن المتخصصين..."
       },
       "sections": {
         "all": {
-          "title": "جميع الوكلاء"
+          "title": "جميع المتخصصين"
         },
         "featured": {
           "description": "مختارة من فريقك",
-          "title": "الوكلاء المميزون"
+          "title": "المتخصصون المميزون"
         }
       },
       "tabs": {
         "all": {
-          "label": "جميع الوكلاء"
+          "label": "جميع المتخصصين"
         },
         "your": {
-          "label": "وكلاؤك"
+          "label": "المتخصصون الخاصون بك"
         }
       }
     },

@@ -2,21 +2,30 @@
 
 import { MinimalAgent } from "@/lib/agents/types";
 import { buildAgentAvatarUrl } from "@/lib/agents/utils";
-import { SvgOnyxLogo } from "@opal/logos";
 import { useSettings } from "@/lib/settings/hooks";
 import { DEFAULT_AVATAR_SIZE_PX, DEFAULT_AGENT_ID } from "@/lib/constants";
 import CustomAgentAvatar from "@/refresh-components/avatars/CustomAgentAvatar";
+import {
+  SpecialistAvatar,
+  type SpecialistState,
+} from "@/refresh-components/avatars/SpecialistAvatar";
+import { SvgManageAgent } from "@opal/icons";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 
 export interface AgentAvatarProps {
   agent: MinimalAgent;
   size?: number;
+  /** Runtime state of the specialist. */
+  state?: SpecialistState;
+  className?: string;
 }
 
 export default function AgentAvatar({
   agent,
   size = DEFAULT_AVATAR_SIZE_PX,
+  state = "idle",
+  className,
   ...props
 }: AgentAvatarProps) {
   const t = useTranslations("common.agentAvatar");
@@ -25,7 +34,7 @@ export default function AgentAvatar({
   if (agent.id === DEFAULT_AGENT_ID) {
     return enterpriseSettings?.use_custom_logo ? (
       <div
-        className="aspect-square rounded-full overflow-hidden relative"
+        className="aspect-square rounded-full overflow-hidden relative shrink-0"
         style={{ height: size, width: size }}
       >
         <Image
@@ -37,7 +46,13 @@ export default function AgentAvatar({
         />
       </div>
     ) : (
-      <SvgOnyxLogo size={size} className="shrink-0" />
+      <SpecialistAvatar
+        size={size}
+        Icon={SvgManageAgent}
+        iconClassName="stroke-theme-primary-05"
+        state={state}
+        className={className}
+      />
     );
   }
 
@@ -47,6 +62,7 @@ export default function AgentAvatar({
       src={agent.uploaded_image_id ? buildAgentAvatarUrl(agent.id) : undefined}
       iconName={agent.icon_name}
       size={size}
+      state={state}
       {...props}
     />
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { SvgOnyxOctagon, SvgPlus } from "@opal/icons";
+import { SvgManageAgent, SvgPlus } from "@opal/icons";
 import { Button } from "@opal/components";
 import { SettingsLayouts } from "@opal/layouts";
 import Link from "next/link";
@@ -20,7 +20,7 @@ export default function AgentsPage() {
       <SettingsLayouts.Header
         title={t("header.title")}
         description={t("header.description")}
-        icon={SvgOnyxOctagon}
+        icon={SvgManageAgent}
         rightChildren={
           <Button href="/app/agents/create?admin=true" icon={SvgPlus}>
             {t("newAgentButton.label")}

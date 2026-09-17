@@ -793,7 +793,9 @@
         "messaging": {
           "label": "Messaging"
         },
-        "other": { "label": "Sonstige" },
+        "other": {
+          "label": "Sonstige"
+        },
         "sales": {
           "label": "Vertrieb"
         },
@@ -5821,19 +5823,29 @@
         "contextualRagDocumentSummary": {
           "label": "Kontextbezogene RAG-Dokumentzusammenfassungen"
         },
-        "imageSummarization": { "label": "Bildzusammenfassung" },
-        "kgDeepExtraction": { "label": "Knowledge-Graph-Extraktion" },
+        "imageSummarization": {
+          "label": "Bildzusammenfassung"
+        },
+        "kgDeepExtraction": {
+          "label": "Knowledge-Graph-Extraktion"
+        },
         "kgDocumentClassification": {
           "label": "Knowledge-Graph-Klassifizierung"
         },
         "other": {
           "label": "Sonstige"
         },
-        "unattributed": { "label": "Nicht zugeordnet" }
+        "unattributed": {
+          "label": "Nicht zugeordnet"
+        }
       },
       "filters": {
-        "allModels": { "label": "Alle Modelle" },
-        "allProviders": { "label": "Alle Anbieter" }
+        "allModels": {
+          "label": "Alle Modelle"
+        },
+        "allProviders": {
+          "label": "Alle Anbieter"
+        }
       },
       "panel": {
         "description": "{start} – {end} · Systemnutzung ist LLM-Aktivität, die Onyx im Hintergrund statt für einen bestimmten Benutzer ausführt. Beispiele sind Bildzusammenfassungen, kontextbezogene RAG-Verarbeitung und Knowledge-Graph-Extraktion.",
@@ -5844,17 +5856,33 @@
         "title": "Systemnutzung"
       },
       "summary": {
-        "spend": { "label": "Systemausgaben" },
-        "tokens": { "label": "Token insgesamt" },
-        "unattributed": { "label": "Nicht zugeordnete Ausgaben" }
+        "spend": {
+          "label": "Systemausgaben"
+        },
+        "tokens": {
+          "label": "Token insgesamt"
+        },
+        "unattributed": {
+          "label": "Nicht zugeordnete Ausgaben"
+        }
       },
       "table": {
         "columns": {
-          "category": { "header": "Kategorie" },
-          "input": { "header": "Eingabe" },
-          "output": { "header": "Ausgabe" },
-          "spend": { "header": "Ausgaben" },
-          "tokens": { "header": "Token" }
+          "category": {
+            "header": "Kategorie"
+          },
+          "input": {
+            "header": "Eingabe"
+          },
+          "output": {
+            "header": "Ausgabe"
+          },
+          "spend": {
+            "header": "Ausgaben"
+          },
+          "tokens": {
+            "header": "Token"
+          }
         },
         "empty": {
           "description": "Keine Systemnutzung entspricht den aktuellen Filtern."
@@ -8727,42 +8755,44 @@
     },
     "navigation": {
       "countSeparator": {
-        "label": "{count, plural, one {Agent} other {Agenten}}"
+        "label": "{count, plural, one {Spezialist} other {Spezialisten}}"
       },
       "empty": {
-        "description": "Keine Agenten gefunden"
+        "description": "Konfigurieren oder erstellen Sie Spezialisten für gezielte operative Anwendungsfälle.",
+        "title": "Keine Spezialisten gefunden"
       },
       "header": {
         "description": "Passen Sie das Verhalten und Wissen der KI für Ihre Anwendungsfälle und die Ihres Teams an.",
-        "title": "Agenten"
+        "title": "Spezialisten"
       },
       "newAgent": {
-        "label": "Neuer Agent",
+        "label": "Neuer Spezialist",
         "noPermission": {
           "tooltip": "Sie haben keine Berechtigung, Agenten zu erstellen. Wenden Sie sich an Ihren Administrator, um Zugriff anzufordern."
-        }
+        },
+        "ariaLabel": "Neuer Spezialist"
       },
       "page": {
-        "ariaLabel": "Agenten-Seite"
+        "ariaLabel": "Spezialistenseite"
       },
       "search": {
-        "placeholder": "Agenten suchen..."
+        "placeholder": "Spezialisten suchen..."
       },
       "sections": {
         "all": {
-          "title": "Alle Agenten"
+          "title": "Alle Spezialisten"
         },
         "featured": {
           "description": "Von Ihrem Team ausgewählt",
-          "title": "Empfohlene Agenten"
+          "title": "Ausgewählte Spezialisten"
         }
       },
       "tabs": {
         "all": {
-          "label": "Alle Agenten"
+          "label": "Alle Spezialisten"
         },
         "your": {
-          "label": "Ihre Agenten"
+          "label": "Ihre Spezialisten"
         }
       }
     },

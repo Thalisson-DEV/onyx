@@ -8755,42 +8755,44 @@
     },
     "navigation": {
       "countSeparator": {
-        "label": "{count, plural, one {Agent} other {Agents}}"
+        "label": "{count, plural, one {Specialist} other {Specialists}}"
       },
       "empty": {
-        "description": "No Agents found"
+        "description": "Configure or create specialists for focused operational use cases.",
+        "title": "No specialists found"
       },
       "header": {
         "description": "Customize AI behavior and knowledge for you and your team's use cases.",
-        "title": "Agents"
+        "title": "Specialists"
       },
       "newAgent": {
-        "label": "New Agent",
+        "label": "New specialist",
         "noPermission": {
           "tooltip": "You don't have permission to create agents. Contact your admin to request access."
-        }
+        },
+        "ariaLabel": "New specialist"
       },
       "page": {
-        "ariaLabel": "Agents Page"
+        "ariaLabel": "Specialists Page"
       },
       "search": {
-        "placeholder": "Search agents..."
+        "placeholder": "Search specialists..."
       },
       "sections": {
         "all": {
-          "title": "All Agents"
+          "title": "All Specialists"
         },
         "featured": {
           "description": "Curated by your team",
-          "title": "Featured Agents"
+          "title": "Featured Specialists"
         }
       },
       "tabs": {
         "all": {
-          "label": "All Agents"
+          "label": "All Specialists"
         },
         "your": {
-          "label": "Your Agents"
+          "label": "Your Specialists"
         }
       }
     },

@@ -72,7 +72,7 @@ import {
   SvgDevKit,
   SvgEditBig,
   SvgFolderPlus,
-  SvgOnyxOctagon,
+  SvgManageAgent,
   SvgSearchMenu,
   SvgSettings,
 } from "@opal/icons";
@@ -540,7 +540,7 @@ export default function AppSidebar() {
   const specialistsButton = (
     <div data-testid="AppSidebar/more-agents">
       <SidebarTab
-        icon={SvgOnyxOctagon}
+        icon={SvgManageAgent}
         href="/app/agents"
         selected={activeSidebarTab.isMoreAgents()}
       >

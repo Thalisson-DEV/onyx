@@ -4,7 +4,7 @@ Sequenciamento derivado de
 [`000-de-onyx-visual-audit.md`](./000-de-onyx-visual-audit.md). A linguagem alvo
 está em [`visual-language.md`](./visual-language.md).
 
-**Estado: VIS-001, VIS-004, VIS-002, VIS-005, VIS-006 e VIS-003 DONE. As demais não foram implementadas.**
+**Estado: VIS-001, VIS-004, VIS-002, VIS-005, VIS-006, VIS-003 e VIS-007 DONE. As demais não foram implementadas.**
 
 | Fatia | Estado |
 |---|---|
@@ -14,7 +14,8 @@ está em [`visual-language.md`](./visual-language.md).
 | VIS-005 | **DONE** — [`005-attachments-context.md`](./005-attachments-context.md) |
 | VIS-006 | **DONE** — [`006-messages-streaming-tools.md`](./006-messages-streaming-tools.md) |
 | VIS-003 | **DONE** — [`003-home-new-chat.md`](./003-home-new-chat.md) |
-| VIS-007 … VIS-010 | não iniciadas |
+| VIS-007 | **DONE** — [`007-specialist-runtime-identity.md`](./007-specialist-runtime-identity.md) |
+| VIS-008 … VIS-010 | não iniciadas |
 
 ---
 
@@ -629,7 +630,7 @@ aprovando cada rótulo operacional contra um pacote real · grep confirmando zer
 
 ---
 
-## VIS-007 — Especialistas e identidade de runtime
+## VIS-007 — Especialistas e identidade de runtime — **DONE**
 
 **Nível máximo: 4.** Justificativa: cria um componente TON novo de identidade,
 substituindo a moldura de marca upstream. Não é reescrita de arquitetura.

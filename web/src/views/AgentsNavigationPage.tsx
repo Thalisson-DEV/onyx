@@ -11,10 +11,10 @@ import { checkUserOwnsAgent } from "@/lib/agents/utils";
 import { useAgents } from "@/lib/agents/hooks";
 import { MinimalAgent } from "@/lib/agents/types";
 import Text from "@/refresh-components/texts/Text";
-import { SettingsLayouts } from "@opal/layouts";
+import { IllustrationContent, SettingsLayouts } from "@opal/layouts";
 import TextSeparator from "@/refresh-components/TextSeparator";
 import { Button, InputTypeIn, Tabs } from "@opal/components";
-import { SvgOnyxOctagon, SvgPlus } from "@opal/icons";
+import { SvgManageAgent, SvgPlus } from "@opal/icons";
 import useOnMount from "@/hooks/useOnMount";
 import { useAgentsFilters } from "@/sections/agents/AgentsFilters";
 
@@ -57,9 +57,6 @@ function AgentsSection({
     </div>
   );
 }
-
-// e2e locator, not user copy.
-const NEW_AGENT_BUTTON_ARIA_LABEL = "AgentsPage/new-agent-button";
 
 export default function AgentsNavigationPage() {
   const t = useTranslations("agents");
@@ -120,14 +117,15 @@ export default function AgentsNavigationPage() {
         onClose={() => setViewedAgentId(null)}
       />
       <SettingsLayouts.Header
-        icon={SvgOnyxOctagon}
+        icon={SvgManageAgent}
         title={t("navigation.header.title")}
         description={t("navigation.header.description")}
         rightChildren={
           <Button
             href={canCreateAgent ? "/app/agents/create" : undefined}
             icon={SvgPlus}
-            aria-label={NEW_AGENT_BUTTON_ARIA_LABEL}
+            data-testid="AgentsPage/new-agent-button"
+            aria-label={t("navigation.newAgent.ariaLabel")}
             disabled={!canCreateAgent}
             tooltip={
               !canCreateAgent
@@ -173,13 +171,12 @@ export default function AgentsNavigationPage() {
       {/* Agents List */}
       <SettingsLayouts.Body>
         {agentCount === 0 ? (
-          <Text
-            as="p"
-            className="w-full h-full flex flex-col items-center justify-center py-12"
-            text03
-          >
-            {t("navigation.empty.description")}
-          </Text>
+          <div className="w-full flex items-center justify-center py-12">
+            <IllustrationContent
+              title={t("navigation.empty.title")}
+              description={t("navigation.empty.description")}
+            />
+          </div>
         ) : (
           <>
             <AgentsSection

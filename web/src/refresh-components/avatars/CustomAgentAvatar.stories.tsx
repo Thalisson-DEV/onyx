@@ -25,6 +25,31 @@ export const WithName: Story = {
 };
 
 // ---------------------------------------------------------------------------
+// Grapheme Fallback Chain (VIS-007: expanded beyond /^[a-zA-Z]$/)
+// ---------------------------------------------------------------------------
+
+export const WithDigitInitial: Story = {
+  args: {
+    name: "360 Audit",
+    size: 40,
+  },
+};
+
+export const WithEmojiInitial: Story = {
+  args: {
+    name: "⚡ Fast Query",
+    size: 40,
+  },
+};
+
+export const WithCJKInitial: Story = {
+  args: {
+    name: "会計 Specialist",
+    size: 40,
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Icon variants
 // ---------------------------------------------------------------------------
 
@@ -67,6 +92,46 @@ export const WithIconBarChart: Story = {
 export const NoNameNoIcon: Story = {
   args: {
     size: 40,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Runtime States (VIS-007)
+// ---------------------------------------------------------------------------
+
+export const StateIdle: Story = {
+  args: {
+    name: "Idle Specialist",
+    iconName: "BarChart",
+    size: 40,
+    state: "idle",
+  },
+};
+
+export const StateRunning: Story = {
+  args: {
+    name: "Running Specialist",
+    iconName: "BarChart",
+    size: 40,
+    state: "running",
+  },
+};
+
+export const StateAttention: Story = {
+  args: {
+    name: "Attention Specialist",
+    iconName: "BarChart",
+    size: 40,
+    state: "attention",
+  },
+};
+
+export const StateSelected: Story = {
+  args: {
+    name: "Selected Specialist",
+    iconName: "BarChart",
+    size: 40,
+    state: "selected",
   },
 };
 

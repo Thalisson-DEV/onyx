@@ -793,7 +793,9 @@
         "messaging": {
           "label": "メッセージング"
         },
-        "other": { "label": "その他" },
+        "other": {
+          "label": "その他"
+        },
         "sales": {
           "label": "営業"
         },
@@ -5821,19 +5823,29 @@
         "contextualRagDocumentSummary": {
           "label": "コンテキスト RAG ドキュメント要約"
         },
-        "imageSummarization": { "label": "画像要約" },
-        "kgDeepExtraction": { "label": "ナレッジグラフ抽出" },
+        "imageSummarization": {
+          "label": "画像要約"
+        },
+        "kgDeepExtraction": {
+          "label": "ナレッジグラフ抽出"
+        },
         "kgDocumentClassification": {
           "label": "ナレッジグラフ分類"
         },
         "other": {
           "label": "その他"
         },
-        "unattributed": { "label": "未帰属" }
+        "unattributed": {
+          "label": "未帰属"
+        }
       },
       "filters": {
-        "allModels": { "label": "すべてのモデル" },
-        "allProviders": { "label": "すべてのプロバイダー" }
+        "allModels": {
+          "label": "すべてのモデル"
+        },
+        "allProviders": {
+          "label": "すべてのプロバイダー"
+        }
       },
       "panel": {
         "description": "{start} – {end} · システム使用状況とは、特定のユーザー向けではなく、Onyx がバックグラウンドで実行する LLM 処理です。例として、画像要約、コンテキスト RAG 処理、ナレッジグラフ抽出があります。",
@@ -5844,17 +5856,33 @@
         "title": "システム使用状況"
       },
       "summary": {
-        "spend": { "label": "システム費用" },
-        "tokens": { "label": "合計トークン" },
-        "unattributed": { "label": "未帰属の費用" }
+        "spend": {
+          "label": "システム費用"
+        },
+        "tokens": {
+          "label": "合計トークン"
+        },
+        "unattributed": {
+          "label": "未帰属の費用"
+        }
       },
       "table": {
         "columns": {
-          "category": { "header": "カテゴリー" },
-          "input": { "header": "入力" },
-          "output": { "header": "出力" },
-          "spend": { "header": "費用" },
-          "tokens": { "header": "トークン" }
+          "category": {
+            "header": "カテゴリー"
+          },
+          "input": {
+            "header": "入力"
+          },
+          "output": {
+            "header": "出力"
+          },
+          "spend": {
+            "header": "費用"
+          },
+          "tokens": {
+            "header": "トークン"
+          }
         },
         "empty": {
           "description": "現在のフィルターに一致するシステム使用状況はありません。"
@@ -8727,42 +8755,44 @@
     },
     "navigation": {
       "countSeparator": {
-        "label": "{count, plural, one {エージェント} other {エージェント}}"
+        "label": "{count, plural, other {スペシャリスト}}"
       },
       "empty": {
-        "description": "エージェントが見つかりません"
+        "description": "特定の運用ユースケースに合わせてスペシャリストを設定または作成します。",
+        "title": "スペシャリストが見つかりません"
       },
       "header": {
         "description": "あなたとチームのユースケースに合わせてAIの動作と知識をカスタマイズします。",
-        "title": "エージェント"
+        "title": "スペシャリスト"
       },
       "newAgent": {
-        "label": "新しいエージェント",
+        "label": "新規スペシャリスト",
         "noPermission": {
           "tooltip": "エージェントを作成する権限がありません。アクセスをリクエストするには管理者に連絡してください。"
-        }
+        },
+        "ariaLabel": "新規スペシャリスト"
       },
       "page": {
-        "ariaLabel": "エージェントページ"
+        "ariaLabel": "スペシャリストページ"
       },
       "search": {
-        "placeholder": "エージェントを検索..."
+        "placeholder": "スペシャリストを検索..."
       },
       "sections": {
         "all": {
-          "title": "すべてのエージェント"
+          "title": "すべてのスペシャリスト"
         },
         "featured": {
           "description": "チームが厳選",
-          "title": "注目のエージェント"
+          "title": "注目のスペシャリスト"
         }
       },
       "tabs": {
         "all": {
-          "label": "すべてのエージェント"
+          "label": "すべてのスペシャリスト"
         },
         "your": {
-          "label": "あなたのエージェント"
+          "label": "マイ スペシャリスト"
         }
       }
     },

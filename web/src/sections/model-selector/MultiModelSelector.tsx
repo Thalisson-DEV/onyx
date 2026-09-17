@@ -19,6 +19,7 @@ import {
   llmOptionKey,
 } from "@/lib/languageModels/options";
 import { useCurrentAgentLLMProviders } from "@/lib/languageModels/hooks";
+import useScreenSize from "@/hooks/useScreenSize";
 import ModelSelectorContent, {
   ReasoningManager,
   TemperatureManager,
@@ -55,6 +56,7 @@ export default function MultiModelSelector({
   reasoningManager,
 }: MultiModelSelectorProps) {
   const t = useTranslations("chat.modelSelector");
+  const { isMobile } = useScreenSize();
   const [open, setOpen] = useState(false);
   const [replacingIndex, setReplacingIndex] = useState<number | null>(null);
   const anchorRef = useRef<HTMLElement | null>(null);
@@ -185,7 +187,7 @@ export default function MultiModelSelector({
           data-testid="model-selector"
           aria-disabled={noModelsToSelect || undefined}
           className={cn(
-            "flex items-center justify-end gap-1 p-1",
+            "flex items-center gap-1",
             noModelsToSelect &&
               "cursor-not-allowed select-none opacity-50 [&>*]:pointer-events-none"
           )}
@@ -215,7 +217,7 @@ export default function MultiModelSelector({
                 <Divider
                   orientation="vertical"
                   paddingParallel={2}
-                  paddingPerpendicular={2}
+                  paddingPerpendicular={1}
                 />
               )}
               <div className="flex items-center shrink-0">
@@ -224,27 +226,37 @@ export default function MultiModelSelector({
                     model.provider,
                     model.modelName
                   );
+                  const maxLabelLength = isMobile
+                    ? isMultiModel
+                      ? 8
+                      : 14
+                    : 24;
+                  const displayLabel =
+                    model.displayName.length > maxLabelLength
+                      ? `${model.displayName.slice(0, maxLabelLength - 1)}…`
+                      : model.displayName;
 
                   return (
                     <div
                       key={
                         isMultiModel ? llmOptionKey(model) : "single-model-pill"
                       }
-                      className="flex items-center"
+                      className="flex items-center min-w-0 max-w-[140px] sm:max-w-[180px] md:max-w-none"
                     >
                       {index > 0 && (
                         <Divider
                           orientation="vertical"
                           paddingParallel={2}
-                          paddingPerpendicular={2}
+                          paddingPerpendicular={1}
                         />
                       )}
                       <SelectButton
                         icon={ProviderIcon}
                         rightIcon={isMultiModel ? SvgX : undefined}
                         state="empty"
-                        variant="select-input"
+                        variant="select-light"
                         size="lg"
+                        tooltip={model.displayName}
                         onClick={(e: React.MouseEvent) => {
                           if (isMultiModel) {
                             const target = e.target as HTMLElement;
@@ -264,7 +276,7 @@ export default function MultiModelSelector({
                           );
                         }}
                       >
-                        {model.displayName}
+                        {displayLabel}
                       </SelectButton>
                     </div>
                   );

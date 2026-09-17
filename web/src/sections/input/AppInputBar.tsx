@@ -107,6 +107,7 @@ export interface AppInputBarProps {
   tabReadingEnabled?: boolean;
   currentTabUrl?: string | null;
   onToggleTabReading?: () => void;
+  modelSelector?: React.ReactNode;
 }
 
 const AppInputBar = React.memo(
@@ -131,6 +132,7 @@ const AppInputBar = React.memo(
     tabReadingEnabled,
     currentTabUrl,
     onToggleTabReading,
+    modelSelector,
   }: AppInputBarProps) => {
     const t = useTranslations("chat.input");
     const { incognitoEnabled } = useIncognito();
@@ -771,6 +773,8 @@ const AppInputBar = React.memo(
         {/* Bottom right controls. `shrink-0` is what guarantees send/stop stays
             reachable at 375px, whatever the left group holds. */}
         <div className="flex flex-row items-center gap-1 shrink-0">
+          {modelSelector}
+
           {showMicButton &&
             (sttEnabled ? (
               <MicrophoneButton

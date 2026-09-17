@@ -393,9 +393,14 @@ describe("model selector placement", () => {
     const composerAt = source.search(/<AppInputBar$/m);
     const welcomeAt = source.indexOf("<WelcomeMessage");
 
-    // Directly above the composer, and no longer inside the greeting row.
+    // Integrated into the composer toolbar, and no longer inside the greeting row.
     expect(selectorAt).toBeGreaterThan(welcomeAt);
-    expect(selectorAt).toBeLessThan(composerAt);
+    expect(selectorAt).toBeGreaterThan(composerAt);
+  });
+
+  test("the composer toolbar renders the model selector slot", () => {
+    const composer = stripComments(read(APP_INPUT_BAR));
+    expect(composer).toContain("{modelSelector}");
   });
 
   test("the gate is the union of the two it replaced", () => {

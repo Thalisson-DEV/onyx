@@ -523,19 +523,19 @@ export default function NRFPage({ isSidePanel = false }: NRFPageProps) {
                 !isSidePanel && "max-w-(--app-page-main-content-width)",
               )}
             >
-              {activeAgent && (
-                <div className="pb-1">
-                  <MultiModelSelector
-                    selectedModels={multiModel.selectedModels}
-                    onAdd={multiModel.addModel}
-                    onRemove={multiModel.removeModel}
-                    onReplace={multiModel.replaceModel}
-                    temperatureManager={llmManager}
-                    reasoningManager={llmManager}
-                  />
-                </div>
-              )}
               <AppInputBar
+                modelSelector={
+                  activeAgent ? (
+                    <MultiModelSelector
+                      selectedModels={multiModel.selectedModels}
+                      onAdd={multiModel.addModel}
+                      onRemove={multiModel.removeModel}
+                      onReplace={multiModel.replaceModel}
+                      temperatureManager={llmManager}
+                      reasoningManager={llmManager}
+                    />
+                  ) : undefined
+                }
                 placeholder={t("welcome.home.inputPlaceholder")}
                 toolConfiguration={toolConfiguration}
                 ref={chatInputBarRef}

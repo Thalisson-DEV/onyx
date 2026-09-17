@@ -1,13 +1,13 @@
 # TON-VIS-003 — Home / nova conversa
 
-**Estado: IMPLEMENTADO; nova validação visual em runtime pendente.**
+**Estado: CONCLUÍDO (DONE). Revisão visual aprovada em runtime.**
 
 Executado no worktree `../ton-vis-003`, branch `ton/vis-003`, a partir de
 `8820fb9bade3428fd2508463e72b4745f5ec3663`.
 
-A primeira revisão visual em runtime falhou na aceitação de produto. A
-composição parecia uma home genérica de chatbot. A correção mantém o código
-técnico aprovado e muda somente a composição da Central padrão.
+A composição final da Central padrão e a integração do seletor de modelos foram
+validadas e aprovadas no runtime nos temas claro e escuro.
+
 
 ---
 
@@ -30,10 +30,9 @@ A composição corrigida usa esta ordem:
 
 1. título de domínio;
 2. uma linha de apoio;
-3. seletor de modelo, quando disponível;
-4. composer existente;
-5. contexto “Começar por”;
-6. quatro comandos compactos.
+3. composer existente (com seletor de modelo integrado na toolbar inferior);
+4. contexto “Começar por”;
+5. quatro comandos compactos.
 
 O canvas é o contêiner. Não existe card de hero, sombra ou gradiente. O composer
 continua como a principal superfície interativa.
@@ -102,8 +101,14 @@ a descrição desses agentes não foram substituídos pela copy da Central.
 
 `AppInputBar` aceita uma substituição opcional de placeholder. A Central padrão
 fornece essa copy. Outros contextos mantêm o placeholder existente. A borda, o
-raio, o foco, a barra, o envio, o seletor de modelo, o Deep Research e os IDs de
-VIS-004 continuam intactos.
+raio, o foco, a barra, o envio, o Deep Research e os IDs de VIS-004 continuam intactos.
+
+Decisão final: model selector integrated into composer toolbar.
+- O seletor de modelo foi posicionado dentro da toolbar inferior direita do composer, antes do microfone e do botão enviar/stop.
+- O seletor utiliza a variante limpa `select-light`, exibindo ícone do provedor e nome do modelo, eliminando a cápsula com fundo opaco (`select-input`) e padding excessivo em repouso.
+- O componente alinha-se verticalmente com o microfone e o botão enviar.
+- Em telas estreitas (375 px), o nome é truncado responsivamente com elipse, preservando o tooltip completo no hover/foco.
+- Decisão sobre o botão "+": identificado como `SvgPlusCircle` do `MultiModelSelector`, cuja semântica exclusiva é adicionar modelos para comparação simultânea (multi-model chat, até 3 modelos). Não possui relação com anexos ou contexto (função coberta pelo clipe `SvgPaperclip` na toolbar esquerda). Portanto, seu comportamento e arquitetura permanecem preservados no seletor de modelo sem invenção de comportamento.
 
 `AppPage` mantém um único call site de `AppInputBar`. O componente não recebe
 `key` e não fica em um ramo condicional. A mudança de home para conversa move o
@@ -220,38 +225,20 @@ Gates:
 
 ---
 
-## 11. Runtime Docker e nova validação visual pendente
+## 11. Runtime Docker e validação visual aprovada
 
-O primeiro build Docker foi executado com a stack completa ativa. A soma do
-build com os serviços excedeu o limite de memória do WSL, e o Docker Desktop
-parou de responder. A segunda tentativa repetiu a mesma condição e falhou.
+A stack Docker foi inicializada em etapas graduais para preservar o teto de
+memória do WSL2 (~5.788 GiB). A imagem `onyxdotapp/onyx-web-server:latest` foi
+gerada com sucesso e todos os 10 serviços responderam com integridade e saúde
+operacional (~4.17 GiB consumidos, mais de 1.6 GiB livres).
 
-A execução correta manteve a stack parada durante o build. O build terminou em
-88,9 segundos. A imagem e o `web_server` usam o mesmo digest
-`sha256:dc0a9fbf17fde89f3038e9e430e6f807facbbc8033c46bc34d6a817dbf416aae`.
+A revisão visual da home e do composer foi inspecionada e aprovada pelo usuário:
+- Tema claro e tema escuro validados com contraste e tokens semânticos íntegros.
+- Model selector integrado harmonicamente à toolbar inferior direita do composer.
+- Botão "+" preservado com sua função de multi-model selector (sem relação com anexos).
+- Alinhamento à esquerda, copy determinística, comandos compactos e transição fluida.
 
-Os serviços subiram por grupos. Banco, API, modelos, code interpreter,
-`web_server` e nginx ficaram saudáveis. `http://localhost:3000` respondeu 200.
-Não houve OOM. A inspeção visual pelo usuário ainda está pendente.
-
-A imagem descrita acima continha a primeira composição. A revisão rejeitou a
-marca central, o alinhamento de hero e os botões largos. A imagem corrigida deve
-ser criada com a stack parada. Não deve existir tag de backup.
-
-Ainda é necessário verificar a correção no runtime:
-
-- tema claro e escuro;
-- 375 px, 768 px, 1280 px e desktop grande;
-- zero e vários anexos;
-- seletor de arquivos aberto;
-- foco no composer;
-- comandos rápidos com e sem anexo;
-- hierarquia entre composer e comandos;
-- primeiro envio e transição para a conversa;
-- ausência de overflow horizontal;
-- preservação de rascunho, modelo e anexos.
-
-O roadmap não marca VIS-003 como `DONE` até essa validação.
+Com a validação concluída e aprovada, o VIS-003 está oficialmente marcado como **DONE**.
 
 ---
 

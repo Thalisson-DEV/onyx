@@ -1007,22 +1007,19 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                     )}
 
                     <div className={cn(onboardingVisible && "shrink-0 pt-6")}>
-                      {/* The single model-selection position (TON-VIS-004):
-                          contained, directly above the composer, in every state
-                          that offers model choice. */}
-                      {modelSelectorVisible && (
-                        <div className="pb-1">
-                          <MultiModelSelector
-                            selectedModels={multiModel.selectedModels}
-                            onAdd={multiModel.addModel}
-                            onRemove={multiModel.removeModel}
-                            onReplace={multiModel.replaceModel}
-                            temperatureManager={llmManager}
-                            reasoningManager={llmManager}
-                          />
-                        </div>
-                      )}
                       <AppInputBar
+                        modelSelector={
+                          modelSelectorVisible ? (
+                            <MultiModelSelector
+                              selectedModels={multiModel.selectedModels}
+                              onAdd={multiModel.addModel}
+                              onRemove={multiModel.removeModel}
+                              onReplace={multiModel.replaceModel}
+                              temperatureManager={llmManager}
+                              reasoningManager={llmManager}
+                            />
+                          ) : undefined
+                        }
                         placeholder={
                           isPlainChat
                             ? centralHomeT("inputPlaceholder")

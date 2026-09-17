@@ -10846,8 +10846,32 @@
         "helpText": "Comment puis-je vous aider ?",
         "startText": "Commençons."
       },
+      "home": {
+        "description": "Envoyez des fichiers ou décrivez la situation que vous souhaitez examiner.",
+        "inputPlaceholder": "Décrivez ce que vous souhaitez examiner...",
+        "title": "Que faut-il analyser ?"
+      },
       "incognito": {
         "title": "Vous êtes en navigation privée"
+      },
+      "quickActions": {
+        "contextLabel": "Commencer par",
+        "analyzeFile": {
+          "label": "Analyser un fichier",
+          "prompt": "Analysez le fichier que je vais joindre et identifiez les points principaux."
+        },
+        "analyzeResult": {
+          "label": "Analyser un résultat",
+          "prompt": "Analysez le résultat que je vais fournir et expliquez les principales conclusions."
+        },
+        "investigateDifference": {
+          "label": "Examiner un écart",
+          "prompt": "Examinez l'écart dans les informations que je vais fournir et identifiez les causes possibles."
+        },
+        "reviewContract": {
+          "label": "Examiner un contrat",
+          "prompt": "Examinez le contrat que je vais fournir et relevez les clauses, risques et questions importants."
+        }
       }
     }
   },
@@ -12705,6 +12729,9 @@
     }
   },
   "onboarding": {
+    "flow": {
+      "ariaLabel": "Configuration initiale"
+    },
     "finalStep": {
       "imageGeneration": {
         "button": {

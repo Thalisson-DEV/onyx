@@ -1,12 +1,8 @@
 "use client";
 
-import { Logo } from "@/lib/app/components";
 import AgentAvatar from "@/refresh-components/avatars/AgentAvatar";
-import Text from "@/refresh-components/texts/Text";
 import { MinimalAgent } from "@/lib/agents/types";
-import { useState, useEffect } from "react";
-import { useSettings } from "@/lib/settings/hooks";
-import FrostedDiv from "@/refresh-components/FrostedDiv";
+import { Text } from "@opal/components";
 import { Section } from "@/layouts/general-layouts";
 import { SvgEyeClosed } from "@opal/icons";
 import { useIncognito } from "@/providers/IncognitoProvider";
@@ -22,21 +18,6 @@ export default function WelcomeMessage({
   isDefaultAgent,
 }: WelcomeMessageProps) {
   const t = useTranslations("chat.welcome");
-  const settings = useSettings();
-
-  // Use a stable default for SSR, then randomize on client after hydration
-  const [greeting, setGreeting] = useState(t("greeting.helpText"));
-
-  useEffect(() => {
-    if (settings.enterprise?.custom_greeting_message) {
-      setGreeting(settings.enterprise.custom_greeting_message);
-    } else {
-      setGreeting(
-        Math.random() < 0.5 ? t("greeting.helpText") : t("greeting.startText")
-      );
-    }
-  }, [settings.enterprise?.custom_greeting_message, t]);
-
   const { incognitoEnabled } = useIncognito();
 
   let content: React.ReactNode = null;
@@ -46,12 +27,12 @@ export default function WelcomeMessage({
       <Section
         data-testid="incognito-intro"
         flexDirection="column"
-        alignItems="start"
+        alignItems="center"
         gap={0.5}
-        width="fit"
+        width="full"
       >
         <SvgEyeClosed size={32} className="text-text-04" />
-        <Text as="p" dir="auto" headingH2>
+        <Text as="h1" dir="auto" font="heading-h2" color="text-05">
           {t("incognito.title")}
         </Text>
       </Section>
@@ -59,15 +40,17 @@ export default function WelcomeMessage({
   } else if (isDefaultAgent) {
     content = (
       <Section
-        data-testid="onyx-logo"
+        data-testid="central-home-intro"
         flexDirection="column"
         alignItems="start"
-        gap={2}
-        width="fit"
+        gap={0.5}
+        width="full"
       >
-        <Logo folded size={32} />
-        <Text as="p" dir="auto" headingH2>
-          {greeting}
+        <Text as="h1" dir="auto" font="heading-h2" color="text-05">
+          {t("home.title")}
+        </Text>
+        <Text as="p" dir="auto" font="main-content-muted" color="text-03">
+          {t("home.description")}
         </Text>
       </Section>
     );
@@ -76,12 +59,18 @@ export default function WelcomeMessage({
       <Section
         data-testid="agent-name-display"
         flexDirection="column"
-        alignItems="start"
+        alignItems="center"
         gap={2}
-        width="fit"
+        width="full"
       >
         <AgentAvatar agent={agent} size={36} />
-        <Text as="p" dir="auto" headingH2>
+        <Text
+          as="h1"
+          dir="auto"
+          font="heading-h2"
+          color="text-05"
+          textPosition="text-center"
+        >
           {agent.name}
         </Text>
       </Section>
@@ -93,11 +82,11 @@ export default function WelcomeMessage({
   if (!content) return null;
 
   return (
-    <FrostedDiv
+    <div
       data-testid="chat-intro"
-      className="flex flex-col items-center justify-center gap-3 w-full max-w-(--app-page-main-content-width)"
+      className="flex w-full max-w-(--app-page-main-content-width) flex-col justify-center gap-3"
     >
       {content}
-    </FrostedDiv>
+    </div>
   );
 }

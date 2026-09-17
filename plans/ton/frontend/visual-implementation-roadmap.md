@@ -4,8 +4,7 @@ Sequenciamento derivado de
 [`000-de-onyx-visual-audit.md`](./000-de-onyx-visual-audit.md). A linguagem alvo
 está em [`visual-language.md`](./visual-language.md).
 
-**Estado: VIS-001, VIS-004, VIS-002, VIS-005 e VIS-006 DONE. As demais não implementadas.**
-Após VIS-006, **PARAR**; VIS-003 não começa automaticamente.
+**Estado: VIS-001, VIS-004, VIS-002, VIS-005, VIS-006 e VIS-003 DONE. As demais não foram implementadas.**
 
 | Fatia | Estado |
 |---|---|
@@ -14,7 +13,8 @@ Após VIS-006, **PARAR**; VIS-003 não começa automaticamente.
 | VIS-002 | **DONE** — [`002-shell-navigation.md`](./002-shell-navigation.md) |
 | VIS-005 | **DONE** — [`005-attachments-context.md`](./005-attachments-context.md) |
 | VIS-006 | **DONE** — [`006-messages-streaming-tools.md`](./006-messages-streaming-tools.md) |
-| VIS-003, VIS-007 … VIS-010 | não iniciadas |
+| VIS-003 | **DONE** — [`003-home-new-chat.md`](./003-home-new-chat.md) |
+| VIS-007 … VIS-010 | não iniciadas |
 
 ---
 
@@ -46,7 +46,7 @@ Após VIS-006, **PARAR**; VIS-003 não começa automaticamente.
 VIS-001 → VIS-004 → VIS-002 → VIS-005 → VIS-006 → VIS-003 → VIS-007 → VIS-008 → VIS-009 → VIS-010
 ```
 
-As quatro primeiras estão feitas. A próxima é VIS-006.
+As seis primeiras (VIS-001, VIS-004, VIS-002, VIS-005, VIS-006 e VIS-003) estão feitas. A próxima é VIS-007.
 
 VIS-004 vem antes de VIS-002 porque trocar a aresta do composer de sombra para
 borda **elimina o hack de 14px espalhado por três arquivos** e resolve a
@@ -266,7 +266,15 @@ toque: menu de projeto alcançável.
 
 ---
 
-## VIS-003 — Home / nova conversa
+## VIS-003 — Home / nova conversa — **DONE**
+
+Implementação, decisões e gates em [`003-home-new-chat.md`](./003-home-new-chat.md).
+Revisão visual aprovada em runtime nos temas claro e escuro. Decisão final:
+seletor de modelos integrado à toolbar inferior direita do composer (variante limpa
+`select-light` com truncamento responsivo e tooltip); botão "+" preservado com
+semântica de comparação multi-modelo (sem relação com anexos); entrada da Central
+determinística alinhada à esquerda sem dashboard ou métricas inventadas. Todos os
+testes e gates aprovados.
 
 **Nível máximo: 3.**
 

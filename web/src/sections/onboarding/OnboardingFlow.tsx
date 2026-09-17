@@ -12,6 +12,8 @@ import {
 } from "@/interfaces/onboarding";
 import { useUser } from "@/providers/UserProvider";
 import NonAdminStep from "./components/NonAdminStep";
+import { useTranslations } from "next-intl";
+import { cn } from "@opal/utils";
 
 type OnboardingFlowProps = {
   showOnboarding: boolean;
@@ -21,13 +23,14 @@ type OnboardingFlowProps = {
   actions: OnboardingActions;
 };
 
-const OnboardingFlowInner = ({
+function OnboardingFlowInner({
   showOnboarding,
   handleHideOnboarding,
   handleFinishOnboarding,
   state: onboardingState,
   actions: onboardingActions,
-}: OnboardingFlowProps) => {
+}: OnboardingFlowProps) {
+  const t = useTranslations("onboarding");
   const { user, isAdmin } = useUser();
 
   if (!user) return null;
@@ -38,7 +41,7 @@ const OnboardingFlowInner = ({
     showOnboarding ? (
       <div
         className="flex flex-col items-center justify-center w-full max-w-(--app-page-main-content-width) gap-2"
-        aria-label="onboarding-flow"
+        aria-label={t("flow.ariaLabel")}
       >
         <OnboardingHeader
           state={onboardingState}
@@ -48,7 +51,7 @@ const OnboardingFlowInner = ({
         />
         {hasStarted && (
           <div className="relative w-full overflow-hidden">
-            <div className="flex flex-col gap-2 animate-in slide-in-from-right rtl:slide-in-from-left duration-500 ease-out">
+            <div className="flex flex-col gap-2 motion-safe:animate-in motion-safe:slide-in-from-right rtl:motion-safe:slide-in-from-left duration-fast ease-out">
               <NameStep state={onboardingState} actions={onboardingActions} />
               <LLMStep
                 state={onboardingState}
@@ -58,12 +61,12 @@ const OnboardingFlowInner = ({
                 }
               />
               <div
-                className={
-                  "transition-all duration-500 ease-out " +
-                  (onboardingState.currentStep === OnboardingStep.Complete
+                className={cn(
+                  "transition-all duration-fast ease-out",
+                  onboardingState.currentStep === OnboardingStep.Complete
                     ? "opacity-100 translate-x-0"
-                    : "opacity-0 translate-x-full rtl:-translate-x-full")
-                }
+                    : "opacity-0 translate-x-full rtl:-translate-x-full"
+                )}
               >
                 {onboardingState.currentStep === OnboardingStep.Complete && (
                   <FinalStep />
@@ -81,7 +84,7 @@ const OnboardingFlowInner = ({
   ) : !user.personalization?.name ? (
     <NonAdminStep />
   ) : null;
-};
+}
 
 const OnboardingFlow = memo(OnboardingFlowInner);
 export default OnboardingFlow;

@@ -10842,8 +10842,32 @@
         "helpText": "有什么可以帮您？",
         "startText": "开始吧。"
       },
+      "home": {
+        "description": "请上传文件，或描述您想调查的情况。",
+        "inputPlaceholder": "描述您想调查的内容...",
+        "title": "需要分析什么？"
+      },
       "incognito": {
         "title": "您处于无痕模式"
+      },
+      "quickActions": {
+        "contextLabel": "从这里开始",
+        "analyzeFile": {
+          "label": "分析文件",
+          "prompt": "请分析我将附加的文件并指出要点。"
+        },
+        "analyzeResult": {
+          "label": "分析结果",
+          "prompt": "请分析我将提供的结果并说明主要结论。"
+        },
+        "investigateDifference": {
+          "label": "调查差异",
+          "prompt": "请调查我将提供的信息中的差异并找出可能的原因。"
+        },
+        "reviewContract": {
+          "label": "审查合同",
+          "prompt": "请审查我将提供的合同并指出重要条款、风险和问题。"
+        }
       }
     }
   },
@@ -12701,6 +12725,9 @@
     }
   },
   "onboarding": {
+    "flow": {
+      "ariaLabel": "初始设置"
+    },
     "finalStep": {
       "imageGeneration": {
         "button": {

@@ -11,7 +11,7 @@ import {
 } from "@/lib/voice/svc";
 import { PageLoader } from "@opal/layouts";
 import { Content } from "@opal/layouts";
-import { MessageCard, Text } from "@opal/components";
+import { MessageCard } from "@opal/components";
 import { Section } from "@/layouts/general-layouts";
 import { ADMIN_ROUTES } from "@/lib/admin-routes";
 import { useCreateModal } from "@opal/components";
@@ -40,14 +40,6 @@ interface ModelDetails {
   subtitleKey: ModelSubtitleKey;
   providerType: string;
 }
-
-interface ProviderGroup {
-  providerType: string;
-  // Vendor name — a proper noun, so it is not translated.
-  providerLabel: string;
-  models: ModelDetails[];
-}
-
 // STT Models - individual cards
 const STT_MODELS: ModelDetails[] = [
   {
@@ -67,52 +59,6 @@ const STT_MODELS: ModelDetails[] = [
     label: "ElevenAPI",
     subtitleKey: "models.elevenlabsStt.subtitle",
     providerType: "elevenlabs",
-  },
-];
-
-// TTS Models - grouped by provider
-const TTS_PROVIDER_GROUPS: ProviderGroup[] = [
-  {
-    providerType: "openai",
-    providerLabel: "OpenAI",
-    models: [
-      {
-        id: "tts-1",
-        label: "TTS-1",
-        subtitleKey: "models.tts1.subtitle",
-        providerType: "openai",
-      },
-      {
-        id: "tts-1-hd",
-        label: "TTS-1 HD",
-        subtitleKey: "models.tts1Hd.subtitle",
-        providerType: "openai",
-      },
-    ],
-  },
-  {
-    providerType: "azure",
-    providerLabel: "Azure",
-    models: [
-      {
-        id: "azure-speech-tts",
-        label: "Azure Speech",
-        subtitleKey: "models.azureSpeechTts.subtitle",
-        providerType: "azure",
-      },
-    ],
-  },
-  {
-    providerType: "elevenlabs",
-    providerLabel: "ElevenLabs",
-    models: [
-      {
-        id: "elevenlabs-tts",
-        label: "ElevenAPI",
-        subtitleKey: "models.elevenlabsTts.subtitle",
-        providerType: "elevenlabs",
-      },
-    ],
   },
 ];
 
@@ -203,8 +149,6 @@ export default function VoicePage() {
 
   const hasActiveSTTProvider =
     providers?.some((p) => p.is_default_stt) ?? false;
-  const hasActiveTTSProvider =
-    providers?.some((p) => p.is_default_tts) ?? false;
 
   if (isLoading) {
     return (
@@ -291,66 +235,6 @@ export default function VoicePage() {
                   }}
                   onMutate={() => mutate()}
                 />
-              ))}
-            </Section>
-          </Section>
-
-          <Section gap={3}>
-            <Content
-              title={t("textToSpeech.title")}
-              description={t("textToSpeech.description")}
-              sizePreset="main-content"
-              variant="section"
-            />
-
-            {!hasActiveTTSProvider && (
-              <MessageCard
-                variant="info"
-                title={t("textToSpeech.emptyState.title")}
-              />
-            )}
-
-            <Section gap={4}>
-              {TTS_PROVIDER_GROUPS.map((group) => (
-                <div
-                  key={group.providerType}
-                  className="flex w-full flex-col gap-2"
-                >
-                  <Text font="secondary-body" color="text-03">
-                    {group.providerLabel}
-                  </Text>
-                  {group.models.map((model) => (
-                    <ModelCard
-                      key={`tts-${model.id}`}
-                      model={model}
-                      mode="tts"
-                      provider={providersByType.get(model.providerType)}
-                      status={getModelStatus(model, "tts")}
-                      hasAlternatives={
-                        (providers ?? []).filter(
-                          (p) =>
-                            p.provider_type !== model.providerType &&
-                            !!p.api_key
-                        ).length > 0
-                      }
-                      onSelect={() => {
-                        const p = providersByType.get(model.providerType);
-                        if (p?.id)
-                          activateVoiceProvider(p.id, "tts", model.id).then(
-                            () => mutate()
-                          );
-                      }}
-                      onDeselect={() => {
-                        const p = providersByType.get(model.providerType);
-                        if (p?.id)
-                          deactivateVoiceProvider(p.id, "tts").then(() =>
-                            mutate()
-                          );
-                      }}
-                      onMutate={() => mutate()}
-                    />
-                  ))}
-                </div>
               ))}
             </Section>
           </Section>

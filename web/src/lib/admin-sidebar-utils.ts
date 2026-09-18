@@ -77,7 +77,7 @@ export const NAV_ITEM_IDS: Record<
   LLM_MODELS: "languageModels",
   WEB_SEARCH: "webSearch",
   IMAGE_GENERATION: "imageGeneration",
-  VOICE: "voice",
+  VOICE: null,
   CODE_INTERPRETER: "codeInterpreter",
   CHAT_PREFERENCES: "chatPreferences",
   CRAFT_ACCESS: "craftAccess",

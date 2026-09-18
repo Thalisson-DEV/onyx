@@ -64,7 +64,6 @@ import { useIncognito } from "@/providers/IncognitoProvider";
 import MicrophoneButton from "@/sections/input/MicrophoneButton";
 import Waveform from "@/components/voice/Waveform";
 import { useVoiceMode } from "@/providers/VoiceModeProvider";
-import { useVoiceStatus } from "@/hooks/useVoiceStatus";
 import {
   useCurrentQueuedMessages,
   useCurrentLatestMessageRenderComplete,
@@ -199,19 +198,12 @@ const AppInputBar = React.memo(
     const {
       stopTTS,
       isTTSPlaying,
-      isManualTTSPlaying,
       isTTSLoading,
       isAwaitingAutoPlaybackStart,
-      isTTSMuted,
-      toggleTTSMute,
     } = useVoiceMode();
-    const { sttEnabled } = useVoiceStatus();
-    // Show mic button: always if STT configured, or greyed-out for admins to prompt setup
-    const showMicButton = sttEnabled || isAdmin;
     const isVoicePlaybackActive =
       isTTSPlaying || isTTSLoading || isAwaitingAutoPlaybackStart;
     const isVoicePlaybackControllable = isVoicePlaybackActive && !isRecording;
-    const isTTSActuallySpeaking = isTTSPlaying || isManualTTSPlaying;
     const appPosition = useAppPosition();
     const isNewSession = appPosition.isNewSession();
     const appMode = state.phase === "idle" ? state.appMode : undefined;
@@ -223,11 +215,9 @@ const AppInputBar = React.memo(
         ? t("appInputBar.input.queuedPlaceholder")
         : isRecording
           ? t("appInputBar.input.listeningPlaceholder")
-          : isVoicePlaybackActive
-            ? t("appInputBar.input.speakingPlaceholder")
-            : isSearchMode
-              ? t("appInputBar.input.searchPlaceholder")
-              : (placeholder ?? t("appInputBar.input.placeholder"));
+          : isSearchMode
+            ? t("appInputBar.input.searchPlaceholder")
+            : (placeholder ?? t("appInputBar.input.placeholder"));
 
     // Keyed by chat session id, or "new" until the session is created.
     const chatSessionId = appPosition.chat();
@@ -289,6 +279,9 @@ const AppInputBar = React.memo(
         setRecordingCycleCount((count) => count + 1);
       }
       setIsRecording(nextIsRecording);
+      if (!nextIsRecording) {
+        setIsMuted(false);
+      }
     }, []);
 
     // Wrapper for onSubmit that stops TTS first to prevent overlapping voices
@@ -303,6 +296,9 @@ const AppInputBar = React.memo(
       (text: string) => {
         if (!text.trim()) {
           return;
+        }
+        if (stopRecordingRef.current) {
+          void stopRecordingRef.current();
         }
         handleSubmit(text);
         clearChatDraft();
@@ -334,7 +330,6 @@ const AppInputBar = React.memo(
     }, [initialMessage]); // eslint-disable-line react-hooks/exhaustive-deps
     const shouldShowRecordingWaveformBelow =
       isRecording &&
-      !isVoicePlaybackActive &&
       (isNewSession || recordingCycleCount === 1);
 
     useEffect(() => {
@@ -775,35 +770,21 @@ const AppInputBar = React.memo(
         <div className="flex flex-row items-center gap-1 shrink-0">
           {modelSelector}
 
-          {showMicButton &&
-            (sttEnabled ? (
-              <MicrophoneButton
-                onTranscription={(text) => setMessage(text)}
-                disabled={disabled || chatState === "streaming"}
-                autoSend={user?.preferences?.voice_auto_send ?? false}
-                autoListen={user?.preferences?.voice_auto_playback ?? false}
-                isNewSession={isNewSession}
-                chatState={chatState}
-                onRecordingChange={handleRecordingChange}
-                stopRecordingRef={stopRecordingRef}
-                currentMessage={message}
-                onRecordingStart={() => {}}
-                onAutoSend={(text) => {
-                  submitMessage(text);
-                }}
-                onMuteChange={setIsMuted}
-                setMutedRef={setMutedRef}
-                onAudioLevel={setAudioLevel}
-              />
-            ) : (
-              <Button
-                disabled
-                icon={SvgMicrophone}
-                aria-label={t("appInputBar.voiceSetupButton.ariaLabel")}
-                prominence="tertiary"
-                tooltip={t("appInputBar.voiceSetupButton.tooltip")}
-              />
-            ))}
+          <MicrophoneButton
+            onTranscription={(text) => setMessage(text)}
+            disabled={disabled || chatState === "streaming"}
+            autoSend={false}
+            autoListen={false}
+            isNewSession={isNewSession}
+            chatState={chatState}
+            onRecordingChange={handleRecordingChange}
+            stopRecordingRef={stopRecordingRef}
+            currentMessage={message}
+            onRecordingStart={() => {}}
+            onMuteChange={setIsMuted}
+            setMutedRef={setMutedRef}
+            onAudioLevel={setAudioLevel}
+          />
 
           <Button
             disabled={
@@ -878,18 +859,7 @@ const AppInputBar = React.memo(
             className="ton-composer ton-composer-interactive relative w-full flex flex-col"
           >
             {/* Voice waveform overlay (positioned outside normal flow to avoid resizing input) */}
-            {isTTSActuallySpeaking ? (
-              <div className="absolute bottom-full mb-1 start-1 z-10">
-                <Waveform
-                  variant="speaking"
-                  isActive={isTTSActuallySpeaking}
-                  isMuted={isTTSMuted}
-                  onMuteToggle={toggleTTSMute}
-                />
-              </div>
-            ) : isRecording &&
-              !isVoicePlaybackActive &&
-              !shouldShowRecordingWaveformBelow ? (
+            {isRecording && !shouldShowRecordingWaveformBelow ? (
               <div className="absolute bottom-full mb-1 start-1 end-1 z-10">
                 <Waveform
                   variant="recording"

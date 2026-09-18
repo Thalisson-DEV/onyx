@@ -9571,8 +9571,7 @@
           "listeningPlaceholder": "듣는 중...",
           "placeholder": "무엇을 도와드릴까요?",
           "queuedPlaceholder": "위쪽 방향키를 눌러 대기 중인 메시지를 편집하세요",
-          "searchPlaceholder": "연결된 소스 검색",
-          "speakingPlaceholder": "Onyx가 말하는 중..."
+          "searchPlaceholder": "연결된 소스 검색"
         },
         "searchButton": {
           "ariaLabel": "검색"
@@ -9591,7 +9590,7 @@
         },
         "voiceSetupButton": {
           "ariaLabel": "음성 설정",
-          "tooltip": "음성이 구성되지 않았습니다. 관리자 설정에서 구성하세요."
+          "tooltip": "이 브라우저에서는 받아쓰기를 지원하지 않습니다."
         }
       },
       "baseInputBar": {
@@ -9668,6 +9667,10 @@
         },
         "stopRecording": {
           "ariaLabel": "녹음 중지"
+        },
+        "unsupported": {
+          "ariaLabel": "받아쓰기 사용할 수 없음",
+          "tooltip": "이 브라우저에서는 받아쓰기를 지원하지 않습니다."
         }
       },
       "pasteTilePopover": {
@@ -9706,6 +9709,15 @@
         "startSessionButton": {
           "label": "새 세션 시작"
         }
+      },
+      "waveform": {
+        "muteButton": {
+          "muteAriaLabel": "마이크 음소거",
+          "unmuteAriaLabel": "마이크 음소거 해제",
+          "muteTooltip": "음소거",
+          "unmuteTooltip": "음소거 해제"
+        },
+        "dictating": "받아쓰기 중..."
       }
     },
     "mcpApiKey": {
@@ -13420,21 +13432,6 @@
         "description": "{amount} 사용",
         "title": "이 기간의 사용량"
       }
-    },
-    "voice": {
-      "autoPlayback": {
-        "description": "음성 응답을 자동으로 재생합니다.",
-        "title": "자동 재생"
-      },
-      "autoSend": {
-        "description": "말을 멈추면 음성 입력을 자동으로 전송합니다.",
-        "title": "멈추면 자동 전송"
-      },
-      "playbackSpeed": {
-        "description": "음성 재생 속도를 조정합니다.",
-        "title": "재생 속도"
-      },
-      "title": "음성"
     }
   },
   "sidebar": {

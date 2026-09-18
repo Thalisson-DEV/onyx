@@ -9571,8 +9571,7 @@
           "listeningPlaceholder": "جارٍ الاستماع...",
           "placeholder": "كيف يمكنني مساعدتك اليوم؟",
           "queuedPlaceholder": "اضغط السهم لأعلى لتعديل الرسائل في قائمة الانتظار",
-          "searchPlaceholder": "البحث في المصادر المتصلة",
-          "speakingPlaceholder": "Onyx يتحدث..."
+          "searchPlaceholder": "البحث في المصادر المتصلة"
         },
         "searchButton": {
           "ariaLabel": "بحث"
@@ -9591,7 +9590,7 @@
         },
         "voiceSetupButton": {
           "ariaLabel": "إعداد الصوت",
-          "tooltip": "الصوت غير مهيأ. قم بإعداده في إعدادات المسؤول."
+          "tooltip": "الإملاء الصوتي غير مدعوم في هذا المتصفح."
         }
       },
       "baseInputBar": {
@@ -9668,6 +9667,10 @@
         },
         "stopRecording": {
           "ariaLabel": "إيقاف التسجيل"
+        },
+        "unsupported": {
+          "ariaLabel": "الإملاء غير مدعوم",
+          "tooltip": "الإملاء الصوتي غير مدعوم في هذا المتصفح."
         }
       },
       "pasteTilePopover": {
@@ -9706,6 +9709,15 @@
         "startSessionButton": {
           "label": "بدء جلسة جديدة"
         }
+      },
+      "waveform": {
+        "muteButton": {
+          "muteAriaLabel": "كتم الميكروفون",
+          "unmuteAriaLabel": "إلغاء كتم الميكروفون",
+          "muteTooltip": "كتم",
+          "unmuteTooltip": "إلغاء الكتم"
+        },
+        "dictating": "جارٍ الإملاء..."
       }
     },
     "mcpApiKey": {
@@ -13420,21 +13432,6 @@
         "description": "أُنفق {amount}",
         "title": "الاستخدام في هذه الفترة"
       }
-    },
-    "voice": {
-      "autoPlayback": {
-        "description": "تشغيل الإجابات الصوتية تلقائيًا.",
-        "title": "التشغيل التلقائي"
-      },
-      "autoSend": {
-        "description": "إرسال الإدخال الصوتي تلقائيًا عند توقفك عن الكلام.",
-        "title": "الإرسال التلقائي عند التوقف"
-      },
-      "playbackSpeed": {
-        "description": "اضبط سرعة تشغيل الصوت.",
-        "title": "سرعة التشغيل"
-      },
-      "title": "الصوت"
     }
   },
   "sidebar": {

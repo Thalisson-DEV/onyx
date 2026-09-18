@@ -9571,8 +9571,7 @@
           "listeningPlaceholder": "Höre zu...",
           "placeholder": "Wie kann ich Ihnen heute helfen?",
           "queuedPlaceholder": "Pfeil nach oben drücken, um Nachrichten in der Warteschlange zu bearbeiten",
-          "searchPlaceholder": "Verbundene Quellen durchsuchen",
-          "speakingPlaceholder": "Onyx spricht..."
+          "searchPlaceholder": "Verbundene Quellen durchsuchen"
         },
         "searchButton": {
           "ariaLabel": "Suchen"
@@ -9591,7 +9590,7 @@
         },
         "voiceSetupButton": {
           "ariaLabel": "Sprachfunktion einrichten",
-          "tooltip": "Sprachfunktion nicht konfiguriert. Richten Sie sie in den Administrator-Einstellungen ein."
+          "tooltip": "Diktat in diesem Browser nicht verfügbar."
         }
       },
       "baseInputBar": {
@@ -9668,6 +9667,10 @@
         },
         "stopRecording": {
           "ariaLabel": "Aufnahme stoppen"
+        },
+        "unsupported": {
+          "ariaLabel": "Diktat nicht verfügbar",
+          "tooltip": "Diktat in diesem Browser nicht verfügbar."
         }
       },
       "pasteTilePopover": {
@@ -9706,6 +9709,15 @@
         "startSessionButton": {
           "label": "Neue Sitzung starten"
         }
+      },
+      "waveform": {
+        "muteButton": {
+          "muteAriaLabel": "Mikrofon stummschalten",
+          "unmuteAriaLabel": "Mikrofon aktivieren",
+          "muteTooltip": "Stummschalten",
+          "unmuteTooltip": "Aktivieren"
+        },
+        "dictating": "Diktieren..."
       }
     },
     "mcpApiKey": {
@@ -13420,21 +13432,6 @@
         "description": "{amount} ausgegeben",
         "title": "Nutzung in diesem Zeitraum"
       }
-    },
-    "voice": {
-      "autoPlayback": {
-        "description": "Sprachantworten automatisch abspielen.",
-        "title": "Automatische Wiedergabe"
-      },
-      "autoSend": {
-        "description": "Spracheingabe automatisch senden, wenn Sie zu sprechen aufhören.",
-        "title": "Automatisches Senden bei Pause"
-      },
-      "playbackSpeed": {
-        "description": "Passen Sie die Geschwindigkeit der Sprachwiedergabe an.",
-        "title": "Wiedergabegeschwindigkeit"
-      },
-      "title": "Sprachfunktionen"
     }
   },
   "sidebar": {

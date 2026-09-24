@@ -87,3 +87,13 @@ The local mutation firewall tests passed before the first authenticated request.
 | GET | `/api/2/assignments` | 1 | No pending assignments for this user |
 
 Non-sensitive name examples include `NÚCLEO - Chamados de TI` and `NÚCLEO - Solicitações da Gerência`. Task records contain ID, active flag, task descriptor, assignees, executor, timestamps, result, alias, and SLA fields. The live response did not include rate-limit or `Retry-After` headers. No 429 was induced. No business mutation was sent. Do not store response bodies, token values, or form values here.
+
+## BE-004B factual additions (2026-09-23)
+
+- The five startable flow IDs are contained in the 35 editable flow IDs. All 35 form designs were readable, with 916 structural fields.
+- The public `GET /api/2/users/{userid}`, `/api/2/teams/{teamid}`, and `/api/2/positions/{positionid}` routes each succeeded for one ID found in a bounded instance sample. No list import was made.
+- A one-day report sample returned five instances and 14 embedded task records. One selected instance detail returned `formFields` entries with `id`, `name`, `row`, and `value` keys. Values were discarded.
+- The contract defines `formFields[].openUrl`, but the selected live detail did not return that key. The contract still has no public attachment-content GET route. Both `/api/2/files` routes are write POST operations.
+- The tenant returned zero startable services. Its service response schema has a nested flow reference. Do not equate service and flow identities.
+- `GET /api/2/flows/{flowid}/design/elements` returned a top-level array in this tenant, although Swagger declares an object with a `tasks` array. Its elements contain task IDs, titles, types, pages, and mixed `users` shapes. All 35 designs were readable, with 401 elements.
+- The final full catalog run used 80 calls, including authentication. It saw zero HTTP 429 responses and sent zero mutation calls. See [the source catalog](zeev-source-catalog.md) for sanitized path counts.

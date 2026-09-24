@@ -12,6 +12,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from onyx.ton.zeev.models import (
+    ZeevDesignElement,
     ZeevFlow,
     ZeevFormField,
     ZeevHealth,
@@ -98,10 +99,14 @@ class _Operation(Enum):
     EDITABLE_FLOWS = ("GET", "/api/2/flows/edit")
     SERVICES = ("GET", "/api/2/requests/services")
     FORM = ("GET", "/api/2/flows/{flowid}/design/form")
+    ELEMENTS = ("GET", "/api/2/flows/{flowid}/design/elements")
     INSTANCES = ("GET", "/api/2/instances/report")
     INSTANCES_POST = ("POST", "/api/2/instances/report")
     INSTANCE = ("GET", "/api/2/instances/{instanceid}")
     ASSIGNMENTS = ("GET", "/api/2/assignments")
+    USER = ("GET", "/api/2/users/{userid}")
+    TEAM = ("GET", "/api/2/teams/{teamid}")
+    POSITION = ("GET", "/api/2/positions/{positionid}")
 
     @property
     def method(self) -> str:
@@ -164,6 +169,28 @@ def _optional_bool(value: Any) -> bool | None:
     return value
 
 
+def _optional_number(value: Any) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ZeevProtocolError("Zeev returned an unexpected number field")
+    return float(value)
+
+
+def _optional_array_length(value: Any) -> int | None:
+    return len(value) if isinstance(value, list) else None
+
+
+def _representation(value: Any) -> str:
+    if isinstance(value, list):
+        return "array"
+    if isinstance(value, str):
+        return "string"
+    if value is None:
+        return "null"
+    return "other"
+
+
 class ZeevClient:
     """Only audited Zeev operations are exposed to higher-level code."""
 
@@ -173,6 +200,7 @@ class ZeevClient:
         http_client: httpx.Client | None = None,
         audit_call: Callable[[str, str], None] | None = None,
         audit_rate_headers: Callable[[tuple[str, ...]], None] | None = None,
+        audit_status: Callable[[str, str, int], None] | None = None,
     ) -> None:
         self._config = config
         self._http = http_client or httpx.Client(
@@ -184,6 +212,7 @@ class ZeevClient:
         self._owns_http = http_client is None
         self._audit_call = audit_call
         self._audit_rate_headers = audit_rate_headers
+        self._audit_status = audit_status
         self._token_lock = threading.Lock()
         self._temporary_token: str | None = None
         self._token_expires_at = 0.0
@@ -324,6 +353,10 @@ class ZeevClient:
                 int((time.monotonic() - started) * 1000),
                 attempt + 1,
             )
+            if self._audit_status is not None:
+                self._audit_status(
+                    operation.method, operation.path, response.status_code
+                )
             if self._audit_rate_headers is not None:
                 self._audit_rate_headers(
                     tuple(
@@ -450,6 +483,31 @@ class ZeevClient:
             for row in records
         ]
 
+    def get_flow_design_elements(self, flow_id: int) -> list[ZeevDesignElement]:
+        if flow_id <= 0:
+            raise ValueError("Zeev flow ID must be positive")
+        records = _array(
+            self._send(
+                _Operation.ELEMENTS, path=f"/api/2/flows/{flow_id}/design/elements"
+            )
+        )
+        return [
+            ZeevDesignElement(
+                external_id=_int(row.get("taskId")),
+                title=_optional_str(row.get("title")),
+                type_name=_optional_str(row.get("type")),
+                order=index,
+                page=_optional_int(row.get("page")),
+                business_hours=_optional_bool(row.get("businessHour")),
+                timeout=_optional_number(row.get("timeout")),
+                editable_field_count=_optional_array_length(row.get("editableFields")),
+                required_file_count=_optional_array_length(row.get("requiredFiles")),
+                user_representation=_representation(row.get("users")),
+                user_count=_optional_array_length(row.get("users")),
+            )
+            for index, row in enumerate(records)
+        ]
+
     @staticmethod
     def _parse_instance(row: dict[str, Any]) -> ZeevInstance:
         flow = row.get("flow")
@@ -477,18 +535,28 @@ class ZeevClient:
             source_metadata=row,
         )
 
-    def get_instance(self, instance_id: int) -> ZeevInstance:
+    def get_instance(
+        self, instance_id: int, *, form_field_names: tuple[str, ...] = ()
+    ) -> ZeevInstance:
         if instance_id <= 0:
             raise ValueError("Zeev instance ID must be positive")
+        if len(form_field_names) > 3 or any(
+            not name or len(name) > 128 or any(ord(char) < 32 for char in name)
+            for name in form_field_names
+        ):
+            raise ValueError("Zeev form field selection must be small and valid")
+        params: dict[str, Any] = {
+            "showPendingInstanceTasks": "true",
+            "showFinishedInstanceTasks": "true",
+        }
+        if form_field_names:
+            params["formFieldNames"] = list(form_field_names)
         return self._parse_instance(
             _object(
                 self._send(
                     _Operation.INSTANCE,
                     path=f"/api/2/instances/{instance_id}",
-                    params={
-                        "showPendingInstanceTasks": "true",
-                        "showFinishedInstanceTasks": "true",
-                    },
+                    params=params,
                 )
             )
         )
@@ -546,3 +614,18 @@ class ZeevClient:
             )
             for row in records
         ]
+
+    def probe_user(self, user_id: int) -> None:
+        if user_id <= 0:
+            raise ValueError("Zeev user ID must be positive")
+        _object(self._send(_Operation.USER, path=f"/api/2/users/{user_id}"))
+
+    def probe_team(self, team_id: int) -> None:
+        if team_id <= 0:
+            raise ValueError("Zeev team ID must be positive")
+        _object(self._send(_Operation.TEAM, path=f"/api/2/teams/{team_id}"))
+
+    def probe_position(self, position_id: int) -> None:
+        if position_id <= 0:
+            raise ValueError("Zeev position ID must be positive")
+        _object(self._send(_Operation.POSITION, path=f"/api/2/positions/{position_id}"))

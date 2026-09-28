@@ -5,7 +5,6 @@ import os
 import zipfile
 from datetime import datetime
 from io import BytesIO
-from pathlib import PurePosixPath
 from typing import Any, cast
 
 from fastapi import (
@@ -169,6 +168,7 @@ from onyx.utils.threadpool_concurrency import (
     CallableProtocol,
     run_functions_tuples_in_parallel,
 )
+from onyx.utils.zip_safety import validate_zip_archive as validate_archive_metadata
 from shared_configs.contextvars import get_current_tenant_id
 
 logger = setup_logger()
@@ -303,56 +303,16 @@ def is_zip_file(file: UploadFile) -> bool:
     )
 
 
-def _validate_zip_member_name(filename: str) -> None:
-    normalized_name = filename.replace("\\", "/")
-    path = PurePosixPath(normalized_name)
-    if (
-        not normalized_name
-        or len(normalized_name) > MAX_ZIP_FILENAME_LENGTH
-        or path.is_absolute()
-        or ".." in path.parts
-        or "\x00" in normalized_name
-    ):
-        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "ZIP contains an unsafe path")
-    if len(path.parts) > MAX_ZIP_PATH_DEPTH:
-        raise OnyxError(
-            OnyxErrorCode.INVALID_INPUT,
-            "ZIP member exceeds the allowed path depth",
-        )
-
-
 def validate_zip_archive(zf: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
-    """Validate archive metadata before any member content is read."""
-    members = zf.infolist()
-    if len(members) > MAX_ZIP_ENTRIES:
-        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "ZIP contains too many files")
-
-    expanded_size = 0
-    for member in members:
-        _validate_zip_member_name(member.filename)
-        if member.is_dir():
-            continue
-        if member.file_size > MAX_ZIP_MEMBER_SIZE_BYTES:
-            raise OnyxError(
-                OnyxErrorCode.PAYLOAD_TOO_LARGE,
-                "ZIP member exceeds the allowed size",
-            )
-
-        expanded_size += member.file_size
-        if expanded_size > MAX_ZIP_EXPANDED_SIZE_BYTES:
-            raise OnyxError(
-                OnyxErrorCode.PAYLOAD_TOO_LARGE,
-                "ZIP exceeds the allowed expanded size",
-            )
-
-        compressed_size = max(member.compress_size, 1)
-        if member.file_size / compressed_size > MAX_ZIP_COMPRESSION_RATIO:
-            raise OnyxError(
-                OnyxErrorCode.INVALID_INPUT,
-                "ZIP member exceeds the allowed compression ratio",
-            )
-
-    return members
+    return validate_archive_metadata(
+        zf,
+        max_entries=MAX_ZIP_ENTRIES,
+        max_expanded_size=MAX_ZIP_EXPANDED_SIZE_BYTES,
+        max_member_size=MAX_ZIP_MEMBER_SIZE_BYTES,
+        max_compression_ratio=MAX_ZIP_COMPRESSION_RATIO,
+        max_filename_length=MAX_ZIP_FILENAME_LENGTH,
+        max_path_depth=MAX_ZIP_PATH_DEPTH,
+    )
 
 
 def _read_bounded_zip_member(

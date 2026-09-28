@@ -112,6 +112,13 @@ class AuditAction(str, Enum):
     # history table: the domain row records *what* changed and is transactional,
     # while these record *who* did it and are best-effort. Emitting one does not
     # replace writing the domain row -- see `onyx.db.ton.audit`.
+    TON_SOURCE_CREATE = "ton_sources.source_create"
+    TON_SOURCE_UPDATE = "ton_sources.source_update"
+    TON_IMPORT_START = "ton_sources.import_start"
+    TON_SNAPSHOT_CAPTURE = "ton_sources.snapshot_capture"
+    TON_DUPLICATE_DETECT = "ton_sources.duplicate_detect"
+    TON_IMPORT_SUCCEED = "ton_sources.import_succeed"
+    TON_IMPORT_FAIL = "ton_sources.import_fail"
     TON_REPORT_GENERATE = "ton_report.generate"
     TON_RULE_VERSION_CHANGE = "ton_rule_version.change"
     TON_MANUAL_OVERRIDE = "ton_occurrence.manual_override"
@@ -164,6 +171,13 @@ _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
     AuditAction.PERMISSION_DENIED: OCSFEventClass.API_ACTIVITY,
     # OCSF has no business-domain class either. These are resource actions, so
     # they map onto the API activity surface like the other resource CRUD above.
+    AuditAction.TON_SOURCE_CREATE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_SOURCE_UPDATE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_IMPORT_START: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_SNAPSHOT_CAPTURE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_DUPLICATE_DETECT: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_IMPORT_SUCCEED: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_IMPORT_FAIL: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_REPORT_GENERATE: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_RULE_VERSION_CHANGE: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_MANUAL_OVERRIDE: OCSFEventClass.API_ACTIVITY,

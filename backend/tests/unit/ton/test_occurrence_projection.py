@@ -108,7 +108,12 @@ TON_003D_TABLES: tuple[str, ...] = (
     "ton_report__user_group",
     "ton_audit_event",
 )
-TON_TABLE_NAMES: tuple[str, ...] = TON_003B_TABLES + TON_003C_TABLES + TON_003D_TABLES
+TON_TABLE_NAMES: tuple[str, ...] = (
+    TON_003B_TABLES
+    + TON_003C_TABLES
+    + TON_003D_TABLES
+    + ("ton_source", "ton_import_run", "ton_source__user_group")
+)
 
 BASE_COMPONENTS = ["rule_code", "business_unit_id", "period"]
 BASE_VALUES: dict[str, object | None] = {
@@ -673,12 +678,12 @@ class TestFailClosedMetadata:
             table = Base.metadata.tables[table_name]
             assert set(table.columns.keys()) & forbidden == set()
 
-    def test_the_metadata_holds_exactly_the_thirty_ton_tables(self) -> None:
+    def test_the_metadata_holds_exactly_the_classified_ton_tables(self) -> None:
         """Nine from 003b, twelve from 003c, nine from 003d. Measured against the
         mapper, so a model added without being classified fails here."""
         ton_tables = {name for name in Base.metadata.tables if name.startswith("ton_")}
         assert ton_tables == set(TON_TABLE_NAMES)
-        assert len(TON_TABLE_NAMES) == 30
+        assert len(TON_TABLE_NAMES) == 33
 
     def test_no_ton_model_writes_to_a_source_system(self) -> None:
         """The advisory boundary is enforced by absence: no column here can carry
@@ -698,7 +703,7 @@ class TestFailClosedMetadata:
                     fragment in column.name for fragment in forbidden_fragments
                 )
 
-    def test_exactly_four_acl_junctions_exist(self) -> None:
+    def test_exactly_five_acl_junctions_exist(self) -> None:
         """``TonReport__UserGroup`` arrived with its table in 003d, completing the
         set readiness §10 specifies (decision D-043)."""
         junctions = {
@@ -711,6 +716,7 @@ class TestFailClosedMetadata:
             "ton_contract__user_group",
             "ton_occurrence__user_group",
             "ton_report__user_group",
+            "ton_source__user_group",
         }
 
 

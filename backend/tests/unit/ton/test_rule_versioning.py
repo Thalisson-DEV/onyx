@@ -601,6 +601,9 @@ class TestPermissionTokens:
         resource_by_token: dict[Permission, str] = {
             Permission.READ_TON_OCCURRENCES: "ton_occurrence",
             Permission.MANAGE_TON_OCCURRENCES: "ton_occurrence",
+            Permission.READ_TON_SOURCES: "ton_source",
+            Permission.MANAGE_TON_SOURCES: "ton_source",
+            Permission.IMPORT_TON_SOURCES: "ton_source",
             Permission.READ_TON_REPORTS: "ton_report",
             Permission.MANAGE_TON_REPORTS: "ton_report",
             Permission.READ_TON_ANALYSIS: "ton_analysis_run",

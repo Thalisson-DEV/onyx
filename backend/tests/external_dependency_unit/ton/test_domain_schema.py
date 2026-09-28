@@ -65,6 +65,15 @@ LATER_SLICE_TABLES: tuple[str, ...] = (
 
 # (table, column, referenced table, expected delete rule)
 EXPECTED_FOREIGN_KEYS: tuple[tuple[str, str, str, str], ...] = (
+    ("ton_import_run", "source_id", "ton_source", "RESTRICT"),
+    ("ton_import_run", "initiated_by", "user", "SET NULL"),
+    ("ton_source__user_group", "source_id", "ton_source", "RESTRICT"),
+    ("ton_source__user_group", "user_group_id", "user_group", "CASCADE"),
+    ("ton_source_snapshot", "source_id", "ton_source", "RESTRICT"),
+    ("ton_source_snapshot", "import_run_id", "ton_import_run", "RESTRICT"),
+    ("ton_source_snapshot", "source_id", "ton_import_run", "RESTRICT"),
+    ("ton_source_snapshot", "duplicate_of_id", "ton_source_snapshot", "RESTRICT"),
+    ("ton_source_snapshot", "source_id", "ton_source_snapshot", "RESTRICT"),
     ("ton_contract", "business_unit_id", "ton_business_unit", "RESTRICT"),
     ("ton_rule", "created_by", "user", "SET NULL"),
     ("ton_rule_version", "rule_id", "ton_rule", "CASCADE"),
@@ -301,6 +310,7 @@ class TestMigrationShape:
         self, ton_database: str
     ) -> None:
         """A 003c rollback must not touch the rule and analysis spine."""
+        downgrade(ton_database, REVISION_003C)
         constraints_before = {
             table: constraint_names(ton_database, table) for table in TON_003B_TABLES
         }
@@ -400,7 +410,7 @@ class TestFailClosedSchema:
         for table in TON_TABLES_AT_HEAD:
             assert column_names(ton_database, table) & forbidden == set()
 
-    def test_the_four_acl_junctions_exist(self, ton_database: str) -> None:
+    def test_the_five_acl_junctions_exist(self, ton_database: str) -> None:
         """003c created three; ``ton_report__user_group`` arrived with its table in
         003d, because a junction to a table that does not exist would authorize
         nothing (decision D-043)."""
@@ -412,6 +422,7 @@ class TestFailClosedSchema:
             "ton_contract__user_group",
             "ton_occurrence__user_group",
             "ton_report__user_group",
+            "ton_source__user_group",
         }
 
     def test_finding_and_evidence_have_no_acl_junction(self, ton_database: str) -> None:

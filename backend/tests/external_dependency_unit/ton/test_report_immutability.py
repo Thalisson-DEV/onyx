@@ -173,6 +173,7 @@ class TestReportSchema:
     def test_003d_adds_exactly_nine_tables(self, ton_database: str) -> None:
         """Measured, not asserted from a list: downgrade to 003c and diff. This is
         what catches a table smuggled into 003d without a recorded decision."""
+        downgrade(ton_database, "440b8984f851")
         at_head = table_names(ton_database)
 
         downgrade(ton_database, REVISION_003C)
@@ -184,9 +185,8 @@ class TestReportSchema:
     ) -> None:
         """A 003d rollback must not touch the rule, analysis or occurrence
         layers."""
-        earlier = [
-            table for table in TON_TABLES_AT_HEAD if table not in TON_003D_TABLES
-        ]
+        downgrade(ton_database, "440b8984f851")
+        earlier = sorted(table_names(ton_database, "ton_") - set(TON_003D_TABLES))
         constraints_before = {
             table: constraint_names(ton_database, table) for table in earlier
         }
@@ -257,7 +257,7 @@ class TestReportSchema:
         for table in TON_003D_TABLES:
             assert column_names(ton_database, table) & forbidden == set()
 
-    def test_the_four_acl_junctions_now_exist(self, ton_database: str) -> None:
+    def test_the_five_acl_junctions_now_exist(self, ton_database: str) -> None:
         """003c created three; ``ton_report__user_group`` arrives here with its
         table (decision D-043)."""
         junctions = {
@@ -268,6 +268,7 @@ class TestReportSchema:
             "ton_contract__user_group",
             "ton_occurrence__user_group",
             "ton_report__user_group",
+            "ton_source__user_group",
         }
 
     def test_a_revision_has_no_acl_junction_of_its_own(self, ton_database: str) -> None:

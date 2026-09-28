@@ -702,6 +702,9 @@ class Permission(str, PyEnum):
     MANAGE_TON_BUSINESS_UNITS = "manage:ton_business_units"
     READ_TON_OCCURRENCES = "read:ton_occurrences"
     MANAGE_TON_OCCURRENCES = "manage:ton_occurrences"
+    READ_TON_SOURCES = "read:ton_sources"
+    MANAGE_TON_SOURCES = "manage:ton_sources"
+    IMPORT_TON_SOURCES = "import:ton_sources"
     READ_TON_REPORTS = "read:ton_reports"
     MANAGE_TON_REPORTS = "manage:ton_reports"
 

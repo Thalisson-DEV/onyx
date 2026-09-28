@@ -93,7 +93,10 @@ TON_REPORT_LINK_TABLES: tuple[str, ...] = (
 # so a new table cannot escape the no-``is_public`` and no-source-write checks by
 # being added to a later slice's list only.
 TON_TABLES_AT_HEAD: tuple[str, ...] = (
-    TON_003B_TABLES + TON_003C_TABLES + TON_003D_TABLES
+    TON_003B_TABLES
+    + TON_003C_TABLES
+    + TON_003D_TABLES
+    + ("ton_source", "ton_import_run", "ton_source__user_group")
 )
 
 OCCURRENCE_SHORT_CODE_SEQUENCE = "ton_occurrence_short_code_seq"

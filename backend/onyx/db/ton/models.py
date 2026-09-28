@@ -79,6 +79,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
@@ -135,6 +136,14 @@ from onyx.db.ton.enums import (
     TonReportType,
     TonSharePermission,
     UnitCostSource,
+)
+from onyx.ton.sources.models import (
+    AcquisitionType,
+    ImportStatus,
+    ImportTrigger,
+    Sensitivity,
+    SourceFormat,
+    SourceStatus,
 )
 
 # Money and quantity columns. `asdecimal=True` is stated rather than relied on:
@@ -472,6 +481,22 @@ class SourceSnapshot(Base):
 
     __tablename__ = "ton_source_snapshot"
 
+    # Nullable only for legacy evidence receipts. New raw captures require all fields.
+    source_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_source.id", ondelete="RESTRICT")
+    )
+    import_run_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), unique=True
+    )
+    storage_file_id: Mapped[str | None] = mapped_column(String, unique=True)
+    original_filename: Mapped[str | None] = mapped_column(String(255))
+    media_type: Mapped[str | None] = mapped_column(String(150))
+    format: Mapped[SourceFormat | None] = mapped_column(
+        Enum(SourceFormat, native_enum=False)
+    )
+    size_bytes: Mapped[int | None] = mapped_column(Integer)
+    duplicate_of_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+
     id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
@@ -510,6 +535,24 @@ class SourceSnapshot(Base):
     )
 
     __table_args__ = (
+        UniqueConstraint("id", "source_id", name="uq_ton_snapshot_id_source"),
+        ForeignKeyConstraint(
+            ["import_run_id", "source_id"],
+            ["ton_import_run.id", "ton_import_run.source_id"],
+            ondelete="RESTRICT",
+            name="fk_ton_snapshot_run_source",
+        ),
+        ForeignKeyConstraint(
+            ["duplicate_of_id", "source_id"],
+            ["ton_source_snapshot.id", "ton_source_snapshot.source_id"],
+            ondelete="RESTRICT",
+            name="fk_ton_snapshot_duplicate_source",
+        ),
+        CheckConstraint(
+            "(source_id IS NULL AND import_run_id IS NULL AND storage_file_id IS NULL AND duplicate_of_id IS NULL) OR (source_id IS NOT NULL AND import_run_id IS NOT NULL AND storage_file_id IS NOT NULL AND original_filename IS NOT NULL AND media_type IS NOT NULL AND format IS NOT NULL AND size_bytes IS NOT NULL AND size_bytes > 0 AND checksum IS NOT NULL AND checksum ~ '^[0-9a-f]{64}$')",
+            name="ck_ton_snapshot_raw_capture",
+        ),
+        Index("ix_ton_snapshot_source_hash", "source_id", "checksum"),
         CheckConstraint(
             "period_end IS NULL OR period_start IS NULL OR period_end >= period_start",
             name="ck_ton_source_snapshot_period_order",
@@ -517,6 +560,122 @@ class SourceSnapshot(Base):
         Index("ix_ton_source_snapshot_source_type", "source_type"),
         Index("ix_ton_source_snapshot_period", "period_start", "period_end"),
     )
+
+
+class Source(Base):
+    """Logical identity within the current tenant schema."""
+
+    __tablename__ = "ton_source"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    key: Mapped[str] = mapped_column(String(100), unique=True)
+    display_name: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text)
+    acquisition_type: Mapped[AcquisitionType] = mapped_column(
+        Enum(AcquisitionType, native_enum=False)
+    )
+    status: Mapped[SourceStatus] = mapped_column(Enum(SourceStatus, native_enum=False))
+    sensitivity: Mapped[Sensitivity] = mapped_column(
+        Enum(Sensitivity, native_enum=False)
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("key ~ '^[a-z][a-z0-9_]*$'", name="ck_ton_source_key"),
+    )
+
+
+@event.listens_for(Source, "before_update")
+def prevent_source_key_update(
+    _mapper: Mapper, _connection: Connection, target: Source
+) -> None:
+    if inspect(target).attrs.key.history.has_changes():
+        raise ValueError("Logical source key is immutable")
+
+
+class Source__UserGroup(Base):
+    """Explicit source access. Runs and snapshots inherit this boundary."""
+
+    __tablename__ = "ton_source__user_group"
+    source_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_source.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    user_group_id: Mapped[int] = mapped_column(
+        ForeignKey("user_group.id", ondelete="CASCADE"), primary_key=True
+    )
+    __table_args__ = (Index("ix_ton_source_group", "user_group_id"),)
+
+
+class ImportRun(Base):
+    """One acquisition attempt, including failed and duplicate uploads."""
+
+    __tablename__ = "ton_import_run"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_source.id", ondelete="RESTRICT")
+    )
+    status: Mapped[ImportStatus] = mapped_column(Enum(ImportStatus, native_enum=False))
+    trigger: Mapped[ImportTrigger] = mapped_column(
+        Enum(ImportTrigger, native_enum=False)
+    )
+    acquisition_type: Mapped[AcquisitionType] = mapped_column(
+        Enum(AcquisitionType, native_enum=False)
+    )
+    initiated_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    started_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    snapshot_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    error_code: Mapped[str | None] = mapped_column(String(100))
+    # Durable reservation permits recovery after a crash between storage and commit.
+    storage_file_id: Mapped[str] = mapped_column(String, unique=True)
+    cleanup_required: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false")
+    )
+    __table_args__ = (
+        UniqueConstraint("id", "source_id", name="uq_ton_import_id_source"),
+        Index("ix_ton_import_source_started", "source_id", "started_at"),
+        CheckConstraint("snapshot_count IN (0, 1)", name="ck_ton_import_count"),
+        CheckConstraint(
+            "(status IN ('PENDING', 'RUNNING') AND finished_at IS NULL AND snapshot_count = 0) OR (status = 'SUCCEEDED' AND finished_at IS NOT NULL AND snapshot_count = 1 AND error_code IS NULL AND NOT cleanup_required) OR (status = 'FAILED' AND finished_at IS NOT NULL AND snapshot_count = 0 AND error_code IS NOT NULL)",
+            name="ck_ton_import_state",
+        ),
+    )
+
+
+@event.listens_for(SourceSnapshot, "before_update")
+def prevent_raw_snapshot_update(
+    _mapper: Mapper, _connection: Connection, target: SourceSnapshot
+) -> None:
+    state = inspect(target)
+    was_raw = target.source_id is not None or bool(
+        state.attrs.source_id.history.deleted
+    )
+    if was_raw and any(attr.history.has_changes() for attr in state.attrs):
+        raise ValueError("Raw source snapshots are immutable")
+
+
+@event.listens_for(SourceSnapshot, "before_delete")
+def prevent_raw_snapshot_delete(
+    _mapper: Mapper, _connection: Connection, target: SourceSnapshot
+) -> None:
+    if target.source_id is not None:
+        raise ValueError("Raw source snapshots are immutable")
 
 
 class AnalysisRun(Base):

@@ -412,6 +412,7 @@ class FileStoreType(str, Enum):
 
 
 class FileOrigin(str, Enum):
+    TON_SOURCE = "ton_source"
     CHAT_UPLOAD = "chat_upload"
     CHAT_IMAGE_GEN = "chat_image_gen"
     CONNECTOR = "connector"

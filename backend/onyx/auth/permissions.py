@@ -29,6 +29,8 @@ ALL_PERMISSIONS: frozenset[str] = frozenset(p.value for p in Permission)
 # see-all-agents visibility. READ_AGENTS (browse every agent) comes only from the
 # MANAGE_* admin bundles below.
 IMPLIED_PERMISSIONS: dict[str, set[str]] = {
+    Permission.MANAGE_TON_SOURCES.value: {Permission.READ_TON_SOURCES.value},
+    Permission.IMPORT_TON_SOURCES.value: {Permission.READ_TON_SOURCES.value},
     Permission.MANAGE_AGENTS.value: {
         Permission.ADD_AGENTS.value,
         Permission.READ_AGENTS.value,
@@ -300,6 +302,27 @@ PERMISSION_REGISTRY: list[PermissionRegistryEntry] = [
             "restricted to administrators."
         ),
         permissions=[Permission.MANAGE_TON_OCCURRENCES],
+        group=4,
+    ),
+    PermissionRegistryEntry(
+        id="view_ton_sources",
+        display_name="View TON Sources",
+        description="View explicitly shared sources. Runs and snapshots inherit source access.",
+        permissions=[Permission.READ_TON_SOURCES],
+        group=4,
+    ),
+    PermissionRegistryEntry(
+        id="manage_ton_sources",
+        display_name="Manage TON Sources",
+        description="Manage explicitly shared sources. Runs and snapshots inherit source access.",
+        permissions=[Permission.MANAGE_TON_SOURCES],
+        group=4,
+    ),
+    PermissionRegistryEntry(
+        id="import_ton_sources",
+        display_name="Import TON Sources",
+        description="Import explicitly shared sources. Runs and snapshots inherit source access.",
+        permissions=[Permission.IMPORT_TON_SOURCES],
         group=4,
     ),
     PermissionRegistryEntry(

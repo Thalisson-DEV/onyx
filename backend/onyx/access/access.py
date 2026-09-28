@@ -237,6 +237,16 @@ def user_can_access_chat_file(file_id: str, user: User, db_session: Session) -> 
     URL carries the access context and one indexed lookup suffices, instead
     of fanning out 4–5 queries across unrelated classes on every request.
     """
+    # Raw TON inputs cannot be served through chat or supplied to LLM tools.
+    is_raw_ton_source = db_session.scalar(
+        select(FileRecord.file_id).where(
+            FileRecord.file_id == file_id,
+            FileRecord.file_origin == FileOrigin.TON_SOURCE,
+        )
+    )
+    if is_raw_ton_source:
+        return False
+
     owns_user_file = db_session.query(
         select(UserFile.id)
         .where(UserFile.file_id == file_id, UserFile.user_id == user.id)

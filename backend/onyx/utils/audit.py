@@ -128,6 +128,17 @@ class AuditAction(str, Enum):
     TON_RULE_VERSION_CHANGE = "ton_rule_version.change"
     TON_MANUAL_OVERRIDE = "ton_occurrence.manual_override"
     TON_HUMAN_APPROVAL = "ton_occurrence.human_approval"
+    TON_REVIEW_START = "ton_review.start"
+    TON_REVIEW_SUCCEED = "ton_review.succeed"
+    TON_REVIEW_FAIL = "ton_review.fail"
+    TON_REVIEW_VERIFY = "ton_review.verify_correction"
+    TON_REVIEW_ACKNOWLEDGE = "ton_review.acknowledge"
+    TON_REVIEW_REQUEST_CORRECTION = "ton_review.request_correction"
+    TON_REVIEW_JUSTIFY = "ton_review.justify"
+    TON_REVIEW_FALSE_POSITIVE = "ton_review.false_positive"
+    TON_REVIEW_CONFIRM_CORRECTION = "ton_review.confirm_correction"
+    TON_RECOMMENDATION_ACCEPT = "ton_review.recommendation_accept"
+    TON_RECOMMENDATION_REJECT = "ton_review.recommendation_reject"
 
 
 _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
@@ -192,6 +203,17 @@ _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
     AuditAction.TON_RULE_VERSION_CHANGE: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_MANUAL_OVERRIDE: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_HUMAN_APPROVAL: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_REVIEW_START: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_REVIEW_SUCCEED: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_REVIEW_FAIL: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_REVIEW_VERIFY: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_REVIEW_ACKNOWLEDGE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_REVIEW_REQUEST_CORRECTION: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_REVIEW_JUSTIFY: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_REVIEW_FALSE_POSITIVE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_REVIEW_CONFIRM_CORRECTION: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_RECOMMENDATION_ACCEPT: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_RECOMMENDATION_REJECT: OCSFEventClass.API_ACTIVITY,
 }
 
 # Guard: every action must map to a class, so a new action can't ship untagged.

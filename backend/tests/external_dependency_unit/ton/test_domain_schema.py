@@ -65,6 +65,42 @@ LATER_SLICE_TABLES: tuple[str, ...] = (
 
 # (table, column, referenced table, expected delete rule)
 EXPECTED_FOREIGN_KEYS: tuple[tuple[str, str, str, str], ...] = (
+    # DATA-003. Evidence lineage and review history are RESTRICT; review
+    # recommendations and decisions live and die with their finding or case.
+    (
+        "ton_finding_evidence",
+        "parsed_record_id",
+        "ton_parsed_source_record",
+        "RESTRICT",
+    ),
+    (
+        "ton_finding_evidence",
+        "import_execution_id",
+        "ton_import_profile_execution",
+        "RESTRICT",
+    ),
+    ("ton_review_run", "analysis_run_id", "ton_analysis_run", "RESTRICT"),
+    ("ton_review_run", "execution_id", "ton_import_profile_execution", "RESTRICT"),
+    ("ton_review_run", "snapshot_id", "ton_import_profile_execution", "RESTRICT"),
+    ("ton_review_run", "snapshot_id", "ton_source_snapshot", "RESTRICT"),
+    ("ton_review_run", "source_id", "ton_source_snapshot", "RESTRICT"),
+    ("ton_review_run", "triggered_by", "user", "SET NULL"),
+    ("ton_review_recommendation", "finding_id", "ton_finding", "CASCADE"),
+    ("ton_review_recommendation", "review_run_id", "ton_review_run", "RESTRICT"),
+    ("ton_review_decision", "occurrence_id", "ton_occurrence", "CASCADE"),
+    (
+        "ton_review_decision",
+        "recommendation_id",
+        "ton_review_recommendation",
+        "CASCADE",
+    ),
+    ("ton_review_decision", "actor_user_id", "user", "RESTRICT"),
+    (
+        "ton_review_decision",
+        "occurrence_event_id",
+        "ton_occurrence_event",
+        "CASCADE",
+    ),
     ("ton_import_profile", "source_id", "ton_source", "RESTRICT"),
     ("ton_import_profile_execution", "snapshot_id", "ton_source_snapshot", "RESTRICT"),
     ("ton_import_profile_execution", "source_id", "ton_source_snapshot", "RESTRICT"),

@@ -45,6 +45,7 @@ from tests.external_dependency_unit.ton.scratch_db import (
 )
 
 DATA_001_REVISION = "6be7c77e49ce"
+DATA_002_REVISION = "9d2c8f0a7e31"
 DATA_002_TABLES = {
     "ton_import_profile",
     "ton_import_profile_execution",
@@ -409,6 +410,8 @@ def test_downgrade_refuses_while_profiles_exist(ton_database: str) -> None:
 
 
 def test_data_002_downgrade_and_upgrade_from_empty_state(ton_database: str) -> None:
+    # Later slices are removed first so this measures DATA-002 alone.
+    downgrade(ton_database, DATA_002_REVISION)
     before = table_names(ton_database, "ton_")
     downgrade(ton_database, DATA_001_REVISION)
     after = table_names(ton_database, "ton_")
@@ -421,8 +424,9 @@ def test_data_002_downgrade_and_upgrade_from_empty_state(ton_database: str) -> N
         "'ton_protect_parsed_record')",
     )
     assert functions == []
-    upgrade(ton_database, "head")
+    upgrade(ton_database, DATA_002_REVISION)
     assert table_names(ton_database, "ton_") == before
+    upgrade(ton_database, "head")
 
 
 def test_batch_insert_and_access_boundary(

@@ -7,13 +7,16 @@ CONNECTED SOURCE or ASSISTED SOURCE
   -> Source
   -> ImportRun
   -> SourceSnapshot
-  -> ImportProfile execution
-  -> Parsed Source Records
-  -> future Validation
-  -> future Normalization
-  -> future Domain
-  -> future Findings
-  -> future Specialists
+  -> ImportProfileExecution
+  -> ParsedSourceRecord + ParseDiagnostic
+  -> ReviewRun (AnalysisRun extension)
+  -> RuleEvaluation (AnalysisRunRuleVersion)
+  -> Finding + FindingEvidence -> Occurrence
+  -> Recommendation / Human Decision
+  -> Reviewed Financial Dataset (derived projection)
+  -> future normalization / financial domain
+  -> future DRE
+  -> future specialists
 ```
 
 Source.id and Source.key identify a logical input within its tenant.
@@ -38,4 +41,13 @@ The service does not parse business fields.
 File uploads accept XLS, XLSX, XLSM, CSV, and PDF. Connected capture accepts JSON bytes.
 DATA-001 stops at captured inputs. DATA-002 adds an XLSX-only NG financial profile and source-level records.
 The DATA-001 ImportRun status reports raw capture. ImportProfileExecution has a separate status for parsing.
-Validation, normalization, domain mapping, and findings remain later steps.
+
+DATA-003 reviews one parse execution with a versioned deterministic rule catalog.
+ReviewRun has its own status and never changes the layers above it.
+A ParseDiagnostic is a technical observation; only selected codes become findings.
+Findings, evidence and occurrences reuse the TON domain tables.
+Evidence points to the parsed record or to the diagnostic location.
+Recommendations and human decisions are separate, append-only rows.
+A later import can verify a correction; a person closes the case.
+The reviewed dataset is a projection over one review run and the decision history.
+Downstream consumers read only downstream-safe records and record the dataset revision.

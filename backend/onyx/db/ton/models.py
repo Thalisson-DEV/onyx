@@ -137,6 +137,13 @@ from onyx.db.ton.enums import (
     TonSharePermission,
     UnitCostSource,
 )
+from onyx.ton.financial_review.models import (
+    JustificationCategory,
+    RecommendationEvidenceLevel,
+    RecommendationKind,
+    ReviewDecisionKind,
+    ReviewRunStatus,
+)
 from onyx.ton.ng_financial.models import ProfileExecutionStatus
 from onyx.ton.sources.models import (
     AcquisitionType,
@@ -1706,6 +1713,18 @@ class FindingEvidence(Base):
     chat_message_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("chat_message.id", ondelete="SET NULL"), nullable=True
     )
+    # DATA-003 lineage. A parsed-record pointer for record evidence, and the
+    # parse execution for diagnostic evidence that has no record.
+    parsed_record_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_parsed_source_record.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
+    import_execution_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_import_profile_execution.id", ondelete="RESTRICT"),
+        nullable=True,
+    )
 
     extracted_value: Mapped[str | None] = mapped_column(String, nullable=True)
     value_scale: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -1731,6 +1750,7 @@ class FindingEvidence(Base):
     __table_args__ = (
         Index("ix_ton_finding_evidence_finding_id", "finding_id"),
         Index("ix_ton_finding_evidence_source_snapshot_id", "source_snapshot_id"),
+        Index("ix_ton_finding_evidence_parsed_record_id", "parsed_record_id"),
     )
 
 
@@ -2979,3 +2999,244 @@ class TonAuditEvent(Base):
         Index("ix_ton_audit_event_actor_user_id", "actor_user_id"),
         Index("ix_ton_audit_event_occurred_at", "occurred_at", "id"),
     )
+
+
+# ---------------------------------------------------------------------------
+# DATA-003 — financial review. Findings, evidence and occurrences reuse the 003c
+# tables; these three hold what 003c has no place for.
+# ---------------------------------------------------------------------------
+
+
+class ReviewRun(Base):
+    """One deterministic review of one parse execution.
+
+    Extends :class:`AnalysisRun`, which every :class:`Finding` requires, with the
+    parse lineage and the exact rule set. ``RUNNING`` is committed before
+    evaluation; ``SUCCEEDED`` and ``FAILED`` are final (database trigger).
+    """
+
+    __tablename__ = "ton_review_run"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    analysis_run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_analysis_run.id", ondelete="RESTRICT"),
+        nullable=False,
+        unique=True,
+    )
+    source_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    snapshot_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    execution_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    status: Mapped[ReviewRunStatus] = mapped_column(
+        Enum(ReviewRunStatus, native_enum=False, length=16), nullable=False
+    )
+    attempt_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    engine_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    rule_set_digest: Mapped[str] = mapped_column(String(100), nullable=False)
+    # Rule keys, versions, engine statuses and definition hashes, as run.
+    rule_set: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    rule_evaluations: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    diagnostic_summary: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
+    statistics: Mapped[dict[str, int]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
+    error_code: Mapped[str | None] = mapped_column(String(100))
+    triggered_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    started_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["execution_id", "snapshot_id"],
+            [
+                "ton_import_profile_execution.id",
+                "ton_import_profile_execution.snapshot_id",
+            ],
+            ondelete="RESTRICT",
+            name="fk_ton_review_run_execution_snapshot",
+        ),
+        ForeignKeyConstraint(
+            ["snapshot_id", "source_id"],
+            ["ton_source_snapshot.id", "ton_source_snapshot.source_id"],
+            ondelete="RESTRICT",
+            name="fk_ton_review_run_snapshot_source",
+        ),
+        UniqueConstraint(
+            "execution_id",
+            "rule_set_digest",
+            "attempt_no",
+            name="uq_ton_review_run_attempt",
+        ),
+        CheckConstraint(
+            "status IN ('RUNNING', 'SUCCEEDED', 'FAILED')",
+            name="ck_ton_review_run_status",
+        ),
+        CheckConstraint(
+            "(status = 'RUNNING') = (finished_at IS NULL)",
+            name="ck_ton_review_run_finished",
+        ),
+        CheckConstraint(
+            "(status = 'FAILED') = (error_code IS NOT NULL)",
+            name="ck_ton_review_run_error",
+        ),
+        CheckConstraint("attempt_no >= 1", name="ck_ton_review_run_attempt"),
+        Index("ix_ton_review_run_source_started", "source_id", "started_at"),
+        Index("ix_ton_review_run_execution", "execution_id"),
+    )
+
+
+@event.listens_for(ReviewRun, "before_update")
+@event.listens_for(ReviewRun, "before_delete")
+def prevent_terminal_review_run_change(
+    _mapper: Mapper, _connection: Connection, target: ReviewRun
+) -> None:
+    state = inspect(target)
+    old_status = state.attrs.status.history.deleted
+    running = ReviewRunStatus.RUNNING
+    if (old_status and old_status[0] != running) or (
+        not old_status and target.status != running
+    ):
+        raise ValueError("Terminal review runs are immutable")
+
+
+class ReviewRecommendation(Base):
+    """What the evidence supports doing about one finding. Immutable.
+
+    Separate from detection on purpose. ``suggested_value`` exists only for a
+    ``DETERMINISTIC_CORRECTION``; the CHECK constraints make a guessed value
+    unrepresentable. Nothing here writes to a source system.
+    """
+
+    __tablename__ = "ton_review_recommendation"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    finding_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_finding.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    review_run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_review_run.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    kind: Mapped[RecommendationKind] = mapped_column(
+        Enum(RecommendationKind, native_enum=False, length=32), nullable=False
+    )
+    evidence_level: Mapped[RecommendationEvidenceLevel] = mapped_column(
+        Enum(RecommendationEvidenceLevel, native_enum=False, length=32),
+        nullable=False,
+    )
+    rationale_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    target_field: Mapped[str | None] = mapped_column(String(64))
+    suggested_value: Mapped[str | None] = mapped_column(Text)
+    candidate_count: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "(kind = 'DETERMINISTIC_CORRECTION') = (suggested_value IS NOT NULL)",
+            name="ck_ton_review_recommendation_value_only_when_deterministic",
+        ),
+        CheckConstraint(
+            "kind <> 'DETERMINISTIC_CORRECTION' OR evidence_level = 'DETERMINISTIC'",
+            name="ck_ton_review_recommendation_deterministic_level",
+        ),
+        CheckConstraint(
+            "candidate_count IS NULL OR candidate_count >= 0",
+            name="ck_ton_review_recommendation_candidates",
+        ),
+        Index("ix_ton_review_recommendation_run", "review_run_id"),
+    )
+
+
+@event.listens_for(ReviewRecommendation, "before_update")
+def prevent_recommendation_update(
+    _mapper: Mapper, _connection: Connection, _target: ReviewRecommendation
+) -> None:
+    raise ValueError("Review recommendations are immutable")
+
+
+class ReviewDecision(Base):
+    """One human review decision on an occurrence. Append-only.
+
+    State-changing decisions also append the matching :class:`OccurrenceEvent`
+    in the same transaction; this row keeps what the event table has no place
+    for: the decision kind, the justification category, the recommendation it
+    answers and the free-text comment.
+    """
+
+    __tablename__ = "ton_review_decision"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    occurrence_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_occurrence.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    recommendation_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_review_recommendation.id", ondelete="CASCADE"),
+    )
+    kind: Mapped[ReviewDecisionKind] = mapped_column(
+        Enum(ReviewDecisionKind, native_enum=False, length=32), nullable=False
+    )
+    justification_category: Mapped[JustificationCategory | None] = mapped_column(
+        Enum(JustificationCategory, native_enum=False, length=32)
+    )
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    comment: Mapped[str | None] = mapped_column(Text)
+    authorization_reference: Mapped[str | None] = mapped_column(String(200))
+    # RESTRICT, as on OccurrenceEvent: an account that decided stays referenceable.
+    actor_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    occurrence_event_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_occurrence_event.id", ondelete="CASCADE"),
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "kind <> 'JUSTIFY_EXCEPTION' OR justification_category IS NOT NULL",
+            name="ck_ton_review_decision_justification_category",
+        ),
+        CheckConstraint(
+            "(kind IN ('ACCEPT_RECOMMENDATION', 'REJECT_RECOMMENDATION')) "
+            "= (recommendation_id IS NOT NULL)",
+            name="ck_ton_review_decision_recommendation",
+        ),
+        Index("ix_ton_review_decision_occurrence", "occurrence_id", "created_at"),
+    )
+
+
+@event.listens_for(ReviewDecision, "before_update")
+def prevent_review_decision_update(
+    _mapper: Mapper, _connection: Connection, _target: ReviewDecision
+) -> None:
+    raise ValueError("Review decisions are append-only")

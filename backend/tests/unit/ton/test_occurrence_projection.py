@@ -112,7 +112,14 @@ TON_TABLE_NAMES: tuple[str, ...] = (
     TON_003B_TABLES
     + TON_003C_TABLES
     + TON_003D_TABLES
-    + ("ton_source", "ton_import_run", "ton_source__user_group")
+    + (
+        "ton_source",
+        "ton_import_run",
+        "ton_source__user_group",
+        "ton_import_profile",
+        "ton_import_profile_execution",
+        "ton_parsed_source_record",
+    )
 )
 
 BASE_COMPONENTS = ["rule_code", "business_unit_id", "period"]
@@ -683,7 +690,7 @@ class TestFailClosedMetadata:
         mapper, so a model added without being classified fails here."""
         ton_tables = {name for name in Base.metadata.tables if name.startswith("ton_")}
         assert ton_tables == set(TON_TABLE_NAMES)
-        assert len(TON_TABLE_NAMES) == 33
+        assert len(TON_TABLE_NAMES) == 36
 
     def test_no_ton_model_writes_to_a_source_system(self) -> None:
         """The advisory boundary is enforced by absence: no column here can carry

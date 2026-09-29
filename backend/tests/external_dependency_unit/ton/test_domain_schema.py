@@ -65,6 +65,25 @@ LATER_SLICE_TABLES: tuple[str, ...] = (
 
 # (table, column, referenced table, expected delete rule)
 EXPECTED_FOREIGN_KEYS: tuple[tuple[str, str, str, str], ...] = (
+    ("ton_import_profile", "source_id", "ton_source", "RESTRICT"),
+    ("ton_import_profile_execution", "snapshot_id", "ton_source_snapshot", "RESTRICT"),
+    ("ton_import_profile_execution", "source_id", "ton_source_snapshot", "RESTRICT"),
+    ("ton_import_profile_execution", "profile_id", "ton_import_profile", "RESTRICT"),
+    ("ton_import_profile_execution", "source_id", "ton_import_profile", "RESTRICT"),
+    ("ton_parsed_source_record", "snapshot_id", "ton_source_snapshot", "RESTRICT"),
+    ("ton_parsed_source_record", "source_id", "ton_source_snapshot", "RESTRICT"),
+    (
+        "ton_parsed_source_record",
+        "execution_id",
+        "ton_import_profile_execution",
+        "RESTRICT",
+    ),
+    (
+        "ton_parsed_source_record",
+        "snapshot_id",
+        "ton_import_profile_execution",
+        "RESTRICT",
+    ),
     ("ton_import_run", "source_id", "ton_source", "RESTRICT"),
     ("ton_import_run", "initiated_by", "user", "SET NULL"),
     ("ton_source__user_group", "source_id", "ton_source", "RESTRICT"),

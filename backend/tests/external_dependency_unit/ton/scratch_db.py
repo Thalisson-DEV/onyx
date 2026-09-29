@@ -96,7 +96,14 @@ TON_TABLES_AT_HEAD: tuple[str, ...] = (
     TON_003B_TABLES
     + TON_003C_TABLES
     + TON_003D_TABLES
-    + ("ton_source", "ton_import_run", "ton_source__user_group")
+    + (
+        "ton_source",
+        "ton_import_run",
+        "ton_source__user_group",
+        "ton_import_profile",
+        "ton_import_profile_execution",
+        "ton_parsed_source_record",
+    )
 )
 
 OCCURRENCE_SHORT_CODE_SEQUENCE = "ton_occurrence_short_code_seq"

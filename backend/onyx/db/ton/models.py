@@ -137,6 +137,7 @@ from onyx.db.ton.enums import (
     TonSharePermission,
     UnitCostSource,
 )
+from onyx.ton.ng_financial.models import ProfileExecutionStatus
 from onyx.ton.sources.models import (
     AcquisitionType,
     ImportStatus,
@@ -656,6 +657,205 @@ class ImportRun(Base):
             name="ck_ton_import_state",
         ),
     )
+
+
+class ImportProfile(Base):
+    """Immutable parser contract for one logical source."""
+
+    __tablename__ = "ton_import_profile"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_source.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    key: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    format: Mapped[SourceFormat] = mapped_column(
+        Enum(SourceFormat, native_enum=False), nullable=False
+    )
+    column_map: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id",
+            "key",
+            "version",
+            name="uq_ton_import_profile_source_key_version",
+        ),
+        UniqueConstraint("id", "source_id", name="uq_ton_import_profile_id_source"),
+        CheckConstraint("version >= 1", name="ck_ton_import_profile_version"),
+    )
+
+
+@event.listens_for(ImportProfile, "before_update")
+@event.listens_for(ImportProfile, "before_delete")
+def prevent_import_profile_change(
+    _mapper: Mapper, _connection: Connection, _target: ImportProfile
+) -> None:
+    raise ValueError("Import profiles are immutable")
+
+
+class ImportProfileExecution(Base):
+    """A parse attempt, distinct from DATA-001 raw capture status."""
+
+    __tablename__ = "ton_import_profile_execution"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    snapshot_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    profile_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    status: Mapped[ProfileExecutionStatus] = mapped_column(
+        Enum(ProfileExecutionStatus, native_enum=False, length=16), nullable=False
+    )
+    error_code: Mapped[str | None] = mapped_column(String(100))
+    statistics: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
+    diagnostics: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    sheet_summaries: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, default=list
+    )
+    started_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["snapshot_id", "source_id"],
+            ["ton_source_snapshot.id", "ton_source_snapshot.source_id"],
+            ondelete="RESTRICT",
+            name="fk_ton_profile_execution_snapshot_source",
+        ),
+        ForeignKeyConstraint(
+            ["profile_id", "source_id"],
+            ["ton_import_profile.id", "ton_import_profile.source_id"],
+            ondelete="RESTRICT",
+            name="fk_ton_profile_execution_profile_source",
+        ),
+        UniqueConstraint(
+            "id", "snapshot_id", name="uq_ton_profile_execution_id_snapshot"
+        ),
+        CheckConstraint(
+            "status IN ('RUNNING', 'SUCCEEDED', 'PARTIAL', 'FAILED')",
+            name="ck_ton_profile_execution_status",
+        ),
+        CheckConstraint(
+            "(status = 'RUNNING') = (finished_at IS NULL)",
+            name="ck_ton_profile_execution_finished",
+        ),
+        CheckConstraint(
+            "(status = 'FAILED') = (error_code IS NOT NULL)",
+            name="ck_ton_profile_execution_error",
+        ),
+        Index("ix_ton_profile_execution_snapshot", "snapshot_id"),
+    )
+
+
+@event.listens_for(ImportProfileExecution, "before_update")
+@event.listens_for(ImportProfileExecution, "before_delete")
+def prevent_terminal_profile_execution_change(
+    _mapper: Mapper, _connection: Connection, target: ImportProfileExecution
+) -> None:
+    state = inspect(target)
+    old_status = state.attrs.status.history.deleted
+    running = ProfileExecutionStatus.RUNNING
+    if (old_status and old_status[0] != running) or (
+        not old_status and target.status != running
+    ):
+        raise ValueError("Terminal profile executions are immutable")
+
+
+class ParsedSourceRecord(Base):
+    """A source-level launch with exact worksheet lineage."""
+
+    __tablename__ = "ton_parsed_source_record"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    snapshot_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    execution_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    sheet_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_row_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    sheet_month: Mapped[int] = mapped_column(Integer, nullable=False)
+    account_code: Mapped[str] = mapped_column(String(100), nullable=False)
+    account_label: Mapped[str] = mapped_column(Text, nullable=False)
+    emission_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    administrative_unit: Mapped[str | None] = mapped_column(Text)
+    document_number: Mapped[str | None] = mapped_column(Text)
+    history: Mapped[str] = mapped_column(Text, nullable=False)
+    # The parser rejects amounts outside TON_AMOUNT, so nothing is rounded.
+    movement_amount: Mapped[Decimal | None] = mapped_column(TON_AMOUNT)
+    movement_retention_amount: Mapped[Decimal | None] = mapped_column(TON_AMOUNT)
+    movement_net_amount: Mapped[Decimal | None] = mapped_column(TON_AMOUNT)
+    installment_retention_amount: Mapped[Decimal | None] = mapped_column(TON_AMOUNT)
+    installment_net_amount: Mapped[Decimal | None] = mapped_column(TON_AMOUNT)
+    interest_amount: Mapped[Decimal | None] = mapped_column(TON_AMOUNT)
+    penalty_amount: Mapped[Decimal | None] = mapped_column(TON_AMOUNT)
+    discount_amount: Mapped[Decimal | None] = mapped_column(TON_AMOUNT)
+    expense_amount: Mapped[Decimal | None] = mapped_column(TON_AMOUNT)
+    loss_amount: Mapped[Decimal | None] = mapped_column(TON_AMOUNT)
+    other_deduction_amount: Mapped[Decimal | None] = mapped_column(TON_AMOUNT)
+    final_amount: Mapped[Decimal | None] = mapped_column(TON_AMOUNT)
+    source_values: Mapped[dict[str, str | None]] = mapped_column(JSONB, nullable=False)
+    # Import-local content hash, not a Keevo identifier.
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    duplicate_ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["snapshot_id", "source_id"],
+            ["ton_source_snapshot.id", "ton_source_snapshot.source_id"],
+            ondelete="RESTRICT",
+            name="fk_ton_parsed_record_snapshot_source",
+        ),
+        ForeignKeyConstraint(
+            ["execution_id", "snapshot_id"],
+            [
+                "ton_import_profile_execution.id",
+                "ton_import_profile_execution.snapshot_id",
+            ],
+            ondelete="RESTRICT",
+            name="fk_ton_parsed_record_execution_snapshot",
+        ),
+        UniqueConstraint(
+            "execution_id",
+            "sheet_name",
+            "source_row_number",
+            name="uq_ton_parsed_record_locator",
+        ),
+        CheckConstraint(
+            "sheet_month BETWEEN 1 AND 12", name="ck_ton_parsed_record_month"
+        ),
+        CheckConstraint(
+            "source_row_number >= 1 AND duplicate_ordinal >= 1",
+            name="ck_ton_parsed_record_positive",
+        ),
+        Index(
+            "ix_ton_parsed_record_execution_order",
+            "execution_id",
+            "sheet_month",
+            "source_row_number",
+        ),
+        Index("ix_ton_parsed_record_fingerprint", "execution_id", "fingerprint"),
+    )
+
+
+@event.listens_for(ParsedSourceRecord, "before_update")
+@event.listens_for(ParsedSourceRecord, "before_delete")
+def prevent_parsed_record_change(
+    _mapper: Mapper, _connection: Connection, _target: ParsedSourceRecord
+) -> None:
+    raise ValueError("Parsed source records are immutable")
 
 
 @event.listens_for(SourceSnapshot, "before_update")

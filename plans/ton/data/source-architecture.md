@@ -7,8 +7,8 @@ CONNECTED SOURCE or ASSISTED SOURCE
   -> Source
   -> ImportRun
   -> SourceSnapshot
-  -> future ImportProfile execution
-  -> future Raw Records
+  -> ImportProfile execution
+  -> Parsed Source Records
   -> future Validation
   -> future Normalization
   -> future Domain
@@ -36,4 +36,6 @@ RAW data is unavailable to LLM tools.
 A connected adapter can call the internal JSON capture service.
 The service does not parse business fields.
 File uploads accept XLS, XLSX, XLSM, CSV, and PDF. Connected capture accepts JSON bytes.
-DATA-001 stops at captured inputs. Profiles, business validation, and normalization belong to later slices.
+DATA-001 stops at captured inputs. DATA-002 adds an XLSX-only NG financial profile and source-level records.
+The DATA-001 ImportRun status reports raw capture. ImportProfileExecution has a separate status for parsing.
+Validation, normalization, domain mapping, and findings remain later steps.

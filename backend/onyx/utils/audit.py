@@ -119,6 +119,11 @@ class AuditAction(str, Enum):
     TON_DUPLICATE_DETECT = "ton_sources.duplicate_detect"
     TON_IMPORT_SUCCEED = "ton_sources.import_succeed"
     TON_IMPORT_FAIL = "ton_sources.import_fail"
+    TON_PROFILE_CREATE = "ton_sources.profile_create"
+    TON_PROFILE_EXECUTE = "ton_sources.profile_execute"
+    TON_PROFILE_SUCCEED = "ton_sources.profile_succeed"
+    TON_PROFILE_PARTIAL = "ton_sources.profile_partial"
+    TON_PROFILE_FAIL = "ton_sources.profile_fail"
     TON_REPORT_GENERATE = "ton_report.generate"
     TON_RULE_VERSION_CHANGE = "ton_rule_version.change"
     TON_MANUAL_OVERRIDE = "ton_occurrence.manual_override"
@@ -178,6 +183,11 @@ _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
     AuditAction.TON_DUPLICATE_DETECT: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_IMPORT_SUCCEED: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_IMPORT_FAIL: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_PROFILE_CREATE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_PROFILE_EXECUTE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_PROFILE_SUCCEED: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_PROFILE_PARTIAL: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_PROFILE_FAIL: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_REPORT_GENERATE: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_RULE_VERSION_CHANGE: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_MANUAL_OVERRIDE: OCSFEventClass.API_ACTIVITY,

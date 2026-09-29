@@ -12,7 +12,7 @@ TON is not an Excel fixer. It never writes to NG and never changes a captured or
 - The export has no source row identifier. Every cross-import correspondence is a content key, so it is conservative.
 - The manually reviewed "ok" workbook is calibration evidence. The engine never receives it.
 - DATA-002 stores at most 2,000 diagnostics per execution. The review compares the stored rejections with the full count and reports the difference as a blind spot.
-- The real client workbooks were not available in this session (Drive access returned 401, and no local copy exists). The real-file results below come from the verified DATA-002 handoff. They were not revalidated by a DATA-003 run.
+- DATA-003R validated the real original and reviewed workbooks on 2026-09-29. The original passed through DATA-001 capture, DATA-002 parsing, and DATA-003 review. The reviewed file passed through separate capture and parsing for calibration only. Both parse executions were PARTIAL.
 
 ## Implementation strategy
 
@@ -168,24 +168,30 @@ Audit actions: `ton_review.start`, `succeed`, `fail`, `verify_correction`, `ackn
 
 The engine loads the execution in one query and builds grouped indexes once. Evidence and recommendations are batch inserts. Rule outcomes are one upsert. Each finding costs about eight statements through the existing occurrence path. A synthetic smoke through the real pipeline with 6,302 records, six sheets, 19 missing units, 4 rejected rows, 6 duplicate pairs and 18 cells outside A:Q took 1.37 s and 236 statements for 29 findings. A repeated request returned the stored run in 0.05 s. A test asserts that 300 extra clean records do not change the statement count by more than 10.
 
+DATA-003R measured 6,306 real original records, 23 findings, 1,006 ms, and 194 SQL statements for the review call. The repeated call returned the same stored run and created no extra findings.
+
 ## Calibration methodology
 
 `calibration.calibrate(original, reviewed, ton_flags)` uses the DATA-002 diff. `ton_flags` must come from a review of ORIGINAL. It reports per-month unchanged, changed, added, removed and ambiguous counts; changed records by field-group signature (DATE, UNIT, DOCUMENT, HISTORY, CLASSIFICATION, MONETARY, INTEREST, PENALTY, DISCOUNT, RETENTION, NET, FINAL_AMOUNT, OTHER); deltas with and without a TON finding; TON-only candidates; and the carry-forward structure. It reports no accuracy, precision or recall. A TON finding the reviewer did not act on is a TON-only candidate, not an error.
 
+The real comparison found 21 reviewed deltas: 20 changed and 1 added. No active finding maps to a delta. There were no ambiguous matches. Calibration counted 19 TON-only flagged record locations. Four rejected-row findings have diagnostic evidence and no parsed record, so they are outside `ton_flags`. The full review has 23 TON-only finding candidates. No candidate is a confirmed false positive.
+
+The original review succeeded with five active rules. It created 4 `NGF-SRC-ROW-REJECTED` and 19 `NGF-UNIT-MISSING` findings. Exact duplicate, account-label drift, and unit-label drift created none. All 23 findings block. The dataset has 6,287 ACCEPTED records, 19 REVIEW_REQUIRED records, and 4 EXCLUDED_SOURCE_ERROR rows. There are no other dispositions. The downstream-safe count is 6,287, but the dataset is not ready while rows remain excluded.
+
 ## April
 
-Verified structure (DATA-002): 1,009 unchanged, 1 added, 1 changed. The added record has its own date and sits directly above the changed record in the same account. The changed record has a blank physical date in both files, so only its effective date moved.
+DATA-003R confirmed 1,009 unchanged, 1 added, and 1 changed, with no removed or ambiguous match. The added record has its own date and sits directly above the changed record in the same account. The changed record has a blank physical date in both files, so only its effective date moved.
 
 - Added record: UNRESOLVED. It is a launch missing from the export or a manual enrichment. The export contains no trace of it.
 - Changed record: EXPORT_STRUCTURE consequence. The date moved through carry-forward, not through an edit. The insertion may also have misdated this record in the reviewed file without intent; the reviewed file is not proof.
 - Detectable from ORIGINAL alone: no. A blank-date continuation is normal structure, and an absent launch needs an external reference: the NG ledger, a bank statement or a document source.
 - A synthetic equivalent reproduces the structure, gives no TON finding, and calibration classifies the change as `CARRY_FORWARD_AFTER_ADDED_RECORD` linked to the added record.
 
-NOT REVALIDATED IN THIS SESSION — DRIVE/FILES UNAVAILABLE.
+The real calibration classified the change as `CARRY_FORWARD_AFTER_ADDED_RECORD`. No active finding maps to either April delta.
 
 ## June
 
-Verified structure: 1,079 unchanged, 19 changed, 0 added, 0 removed. Both workbooks have 19 blank-unit warnings, so the two unit changes most likely reassign a unit rather than fill a blank one.
+DATA-003R confirmed 1,079 unchanged, 19 changed, 0 added, 0 removed, and 0 ambiguous matches. Both workbooks have 19 blank-unit warnings. The two unit changes most likely reassign a unit rather than fill a blank one.
 
 | Group | Records | Detectability |
 | --- | --- | --- |
@@ -195,12 +201,12 @@ Verified structure: 1,079 unchanged, 19 changed, 0 added, 0 removed. Both workbo
 | INTEREST + PENALTY + FINAL_AMOUNT | 1 | REQUIRES_CROSS_SOURCE |
 | UNIT + HISTORY + INTEREST + FINAL_AMOUNT | 1 | REQUIRES_CROSS_SOURCE and REQUIRES_HUMAN_CONTEXT |
 
-None of the 19 is DETECTABLE_NOW with the active rules. Final amount moves together with interest, retention or penalty, which suggests a derived final amount. The formula is not confirmed, so the composition rule stays BLOCKED. Even with a formula, a consistent but wrong interest value stays undetectable. Expected calibration: the 19 blank units and 4 rejected rows appear in both files, so they are TON-only candidates. NOT REVALIDATED IN THIS SESSION — DRIVE/FILES UNAVAILABLE.
+None of the 19 maps to an active finding on the original. The current rules cannot detect these changes from that export alone. Final amount moves together with interest, retention or penalty, which suggests a derived final amount. The formula is not confirmed, so the composition rule stays BLOCKED. Even with a formula, a consistent but wrong interest value stays undetectable. The 19 blank-unit and 4 rejected-row findings have no historical reviewed counterpart.
 
 ## Hierarchy investigation
 
 - Parent blocks repeat child launches. DATA-002 compares each parent block with its direct children on F:Q as type-tagged cell values, before any row rejection.
-- Mismatches are not expected by the parser contract, but they exist: 25 parent rows without a child match and 7 child rows without a parent match, and root totals differ from leaf totals in five of six months.
+- DATA-003R confirmed 25 parent rows without a child match and 7 child rows without a parent match in each real file. The prior DATA-002 investigation found that root totals differ from leaf totals in five of six months.
 - Rejected rows do not explain them. Reconciliation uses the raw cells, so a rejected child still matches an identical parent copy. All 4 rejections are in January, while totals differ in five months.
 - At most 7 differences are value-changed copies (one parent and one child row each). At least 18 parent rows have no counterpart at any child: aggregate-only rows, or launches absent from the leaves.
 - The old VBA and Power BI steps were not inspected in this session. DATA-002 used the macro workbook only for column labels. Whether they discard parent blocks is unknown.

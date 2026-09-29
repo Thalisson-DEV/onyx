@@ -106,6 +106,7 @@ TON_TABLES_AT_HEAD: tuple[str, ...] = (
         "ton_review_run",
         "ton_review_recommendation",
         "ton_review_decision",
+        "ton_operational_source_record",
     )
 )
 

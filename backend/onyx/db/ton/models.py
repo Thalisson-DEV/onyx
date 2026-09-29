@@ -857,6 +857,78 @@ class ParsedSourceRecord(Base):
     )
 
 
+class OperationalSourceRecord(Base):
+    """Immutable source-level invoice or budget detail with exact locator."""
+
+    __tablename__ = "ton_operational_source_record"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    snapshot_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    execution_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    sheet_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_row_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    identifier: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str | None] = mapped_column(Text)
+    record_date: Mapped[datetime.date | None] = mapped_column(Date)
+    competence: Mapped[datetime.date | None] = mapped_column(Date)
+    amount: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
+    period_basis: Mapped[str | None] = mapped_column(String(32))
+    numeric_values: Mapped[dict[str, str | None]] = mapped_column(JSONB, nullable=False)
+    typed_values: Mapped[dict[str, str | None]] = mapped_column(JSONB, nullable=False)
+    source_values: Mapped[dict[str, str | None]] = mapped_column(JSONB, nullable=False)
+    formula_cached: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    duplicate_ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["snapshot_id", "source_id"],
+            ["ton_source_snapshot.id", "ton_source_snapshot.source_id"],
+            ondelete="RESTRICT",
+            name="fk_ton_operational_record_snapshot_source",
+        ),
+        ForeignKeyConstraint(
+            ["execution_id", "snapshot_id"],
+            [
+                "ton_import_profile_execution.id",
+                "ton_import_profile_execution.snapshot_id",
+            ],
+            ondelete="RESTRICT",
+            name="fk_ton_operational_record_execution_snapshot",
+        ),
+        UniqueConstraint(
+            "execution_id",
+            "sheet_name",
+            "source_row_number",
+            name="uq_ton_operational_record_locator",
+        ),
+        CheckConstraint(
+            "kind IN ('BILLING', 'BUDGET')", name="ck_ton_operational_record_kind"
+        ),
+        CheckConstraint(
+            "source_row_number >= 1 AND duplicate_ordinal >= 1",
+            name="ck_ton_operational_record_positive",
+        ),
+        Index(
+            "ix_ton_operational_record_execution_order",
+            "execution_id",
+            "sheet_name",
+            "source_row_number",
+        ),
+        Index("ix_ton_operational_record_fingerprint", "execution_id", "fingerprint"),
+    )
+
+
+@event.listens_for(OperationalSourceRecord, "before_update")
+@event.listens_for(OperationalSourceRecord, "before_delete")
+def prevent_operational_record_change(
+    _mapper: Mapper, _connection: Connection, _target: OperationalSourceRecord
+) -> None:
+    raise ValueError("Operational source records are immutable")
+
+
 @event.listens_for(ParsedSourceRecord, "before_update")
 @event.listens_for(ParsedSourceRecord, "before_delete")
 def prevent_parsed_record_change(

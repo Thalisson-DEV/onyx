@@ -9,6 +9,7 @@ from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.db.ton import import_profiles as profile_repository
+from onyx.db.ton import operational_import as operational_repository
 from onyx.db.ton import sources as repository
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
@@ -19,6 +20,14 @@ from onyx.ton.ng_financial.models import (
     ParsedSourceRecordView,
 )
 from onyx.ton.ng_financial.service import execute_ng_profile
+from onyx.ton.operational_import.models import (
+    OperationalExecutionView,
+    OperationalRecordView,
+)
+from onyx.ton.operational_import.service import (
+    execute_operational_profile,
+    select_operational_profile,
+)
 from onyx.ton.sources.models import (
     ImportRunView,
     SnapshotView,
@@ -168,6 +177,21 @@ def create_ng_financial_profile(
     return result
 
 
+@router.post("/{source_id}/profiles/operational/{key}/v1")
+def create_operational_profile(
+    source_id: UUID,
+    key: str,
+    user: User = Depends(require_permission(Permission.MANAGE_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> ImportProfileView:
+    profile = operational_repository.create_operational_profile(
+        session, user, source_id, key
+    )
+    result = ImportProfileView.model_validate(profile)
+    session.commit()
+    return result
+
+
 @router.get("/{source_id}/profiles")
 def list_import_profiles(
     source_id: UUID,
@@ -180,6 +204,19 @@ def list_import_profiles(
     ]
 
 
+@router.get("/{source_id}/snapshots/{snapshot_id}/operational-profile")
+def select_snapshot_profile(
+    source_id: UUID,
+    snapshot_id: UUID,
+    user: User = Depends(require_permission(Permission.IMPORT_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> dict[str, str | int]:
+    key = select_operational_profile(
+        session, user, source_id, snapshot_id, get_default_file_store()
+    )
+    return {"key": key, "version": 1}
+
+
 @router.post("/{source_id}/snapshots/{snapshot_id}/profiles/{profile_id}/executions")
 def run_import_profile(
     source_id: UUID,
@@ -187,7 +224,14 @@ def run_import_profile(
     profile_id: UUID,
     user: User = Depends(require_permission(Permission.IMPORT_TON_SOURCES)),
     session: Session = Depends(get_session),
-) -> ImportProfileExecutionView:
+) -> ImportProfileExecutionView | OperationalExecutionView:
+    profile = profile_repository.get_profile(
+        session, user, source_id, profile_id, Permission.IMPORT_TON_SOURCES
+    )
+    if profile.key != "ng_financial_export":
+        return execute_operational_profile(
+            session, user, source_id, snapshot_id, profile_id, get_default_file_store()
+        )
     return execute_ng_profile(
         session, user, source_id, snapshot_id, profile_id, get_default_file_store()
     )
@@ -199,10 +243,14 @@ def get_profile_execution(
     execution_id: UUID,
     user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
     session: Session = Depends(get_session),
-) -> ImportProfileExecutionView:
-    return ImportProfileExecutionView.model_validate(
-        profile_repository.get_execution(session, user, source_id, execution_id)
+) -> ImportProfileExecutionView | OperationalExecutionView:
+    execution = profile_repository.get_execution(session, user, source_id, execution_id)
+    profile = profile_repository.get_profile(
+        session, user, source_id, execution.profile_id
     )
+    if profile.key != "ng_financial_export":
+        return OperationalExecutionView.model_validate(execution)
+    return ImportProfileExecutionView.model_validate(execution)
 
 
 @router.get("/{source_id}/profile-executions/{execution_id}/records")
@@ -213,7 +261,18 @@ def list_profile_records(
     offset: int = Query(0, ge=0),
     user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
     session: Session = Depends(get_session),
-) -> list[ParsedSourceRecordView]:
+) -> list[ParsedSourceRecordView] | list[OperationalRecordView]:
+    execution = profile_repository.get_execution(session, user, source_id, execution_id)
+    profile = profile_repository.get_profile(
+        session, user, source_id, execution.profile_id
+    )
+    if profile.key != "ng_financial_export":
+        return [
+            OperationalRecordView.model_validate(record)
+            for record in operational_repository.list_operational_records(
+                session, user, source_id, execution_id, limit, offset
+            )
+        ]
     return [
         ParsedSourceRecordView.model_validate(record)
         for record in profile_repository.list_records(

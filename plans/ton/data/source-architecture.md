@@ -42,6 +42,15 @@ File uploads accept XLS, XLSX, XLSM, CSV, and PDF. Connected capture accepts JSO
 DATA-001 stops at captured inputs. DATA-002 adds an XLSX-only NG financial profile and source-level records.
 The DATA-001 ImportRun status reports raw capture. ImportProfileExecution has a separate status for parsing.
 
+DATA-004A/B adds BIFF/XLS billing and XLSX budget profiles on the same Source,
+ImportRun, SourceSnapshot, and ImportProfileExecution spine. The billing_invoices
+and budget keys each identify one logical source per tenant. Structural profile
+selection is independent of filename and acquisition method. OperationalSourceRecord
+holds only invoice or budget source detail with exact sheet and row lineage.
+Billing reference sheets and budget support, reference, and summary sheets are
+classified but produce no records. The budget cost composition uses cached
+formula values without calculating formulas. It has no dated allocation.
+
 DATA-003 reviews one parse execution with a versioned deterministic rule catalog.
 ReviewRun has its own status and never changes the layers above it.
 A ParseDiagnostic is a technical observation; only selected codes become findings.

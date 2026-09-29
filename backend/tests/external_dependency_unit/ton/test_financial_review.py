@@ -74,6 +74,7 @@ from tests.external_dependency_unit.ton.scratch_db import (
 )
 
 DATA_002_REVISION = "9d2c8f0a7e31"
+DATA_003_REVISION = "4b7e2d9c1a36"
 DATA_003_TABLES = {"ton_review_run", "ton_review_recommendation", "ton_review_decision"}
 DAY = [datetime.date(2026, 1, day) for day in range(1, 29)]
 SECRET_HISTORY = "Synthetic confidential history 7731"
@@ -966,6 +967,8 @@ def test_access_follows_source_and_occurrence_acl(
 
 
 def test_data_003_downgrade_and_reupgrade(ton_database: str) -> None:
+    head_tables = table_names(ton_database, "ton_")
+    downgrade(ton_database, DATA_003_REVISION)
     before = table_names(ton_database, "ton_")
     downgrade(ton_database, DATA_002_REVISION)
     after = table_names(ton_database, "ton_")
@@ -982,7 +985,7 @@ def test_data_003_downgrade_and_reupgrade(ton_database: str) -> None:
         }
     assert "parsed_record_id" not in columns
     upgrade(ton_database, "head")
-    assert table_names(ton_database, "ton_") == before
+    assert table_names(ton_database, "ton_") == head_tables
 
 
 def test_downgrade_refuses_while_review_runs_exist(

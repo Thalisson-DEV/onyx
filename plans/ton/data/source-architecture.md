@@ -7,15 +7,19 @@ CONNECTED SOURCE or ASSISTED SOURCE
   -> Source
   -> ImportRun
   -> SourceSnapshot
-  -> ImportProfileExecution
-  -> ParsedSourceRecord + ParseDiagnostic
-  -> ReviewRun (AnalysisRun extension)
-  -> RuleEvaluation (AnalysisRunRuleVersion)
-  -> Finding + FindingEvidence -> Occurrence
-  -> Recommendation / Human Decision
-  -> Reviewed Financial Dataset (derived projection)
-  -> future normalization / financial domain
-  -> future DRE
+     +-> NG ImportProfileExecution -> ParsedSourceRecord + ParseDiagnostic
+     |   -> ReviewRun (AnalysisRun extension)
+     |   -> RuleEvaluation (AnalysisRunRuleVersion)
+     |   -> Finding + FindingEvidence -> Occurrence
+     |   -> Recommendation / Human Decision
+     |   -> Reviewed Financial Dataset (derived projection)
+     +-> Billing ImportProfileExecution -> Billing source records
+     +-> Budget ImportProfileExecution -> Budget source records
+  -> NormalizationRun + mapping revision (DATA-004C/D)
+  -> Canonical Actual / Billing / Billing-Derived / Budget Facts
+  -> Cross-source reconciliation
+  -> DRE Input Dataset + readiness
+  -> DATA-005A/B DRE calculations
   -> future specialists
 ```
 
@@ -60,3 +64,14 @@ Recommendations and human decisions are separate, append-only rows.
 A later import can verify a correction; a person closes the case.
 The reviewed dataset is a projection over one review run and the decision history.
 Downstream consumers read only downstream-safe records and record the dataset revision.
+
+DATA-004C/D joins three independent inputs: the reviewed NG projection, accepted
+billing records, and accepted budget records. An append-only mapping revision
+aligns source accounts and units to canonical identities. A normalization run
+pins the review revision, source executions, mapping revision, derivation rules,
+and authority policy. It writes separate canonical fact tables in one final
+transaction. Reconciliation links exact structured revenue candidates. Billing
+derived rows remain supplementary and do not add to NG actuals. Budget facts
+remain independent and need an explicit calendar period before comparison.
+The DRE input service returns paged facts and blockers. DATA-005A/B owns final
+DRE calculations.

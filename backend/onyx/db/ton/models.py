@@ -921,6 +921,380 @@ class OperationalSourceRecord(Base):
     )
 
 
+class FinancialAccount(Base):
+    """Stable canonical account; classification changes create a new identity."""
+
+    __tablename__ = "ton_financial_account"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    code: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    label: Mapped[str] = mapped_column(Text, nullable=False)
+    dre_classification: Mapped[str | None] = mapped_column(String(100))
+    actual_amount_basis: Mapped[str | None] = mapped_column(String(16))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "actual_amount_basis IN ('MOVEMENT', 'FINAL')",
+            name="ck_ton_financial_account_amount_basis",
+        ),
+    )
+
+
+class FinancialMappingRevision(Base):
+    """Append-only mapping change sequence within a tenant schema."""
+
+    __tablename__ = "ton_financial_mapping_revision"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    number: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint("number > 0", name="ck_ton_financial_mapping_revision_number"),
+    )
+
+
+class FinancialMapping(Base):
+    """A versioned exact source-key mapping. Latest applicable revision wins."""
+
+    __tablename__ = "ton_financial_mapping"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    revision_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_mapping_revision.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    source_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_source.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    source_snapshot_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_source_snapshot.id", ondelete="RESTRICT")
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_key: Mapped[str] = mapped_column(Text, nullable=False)
+    account_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+    )
+    unit_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_business_unit.id", ondelete="RESTRICT")
+    )
+    effective_from: Mapped[datetime.date | None] = mapped_column(Date)
+    effective_to: Mapped[datetime.date | None] = mapped_column(Date)
+    calendar_period: Mapped[datetime.date | None] = mapped_column(Date)
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('ACCOUNT', 'UNIT', 'ENTITY', 'BUDGET_ACCOUNT', 'BUDGET_UNIT', 'BILLING_ACCOUNT', 'BILLING_TAX_ACCOUNT', 'BUDGET_PERIOD')",
+            name="ck_ton_financial_mapping_kind",
+        ),
+        CheckConstraint(
+            "effective_to IS NULL OR effective_from IS NULL OR effective_to >= effective_from",
+            name="ck_ton_financial_mapping_period",
+        ),
+        CheckConstraint(
+            "(kind IN ('ACCOUNT', 'BUDGET_ACCOUNT', 'BILLING_ACCOUNT', 'BILLING_TAX_ACCOUNT') AND account_id IS NOT NULL AND unit_id IS NULL AND calendar_period IS NULL) OR "
+            "(kind IN ('UNIT', 'ENTITY', 'BUDGET_UNIT') AND unit_id IS NOT NULL AND account_id IS NULL AND calendar_period IS NULL) OR "
+            "(kind = 'BUDGET_PERIOD' AND calendar_period IS NOT NULL AND account_id IS NULL AND unit_id IS NULL)",
+            name="ck_ton_financial_mapping_target",
+        ),
+        Index("ix_ton_financial_mapping_lookup", "source_id", "kind", "source_key"),
+    )
+
+
+class FinancialNormalizationRun(Base):
+    """One immutable projection of pinned source and policy versions."""
+
+    __tablename__ = "ton_financial_normalization_run"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    input_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    attempt_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    review_run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_review_run.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    dataset_revision: Mapped[str] = mapped_column(String(150), nullable=False)
+    dataset_as_of: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    billing_execution_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_import_profile_execution.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    budget_execution_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    mapping_revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    derivation_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    authority_policy_version: Mapped[str] = mapped_column(String(100), nullable=False)
+    statistics: Mapped[dict[str, int]] = mapped_column(
+        JSONB, nullable=False, default=dict
+    )
+    error_code: Mapped[str | None] = mapped_column(String(100))
+    started_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    __table_args__ = (
+        UniqueConstraint(
+            "input_digest", "attempt_no", name="uq_ton_financial_normalization_attempt"
+        ),
+        Index(
+            "uq_ton_financial_normalization_active_digest",
+            "input_digest",
+            unique=True,
+            postgresql_where=text("status IN ('RUNNING', 'SUCCEEDED')"),
+        ),
+        CheckConstraint(
+            "status IN ('RUNNING', 'SUCCEEDED', 'FAILED')",
+            name="ck_ton_financial_normalization_status",
+        ),
+        CheckConstraint(
+            "(status = 'RUNNING') = (finished_at IS NULL)",
+            name="ck_ton_financial_normalization_finished",
+        ),
+        CheckConstraint(
+            "(status = 'FAILED') = (error_code IS NOT NULL)",
+            name="ck_ton_financial_normalization_error",
+        ),
+    )
+
+
+class FinancialActualFact(Base):
+    __tablename__ = "ton_financial_actual_fact"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_normalization_run.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    parsed_record_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_parsed_source_record.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    account_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+    )
+    unit_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_business_unit.id", ondelete="RESTRICT")
+    )
+    account_mapping_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_mapping.id", ondelete="RESTRICT"),
+    )
+    unit_mapping_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_mapping.id", ondelete="RESTRICT"),
+    )
+    emission_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    calendar_period: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    source_sheet_month: Mapped[int] = mapped_column(Integer, nullable=False)
+    movement_amount: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
+    final_amount: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
+    disposition: Mapped[str] = mapped_column(String(32), nullable=False)
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id", "parsed_record_id", name="uq_ton_financial_actual_run_record"
+        ),
+        Index(
+            "ix_ton_financial_actual_scope",
+            "run_id",
+            "calendar_period",
+            "unit_id",
+            "account_id",
+        ),
+    )
+
+
+class FinancialBillingFact(Base):
+    __tablename__ = "ton_financial_billing_fact"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_normalization_run.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    source_record_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_operational_source_record.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    account_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+    )
+    unit_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_business_unit.id", ondelete="RESTRICT")
+    )
+    account_mapping_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_mapping.id", ondelete="RESTRICT"),
+    )
+    unit_mapping_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_mapping.id", ondelete="RESTRICT"),
+    )
+    emission_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    competence_period: Mapped[datetime.date | None] = mapped_column(Date)
+    service_amount: Mapped[Decimal] = mapped_column(Numeric(50, 25), nullable=False)
+    invoice_number: Mapped[str] = mapped_column(Text, nullable=False)
+    payer_text: Mapped[str | None] = mapped_column(Text)
+    ir_retained: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
+    iss_retained: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
+    inss_retained: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
+    total_retained: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
+    invoice_net_amount: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
+    net_after_discount: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id", "source_record_id", name="uq_ton_financial_billing_run_record"
+        ),
+        Index(
+            "ix_ton_financial_billing_scope",
+            "run_id",
+            "competence_period",
+            "unit_id",
+            "account_id",
+        ),
+    )
+
+
+class FinancialDerivedFact(Base):
+    __tablename__ = "ton_financial_derived_fact"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_normalization_run.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    billing_fact_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_billing_fact.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    rule_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    rule_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    origin: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="BILLING_DERIVED"
+    )
+    account_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    unit_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_business_unit.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    competence_period: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(50, 25), nullable=False)
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id",
+            "billing_fact_id",
+            "rule_key",
+            name="uq_ton_financial_derived_rule",
+        ),
+    )
+
+
+class FinancialBudgetFact(Base):
+    __tablename__ = "ton_financial_budget_fact"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_normalization_run.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    source_record_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_operational_source_record.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    account_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+    )
+    unit_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_business_unit.id", ondelete="RESTRICT")
+    )
+    account_mapping_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_mapping.id", ondelete="RESTRICT"),
+    )
+    unit_mapping_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_mapping.id", ondelete="RESTRICT"),
+    )
+    period_basis: Mapped[str] = mapped_column(String(32), nullable=False)
+    calendar_period: Mapped[datetime.date | None] = mapped_column(Date)
+    amount: Mapped[Decimal] = mapped_column(Numeric(50, 25), nullable=False)
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id", "source_record_id", name="uq_ton_financial_budget_run_record"
+        ),
+        Index(
+            "ix_ton_financial_budget_scope",
+            "run_id",
+            "calendar_period",
+            "unit_id",
+            "account_id",
+        ),
+    )
+
+
+class FinancialReconciliationItem(Base):
+    __tablename__ = "ton_financial_reconciliation_item"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_normalization_run.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    actual_fact_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_actual_fact.id", ondelete="RESTRICT"),
+    )
+    billing_fact_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_billing_fact.id", ondelete="RESTRICT"),
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    evidence_key: Mapped[str | None] = mapped_column(String(64))
+    __table_args__ = (
+        Index("ix_ton_financial_reconciliation_run_status", "run_id", "status"),
+    )
+
+
 @event.listens_for(OperationalSourceRecord, "before_update")
 @event.listens_for(OperationalSourceRecord, "before_delete")
 def prevent_operational_record_change(

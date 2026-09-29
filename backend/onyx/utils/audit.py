@@ -139,6 +139,13 @@ class AuditAction(str, Enum):
     TON_REVIEW_CONFIRM_CORRECTION = "ton_review.confirm_correction"
     TON_RECOMMENDATION_ACCEPT = "ton_review.recommendation_accept"
     TON_RECOMMENDATION_REJECT = "ton_review.recommendation_reject"
+    TON_FINANCIAL_ACCOUNT_CREATE = "ton_financial.account_create"
+    TON_FINANCIAL_MAPPING_VERSION = "ton_financial.mapping_version"
+    TON_FINANCIAL_NORMALIZE_START = "ton_financial.normalize_start"
+    TON_FINANCIAL_NORMALIZE_SUCCEED = "ton_financial.normalize_succeed"
+    TON_FINANCIAL_NORMALIZE_FAIL = "ton_financial.normalize_fail"
+    TON_FINANCIAL_AUTHORITY_VERSION = "ton_financial.authority_version"
+    TON_FINANCIAL_DERIVATION_VERSION = "ton_financial.derivation_version"
 
 
 _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
@@ -214,6 +221,13 @@ _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
     AuditAction.TON_REVIEW_CONFIRM_CORRECTION: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_RECOMMENDATION_ACCEPT: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_RECOMMENDATION_REJECT: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_FINANCIAL_ACCOUNT_CREATE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_FINANCIAL_MAPPING_VERSION: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_FINANCIAL_NORMALIZE_START: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_FINANCIAL_NORMALIZE_SUCCEED: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_FINANCIAL_NORMALIZE_FAIL: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_FINANCIAL_AUTHORITY_VERSION: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_FINANCIAL_DERIVATION_VERSION: OCSFEventClass.API_ACTIVITY,
 }
 
 # Guard: every action must map to a class, so a new action can't ship untagged.

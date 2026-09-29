@@ -92,6 +92,7 @@ def budget_book(
     workbook = Workbook()
     sheet = cast(Worksheet, workbook.active)
     sheet.title = "DOTAÇÃO"
+    sheet["A1"] = "Synthetic contract"
     sheet["A2"] = (
         "Valor do Contrato Anual"
         if key == BUDGET_ANNUAL_KEY

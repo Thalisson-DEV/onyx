@@ -107,6 +107,15 @@ TON_TABLES_AT_HEAD: tuple[str, ...] = (
         "ton_review_recommendation",
         "ton_review_decision",
         "ton_operational_source_record",
+        "ton_financial_account",
+        "ton_financial_mapping_revision",
+        "ton_financial_mapping",
+        "ton_financial_normalization_run",
+        "ton_financial_actual_fact",
+        "ton_financial_billing_fact",
+        "ton_financial_derived_fact",
+        "ton_financial_budget_fact",
+        "ton_financial_reconciliation_item",
     )
 )
 

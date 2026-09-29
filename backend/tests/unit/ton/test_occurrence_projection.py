@@ -123,6 +123,15 @@ TON_TABLE_NAMES: tuple[str, ...] = (
         "ton_review_recommendation",
         "ton_review_decision",
         "ton_operational_source_record",
+        "ton_financial_account",
+        "ton_financial_mapping_revision",
+        "ton_financial_mapping",
+        "ton_financial_normalization_run",
+        "ton_financial_actual_fact",
+        "ton_financial_billing_fact",
+        "ton_financial_derived_fact",
+        "ton_financial_budget_fact",
+        "ton_financial_reconciliation_item",
     )
 )
 
@@ -690,11 +699,10 @@ class TestFailClosedMetadata:
             assert set(table.columns.keys()) & forbidden == set()
 
     def test_the_metadata_holds_exactly_the_classified_ton_tables(self) -> None:
-        """Nine from 003b, twelve from 003c, nine from 003d. Measured against the
-        mapper, so a model added without being classified fails here."""
+        """Classify all TON model tables, including the financial domain."""
         ton_tables = {name for name in Base.metadata.tables if name.startswith("ton_")}
         assert ton_tables == set(TON_TABLE_NAMES)
-        assert len(TON_TABLE_NAMES) == 40
+        assert len(TON_TABLE_NAMES) == 49
 
     def test_no_ton_model_writes_to_a_source_system(self) -> None:
         """The advisory boundary is enforced by absence: no column here can carry

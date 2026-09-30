@@ -36,6 +36,8 @@ CSV export requires source read permission and a stored READY run. The export co
 
 Synthetic tests cover READY hierarchy, Actual and Budget drill down, pagination, revisions, chart input, blocked export, and stored CSV values. The backend regression set also covers readiness, financial domain, ACL, and audit. The prior real client smoke had six NOT_READY periods and no READY periods. A new live client smoke requires the real source workbooks; they were unavailable in this checkout. No client approvals or business values were added to tests or production data.
 
+A second synthetic fixture imports January and February NG records and billing invoices. It maps one monthly budget schedule to both months. The DRE test verifies two READY results, February YTD totals, two series points, and February source lineage.
+
 CSV is the supported report format in this slice. The chart and summary show one selected statement line. No forecast, AV/AH, AI analysis, or automatic report delivery is included.
 
 The audit migration passed on a fresh PostgreSQL database and the local default database. A new synthetic blocked calculation stored two audit rows. The temporary migration database was removed after the check.

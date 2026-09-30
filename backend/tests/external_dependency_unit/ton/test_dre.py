@@ -314,6 +314,79 @@ def test_synthetic_ready_revision_and_mapping_governance(
     assert ton_session.get(DreCalculationRun, blocked.id) is not None
 
 
+def test_synthetic_two_period_ytd_and_series(
+    ton_session: Session, admin: User, store: FileStore
+) -> None:
+    normalization_id, account_id, unit_id = build_complete_synthetic_scope(
+        ton_session, admin, store, include_february=True
+    )
+    version = repository.create_structure(
+        ton_session,
+        admin,
+        DreStructureCreate(
+            key="synthetic-two-period-dre",
+            label="Synthetic two period DRE",
+            lines=_lines(),
+            assignments=[
+                DreAccountAssignment(
+                    account_id=account_id, line_code="service", status="APPROVED"
+                )
+            ],
+        ),
+    )
+    ton_session.commit()
+    january = repository.execute(
+        ton_session,
+        admin,
+        DreScope(
+            normalization_run_id=normalization_id,
+            structure_version_id=version.id,
+            period=datetime.date(2026, 1, 1),
+            unit_id=unit_id,
+        ),
+    )
+    february = repository.execute(
+        ton_session,
+        admin,
+        DreScope(
+            normalization_run_id=normalization_id,
+            structure_version_id=version.id,
+            period=datetime.date(2026, 2, 1),
+            unit_id=unit_id,
+        ),
+    )
+    assert january.status == february.status == "READY"
+    january_lines = {
+        line.code: line
+        for line in repository.list_result_lines(ton_session, admin, january.id, 10, 0)
+    }
+    february_lines = {
+        line.code: line
+        for line in repository.list_result_lines(ton_session, admin, february.id, 10, 0)
+    }
+    assert january_lines["result"].realizado == Decimal("100.25")
+    assert february_lines["result"].realizado == Decimal("40.75")
+    assert february_lines["result"].realizado_ytd == Decimal("141.00")
+    assert february_lines["result"].orcado_ytd == Decimal("20")
+    assert february_lines["result"].variance_ytd == Decimal("121.00")
+    series = repository.get_period_series(
+        ton_session, admin, normalization_id, version.id, 2026, unit_id, "result"
+    )
+    assert [point.period for point in series] == [
+        datetime.date(2026, 1, 1),
+        datetime.date(2026, 2, 1),
+    ]
+    assert [point.realizado for point in series] == [
+        Decimal("100.25"),
+        Decimal("40.75"),
+    ]
+    february_actuals = repository.list_contributors(
+        ton_session, admin, february.id, "service", "ACTUAL", 10, 0
+    )
+    assert february_actuals.total == 1
+    assert february_actuals.rows[0].period == datetime.date(2026, 2, 1)
+
+
 def test_invalid_structure_dependencies_rejected(
     ton_session: Session, admin: User
 ) -> None:

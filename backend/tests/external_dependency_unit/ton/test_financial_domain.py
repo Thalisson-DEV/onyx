@@ -7,6 +7,8 @@ from unittest.mock import Mock
 from uuid import UUID, uuid4
 
 import pytest
+from openpyxl import Workbook
+from openpyxl.worksheet.worksheet import Worksheet
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -131,6 +133,7 @@ def _map(
     account_id: UUID | None = None,
     unit_id: UUID | None = None,
     calendar_period: datetime.date | None = None,
+    effective_to: datetime.date | None = None,
 ) -> None:
     financial_domain.create_mapping(
         session,
@@ -142,27 +145,56 @@ def _map(
             account_id=account_id,
             unit_id=unit_id,
             calendar_period=calendar_period,
+            effective_to=effective_to,
         ),
     )
     session.commit()
 
 
 def build_complete_synthetic_scope(
-    ton_session: Session, admin: User, store: FileStore
+    ton_session: Session,
+    admin: User,
+    store: FileStore,
+    *,
+    include_february: bool = False,
 ) -> tuple[UUID, UUID, UUID]:
     day = datetime.date(2026, 1, 10)
     pipeline = Pipeline(ton_session, admin, store)
-    execution_id = pipeline.parse(
-        book([launch("1.1 - Synthetic account", day, document="101", movement=100.25)])
+    january_row = launch(
+        "1.1 - Synthetic account", day, document="101", movement=100.25
     )
+    if include_february:
+        workbook = Workbook()
+        january = workbook.active
+        assert isinstance(january, Worksheet)
+        january.title = "Jan"
+        january.append(january_row)
+        february = workbook.create_sheet("Fev")
+        february.append(
+            launch(
+                "1.1 - Synthetic account",
+                datetime.date(2026, 2, 10),
+                document="102",
+                movement=40.75,
+            )
+        )
+        output = BytesIO()
+        workbook.save(output)
+        ng_content = output.getvalue()
+    else:
+        ng_content = book([january_row])
+    execution_id = pipeline.parse(ng_content)
     review = pipeline.review(execution_id)
     reviewed = dataset_summary(ton_session, admin, pipeline.source_id, review.id)
+    invoices = [invoice(gross=100.25)]
+    if include_february:
+        invoices.append(invoice(number=102, gross=40.75, competence="02/2026"))
     billing_source_id, billing_execution_id = _operational_execution(
         ton_session,
         admin,
         store,
         key="billing_invoices",
-        content=billing_book([invoice(gross=100.25)]),
+        content=billing_book(invoices),
         format=SourceFormat.XLS,
         profile_key=BILLING_KEY,
     )
@@ -271,6 +303,7 @@ def build_complete_synthetic_scope(
         MappingKind.BUDGET_PERIOD,
         str(budget_execution_id),
         calendar_period=datetime.date(2026, 1, 1),
+        effective_to=datetime.date(2026, 2, 1) if include_february else None,
     )
     run = financial_domain.normalize(
         ton_session,
@@ -310,6 +343,17 @@ def build_complete_synthetic_scope(
     assert actual_page[0].account_classification == "REVENUE"
     assert actual_page[0].unit_code == unit.code
     assert actual_page[0].source_execution_id == execution_id
+    if include_february:
+        february_period = datetime.date(2026, 2, 1)
+        february_readiness = financial_domain.readiness(
+            ton_session, admin, run.id, february_period, unit.id
+        )
+        assert february_readiness.ready
+        february_actuals = financial_domain.list_facts(
+            ton_session, admin, run.id, "ACTUAL", 10, 0, february_period, unit.id
+        )
+        assert len(february_actuals) == 1
+        assert february_actuals[0].amount == 40.75
     return run.id, account.id, unit.id
 
 

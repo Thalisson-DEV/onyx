@@ -116,6 +116,11 @@ TON_TABLES_AT_HEAD: tuple[str, ...] = (
         "ton_financial_derived_fact",
         "ton_financial_budget_fact",
         "ton_financial_reconciliation_item",
+        "ton_dre_structure",
+        "ton_dre_structure_version",
+        "ton_dre_account_mapping",
+        "ton_dre_calculation_run",
+        "ton_dre_result_line",
     )
 )
 

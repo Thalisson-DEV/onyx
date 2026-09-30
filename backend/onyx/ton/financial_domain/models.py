@@ -139,3 +139,11 @@ class ReadinessView(BaseModel):
     dataset_revision: str
     mapping_revision_number: int
     derivation_version: str
+
+
+class DreInputDataset(BaseModel):
+    """Scoped DATA-004 boundary for the DRE engine."""
+
+    readiness: ReadinessView
+    actuals: list[FactView]
+    budgets: list[FactView]

@@ -42,6 +42,7 @@ from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.ton.financial_domain.models import (
     AccountCreate,
+    DreInputDataset,
     FactView,
     MappingCreate,
     MappingKind,
@@ -1274,4 +1275,30 @@ def readiness(
         dataset_revision=run.dataset_revision,
         mapping_revision_number=run.mapping_revision_number,
         derivation_version=run.derivation_version,
+    )
+
+
+def load_dre_input_dataset(
+    session: Session,
+    user: User,
+    run_id: UUID,
+    period: datetime.date,
+    unit_id: UUID | None,
+) -> DreInputDataset:
+    """Read one canonical period through the existing fact and readiness services."""
+
+    def load(fact_type: str) -> list[FactView]:
+        result: list[FactView] = []
+        while True:
+            page = list_facts(
+                session, user, run_id, fact_type, 100, len(result), period, unit_id
+            )
+            result.extend(page)
+            if len(page) < 100:
+                return result
+
+    return DreInputDataset(
+        readiness=readiness(session, user, run_id, period, unit_id),
+        actuals=load("ACTUAL"),
+        budgets=load("BUDGET"),
     )

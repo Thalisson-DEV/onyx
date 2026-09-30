@@ -18,9 +18,11 @@ CONNECTED SOURCE or ASSISTED SOURCE
   -> NormalizationRun + mapping revision (DATA-004C/D)
   -> Canonical Actual / Billing / Billing-Derived / Budget Facts
   -> Cross-source reconciliation
-  -> DRE Input Dataset + readiness
-  -> DATA-005A/B DRE calculations
-  -> future specialists
+  -> DRE Input Dataset
+  -> DRE Readiness + approved structure/account mapping version
+  -> DRE Calculation Run
+  -> Versioned DRE Result
+  -> future dashboard / reports / specialists
 ```
 
 Source.id and Source.key identify a logical input within its tenant.
@@ -73,5 +75,7 @@ and authority policy. It writes separate canonical fact tables in one final
 transaction. Reconciliation links exact structured revenue candidates. Billing
 derived rows remain supplementary and do not add to NG actuals. Budget facts
 remain independent and need an explicit calendar period before comparison.
-The DRE input service returns paged facts and blockers. DATA-005A/B owns final
-DRE calculations.
+The DRE input service returns paged facts and blockers. DATA-005A/B consumes
+that boundary. A blocked scope produces no official result lines. A ready
+calculation pins the normalization, DRE version, policy versions, and source
+lineage in an immutable result revision. No dashboard is in this slice.

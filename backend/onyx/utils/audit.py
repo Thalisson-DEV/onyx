@@ -146,6 +146,11 @@ class AuditAction(str, Enum):
     TON_FINANCIAL_NORMALIZE_FAIL = "ton_financial.normalize_fail"
     TON_FINANCIAL_AUTHORITY_VERSION = "ton_financial.authority_version"
     TON_FINANCIAL_DERIVATION_VERSION = "ton_financial.derivation_version"
+    TON_DRE_STRUCTURE_VERSION = "ton_dre.structure_version"
+    TON_DRE_CALCULATE_START = "ton_dre.calculate_start"
+    TON_DRE_CALCULATE_BLOCKED = "ton_dre.calculate_blocked"
+    TON_DRE_CALCULATE_SUCCEED = "ton_dre.calculate_succeed"
+    TON_DRE_CALCULATE_FAIL = "ton_dre.calculate_fail"
 
 
 _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
@@ -228,6 +233,11 @@ _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
     AuditAction.TON_FINANCIAL_NORMALIZE_FAIL: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_FINANCIAL_AUTHORITY_VERSION: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_FINANCIAL_DERIVATION_VERSION: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_DRE_STRUCTURE_VERSION: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_DRE_CALCULATE_START: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_DRE_CALCULATE_BLOCKED: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_DRE_CALCULATE_SUCCEED: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_DRE_CALCULATE_FAIL: OCSFEventClass.API_ACTIVITY,
 }
 
 # Guard: every action must map to a class, so a new action can't ship untagged.

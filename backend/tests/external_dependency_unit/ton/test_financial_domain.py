@@ -147,9 +147,9 @@ def _map(
     session.commit()
 
 
-def test_complete_synthetic_scope_is_dre_ready(
+def build_complete_synthetic_scope(
     ton_session: Session, admin: User, store: FileStore
-) -> None:
+) -> tuple[UUID, UUID, UUID]:
     day = datetime.date(2026, 1, 10)
     pipeline = Pipeline(ton_session, admin, store)
     execution_id = pipeline.parse(
@@ -310,6 +310,13 @@ def test_complete_synthetic_scope_is_dre_ready(
     assert actual_page[0].account_classification == "REVENUE"
     assert actual_page[0].unit_code == unit.code
     assert actual_page[0].source_execution_id == execution_id
+    return run.id, account.id, unit.id
+
+
+def test_complete_synthetic_scope_is_dre_ready(
+    ton_session: Session, admin: User, store: FileStore
+) -> None:
+    build_complete_synthetic_scope(ton_session, admin, store)
 
 
 def test_canonical_lineage_mapping_reconciliation_and_revisions(

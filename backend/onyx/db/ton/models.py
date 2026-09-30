@@ -1295,6 +1295,127 @@ class FinancialReconciliationItem(Base):
     )
 
 
+class DreStructure(Base):
+    __tablename__ = "ton_dre_structure"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    key: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    label: Mapped[str] = mapped_column(String(500), nullable=False)
+
+
+class DreStructureVersion(Base):
+    __tablename__ = "ton_dre_structure_version"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    structure_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_dre_structure.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    number: Mapped[int] = mapped_column(Integer, nullable=False)
+    lines: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        UniqueConstraint("structure_id", "number", name="uq_ton_dre_structure_version"),
+    )
+
+
+class DreAccountMapping(Base):
+    __tablename__ = "ton_dre_account_mapping"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    version_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_dre_structure_version.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    account_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    line_code: Mapped[str] = mapped_column(String(100), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    __table_args__ = (
+        UniqueConstraint("version_id", "account_id", name="uq_ton_dre_account_mapping"),
+        CheckConstraint(
+            "status IN ('APPROVED', 'PENDING_APPROVAL')",
+            name="ck_ton_dre_mapping_status",
+        ),
+    )
+
+
+class DreCalculationRun(Base):
+    __tablename__ = "ton_dre_calculation_run"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    input_digest: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    normalization_run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_normalization_run.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    structure_version_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_dre_structure_version.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    period: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    unit_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_business_unit.id", ondelete="RESTRICT")
+    )
+    blockers: Mapped[dict[str, int]] = mapped_column(JSONB, nullable=False)
+    provenance: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    engine_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    started_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('READY', 'NOT_READY')", name="ck_ton_dre_run_status"
+        ),
+    )
+
+
+class DreResultLine(Base):
+    __tablename__ = "ton_dre_result_line"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_dre_calculation_run.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    code: Mapped[str] = mapped_column(String(100), nullable=False)
+    label: Mapped[str] = mapped_column(String(500), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    realizado: Mapped[Decimal] = mapped_column(Numeric(50, 25), nullable=False)
+    orcado: Mapped[Decimal] = mapped_column(Numeric(50, 25), nullable=False)
+    variance: Mapped[Decimal] = mapped_column(Numeric(50, 25), nullable=False)
+    variance_percent: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
+    realizado_ytd: Mapped[Decimal] = mapped_column(Numeric(50, 25), nullable=False)
+    orcado_ytd: Mapped[Decimal] = mapped_column(Numeric(50, 25), nullable=False)
+    variance_ytd: Mapped[Decimal] = mapped_column(Numeric(50, 25), nullable=False)
+    variance_percent_ytd: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
+    __table_args__ = (
+        UniqueConstraint("run_id", "code", name="uq_ton_dre_result_line"),
+    )
+
+
 @event.listens_for(OperationalSourceRecord, "before_update")
 @event.listens_for(OperationalSourceRecord, "before_delete")
 def prevent_operational_record_change(

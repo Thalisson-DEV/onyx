@@ -427,6 +427,24 @@ EXPECTED_FOREIGN_KEYS: tuple[tuple[str, str, str, str], ...] = (
         "ton_financial_billing_fact",
         "RESTRICT",
     ),
+    ("ton_dre_structure_version", "structure_id", "ton_dre_structure", "RESTRICT"),
+    ("ton_dre_structure_version", "created_by", "user", "SET NULL"),
+    ("ton_dre_account_mapping", "version_id", "ton_dre_structure_version", "RESTRICT"),
+    ("ton_dre_account_mapping", "account_id", "ton_financial_account", "RESTRICT"),
+    (
+        "ton_dre_calculation_run",
+        "normalization_run_id",
+        "ton_financial_normalization_run",
+        "RESTRICT",
+    ),
+    (
+        "ton_dre_calculation_run",
+        "structure_version_id",
+        "ton_dre_structure_version",
+        "RESTRICT",
+    ),
+    ("ton_dre_calculation_run", "unit_id", "ton_business_unit", "RESTRICT"),
+    ("ton_dre_result_line", "run_id", "ton_dre_calculation_run", "RESTRICT"),
 )
 
 # Monetary and quantity columns. Every one must be ``numeric``: a
@@ -443,6 +461,14 @@ EXPECTED_DECIMAL_COLUMNS: tuple[tuple[str, str], ...] = (
     ("ton_occurrence_impact", "quantity"),
     ("ton_occurrence_impact", "unit_cost"),
     ("ton_occurrence_impact", "sensitivity_pct"),
+    ("ton_dre_result_line", "realizado"),
+    ("ton_dre_result_line", "orcado"),
+    ("ton_dre_result_line", "variance"),
+    ("ton_dre_result_line", "variance_percent"),
+    ("ton_dre_result_line", "realizado_ytd"),
+    ("ton_dre_result_line", "orcado_ytd"),
+    ("ton_dre_result_line", "variance_ytd"),
+    ("ton_dre_result_line", "variance_percent_ytd"),
 )
 
 _FOREIGN_KEY_SQL = """

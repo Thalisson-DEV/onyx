@@ -141,6 +141,11 @@ class AuditAction(str, Enum):
     TON_RECOMMENDATION_REJECT = "ton_review.recommendation_reject"
     TON_FINANCIAL_ACCOUNT_CREATE = "ton_financial.account_create"
     TON_FINANCIAL_MAPPING_VERSION = "ton_financial.mapping_version"
+    TON_FINANCIAL_AMOUNT_BASIS_VERSION = "ton_financial.amount_basis_version"
+    TON_FINANCIAL_CANDIDATE_REJECT = "ton_financial.candidate_reject"
+    TON_FINANCIAL_LEGACY_CANDIDATE_IMPORT = "ton_financial.legacy_candidate_import"
+    TON_FINANCIAL_RECONCILIATION_DECISION = "ton_financial.reconciliation_decision"
+    TON_FINANCIAL_RECOMPUTE_REQUEST = "ton_financial.recompute_request"
     TON_FINANCIAL_NORMALIZE_START = "ton_financial.normalize_start"
     TON_FINANCIAL_NORMALIZE_SUCCEED = "ton_financial.normalize_succeed"
     TON_FINANCIAL_NORMALIZE_FAIL = "ton_financial.normalize_fail"
@@ -228,6 +233,11 @@ _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
     AuditAction.TON_RECOMMENDATION_REJECT: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_FINANCIAL_ACCOUNT_CREATE: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_FINANCIAL_MAPPING_VERSION: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_FINANCIAL_AMOUNT_BASIS_VERSION: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_FINANCIAL_CANDIDATE_REJECT: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_FINANCIAL_LEGACY_CANDIDATE_IMPORT: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_FINANCIAL_RECONCILIATION_DECISION: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_FINANCIAL_RECOMPUTE_REQUEST: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_FINANCIAL_NORMALIZE_START: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_FINANCIAL_NORMALIZE_SUCCEED: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_FINANCIAL_NORMALIZE_FAIL: OCSFEventClass.API_ACTIVITY,

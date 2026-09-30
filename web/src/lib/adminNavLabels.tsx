@@ -15,6 +15,7 @@ export function useAdminNavLabels(): Record<AdminNavItemId, string> {
   const t = useTranslations("sidebar");
   return useMemo<Record<AdminNavItemId, string>>(
     () => ({
+      financialReadiness: t("adminNav.items.financialReadiness.label"),
       languageModels: t("adminNav.items.languageModels.label"),
       webSearch: t("adminNav.items.webSearch.label"),
       imageGeneration: t("adminNav.items.imageGeneration.label"),

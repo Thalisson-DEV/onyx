@@ -23,12 +23,14 @@ from onyx.db.ton.models import (
     BusinessUnit,
     FinancialAccount,
     FinancialActualFact,
+    FinancialAmountBasisRevision,
     FinancialBillingFact,
     FinancialBudgetFact,
     FinancialDerivedFact,
     FinancialMapping,
     FinancialMappingRevision,
     FinancialNormalizationRun,
+    FinancialReconciliationDecision,
     FinancialReconciliationItem,
     ImportProfile,
     ImportProfileExecution,
@@ -42,6 +44,7 @@ from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.ton.financial_domain.models import (
     AccountCreate,
+    BudgetInput,
     DreInputDataset,
     FactView,
     MappingCreate,
@@ -125,17 +128,15 @@ def create_account(
 
 
 def list_accounts(
-    session: Session, user: User, limit: int, offset: int
+    session: Session, _user: User, limit: int, offset: int, search: str | None = None
 ) -> list[FinancialAccount]:
-    if not is_ton_administrator(user):
-        raise OnyxError(
-            OnyxErrorCode.ADMIN_ONLY, "Financial accounts require admin access"
-        )
     check_page(limit, offset)
+    query = sa.select(FinancialAccount)
+    if search:
+        query = query.where(FinancialAccount.code.ilike(f"%{search}%"))
     return list(
         session.scalars(
-            sa.select(FinancialAccount)
-            .order_by(FinancialAccount.code, FinancialAccount.id)
+            query.order_by(FinancialAccount.code, FinancialAccount.id)
             .limit(limit)
             .offset(offset)
         )
@@ -146,6 +147,55 @@ def _mapping_revision_number(session: Session) -> int:
     return int(
         session.scalar(sa.select(sa.func.max(FinancialMappingRevision.number))) or 0
     )
+
+
+def _basis_revision_number(session: Session) -> int:
+    return int(
+        session.scalar(sa.select(sa.func.max(FinancialAmountBasisRevision.number))) or 0
+    )
+
+
+def _basis_index(session: Session, number: int) -> dict[UUID, str]:
+    revisions = session.scalars(
+        sa.select(FinancialAmountBasisRevision)
+        .where(FinancialAmountBasisRevision.number <= number)
+        .order_by(FinancialAmountBasisRevision.number.desc())
+    )
+    result: dict[UUID, str] = {}
+    for revision in revisions:
+        result.setdefault(revision.account_id, revision.basis)
+    return result
+
+
+def approve_amount_basis(
+    session: Session, user: User, account_id: UUID, basis: str, reason: str
+) -> FinancialAmountBasisRevision:
+    if not is_ton_administrator(user):
+        raise OnyxError(OnyxErrorCode.ADMIN_ONLY, "Amount basis requires admin access")
+    if basis not in ("MOVEMENT", "FINAL") or not reason.strip():
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Basis and reason are required")
+    if session.get(FinancialAccount, account_id) is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Financial account not found")
+    session.execute(sa.text("SELECT pg_advisory_xact_lock(4433007)"))
+    revision = FinancialAmountBasisRevision(
+        number=_basis_revision_number(session) + 1,
+        account_id=account_id,
+        basis=basis,
+        reason=reason.strip(),
+        created_by=user.id,
+    )
+    session.add(revision)
+    session.flush()
+    emit_ton_audit_event(
+        session,
+        action=AuditAction.TON_FINANCIAL_AMOUNT_BASIS_VERSION,
+        outcome=AuditOutcome.SUCCESS,
+        actor_user_id=user.id,
+        resource_kind=TonAuditResourceKind.FINANCIAL_ACCOUNT,
+        resource_id=account_id,
+        extra={"revision": revision.number},
+    )
+    return revision
 
 
 def create_mapping(session: Session, user: User, request: MappingCreate) -> MappingView:
@@ -205,23 +255,74 @@ def create_mapping(session: Session, user: User, request: MappingCreate) -> Mapp
         if snapshot is None or snapshot.source_id != request.source_id:
             raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Mapping snapshot differs")
     if request.kind is MappingKind.BUDGET_PERIOD:
+        assert request.calendar_period is not None
         try:
             execution_id = UUID(request.source_key)
         except ValueError:
             raise OnyxError(
                 OnyxErrorCode.INVALID_INPUT, "Budget period key must be an execution ID"
             ) from None
-        get_execution(session, user, request.source_id, execution_id)
+        execution = get_execution(session, user, request.source_id, execution_id)
+        if request.effective_from is not None:
+            raise OnyxError(
+                OnyxErrorCode.INVALID_INPUT, "Budget period start uses calendar_period"
+            )
+        if request.effective_to is not None:
+            if (
+                request.effective_to.day != 1
+                or request.effective_to < request.calendar_period
+            ):
+                raise OnyxError(
+                    OnyxErrorCode.INVALID_INPUT,
+                    "Budget period range must use whole months",
+                )
+            bases = set(
+                session.scalars(
+                    sa.select(OperationalSourceRecord.period_basis)
+                    .where(OperationalSourceRecord.execution_id == execution.id)
+                    .distinct()
+                )
+            )
+            if bases != {"MONTHLY_CONTRACT"}:
+                raise OnyxError(
+                    OnyxErrorCode.INVALID_INPUT,
+                    "Only monthly contract budgets accept a month range",
+                )
+            terms = set(
+                session.scalars(
+                    sa.select(
+                        OperationalSourceRecord.typed_values[
+                            "contract_term_months"
+                        ].astext
+                    )
+                    .where(OperationalSourceRecord.execution_id == execution.id)
+                    .distinct()
+                )
+            )
+            months = (
+                (request.effective_to.year - request.calendar_period.year) * 12
+                + request.effective_to.month
+                - request.calendar_period.month
+                + 1
+            )
+            term = next(iter(terms)) if len(terms) == 1 else None
+            if term is None or not term.isdigit() or months > int(term):
+                raise OnyxError(
+                    OnyxErrorCode.INVALID_INPUT,
+                    "Budget range exceeds source contract term",
+                )
     # One advisory lock serializes revision numbers across concurrent writers.
     session.execute(sa.text("SELECT pg_advisory_xact_lock(4433004)"))
     revision = FinancialMappingRevision(
-        number=_mapping_revision_number(session) + 1, created_by=user.id
+        number=_mapping_revision_number(session) + 1,
+        created_by=user.id,
+        reason=request.reason,
     )
     session.add(revision)
     session.flush()
     mapping = FinancialMapping(
         revision_id=revision.id,
-        **request.model_dump(mode="python"),
+        **request.model_dump(mode="python", exclude={"reason"}),
     )
     session.add(mapping)
     session.flush()
@@ -301,7 +402,9 @@ class MappingIndex:
             return None
         for item in self.by_key.get((source_id, kind.value, key), ()):
             if date is None:
-                if item.effective_from is None and item.effective_to is None:
+                if kind is MappingKind.BUDGET_PERIOD or (
+                    item.effective_from is None and item.effective_to is None
+                ):
                     return item
             elif (item.effective_from is None or item.effective_from <= date) and (
                 item.effective_to is None or date <= item.effective_to
@@ -502,6 +605,38 @@ def _reconcile(
                 for billing in invoices
             )
     return items
+
+
+def _apply_reconciliation_decisions(
+    session: Session,
+    run: FinancialNormalizationRun,
+    items: list[dict[str, Any]],
+    actuals: list[dict[str, Any]],
+    billings: list[dict[str, Any]],
+) -> None:
+    actual_sources = {item["id"]: item["parsed_record_id"] for item in actuals}
+    billing_sources = {item["id"]: item["source_record_id"] for item in billings}
+    decisions = session.scalars(
+        sa.select(FinancialReconciliationDecision)
+        .where(
+            FinancialReconciliationDecision.number <= run.reconciliation_decision_number
+        )
+        .order_by(FinancialReconciliationDecision.number.desc())
+    )
+    by_source: dict[tuple[UUID | None, UUID | None], str] = {}
+    for decision in decisions:
+        by_source.setdefault(
+            (decision.actual_source_record_id, decision.billing_source_record_id),
+            decision.decision,
+        )
+    for item in items:
+        key = (
+            actual_sources.get(item["actual_fact_id"]),
+            billing_sources.get(item["billing_fact_id"]),
+        )
+        decided = by_source.get(key)
+        if decided is not None:
+            item["status"] = decided
 
 
 def _persist_projection(
@@ -716,19 +851,38 @@ def _persist_projection(
         period_map = mappings.find(
             record.source_id, MappingKind.BUDGET_PERIOD, str(record.execution_id), None
         )
-        budgets.append(
-            {
-                "id": uuid4(),
-                "run_id": run.id,
-                "source_record_id": record.id,
-                "account_id": account_map.account_id if account_map else None,
-                "unit_id": unit_map.unit_id if unit_map else None,
-                "account_mapping_id": account_map.id if account_map else None,
-                "unit_mapping_id": unit_map.id if unit_map else None,
-                "period_basis": record.period_basis,
-                "calendar_period": period_map.calendar_period if period_map else None,
-                "amount": record.amount,
-            }
+        periods: list[datetime.date | None] = [None]
+        if period_map is not None and period_map.calendar_period is not None:
+            start = period_map.calendar_period
+            end = period_map.effective_to or start
+            if end != start and record.period_basis != "MONTHLY_CONTRACT":
+                raise OnyxError(
+                    OnyxErrorCode.CONFLICT,
+                    "Budget range does not match source period basis",
+                )
+            periods = [
+                datetime.date(year, month, 1)
+                for year in range(start.year, end.year + 1)
+                for month in range(1, 13)
+                if start <= datetime.date(year, month, 1) <= end
+            ]
+        budgets.extend(
+            (
+                {
+                    "id": uuid4(),
+                    "run_id": run.id,
+                    "source_record_id": record.id,
+                    "account_id": account_map.account_id if account_map else None,
+                    "unit_id": unit_map.unit_id if unit_map else None,
+                    "account_mapping_id": account_map.id if account_map else None,
+                    "unit_mapping_id": unit_map.id if unit_map else None,
+                    "period_mapping_id": period_map.id if period_map else None,
+                    "period_basis": record.period_basis,
+                    "calendar_period": period,
+                    "amount": record.amount,
+                }
+                for period in periods
+            )
         )
         counts["budget_unmapped_account"] += account_map is None
         counts["budget_unmapped_unit"] += unit_map is None
@@ -743,6 +897,7 @@ def _persist_projection(
     reconciliation = _reconcile(
         actuals, billings, actual_documents, billing_documents, revenue_accounts, run.id
     )
+    _apply_reconciliation_decisions(session, run, reconciliation, actuals, billings)
     _insert_batches(session, FinancialActualFact, actuals)
     _insert_batches(session, FinancialBillingFact, billings)
     _insert_batches(session, FinancialDerivedFact, derived)
@@ -775,6 +930,11 @@ def normalize(
     )
     budget_ids = sorted((item.execution_id for item in request.budgets), key=str)
     mapping_number = _mapping_revision_number(session)
+    basis_number = _basis_revision_number(session)
+    reconciliation_number = int(
+        session.scalar(sa.select(sa.func.max(FinancialReconciliationDecision.number)))
+        or 0
+    )
     input_digest = _digest(
         {
             "review_run_id": review.id,
@@ -782,6 +942,8 @@ def normalize(
             "billing_execution_id": request.billing_execution_id,
             "budget_execution_ids": budget_ids,
             "mapping_revision_number": mapping_number,
+            "amount_basis_revision_number": basis_number,
+            "reconciliation_decision_number": reconciliation_number,
             "derivation_version": DERIVATION_VERSION,
             "authority_policy_version": AUTHORITY_POLICY_VERSION,
             "dataset_policy_version": DATASET_POLICY_VERSION,
@@ -831,6 +993,8 @@ def normalize(
         billing_execution_id=request.billing_execution_id,
         budget_execution_ids=[str(item) for item in budget_ids],
         mapping_revision_number=mapping_number,
+        amount_basis_revision_number=basis_number,
+        reconciliation_decision_number=reconciliation_number,
         derivation_version=DERIVATION_VERSION,
         authority_policy_version=AUTHORITY_POLICY_VERSION,
         statistics={},
@@ -934,6 +1098,63 @@ def get_run(session: Session, user: User, run_id: UUID) -> FinancialNormalizatio
     return run
 
 
+def list_runs(
+    session: Session, user: User, limit: int, offset: int
+) -> list[FinancialNormalizationRun]:
+    check_page(limit, offset)
+    query = (
+        sa.select(FinancialNormalizationRun)
+        .where(FinancialNormalizationRun.status == "SUCCEEDED")
+        .order_by(
+            FinancialNormalizationRun.started_at.desc(), FinancialNormalizationRun.id
+        )
+    )
+    if is_ton_administrator(user):
+        return list(session.scalars(query.limit(limit).offset(offset)))
+    result: list[FinancialNormalizationRun] = []
+    position = 0
+    visible = 0
+    while len(result) < limit:
+        candidates = list(session.scalars(query.limit(100).offset(position)))
+        if not candidates:
+            break
+        position += len(candidates)
+        for candidate in candidates:
+            try:
+                get_run(session, user, candidate.id)
+            except OnyxError:
+                continue
+            if visible >= offset:
+                result.append(candidate)
+                if len(result) == limit:
+                    break
+            visible += 1
+    return result
+
+
+def normalization_request_for_run(
+    session: Session, user: User, run_id: UUID
+) -> NormalizationRequest:
+    run = get_run(session, user, run_id)
+    review = session.get(ReviewRun, run.review_run_id)
+    billing = session.get(ImportProfileExecution, run.billing_execution_id)
+    assert review is not None and billing is not None
+    budgets: list[BudgetInput] = []
+    for execution_id in run.budget_execution_ids:
+        execution = session.get(ImportProfileExecution, UUID(execution_id))
+        assert execution is not None
+        budgets.append(
+            BudgetInput(source_id=execution.source_id, execution_id=execution.id)
+        )
+    return NormalizationRequest(
+        ng_source_id=review.source_id,
+        review_run_id=review.id,
+        billing_source_id=billing.source_id,
+        billing_execution_id=billing.id,
+        budgets=budgets,
+    )
+
+
 def list_reconciliation_items(
     session: Session,
     user: User,
@@ -956,6 +1177,94 @@ def list_reconciliation_items(
             query.order_by(FinancialReconciliationItem.id).limit(limit).offset(offset)
         )
     )
+
+
+def decide_reconciliation(
+    session: Session,
+    user: User,
+    run_id: UUID,
+    item_id: UUID,
+    decision: str,
+    reason: str,
+) -> FinancialReconciliationDecision:
+    run = get_run(session, user, run_id)
+    if run.status != "SUCCEEDED":
+        raise OnyxError(OnyxErrorCode.CONFLICT, "Normalization did not succeed")
+    if (
+        decision
+        not in (
+            "NG_AUTHORITATIVE",
+            "SUPPLEMENTAL",
+            "EXPECTED_DIFFERENCE",
+            "NOT_SAME_EVENT",
+        )
+        or not reason.strip()
+    ):
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Decision and reason are required")
+    item = session.scalar(
+        sa.select(FinancialReconciliationItem).where(
+            FinancialReconciliationItem.id == item_id,
+            FinancialReconciliationItem.run_id == run_id,
+        )
+    )
+    if item is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Reconciliation item not found")
+    actual = (
+        session.get(FinancialActualFact, item.actual_fact_id)
+        if item.actual_fact_id
+        else None
+    )
+    billing = (
+        session.get(FinancialBillingFact, item.billing_fact_id)
+        if item.billing_fact_id
+        else None
+    )
+    if actual is not None:
+        source_record = session.get(ParsedSourceRecord, actual.parsed_record_id)
+        assert source_record is not None
+        get_source(
+            session, user, source_record.source_id, Permission.MANAGE_TON_SOURCES
+        )
+    if billing is not None:
+        source_record = session.get(OperationalSourceRecord, billing.source_record_id)
+        assert source_record is not None
+        get_source(
+            session, user, source_record.source_id, Permission.MANAGE_TON_SOURCES
+        )
+    if decision == "NG_AUTHORITATIVE" and (actual is None or billing is None):
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT, "Authority requires paired evidence"
+        )
+    session.execute(sa.text("SELECT pg_advisory_xact_lock(4433008)"))
+    number = (
+        int(
+            session.scalar(
+                sa.select(sa.func.max(FinancialReconciliationDecision.number))
+            )
+            or 0
+        )
+        + 1
+    )
+    revision = FinancialReconciliationDecision(
+        number=number,
+        actual_source_record_id=actual.parsed_record_id if actual else None,
+        billing_source_record_id=billing.source_record_id if billing else None,
+        decision=decision,
+        reason=reason.strip(),
+        created_by=user.id,
+    )
+    session.add(revision)
+    session.flush()
+    emit_ton_audit_event(
+        session,
+        action=AuditAction.TON_FINANCIAL_RECONCILIATION_DECISION,
+        outcome=AuditOutcome.SUCCESS,
+        actor_user_id=user.id,
+        resource_kind=TonAuditResourceKind.FINANCIAL_NORMALIZATION_RUN,
+        resource_id=run_id,
+        extra={"revision": revision.number},
+    )
+    return revision
 
 
 def _fact_view(
@@ -1045,6 +1354,7 @@ def list_facts(
             )
         )
     }
+    basis_index = _basis_index(session, run.amount_basis_revision_number)
     units = {
         unit.id: unit
         for unit in session.scalars(
@@ -1084,7 +1394,11 @@ def list_facts(
         account = accounts.get(item.account_id)
         unit = units.get(item.unit_id)
         if fact_type == "ACTUAL":
-            basis = account.actual_amount_basis if account else None
+            basis = (
+                basis_index.get(account.id, account.actual_amount_basis)
+                if account
+                else None
+            )
             views.append(
                 _fact_view(
                     fact_id=item.id,
@@ -1202,6 +1516,7 @@ def readiness(
             sa.select(FinancialAccount).where(FinancialAccount.id.in_(account_ids))
         )
     }
+    basis_index = _basis_index(session, run.amount_basis_revision_number)
     aligned = sum(
         (item.account_id, item.unit_id) in budget_keys
         for item in actuals
@@ -1231,13 +1546,22 @@ def readiness(
     )
     blockers["ACTUAL_AMOUNT_SEMANTICS_UNRESOLVED"] = sum(
         item.account_id is None
-        or accounts[item.account_id].actual_amount_basis is None
+        or basis_index.get(
+            item.account_id, accounts[item.account_id].actual_amount_basis
+        )
+        is None
         or (
-            accounts[item.account_id].actual_amount_basis == "MOVEMENT"
+            basis_index.get(
+                item.account_id, accounts[item.account_id].actual_amount_basis
+            )
+            == "MOVEMENT"
             and item.movement_amount is None
         )
         or (
-            accounts[item.account_id].actual_amount_basis == "FINAL"
+            basis_index.get(
+                item.account_id, accounts[item.account_id].actual_amount_basis
+            )
+            == "FINAL"
             and item.final_amount is None
         )
         for item in actuals

@@ -954,6 +954,7 @@ class FinancialMappingRevision(Base):
     created_by: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
     )
+    reason: Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -1013,6 +1014,110 @@ class FinancialMapping(Base):
     )
 
 
+class FinancialCandidateDecision(Base):
+    """Append-only rejection of deterministic mapping evidence."""
+
+    __tablename__ = "ton_financial_candidate_decision"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_source.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_key: Mapped[str] = mapped_column(Text, nullable=False)
+    target_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    evidence: Mapped[str] = mapped_column(String(64), nullable=False)
+    reference_digest: Mapped[str | None] = mapped_column(String(64))
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "(evidence = 'EXACT_CODE' AND target_id IS NOT NULL AND reference_digest IS NULL) "
+            "OR (evidence = 'LEGACY_REFERENCE' AND target_id IS NULL AND reference_digest IS NOT NULL)",
+            name="ck_ton_financial_candidate_decision_shape",
+        ),
+        Index("ix_ton_financial_candidate_key", "source_id", "kind", "source_key"),
+    )
+
+
+class FinancialLegacyCandidate(Base):
+    """Unapproved exact-code evidence imported from a reviewed legacy reference."""
+
+    __tablename__ = "ton_financial_legacy_candidate"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_source.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    source_key: Mapped[str] = mapped_column(Text, nullable=False)
+    suggested_code: Mapped[str] = mapped_column(String(100), nullable=False)
+    suggested_label: Mapped[str | None] = mapped_column(String(500))
+    reference_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    reference_label: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        UniqueConstraint(
+            "source_id",
+            "kind",
+            "source_key",
+            "suggested_code",
+            "reference_digest",
+            name="uq_ton_financial_legacy_candidate",
+        ),
+        Index(
+            "ix_ton_financial_legacy_candidate_key", "source_id", "kind", "source_key"
+        ),
+    )
+
+
+class FinancialAmountBasisRevision(Base):
+    """Approved account basis at one immutable configuration revision."""
+
+    __tablename__ = "ton_financial_amount_basis_revision"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    number: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    account_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    basis: Mapped[str] = mapped_column(String(16), nullable=False)
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint("number > 0", name="ck_ton_financial_basis_revision_number"),
+        CheckConstraint(
+            "basis IN ('MOVEMENT', 'FINAL')",
+            name="ck_ton_financial_basis_revision_basis",
+        ),
+        Index("ix_ton_financial_basis_account", "account_id", "number"),
+    )
+
+
 class FinancialNormalizationRun(Base):
     """One immutable projection of pinned source and policy versions."""
 
@@ -1039,6 +1144,12 @@ class FinancialNormalizationRun(Base):
     )
     budget_execution_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
     mapping_revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    amount_basis_revision_number: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    reconciliation_decision_number: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
     derivation_version: Mapped[str] = mapped_column(String(100), nullable=False)
     authority_policy_version: Mapped[str] = mapped_column(String(100), nullable=False)
     statistics: Mapped[dict[str, int]] = mapped_column(
@@ -1253,12 +1364,19 @@ class FinancialBudgetFact(Base):
         PGUUID(as_uuid=True),
         ForeignKey("ton_financial_mapping.id", ondelete="RESTRICT"),
     )
+    period_mapping_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_mapping.id", ondelete="RESTRICT"),
+    )
     period_basis: Mapped[str] = mapped_column(String(32), nullable=False)
     calendar_period: Mapped[datetime.date | None] = mapped_column(Date)
     amount: Mapped[Decimal] = mapped_column(Numeric(50, 25), nullable=False)
     __table_args__ = (
         UniqueConstraint(
-            "run_id", "source_record_id", name="uq_ton_financial_budget_run_record"
+            "run_id",
+            "source_record_id",
+            "calendar_period",
+            name="uq_ton_financial_budget_run_record_period",
         ),
         Index(
             "ix_ton_financial_budget_scope",
@@ -1295,6 +1413,51 @@ class FinancialReconciliationItem(Base):
     )
 
 
+class FinancialReconciliationDecision(Base):
+    """An approved decision for exact source records, copied into later runs."""
+
+    __tablename__ = "ton_financial_reconciliation_decision"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    number: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    actual_source_record_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_parsed_source_record.id", ondelete="RESTRICT"),
+    )
+    billing_source_record_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_operational_source_record.id", ondelete="RESTRICT"),
+    )
+    decision: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "number > 0", name="ck_ton_financial_reconciliation_decision_number"
+        ),
+        CheckConstraint(
+            "actual_source_record_id IS NOT NULL OR billing_source_record_id IS NOT NULL",
+            name="ck_ton_financial_reconciliation_decision_source",
+        ),
+        CheckConstraint(
+            "decision IN ('NG_AUTHORITATIVE', 'SUPPLEMENTAL', 'EXPECTED_DIFFERENCE', 'NOT_SAME_EVENT')",
+            name="ck_ton_financial_reconciliation_decision_value",
+        ),
+        Index(
+            "ix_ton_financial_reconciliation_decision_source",
+            "actual_source_record_id",
+            "billing_source_record_id",
+            "number",
+        ),
+    )
+
+
 class DreStructure(Base):
     __tablename__ = "ton_dre_structure"
     id: Mapped[UUID] = mapped_column(
@@ -1319,6 +1482,7 @@ class DreStructureVersion(Base):
     created_by: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
     )
+    reason: Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

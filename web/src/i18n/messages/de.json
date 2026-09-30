@@ -13555,6 +13555,9 @@
         },
         "webSearch": {
           "label": "Websuche"
+        },
+        "financialReadiness": {
+          "label": "Finanzielle Bereitschaft"
         }
       },
       "sections": {
@@ -14244,5 +14247,60 @@
         }
       }
     }
+  },
+  "financialReadiness": {
+    "title": "Financial Readiness",
+    "description": "Review the evidence behind each blocked DRE period. Approvals create new revisions.",
+    "recompute": "Recompute readiness",
+    "loading": "Loading financial readiness...",
+    "loadError": "Could not load financial readiness.",
+    "noRuns": "No normalization run or DRE structure is available.",
+    "overview": "Period readiness",
+    "ready": "Ready",
+    "notReady": "Not ready",
+    "blockerCount": "{count} blocking records",
+    "empty": "No items in this view.",
+    "decisions": "Configuration decisions",
+    "units": "Units",
+    "accounts": "Accounts",
+    "budgetAccounts": "Budget accounts",
+    "budgetUnits": "Budget units",
+    "amountBasis": "Amount basis",
+    "dreAssignment": "DRE classification",
+    "drePending": "Pending DRE approval",
+    "budgetPeriods": "Budget periods",
+    "reconciliation": "Reconciliation",
+    "reconciliationAmbiguous": "Ambiguous matches",
+    "search": "Search source values",
+    "unknownSource": "Source value unavailable",
+    "affected": "{count} affected records",
+    "candidate": "Candidate: {code}",
+    "noCandidate": "No deterministic candidate",
+    "inspect": "Inspect",
+    "previous": "Previous",
+    "pageRange": "{start}?{end} of {total}",
+    "next": "Next",
+    "reviewDecision": "Review decision",
+    "sourceEvidence": "Source evidence is available in the linked record.",
+    "searchTarget": "Search canonical target",
+    "accountCode": "Account code",
+    "accountLabel": "Account label",
+    "createAccount": "Create canonical account",
+    "movement": "Movement",
+    "finalAmount": "Final",
+    "startMonth": "First month",
+    "endMonth": "Last month",
+    "SUPPLEMENTAL": "Supplemental",
+    "EXPECTED_DIFFERENCE": "Expected difference",
+    "NOT_SAME_EVENT": "Not the same event",
+    "NG_AUTHORITATIVE": "NG authoritative",
+    "reason": "Reason or reference",
+    "approvalConsequence": "This approval can affect {count} records after recomputation. It will not create an official DRE result.",
+    "savedRecompute": "Decision saved. Recompute readiness to use it.",
+    "saveError": "Could not save this decision. Check the evidence and try again.",
+    "reviewApproval": "Review approval",
+    "approve": "Apply decision",
+    "rejectCandidate": "Reject candidate",
+    "close": "Close"
   }
 }

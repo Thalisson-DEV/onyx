@@ -11,6 +11,7 @@ from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.db.ton import dre as repository
 from onyx.ton.dre.models import (
+    DreAssignmentApproval,
     DreReadinessView,
     DreResultLineView,
     DreRunView,
@@ -39,7 +40,7 @@ def create_structure(
 def list_structures(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
     session: Session = Depends(get_session),
 ) -> list[DreStructureView]:
     return repository.list_structures(session, user, limit, offset)
@@ -48,7 +49,7 @@ def list_structures(
 @router.get("/structures/{structure_id}")
 def get_structure(
     structure_id: UUID,
-    user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
     session: Session = Depends(get_session),
 ) -> DreStructureView:
     return repository.get_structure(session, user, structure_id)
@@ -66,13 +67,34 @@ def create_version(
     return result
 
 
-@router.get("/versions/{version_id}")
-def get_version(
-    version_id: UUID,
+@router.post("/structures/{structure_id}/assignments")
+def approve_assignment(
+    structure_id: UUID,
+    request: DreAssignmentApproval,
     user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
     session: Session = Depends(get_session),
 ) -> DreVersionView:
+    result = repository.approve_assignment(session, user, structure_id, request)
+    session.commit()
+    return result
+
+
+@router.get("/versions/{version_id}")
+def get_version(
+    version_id: UUID,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> DreVersionView:
     return repository.get_version(session, user, version_id)
+
+
+@router.get("/structures/{structure_id}/latest-version")
+def get_latest_version(
+    structure_id: UUID,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> DreVersionView:
+    return repository.get_latest_version(session, user, structure_id)
 
 
 @router.post("/readiness")

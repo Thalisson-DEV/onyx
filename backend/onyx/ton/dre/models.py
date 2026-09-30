@@ -58,6 +58,14 @@ class DreAccountAssignment(BaseModel):
 class DreVersionCreate(BaseModel):
     lines: list[DreLineDefinition] = Field(min_length=1)
     assignments: list[DreAccountAssignment] = Field(default_factory=list)
+    reason: str | None = Field(default=None, min_length=1, max_length=500)
+
+
+class DreAssignmentApproval(BaseModel):
+    account_id: UUID
+    line_code: str = Field(min_length=1, max_length=100)
+    status: Literal["APPROVED", "PENDING_APPROVAL"]
+    reason: str = Field(min_length=1, max_length=500)
 
 
 class DreStructureCreate(DreVersionCreate):

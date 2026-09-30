@@ -81,6 +81,9 @@ export enum Permission {
   MANAGE_SERVICE_ACCOUNT_API_KEYS = "manage:service_account_api_keys",
   MANAGE_BOTS = "manage:bots",
   FULL_ADMIN_PANEL_ACCESS = "admin",
+  READ_TON_SOURCES = "read:ton_sources",
+  MANAGE_TON_SOURCES = "manage:ton_sources",
+  IMPORT_TON_SOURCES = "import:ton_sources",
 }
 
 export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {

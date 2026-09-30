@@ -13555,6 +13555,9 @@
         },
         "webSearch": {
           "label": "Pesquisa na web"
+        },
+        "financialReadiness": {
+          "label": "Prontidão financeira"
         }
       },
       "sections": {
@@ -14244,5 +14247,60 @@
         }
       }
     }
+  },
+  "financialReadiness": {
+    "title": "Prontidão financeira",
+    "description": "Revise as evidências dos períodos bloqueados da DRE. As aprovações criam novas revisões.",
+    "recompute": "Recalcular prontidão",
+    "loading": "Carregando prontidão financeira...",
+    "loadError": "Não foi possível carregar a prontidão financeira.",
+    "noRuns": "Não há normalização ou estrutura de DRE disponível.",
+    "overview": "Prontidão por período",
+    "ready": "Pronto",
+    "notReady": "Não pronto",
+    "blockerCount": "{count} registros bloqueadores",
+    "empty": "Não há itens nesta visão.",
+    "decisions": "Decisões de configuração",
+    "units": "Unidades",
+    "accounts": "Contas",
+    "budgetAccounts": "Contas da dotação",
+    "budgetUnits": "Unidades da dotação",
+    "amountBasis": "Base do realizado",
+    "dreAssignment": "Classificação DRE",
+    "drePending": "Aprovação DRE pendente",
+    "budgetPeriods": "Períodos da dotação",
+    "reconciliation": "Conciliação",
+    "reconciliationAmbiguous": "Correspondências ambíguas",
+    "search": "Buscar valores de origem",
+    "unknownSource": "Valor de origem indisponível",
+    "affected": "{count} registros afetados",
+    "candidate": "Candidato: {code}",
+    "noCandidate": "Sem candidato determinístico",
+    "inspect": "Inspecionar",
+    "previous": "Anterior",
+    "pageRange": "{start}–{end} de {total}",
+    "next": "Próximo",
+    "reviewDecision": "Revisar decisão",
+    "sourceEvidence": "A evidência de origem está no registro vinculado.",
+    "searchTarget": "Buscar destino canônico",
+    "accountCode": "Código da conta",
+    "accountLabel": "Nome da conta",
+    "createAccount": "Criar conta canônica",
+    "movement": "Movimento",
+    "finalAmount": "Final",
+    "startMonth": "Primeiro mês",
+    "endMonth": "Último mês",
+    "SUPPLEMENTAL": "Suplementar",
+    "EXPECTED_DIFFERENCE": "Diferença esperada",
+    "NOT_SAME_EVENT": "Eventos diferentes",
+    "NG_AUTHORITATIVE": "NG autoritativo",
+    "reason": "Motivo ou referência",
+    "approvalConsequence": "Esta aprovação pode afetar {count} registros após recalcular. Ela não cria um resultado oficial de DRE.",
+    "savedRecompute": "Decisão salva. Recalcule a prontidão para aplicá-la.",
+    "saveError": "Não foi possível salvar a decisão. Confira a evidência e tente novamente.",
+    "reviewApproval": "Revisar aprovação",
+    "approve": "Aplicar decisão",
+    "rejectCandidate": "Rejeitar candidato",
+    "close": "Fechar"
   }
 }

@@ -79,3 +79,10 @@ The DRE input service returns paged facts and blockers. DATA-005A/B consumes
 that boundary. A blocked scope produces no official result lines. A ready
 calculation pins the normalization, DRE version, policy versions, and source
 lineage in an immutable result revision. No dashboard is in this slice.
+
+DATA-006A/B adds a financial readiness workspace above that boundary. It shows
+period blockers and paged source evidence. Exact code and legacy reference
+evidence remain candidates. Human mapping, amount basis, DRE assignment,
+budget period, and reconciliation decisions create append-only revisions.
+A new normalization pins those revisions. Readiness can change without
+creating an official DRE result. DATA-005 calculation remains an explicit act.

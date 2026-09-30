@@ -34,6 +34,13 @@ class AccountView(BaseModel):
     actual_amount_basis: Literal["MOVEMENT", "FINAL"] | None
 
 
+class UnitView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    code: str
+    name: str
+
+
 class MappingCreate(BaseModel):
     source_id: UUID
     kind: MappingKind
@@ -44,6 +51,7 @@ class MappingCreate(BaseModel):
     source_snapshot_id: UUID | None = None
     effective_from: date | None = None
     effective_to: date | None = None
+    reason: str | None = Field(default=None, min_length=1, max_length=500)
 
 
 class MappingView(BaseModel):
@@ -60,6 +68,22 @@ class MappingView(BaseModel):
     effective_from: date | None
     effective_to: date | None
     revision_number: int
+
+
+class AmountBasisApproval(BaseModel):
+    basis: Literal["MOVEMENT", "FINAL"]
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class AmountBasisRevisionView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    number: int
+    account_id: UUID
+    basis: Literal["MOVEMENT", "FINAL"]
+    reason: str
+    created_by: UUID | None
+    created_at: datetime
 
 
 class BudgetInput(BaseModel):
@@ -87,6 +111,8 @@ class NormalizationView(BaseModel):
     billing_execution_id: UUID
     budget_execution_ids: list[str]
     mapping_revision_number: int
+    amount_basis_revision_number: int
+    reconciliation_decision_number: int
     derivation_version: str
     authority_policy_version: str
     statistics: dict[str, int]

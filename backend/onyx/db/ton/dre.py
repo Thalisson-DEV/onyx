@@ -33,6 +33,8 @@ from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.ton.dre.engine import ENGINE_VERSION, calculate, calculation_order
 from onyx.ton.dre.models import (
+    DreAccountAssignment,
+    DreAssignmentApproval,
     DreLineDefinition,
     DreLineType,
     DreReadinessView,
@@ -113,6 +115,7 @@ def _create_version(
         number=number,
         lines=[item.model_dump(mode="json") for item in request.lines],
         created_by=user.id,
+        reason=request.reason,
     )
     session.add(version)
     session.flush()
@@ -167,10 +170,42 @@ def create_version(
     return _create_version(session, user, structure, int(latest or 0) + 1, request)
 
 
-def list_structures(
-    session: Session, user: User, limit: int, offset: int
-) -> list[DreStructureView]:
+def approve_assignment(
+    session: Session, user: User, structure_id: UUID, request: DreAssignmentApproval
+) -> DreVersionView:
     _require_admin(user)
+    structure = get_structure(session, user, structure_id)
+    version = session.scalar(
+        sa.select(DreStructureVersion)
+        .where(DreStructureVersion.structure_id == structure.id)
+        .order_by(DreStructureVersion.number.desc())
+        .limit(1)
+    )
+    assert version is not None
+    current = _version_view(session, version)
+    assignments = [
+        item for item in current.assignments if item.account_id != request.account_id
+    ]
+    assignments.append(
+        DreAccountAssignment(
+            account_id=request.account_id,
+            line_code=request.line_code,
+            status=request.status,
+        )
+    )
+    return create_version(
+        session,
+        user,
+        structure_id,
+        DreVersionCreate(
+            lines=current.lines, assignments=assignments, reason=request.reason
+        ),
+    )
+
+
+def list_structures(
+    session: Session, _user: User, limit: int, offset: int
+) -> list[DreStructureView]:
     check_page(limit, offset)
     rows = session.execute(
         sa.select(DreStructure, sa.func.max(DreStructureVersion.number))
@@ -191,8 +226,9 @@ def list_structures(
     ]
 
 
-def get_structure(session: Session, user: User, structure_id: UUID) -> DreStructureView:
-    _require_admin(user)
+def get_structure(
+    session: Session, _user: User, structure_id: UUID
+) -> DreStructureView:
     structure = session.get(DreStructure, structure_id)
     if structure is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "DRE structure not found")
@@ -209,11 +245,24 @@ def get_structure(session: Session, user: User, structure_id: UUID) -> DreStruct
     )
 
 
-def get_version(session: Session, user: User, version_id: UUID) -> DreVersionView:
-    _require_admin(user)
+def get_version(session: Session, _user: User, version_id: UUID) -> DreVersionView:
     version = session.get(DreStructureVersion, version_id)
     if version is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "DRE version not found")
+    return _version_view(session, version)
+
+
+def get_latest_version(
+    session: Session, user: User, structure_id: UUID
+) -> DreVersionView:
+    get_structure(session, user, structure_id)
+    version = session.scalar(
+        sa.select(DreStructureVersion)
+        .where(DreStructureVersion.structure_id == structure_id)
+        .order_by(DreStructureVersion.number.desc())
+        .limit(1)
+    )
+    assert version is not None
     return _version_view(session, version)
 
 
@@ -455,6 +504,8 @@ def execute(session: Session, user: User, scope: DreScope) -> DreRunView:
             str(item.snapshot_id) for item in executions if item is not None
         ],
         "financial_mapping_revision": normalization.mapping_revision_number,
+        "amount_basis_revision": normalization.amount_basis_revision_number,
+        "reconciliation_decision_revision": normalization.reconciliation_decision_number,
         "dre_structure_version_id": str(version.id),
         "dre_structure_version_number": version.number,
         "authority_policy_version": normalization.authority_policy_version,

@@ -95,6 +95,16 @@ export interface AdminRouteEntry {
 }
 
 export const ADMIN_ROUTES = {
+  FINANCIAL_READINESS: {
+    path: "/admin/financial-readiness",
+    icon: SvgBarChart,
+    title: "Financial Readiness",
+    sidebarLabel: "Financial Readiness",
+    requiredPermission: Permission.READ_TON_SOURCES,
+    section: "",
+    requiredTier: null,
+    visibleWhen: null,
+  },
   // ── System Configuration (unlabeled section) ──────────────────────
   LLM_MODELS: {
     path: "/admin/language-models",

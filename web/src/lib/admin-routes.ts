@@ -95,6 +95,16 @@ export interface AdminRouteEntry {
 }
 
 export const ADMIN_ROUTES = {
+  DATA_SOURCES: {
+    path: "/ton/data-sources",
+    icon: SvgUploadCloud,
+    title: "Fontes de dados",
+    sidebarLabel: "Fontes de dados",
+    requiredPermission: Permission.READ_TON_SOURCES,
+    section: "",
+    requiredTier: null,
+    visibleWhen: null,
+  },
   DRE: {
     path: "/admin/dre",
     icon: SvgBarChart,

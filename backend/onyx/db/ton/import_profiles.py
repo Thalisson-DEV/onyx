@@ -43,12 +43,13 @@ MAX_STORED_DIAGNOSTICS = 2000
 
 
 def create_ng_profile_v1(
-    session: Session, user: User, source_id: UUID
+    session: Session,
+    user: User,
+    source_id: UUID,
+    permission: Permission = Permission.MANAGE_TON_SOURCES,
 ) -> ImportProfile:
     """Idempotent: the v1 contract is fixed, so an existing row is returned."""
-    source = get_source(
-        session, user, source_id, Permission.MANAGE_TON_SOURCES, lock=True
-    )
+    source = get_source(session, user, source_id, permission, lock=True)
     if source.key != SOURCE_KEY:
         raise OnyxError(
             OnyxErrorCode.INVALID_INPUT,

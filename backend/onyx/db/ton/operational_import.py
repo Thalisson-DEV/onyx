@@ -47,14 +47,16 @@ PROFILE_CONTRACTS: dict[str, tuple[str, SourceFormat, dict[str, str]]] = {
 
 
 def create_operational_profile(
-    session: Session, user: User, source_id: UUID, key: str
+    session: Session,
+    user: User,
+    source_id: UUID,
+    key: str,
+    permission: Permission = Permission.MANAGE_TON_SOURCES,
 ) -> ImportProfile:
     contract = PROFILE_CONTRACTS.get(key)
     if contract is None:
         raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Unknown operational profile")
-    source = get_source(
-        session, user, source_id, Permission.MANAGE_TON_SOURCES, lock=True
-    )
+    source = get_source(session, user, source_id, permission, lock=True)
     source_key, format, column_map = contract
     if source.key != source_key:
         raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Profile source key differs")

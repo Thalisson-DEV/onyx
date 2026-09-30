@@ -116,6 +116,7 @@ async function postJson(
 
 function FinancialReadinessPage() {
   const t = useTranslations("financialReadiness");
+  const nav = useTranslations("sidebar");
   const searchParams = useSearchParams();
   const format = useFormatter();
   const { user } = useUser();
@@ -442,6 +443,11 @@ function FinancialReadinessPage() {
         }
       />
       <SettingsLayouts.Body>
+        <div className="pb-5">
+          <Button href="/ton/data-sources" prominence="secondary">
+            {nav("adminNav.items.dataSources.label")}
+          </Button>
+        </div>
         {loading && (
           <div role="status">
             <SvgSimpleLoader />

@@ -72,6 +72,7 @@ function isBlockerKey(value: string): value is (typeof BLOCKER_KEYS)[number] {
 
 function DrePage() {
   const t = useTranslations("dre");
+  const nav = useTranslations("sidebar");
   const format = useFormatter();
   const { user } = useUser();
   const permissions = user?.effective_permissions ?? [];
@@ -319,6 +320,11 @@ function DrePage() {
         divider
       />
       <SettingsLayouts.Body>
+        <div className="pb-5">
+          <Button href="/ton/data-sources" prominence="secondary">
+            {nav("adminNav.items.dataSources.label")}
+          </Button>
+        </div>
         {!canRead && (
           <Text font="main-ui-body" color="text-03">
             {t("permissionDenied")}

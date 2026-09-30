@@ -15,6 +15,7 @@ from onyx.db.ton.models import DreCalculationRun, DreResultLine, TonAuditEvent
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import FileStore
 from onyx.server.ton.dre import calculate as calculate_route
+from onyx.server.ton.dre import export_calculation
 from onyx.ton.dre.models import (
     DreAccountAssignment,
     DreLineDefinition,
@@ -161,6 +162,50 @@ def test_synthetic_ready_revision_and_mapping_governance(
     assert ready.provenance["budget_execution_ids"]
     assert ready.provenance["ng_source_snapshot_id"]
     assert ready.id != blocked.id
+
+    statement = repository.get_statement(ton_session, admin, ready.id)
+    assert statement.version.id == approved.id
+    assert statement.version.lines[0].line_type == DreLineType.SUBTOTAL
+    assert statement.lines == lines
+    revisions = repository.list_calculations(
+        ton_session, admin, datetime.date(2026, 1, 1), unit_id, 10, 0
+    )
+    assert {item.id for item in revisions} == {blocked.id, ready.id}
+    series = repository.get_period_series(
+        ton_session, admin, normalization_id, approved.id, 2026, unit_id, "result"
+    )
+    assert len(series) == 1
+    assert series[0].realizado == by_code["result"].realizado
+    actual_page = repository.list_contributors(
+        ton_session, admin, ready.id, "service", "ACTUAL", 1, 0
+    )
+    budget_page = repository.list_contributors(
+        ton_session, admin, ready.id, "service", "BUDGET", 1, 0
+    )
+    assert actual_page.total == 1
+    assert actual_page.rows[0].amount == by_code["service"].realizado
+    assert actual_page.rows[0].amount_basis == "MOVEMENT"
+    assert actual_page.rows[0].sheet_name
+    assert budget_page.total == 2
+    budget_next_page = repository.list_contributors(
+        ton_session, admin, ready.id, "service", "BUDGET", 1, 1
+    )
+    assert (
+        budget_page.rows[0].amount + budget_next_page.rows[0].amount
+        == by_code["service"].orcado
+    )
+    assert (
+        repository.list_contributors(
+            ton_session, admin, ready.id, "service", "ACTUAL", 1, 1
+        ).rows
+        == []
+    )
+    csv_response = export_calculation(ready.id, admin, ton_session)
+    assert b"result" in csv_response.body
+    assert str(by_code["result"].realizado).encode() in csv_response.body
+    assert str(ready.id).encode() in csv_response.body
+    with pytest.raises(OnyxError):
+        export_calculation(blocked.id, admin, ton_session)
 
     renamed_lines = _lines()
     renamed_lines[1].label = "Renamed service"

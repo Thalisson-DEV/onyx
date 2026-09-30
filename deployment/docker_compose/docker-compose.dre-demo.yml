@@ -1,0 +1,5 @@
+# Apply after the lite and dev overlays to use an isolated local demo database.
+services:
+  api_server:
+    environment:
+      - POSTGRES_DB=onyx_dre_demo

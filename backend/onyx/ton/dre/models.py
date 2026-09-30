@@ -127,3 +127,43 @@ class DreRunView(BaseModel):
     provenance: dict[str, object]
     started_at: datetime
     finished_at: datetime
+
+
+class DreContributorView(BaseModel):
+    id: UUID
+    fact_type: Literal["ACTUAL", "BUDGET"]
+    period: date
+    account_code: str
+    account_label: str
+    unit_code: str
+    amount: Decimal
+    amount_basis: str
+    record_date: date | None
+    source_name: str
+    original_filename: str
+    source_id: UUID
+    source_snapshot_id: UUID
+    source_execution_id: UUID
+    sheet_name: str
+    source_row_number: int
+    reference: str | None
+    review_status: str | None
+
+
+class DreContributorPage(BaseModel):
+    total: int
+    rows: list[DreContributorView]
+
+
+class DreStatementView(BaseModel):
+    run: DreRunView
+    version: DreVersionView
+    lines: list[DreResultLineView]
+
+
+class DrePeriodPoint(BaseModel):
+    period: date
+    result_id: UUID
+    realizado: Decimal
+    orcado: Decimal
+    variance: Decimal

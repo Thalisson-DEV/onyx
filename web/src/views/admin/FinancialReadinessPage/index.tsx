@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import useSWR from "swr";
+import { useSearchParams } from "next/navigation";
 import { Button, InputTypeIn, Text } from "@opal/components";
 import { SvgBarChart, SvgSimpleLoader } from "@opal/icons";
 import { SettingsLayouts } from "@opal/layouts";
@@ -103,7 +104,7 @@ const RECONCILIATION_DECISIONS = [
 
 async function postJson(
   path: string,
-  body: Record<string, string | null>,
+  body: Record<string, string | null>
 ): Promise<void> {
   const response = await fetch(path, {
     method: "POST",
@@ -115,22 +116,34 @@ async function postJson(
 
 function FinancialReadinessPage() {
   const t = useTranslations("financialReadiness");
+  const searchParams = useSearchParams();
   const format = useFormatter();
   const { user } = useUser();
   const permissions = user?.effective_permissions ?? [];
   const canManage = hasPermission(permissions, Permission.MANAGE_TON_SOURCES);
   const canConfigure = hasPermission(
     permissions,
-    Permission.FULL_ADMIN_PANEL_ACCESS,
+    Permission.FULL_ADMIN_PANEL_ACCESS
   );
   const canRecompute = hasPermission(
     permissions,
-    Permission.IMPORT_TON_SOURCES,
+    Permission.IMPORT_TON_SOURCES
   );
-  const [runSelection, setRunSelection] = useState("");
+  const [runSelection, setRunSelection] = useState(
+    searchParams.get("normalization") ?? ""
+  );
   const [structureSelection, setStructureSelection] = useState("");
-  const [unitSelection, setUnitSelection] = useState("");
-  const [categoryIndex, setCategoryIndex] = useState(0);
+  const [unitSelection, setUnitSelection] = useState(
+    searchParams.get("unit") ?? ""
+  );
+  const [categoryIndex, setCategoryIndex] = useState(
+    Math.max(
+      0,
+      CATEGORIES.findIndex(
+        (item) => item.blocker === searchParams.get("blocker")
+      )
+    )
+  );
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
   const [selected, setSelected] = useState<BlockerRow | null>(null);
@@ -151,15 +164,15 @@ function FinancialReadinessPage() {
 
   const runs = useSWR<Normalization[]>(
     "/api/ton/financial-domain/normalizations?limit=20",
-    errorHandlingFetcher,
+    errorHandlingFetcher
   );
   const structures = useSWR<Structure[]>(
     "/api/ton/dre/structures?limit=100",
-    errorHandlingFetcher,
+    errorHandlingFetcher
   );
   const visibleUnits = useSWR<Target[]>(
     !canConfigure ? "/api/ton/financial-domain/units?limit=100" : null,
-    errorHandlingFetcher,
+    errorHandlingFetcher
   );
   const unitId = canConfigure
     ? undefined
@@ -170,20 +183,20 @@ function FinancialReadinessPage() {
     structureId
       ? `/api/ton/dre/structures/${structureId}/latest-version`
       : null,
-    errorHandlingFetcher,
+    errorHandlingFetcher
   );
   const overview = useSWR<Overview>(
     runId && version.data && (canConfigure || unitId)
       ? `/api/ton/financial-domain/normalizations/${runId}/readiness?structure_version_id=${version.data.id}${unitId ? `&unit_id=${unitId}` : ""}`
       : null,
-    errorHandlingFetcher,
+    errorHandlingFetcher
   );
   const extraBlockers = Array.from(
     new Set(
       (overview.data?.periods ?? []).flatMap((period) =>
-        Object.keys(period.blockers),
-      ),
-    ),
+        Object.keys(period.blockers)
+      )
+    )
   ).filter((blocker) => !CATEGORIES.some((item) => item.blocker === blocker));
   const categories = [
     ...CATEGORIES.map((item) => ({ ...item, label: t(item.key) })),
@@ -216,7 +229,7 @@ function FinancialReadinessPage() {
     selected && isMapping
       ? `/api/ton/financial-domain/${targetType}?limit=50&search=${encodeURIComponent(targetSearch)}`
       : null,
-    errorHandlingFetcher,
+    errorHandlingFetcher
   );
 
   function openRow(row: BlockerRow) {
@@ -260,7 +273,7 @@ function FinancialReadinessPage() {
         if (!selected.account_id) return;
         await postJson(
           `/api/ton/financial-domain/accounts/${selected.account_id}/amount-basis`,
-          { basis, reason },
+          { basis, reason }
         );
       } else if (
         category.key === "dreAssignment" ||
@@ -288,7 +301,7 @@ function FinancialReadinessPage() {
         if (!selected.item_id) return;
         await postJson(
           `/api/ton/financial-domain/normalizations/${runId}/reconciliation/items/${selected.item_id}/decision`,
-          { decision, reason },
+          { decision, reason }
         );
       }
       setSaved(true);
@@ -367,7 +380,7 @@ function FinancialReadinessPage() {
     try {
       await postJson(
         `/api/ton/financial-domain/normalizations/${runId}/recompute`,
-        {},
+        {}
       );
       setRunSelection("");
       await runs.mutate();
@@ -511,7 +524,11 @@ function FinancialReadinessPage() {
                 {(overview.data?.periods ?? []).map((period) => (
                   <div
                     key={period.scope.period}
-                    className="flex flex-wrap items-center justify-between gap-3 border-b border-01 py-3"
+                    className={
+                      period.scope.period === searchParams.get("period")
+                        ? "flex flex-wrap items-center justify-between gap-3 border-b-2 border-02 py-3"
+                        : "flex flex-wrap items-center justify-between gap-3 border-b border-01 py-3"
+                    }
                   >
                     <Text font="main-ui-body" color="text-05">
                       {format.dateTime(new Date(period.scope.period), {
@@ -533,7 +550,7 @@ function FinancialReadinessPage() {
                       {t("blockerCount", {
                         count: Object.values(period.blockers).reduce(
                           (sum, value) => sum + value,
-                          0,
+                          0
                         ),
                       })}
                     </Text>
@@ -547,8 +564,8 @@ function FinancialReadinessPage() {
                             onClick={() => {
                               setCategoryIndex(
                                 categories.findIndex(
-                                  (item) => item.blocker === blocker,
-                                ),
+                                  (item) => item.blocker === blocker
+                                )
                               );
                               setOffset(0);
                               setSelected(null);
@@ -556,7 +573,7 @@ function FinancialReadinessPage() {
                           >
                             {`${blocker.replaceAll("_", " ")} (${count})`}
                           </Button>
-                        ),
+                        )
                       )}
                     </div>
                   </div>
@@ -808,7 +825,7 @@ function FinancialReadinessPage() {
                       <div className="flex flex-wrap gap-2">
                         {RECONCILIATION_DECISIONS.filter(
                           (value) =>
-                            value !== "NG_AUTHORITATIVE" || selected.paired,
+                            value !== "NG_AUTHORITATIVE" || selected.paired
                         ).map((value) => (
                           <Button
                             key={value}

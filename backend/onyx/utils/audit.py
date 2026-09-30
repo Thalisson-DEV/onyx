@@ -156,6 +156,7 @@ class AuditAction(str, Enum):
     TON_DRE_CALCULATE_BLOCKED = "ton_dre.calculate_blocked"
     TON_DRE_CALCULATE_SUCCEED = "ton_dre.calculate_succeed"
     TON_DRE_CALCULATE_FAIL = "ton_dre.calculate_fail"
+    TON_DRE_EXPORT = "ton_dre.export"
 
 
 _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
@@ -248,6 +249,7 @@ _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
     AuditAction.TON_DRE_CALCULATE_BLOCKED: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_DRE_CALCULATE_SUCCEED: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_DRE_CALCULATE_FAIL: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_DRE_EXPORT: OCSFEventClass.API_ACTIVITY,
 }
 
 # Guard: every action must map to a class, so a new action can't ship untagged.

@@ -17,6 +17,7 @@ jest.mock("@/providers/UserProvider", () => ({
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
   usePathname: () => "/admin/financial-readiness",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 jest.mock("next-intl", () => ({
@@ -90,7 +91,7 @@ beforeEach(() => {
         isLoading: mode === "loading",
         isValidating: false,
         mutate: jest.fn(),
-      }) as ReturnType<typeof useSWR>,
+      }) as ReturnType<typeof useSWR>
   );
   global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200 });
 });
@@ -102,12 +103,12 @@ it("shows loading, error, and empty states", () => {
   mode = "error";
   view.rerender(<FinancialReadinessPage />);
   expect(
-    screen.getByText("Could not load financial readiness."),
+    screen.getByText("Could not load financial readiness.")
   ).toBeInTheDocument();
   mode = "empty";
   view.rerender(<FinancialReadinessPage />);
   expect(
-    screen.getByText("No normalization run or DRE structure is available."),
+    screen.getByText("No normalization run or DRE structure is available.")
   ).toBeInTheDocument();
 });
 
@@ -120,7 +121,7 @@ it("requires a reason and confirmation before approving a candidate", async () =
   expect(review).toBeDisabled();
   await user.type(
     screen.getByRole("textbox", { name: "Reason or reference" }),
-    "Checked source code",
+    "Checked source code"
   );
   await user.click(review);
   expect(global.fetch).not.toHaveBeenCalled();

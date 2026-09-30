@@ -24,9 +24,15 @@ from onyx.db.ton.models import (
     DreStructure,
     DreStructureVersion,
     FinancialAccount,
+    FinancialActualFact,
+    FinancialBudgetFact,
     FinancialNormalizationRun,
     ImportProfileExecution,
+    OperationalSourceRecord,
+    ParsedSourceRecord,
     ReviewRun,
+    Source,
+    SourceSnapshot,
 )
 from onyx.db.ton.sources import check_page, get_source
 from onyx.error_handling.error_codes import OnyxErrorCode
@@ -35,12 +41,16 @@ from onyx.ton.dre.engine import ENGINE_VERSION, calculate, calculation_order
 from onyx.ton.dre.models import (
     DreAccountAssignment,
     DreAssignmentApproval,
+    DreContributorPage,
+    DreContributorView,
     DreLineDefinition,
     DreLineType,
+    DrePeriodPoint,
     DreReadinessView,
     DreResultLineView,
     DreRunView,
     DreScope,
+    DreStatementView,
     DreStructureCreate,
     DreStructureView,
     DreVersionCreate,
@@ -589,6 +599,245 @@ def list_result_lines(
     return [
         DreResultLineView.model_validate(item, from_attributes=True) for item in rows
     ]
+
+
+def get_statement(session: Session, user: User, run_id: UUID) -> DreStatementView:
+    run = get_calculation(session, user, run_id)
+    if run.status != "READY":
+        raise OnyxError(OnyxErrorCode.CONFLICT, "DRE result is not ready")
+    version = get_version(session, user, run.scope.structure_version_id)
+    lines = [
+        DreResultLineView.model_validate(item, from_attributes=True)
+        for item in session.scalars(
+            sa.select(DreResultLine)
+            .where(DreResultLine.run_id == run_id)
+            .order_by(DreResultLine.position)
+        )
+    ]
+    return DreStatementView(run=run, version=version, lines=lines)
+
+
+def get_period_series(
+    session: Session,
+    user: User,
+    normalization_run_id: UUID,
+    structure_version_id: UUID,
+    year: int,
+    unit_id: UUID | None,
+    line_code: str,
+) -> list[DrePeriodPoint]:
+    financial_domain.get_run(session, user, normalization_run_id)
+    if unit_id is None and not is_ton_administrator(user):
+        raise OnyxError(
+            OnyxErrorCode.ADMIN_ONLY, "Consolidated DRE requires admin access"
+        )
+    if (
+        unit_id is not None
+        and session.scalar(
+            sa.select(BusinessUnit.id).where(
+                BusinessUnit.id == unit_id, business_unit_visible_clause(user)
+            )
+        )
+        is None
+    ):
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Business unit not found")
+    start = datetime.date(year, 1, 1)
+    end = datetime.date(year + 1, 1, 1)
+    rows = session.execute(
+        sa.select(DreCalculationRun, DreResultLine)
+        .join(DreResultLine, DreResultLine.run_id == DreCalculationRun.id)
+        .where(
+            DreCalculationRun.normalization_run_id == normalization_run_id,
+            DreCalculationRun.structure_version_id == structure_version_id,
+            DreCalculationRun.unit_id == unit_id,
+            DreCalculationRun.status == "READY",
+            DreCalculationRun.period >= start,
+            DreCalculationRun.period < end,
+            DreResultLine.code == line_code,
+        )
+        .order_by(DreCalculationRun.period)
+    ).all()
+    return [
+        DrePeriodPoint(
+            period=run.period,
+            result_id=run.id,
+            realizado=line.realizado,
+            orcado=line.orcado,
+            variance=line.variance,
+        )
+        for run, line in rows
+    ]
+
+
+def list_calculations(
+    session: Session,
+    user: User,
+    period: datetime.date,
+    unit_id: UUID | None,
+    limit: int,
+    offset: int,
+) -> list[DreRunView]:
+    check_page(limit, offset)
+    if period.day != 1:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Period must start on day one")
+    if unit_id is None and not is_ton_administrator(user):
+        raise OnyxError(
+            OnyxErrorCode.ADMIN_ONLY, "Consolidated DRE requires admin access"
+        )
+    if (
+        unit_id is not None
+        and session.scalar(
+            sa.select(BusinessUnit.id).where(
+                BusinessUnit.id == unit_id, business_unit_visible_clause(user)
+            )
+        )
+        is None
+    ):
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Business unit not found")
+    query = (
+        sa.select(DreCalculationRun)
+        .where(DreCalculationRun.period == period, DreCalculationRun.unit_id == unit_id)
+        .order_by(DreCalculationRun.finished_at.desc(), DreCalculationRun.id.desc())
+    )
+    visible: list[DreRunView] = []
+    for run in session.scalars(query):
+        try:
+            financial_domain.get_run(session, user, run.normalization_run_id)
+        except OnyxError as error:
+            if error.error_code == OnyxErrorCode.NOT_FOUND:
+                continue
+            raise
+        visible.append(_run_view(run))
+        if len(visible) >= offset + limit:
+            break
+    return visible[offset : offset + limit]
+
+
+def list_contributors(
+    session: Session,
+    user: User,
+    run_id: UUID,
+    line_code: str,
+    fact_type: str,
+    limit: int,
+    offset: int,
+) -> DreContributorPage:
+    run = get_calculation(session, user, run_id)
+    if run.status != "READY":
+        raise OnyxError(OnyxErrorCode.CONFLICT, "DRE result is not ready")
+    check_page(limit, offset)
+    definition = session.get(DreStructureVersion, run.scope.structure_version_id)
+    assert definition is not None
+    line = next((item for item in definition.lines if item["code"] == line_code), None)
+    if line is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "DRE line not found")
+    if line["line_type"] != DreLineType.SOURCE_SUM:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT, "Only source lines have direct contributors"
+        )
+    if fact_type not in ("ACTUAL", "BUDGET"):
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Unknown contributor type")
+    fact_model = FinancialActualFact if fact_type == "ACTUAL" else FinancialBudgetFact
+    source_model = (
+        ParsedSourceRecord if fact_type == "ACTUAL" else OperationalSourceRecord
+    )
+    source_id_column = (
+        fact_model.parsed_record_id
+        if fact_type == "ACTUAL"
+        else fact_model.source_record_id
+    )
+    conditions = [
+        fact_model.run_id == run.scope.normalization_run_id,
+        fact_model.calendar_period == run.scope.period,
+        DreAccountMapping.version_id == run.scope.structure_version_id,
+        DreAccountMapping.line_code == line_code,
+        DreAccountMapping.status == "APPROVED",
+    ]
+    if run.scope.unit_id is not None:
+        conditions.append(fact_model.unit_id == run.scope.unit_id)
+    joined = (
+        sa.select(
+            fact_model,
+            source_model,
+            FinancialAccount,
+            BusinessUnit,
+            Source,
+            SourceSnapshot,
+        )
+        .join(DreAccountMapping, DreAccountMapping.account_id == fact_model.account_id)
+        .join(source_model, source_model.id == source_id_column)
+        .join(FinancialAccount, FinancialAccount.id == fact_model.account_id)
+        .join(BusinessUnit, BusinessUnit.id == fact_model.unit_id)
+        .join(Source, Source.id == source_model.source_id)
+        .join(SourceSnapshot, SourceSnapshot.id == source_model.snapshot_id)
+        .where(*conditions)
+    )
+    total = (
+        session.scalar(sa.select(sa.func.count()).select_from(joined.subquery())) or 0
+    )
+    rows = session.execute(
+        joined.order_by(fact_model.id).limit(limit).offset(offset)
+    ).all()
+    normalization = session.get(
+        FinancialNormalizationRun, run.scope.normalization_run_id
+    )
+    assert normalization is not None
+    basis_index = (
+        financial_domain._basis_index(
+            session, normalization.amount_basis_revision_number
+        )
+        if fact_type == "ACTUAL"
+        else {}
+    )
+    contributors: list[DreContributorView] = []
+    for fact, source, account, unit, source_info, snapshot in rows:
+        if fact_type == "ACTUAL":
+            basis = basis_index.get(account.id, account.actual_amount_basis)
+            amount = fact.movement_amount if basis == "MOVEMENT" else fact.final_amount
+            reference = source.document_number
+            review_status = fact.disposition
+            record_date = fact.emission_date
+        else:
+            basis = fact.period_basis
+            amount = fact.amount
+            reference = source.identifier
+            review_status = None
+            record_date = source.record_date
+        assert amount is not None and basis is not None
+        contributors.append(
+            DreContributorView(
+                id=fact.id,
+                fact_type=fact_type,
+                period=run.scope.period,
+                account_code=account.code,
+                account_label=account.label,
+                unit_code=unit.code,
+                amount=amount,
+                amount_basis=basis,
+                record_date=record_date,
+                source_name=source_info.display_name,
+                original_filename=snapshot.original_filename or "",
+                source_id=source.source_id,
+                source_snapshot_id=source.snapshot_id,
+                source_execution_id=source.execution_id,
+                sheet_name=source.sheet_name,
+                source_row_number=source.source_row_number,
+                reference=reference,
+                review_status=review_status,
+            )
+        )
+    return DreContributorPage(total=total, rows=contributors)
+
+
+def audit_export(session: Session, user: User, run_id: UUID) -> None:
+    emit_ton_audit_event(
+        session,
+        action=AuditAction.TON_DRE_EXPORT,
+        outcome=AuditOutcome.SUCCESS,
+        actor_user_id=user.id,
+        resource_kind=TonAuditResourceKind.DRE_CALCULATION_RUN,
+        resource_id=run_id,
+    )
 
 
 def audit_failed_calculation(session: Session, user: User, version_id: UUID) -> None:

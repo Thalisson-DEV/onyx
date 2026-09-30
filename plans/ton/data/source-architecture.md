@@ -22,7 +22,8 @@ CONNECTED SOURCE or ASSISTED SOURCE
   -> DRE Readiness + approved structure/account mapping version
   -> DRE Calculation Run
   -> Versioned DRE Result
-  -> future dashboard / reports / specialists
+  -> DRE Dashboard / paged Drill-down / CSV Export (DATA-006C/D)
+  -> future reports / specialists
 ```
 
 Source.id and Source.key identify a logical input within its tenant.
@@ -78,7 +79,7 @@ remain independent and need an explicit calendar period before comparison.
 The DRE input service returns paged facts and blockers. DATA-005A/B consumes
 that boundary. A blocked scope produces no official result lines. A ready
 calculation pins the normalization, DRE version, policy versions, and source
-lineage in an immutable result revision. No dashboard is in this slice.
+lineage in an immutable result revision.
 
 DATA-006A/B adds a financial readiness workspace above that boundary. It shows
 period blockers and paged source evidence. Exact code and legacy reference
@@ -86,3 +87,8 @@ evidence remain candidates. Human mapping, amount basis, DRE assignment,
 budget period, and reconciliation decisions create append-only revisions.
 A new normalization pins those revisions. Readiness can change without
 creating an official DRE result. DATA-005 calculation remains an explicit act.
+
+DATA-006C/D reads readiness before showing a result. The DRE workspace shows
+blockers for an unready scope and links to Financial Readiness. A ready scope
+can show stored result revisions, a period series, and paged source facts.
+The CSV export reads stored result lines. It does not calculate financial values.

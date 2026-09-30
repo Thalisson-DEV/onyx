@@ -95,6 +95,16 @@ export interface AdminRouteEntry {
 }
 
 export const ADMIN_ROUTES = {
+  DRE: {
+    path: "/admin/dre",
+    icon: SvgBarChart,
+    title: "DRE",
+    sidebarLabel: "DRE",
+    requiredPermission: Permission.READ_TON_SOURCES,
+    section: "",
+    requiredTier: null,
+    visibleWhen: null,
+  },
   FINANCIAL_READINESS: {
     path: "/admin/financial-readiness",
     icon: SvgBarChart,

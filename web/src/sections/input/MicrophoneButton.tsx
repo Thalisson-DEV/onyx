@@ -74,7 +74,11 @@ function MicrophoneButton({
 }: MicrophoneButtonProps) {
   const t = useTranslations("chat.input");
   const locale = useLocale();
-  const lang = LOCALE_TO_SPEECH_LANG[locale] ?? "pt-BR";
+  // SAFETY: RuntimeLocale starts with a supported locale before its numbering extension.
+  const baseLocale = locale.split(
+    "-u-nu-"
+  )[0] as keyof typeof LOCALE_TO_SPEECH_LANG;
+  const lang = LOCALE_TO_SPEECH_LANG[baseLocale] ?? "pt-BR";
 
   // Snapshot of existing message text when recording starts (for append mode)
   const messagePrefixRef = useRef("");
@@ -119,7 +123,7 @@ function MicrophoneButton({
   const effectiveIsSupported =
     isSupportedProp !== undefined
       ? isSupportedProp
-      : (isNativeSupported || isSpeechRecognitionSupported());
+      : isNativeSupported || isSpeechRecognitionSupported();
 
   // Expose stopRecording to parent (e.g. submitMessage stopping recording cleanly)
   useEffect(() => {

@@ -1,8 +1,12 @@
-"""Minimal DRE configuration, readiness, and calculation API."""
+"""DRE configuration, readiness, stored results, and provenance API."""
 
+import csv
+import io
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from onyx.auth.permissions import require_permission
@@ -10,12 +14,17 @@ from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.db.ton import dre as repository
+from onyx.error_handling.error_codes import OnyxErrorCode
+from onyx.error_handling.exceptions import OnyxError
 from onyx.ton.dre.models import (
     DreAssignmentApproval,
+    DreContributorPage,
+    DrePeriodPoint,
     DreReadinessView,
     DreResultLineView,
     DreRunView,
     DreScope,
+    DreStatementView,
     DreStructureCreate,
     DreStructureView,
     DreVersionCreate,
@@ -126,6 +135,39 @@ def calculate(
         raise
 
 
+@router.get("/calculations")
+def list_calculations(
+    period: date,
+    unit_id: UUID | None = None,
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> list[DreRunView]:
+    return repository.list_calculations(session, user, period, unit_id, limit, offset)
+
+
+@router.get("/calculations/series")
+def period_series(
+    normalization_run_id: UUID,
+    structure_version_id: UUID,
+    year: int = Query(ge=1900, le=9998),
+    line_code: str = Query(min_length=1),
+    unit_id: UUID | None = None,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> list[DrePeriodPoint]:
+    return repository.get_period_series(
+        session,
+        user,
+        normalization_run_id,
+        structure_version_id,
+        year,
+        unit_id,
+        line_code,
+    )
+
+
 @router.get("/calculations/{run_id}")
 def get_calculation(
     run_id: UUID,
@@ -144,3 +186,110 @@ def list_result_lines(
     session: Session = Depends(get_session),
 ) -> list[DreResultLineView]:
     return repository.list_result_lines(session, user, run_id, limit, offset)
+
+
+@router.get("/calculations/{run_id}/statement")
+def get_statement(
+    run_id: UUID,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> DreStatementView:
+    return repository.get_statement(session, user, run_id)
+
+
+@router.get("/calculations/{run_id}/lines/{line_code}/contributors")
+def list_contributors(
+    run_id: UUID,
+    line_code: str,
+    fact_type: str,
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> DreContributorPage:
+    return repository.list_contributors(
+        session, user, run_id, line_code, fact_type, limit, offset
+    )
+
+
+def _csv_safe(value: str) -> str:
+    return "'" + value if value.lstrip().startswith(("=", "+", "-", "@")) else value
+
+
+@router.get("/calculations/{run_id}/export.csv")
+def export_calculation(
+    run_id: UUID,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> Response:
+    run = repository.get_calculation(session, user, run_id)
+    if run.status != "READY":
+        raise OnyxError(
+            OnyxErrorCode.CONFLICT, "Only ready DRE results can be exported"
+        )
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["DRE", "READY"])
+    writer.writerow(["period", run.scope.period.isoformat()])
+    writer.writerow(
+        ["unit_id", str(run.scope.unit_id) if run.scope.unit_id else "CONSOLIDATED"]
+    )
+    writer.writerow(["result_id", str(run.id)])
+    writer.writerow(["calculated_at", run.finished_at.isoformat()])
+    writer.writerow(
+        ["structure_version", run.provenance.get("dre_structure_version_number", "")]
+    )
+    writer.writerow(["dataset_revision", run.provenance.get("dataset_revision", "")])
+    writer.writerow(
+        [
+            "budget_executions",
+            ";".join(
+                str(item) for item in run.provenance.get("budget_execution_ids", [])
+            ),
+        ]
+    )
+    writer.writerow([])
+    writer.writerow(
+        [
+            "line_code",
+            "line",
+            "realizado",
+            "orcado",
+            "variance",
+            "variance_percent",
+            "realizado_ytd",
+            "orcado_ytd",
+            "variance_ytd",
+            "variance_percent_ytd",
+        ]
+    )
+    offset = 0
+    while True:
+        lines = repository.list_result_lines(session, user, run_id, 100, offset)
+        for line in lines:
+            writer.writerow(
+                [
+                    _csv_safe(line.code),
+                    _csv_safe(line.label),
+                    line.realizado,
+                    line.orcado,
+                    line.variance,
+                    line.variance_percent,
+                    line.realizado_ytd,
+                    line.orcado_ytd,
+                    line.variance_ytd,
+                    line.variance_percent_ytd,
+                ]
+            )
+        offset += len(lines)
+        if len(lines) < 100:
+            break
+    repository.audit_export(session, user, run_id)
+    session.commit()
+    return Response(
+        content="\ufeff" + output.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="dre-{run.scope.period.isoformat()}-{run.id}.csv"'
+        },
+    )

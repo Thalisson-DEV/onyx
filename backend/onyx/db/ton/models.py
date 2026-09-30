@@ -3690,7 +3690,7 @@ class TonAuditEvent(Base):
     actor_auth_type: Mapped[str | None] = mapped_column(String, nullable=True)
 
     resource_kind: Mapped[TonAuditResourceKind | None] = mapped_column(
-        Enum(TonAuditResourceKind, native_enum=False), nullable=True
+        Enum(TonAuditResourceKind, native_enum=False, length=64), nullable=True
     )
     resource_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), nullable=True

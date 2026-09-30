@@ -4,7 +4,7 @@
 
 The `/admin/dre` workspace reads the current financial readiness overview before it shows a DRE result. It uses the selected normalization, latest DRE structure version, unit, and period. Administrators can select consolidated scope. Other users select an authorized unit. The workspace uses SWR for cached reads. It loads one stored statement and one monthly series. It loads source facts only when a user opens a source line.
 
-The DRE calculation engine remains in DATA-005. This slice adds no financial rules or schema changes. New read APIs list result revisions, return a stored statement with its structure, return a monthly series of stored results, and page through contributors. The CSV route reads stored result lines.
+The DRE calculation engine remains in DATA-005. This slice adds no financial rules. New read APIs list result revisions, return a stored statement with its structure, return a monthly series of stored results, and page through contributors. The CSV route reads stored result lines. An audit migration widens `ton_audit_event.resource_kind` from 15 to 64 characters because DRE resource names exceed the old limit.
 
 ## NOT_READY and READY
 
@@ -38,15 +38,17 @@ Synthetic tests cover READY hierarchy, Actual and Budget drill down, pagination,
 
 CSV is the supported report format in this slice. The chart and summary show one selected statement line. No forecast, AV/AH, AI analysis, or automatic report delivery is included.
 
+The audit migration passed on a fresh PostgreSQL database and the local default database. A new synthetic blocked calculation stored two audit rows. The temporary migration database was removed after the check.
+
 ## Local synthetic evaluation
 
-The local default PostgreSQL database had no TON sources, imports, reviews, normalizations, structures, or calculations. The text “Não há normalização ou estrutura de DRE disponível” was accurate. The local demo uses a separate database named `onyx_dre_demo` in the same PostgreSQL container. `docker-compose.dre-demo.yml` points only the API at this database. The default database stays intact. The web and Nginx services continue at `http://localhost:3000`.
+The local default PostgreSQL database initially had no TON sources, imports, reviews, normalizations, structures, or calculations. The text “Não há normalização ou estrutura de DRE disponível” was accurate. The first local demo used a separate database named `onyx_dre_demo`. That changed the active user directory and prevented login with accounts from the default database. The API now points to `postgres` again. The synthetic TON data was seeded there after confirming it had no TON sources. Its four original users remain intact. The separate demo database remains stored but inactive.
 
 The synthetic seed is `backend/tests/dev_harness/ton/seed_dre_demo.py`. It reuses test workbooks and the real import, review, normalization, and DRE engines. It creates one January 2026 READY scope, two READY result revisions, a blocked DRE structure, an Actual fact, and two Budget facts. It creates unit and consolidated results. The dashboard chart has one stored month. The synthetic input files exist only while seeding; the drill down retains file, sheet, and row metadata. The demo is for local evaluation only.
 
-Use `admin_user@example.com` and `TestPassword123!` on the isolated demo database. Open `/admin/dre`. Select “Demonstração sintética: DRE pronta” to inspect the statement, drill down, version details, and CSV. Select “Demonstração sintética: pendências” to inspect the NOT_READY state and its link to Financial Readiness. The API smoke returned READY and NOT_READY, four statement lines, one Actual fact, two Budget facts, two READY revisions, one series point, CSV HTTP 200 for READY, and HTTP 409 for blocked export. No browser or visual check was used after the user's request to skip it.
+Use an administrator account from the default database at `/admin/dre`. Select “Demonstração sintética: DRE pronta” to inspect the statement, drill down, version details, and CSV. Select “Demonstração sintética: pendências” to inspect the NOT_READY state and its link to Financial Readiness. The API smoke returned READY and NOT_READY, four statement lines, one Actual fact, two Budget facts, two READY revisions, one series point, CSV HTTP 200 for READY, and HTTP 409 for blocked export. No browser or visual check was used after the user's request to skip it.
 
-The demo database is disposable. To return to the default database, start `api_server` without `docker-compose.dre-demo.yml`, then recreate `nginx` so it resolves the new API container. Drop `onyx_dre_demo` only after leaving the demo. This operation does not delete the default database.
+The separate demo database is disposable. The default database now contains synthetic TON rows as well as the original users. The seed script refuses to add another demo when TON sources already exist. It accepts `postgres` only when `TON_DRE_DEMO_LOCAL_MAIN=1` and the host is local. Start the API without `docker-compose.dre-demo.yml` to keep the original login directory.
 
 ## Bringing real data into the application
 

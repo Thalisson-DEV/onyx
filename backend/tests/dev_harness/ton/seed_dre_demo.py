@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from onyx.db.models import User
 from onyx.db.ton import dre
+from onyx.db.ton.acl import is_ton_administrator
 from onyx.db.ton.models import Source
 from onyx.file_store.file_store import FileStore
 from onyx.ton.dre.models import (
@@ -43,7 +44,7 @@ def synthetic_store() -> FileStore:
     return store
 
 
-def seed(session: Session, admin: User) -> None:
+def seed(session: Session, admin: User, database: str) -> None:
     if session.scalar(sa.select(sa.func.count()).select_from(Source)):
         raise RuntimeError("Demo database already has sources")
     normalization_id, account_id, unit_id = build_complete_synthetic_scope(
@@ -125,25 +126,33 @@ def seed(session: Session, admin: User) -> None:
         ),
     )
     assert blocked.status == "NOT_READY"
-    print("Seeded synthetic READY and NOT_READY scopes in", DEMO_DATABASE)
+    print("Seeded synthetic READY and NOT_READY scopes in", database)
 
 
 def main() -> None:
     if os.environ.get("TON_DRE_DEMO_SEED") != "1":
         raise RuntimeError("Set TON_DRE_DEMO_SEED=1")
-    if os.environ.get("POSTGRES_DB") != DEMO_DATABASE:
-        raise RuntimeError("Seeder only accepts the isolated demo database")
+    database = os.environ.get("POSTGRES_DB")
+    if database == "postgres" and os.environ.get("TON_DRE_DEMO_LOCAL_MAIN") != "1":
+        raise RuntimeError(
+            "Set TON_DRE_DEMO_LOCAL_MAIN=1 for the local default database"
+        )
+    if database not in {DEMO_DATABASE, "postgres"}:
+        raise RuntimeError("Seeder only accepts local demo or default databases")
     host = os.environ.get("POSTGRES_HOST")
     local_hosts = {"localhost", "127.0.0.1"}
     if os.path.exists("/.dockerenv"):
         local_hosts.add("relational_db")
     if host not in local_hosts:
         raise RuntimeError("Seeder only accepts a local PostgreSQL host")
-    with scratch_session(DEMO_DATABASE) as session:
+    with scratch_session(database) as session:
         admin = session.scalar(sa.select(User).where(User.email == DEMO_EMAIL))
+        if admin is None or not is_ton_administrator(admin):
+            users = session.scalars(sa.select(User)).unique()
+            admin = next((user for user in users if is_ton_administrator(user)), None)
         if admin is None:
-            raise RuntimeError("Register the demo administrator before seeding")
-        seed(session, admin)
+            raise RuntimeError("An administrator is required before seeding")
+        seed(session, admin, database)
 
 
 if __name__ == "__main__":

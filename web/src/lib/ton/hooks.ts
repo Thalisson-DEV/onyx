@@ -3,10 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
-import type {
-  ClosingOutput,
-  Publication,
-} from "@/views/ton/ControladoriaPage/types";
+import type { ClosingOutput, Publication } from "@/lib/ton/types";
 
 interface ClosingSubmission {
   request_id: string;

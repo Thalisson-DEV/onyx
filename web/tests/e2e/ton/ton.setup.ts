@@ -17,8 +17,8 @@ export default async function setup(config: FullConfig): Promise<void> {
     });
     if (!response.ok())
       throw new Error(`TON test login failed: ${response.status()}`);
-    await mkdir("output/ton-ux002", { recursive: true });
-    await context.storageState({ path: "output/ton-ux002/auth.json" });
+    await mkdir("output/ton-e2e", { recursive: true });
+    await context.storageState({ path: "output/ton-e2e/auth.json" });
   } finally {
     await context.dispose();
   }

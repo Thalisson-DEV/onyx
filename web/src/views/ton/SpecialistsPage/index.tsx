@@ -1,161 +1,190 @@
 "use client";
 
-import { useState } from "react";
-import useSWR from "swr";
-import { useFormatter, useTranslations } from "next-intl";
-import { Text, Button, Modal } from "@opal/components";
-import { errorHandlingFetcher } from "@/lib/fetcher";
-import { TonStatusTag } from "@/views/ton/components/TonStatusTag";
-import { useUser } from "@/providers/UserProvider";
-import { hasPermission } from "@/lib/permissions";
-import { Permission } from "@/lib/types";
+import type { Route } from "next";
+import { Button, Text } from "@opal/components";
+import { SvgBubbleText, SvgLock, SvgShield, SvgSparkle } from "@opal/icons";
+import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
+import { useTonSpecialists } from "@/lib/ton/api";
+import { COPY, formatRelativeDateTime } from "@/lib/ton/copy";
+import type { SpecialistView } from "@/lib/ton/types";
+import {
+  IconTile,
+  LoadingBlock,
+  PageContainer,
+  PageHeader,
+  StatusPill,
+  TonCard,
+  specialistTone,
+} from "@/views/ton/components/ui";
 
-export interface Specialist {
-  key: string;
-  name: string;
-  objective: string;
-  status: string;
-  reason: string;
-  required_sources: string[];
-  available_capabilities: string[];
-  blocked_capabilities: string[];
-  last_execution: string | null;
-  interaction: "coordinator";
+function askHref(specialist: SpecialistView): Route {
+  const query = new URLSearchParams({
+    firstMessage: COPY.specialists.askPrompt(
+      specialist.name,
+      specialist.objective
+    ),
+    [SEARCH_PARAM_NAMES.SUBMIT_ON_LOAD]: "true",
+  });
+  return `/ton/chat?${query.toString()}` as Route;
+}
+
+function List({ title, items }: { title: string; items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="ton-eyebrow">{title}</span>
+      <ul className="flex flex-col gap-1">
+        {items.map((item) => (
+          <li key={item}>
+            <Text font="secondary-body" color="text-04">
+              {item}
+            </Text>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function WorkingCard({ specialist }: { specialist: SpecialistView }) {
+  return (
+    <TonCard as="article" className="flex flex-col gap-4 p-5">
+      <div className="flex items-start gap-3">
+        <IconTile icon={SvgSparkle} size="lg" />
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Text as="h2" font="heading-h3" color="text-05">
+              {specialist.name}
+            </Text>
+            <StatusPill tone={specialistTone(specialist.status)}>
+              {specialist.status}
+            </StatusPill>
+          </div>
+          <Text font="main-ui-body" color="text-04">
+            {specialist.objective}
+          </Text>
+          <Text font="secondary-body" color="text-03">
+            {specialist.last_execution
+              ? COPY.specialists.lastRun(
+                  formatRelativeDateTime(specialist.last_execution)
+                )
+              : COPY.specialists.neverRan}
+          </Text>
+        </div>
+      </div>
+      <Text font="secondary-body" color="text-03">
+        {specialist.reason}
+      </Text>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <List
+          title={COPY.specialists.can}
+          items={specialist.available_capabilities}
+        />
+        <List
+          title={COPY.specialists.limits}
+          items={specialist.blocked_capabilities}
+        />
+      </div>
+      <div>
+        <Button
+          href={askHref(specialist)}
+          prominence="secondary"
+          icon={SvgBubbleText}
+        >
+          {COPY.specialists.ask}
+        </Button>
+      </div>
+    </TonCard>
+  );
+}
+
+function WaitingCard({ specialist }: { specialist: SpecialistView }) {
+  return (
+    <TonCard as="article" className="flex flex-col gap-3 p-4">
+      <div className="flex items-start gap-3">
+        <IconTile icon={SvgLock} tone="neutral" />
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+          <Text as="h3" font="main-ui-action" color="text-05">
+            {specialist.name}
+          </Text>
+          <Text font="secondary-body" color="text-03">
+            {specialist.objective}
+          </Text>
+        </div>
+        <StatusPill tone="neutral">{specialist.status}</StatusPill>
+      </div>
+      <div className="flex flex-col gap-0.5 rounded-08 bg-background-neutral-01 px-3 py-2">
+        <span className="ton-eyebrow">{COPY.specialists.needs}</span>
+        <Text font="secondary-body" color="text-04">
+          {specialist.required_sources.join(", ")}
+        </Text>
+      </div>
+    </TonCard>
+  );
 }
 
 export default function SpecialistsPage() {
-  const t = useTranslations("controladoria");
-  const labels = useTranslations("tonRuntime");
-  const format = useFormatter();
-  const { user } = useUser();
-  const canRead = hasPermission(
-    user?.effective_permissions ?? [],
-    Permission.READ_TON_SOURCES
+  const specialists = useTonSpecialists();
+  const list = specialists.data ?? [];
+  const working = list.filter(
+    (item) => specialistTone(item.status) !== "neutral"
   );
-  const registry = useSWR<Specialist[]>(
-    canRead ? "/api/ton/agent/specialists" : null,
-    errorHandlingFetcher
+  const waiting = list.filter(
+    (item) => specialistTone(item.status) === "neutral"
   );
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const selected = registry.data?.find((item) => item.key === selectedKey);
   return (
-    <div className="flex flex-col gap-5 p-6 max-w-6xl mx-auto w-full">
-      <Text as="h1" font="heading-h2">
-        {t("specialists")}
-      </Text>
-      <Text as="p" font="main-ui-body" color="text-03">
-        {labels("coordinator")}
-      </Text>
-      {!canRead && (
-        <Text as="p" font="main-ui-body">
-          {t("noAccess")}
+    <PageContainer>
+      <PageHeader
+        title={COPY.specialists.title}
+        description={COPY.specialists.description}
+      />
+      <div className="flex items-center gap-2 rounded-12 bg-background-neutral-02 px-4 py-3">
+        <SvgShield size={16} className="shrink-0" />
+        <Text font="secondary-body" color="text-04">
+          {COPY.specialists.policy}
         </Text>
-      )}
-      {registry.isLoading && (
-        <Text as="p" font="main-ui-body">
-          {t("loading")}
-        </Text>
-      )}
-      {registry.error && (
-        <Text as="p" font="main-ui-body">
-          {t("error")}
-        </Text>
-      )}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {registry.data?.map((item) => (
-          <div
-            key={item.key}
-            role="article"
-            className="border border-01 rounded-12 p-4 flex flex-col gap-3"
-          >
-            <Text as="h2" font="heading-h3">
-              {item.name}
-            </Text>
-            <TonStatusTag status={item.status} />
-            <Text as="p" font="main-ui-body">
-              {item.objective}
-            </Text>
-            <Text as="p" font="secondary-body" color="text-03">
-              {item.reason}
-            </Text>
-            <Button
-              prominence="secondary"
-              onClick={() => setSelectedKey(item.key)}
-            >
-              {labels("details")}
-            </Button>
-          </div>
-        ))}
       </div>
-      <Modal
-        open={selected != null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedKey(null);
-        }}
-      >
-        {selected && (
-          <Modal.Content width="md">
-            <Modal.Header
-              title={selected.name}
-              description={selected.objective}
-            />
-            <Modal.Body>
-              <div className="flex flex-col gap-4">
-                <TonStatusTag status={selected.status} />
-                <Text as="p" font="main-ui-body">
-                  {selected.reason}
-                </Text>
-                {(
-                  [
-                    [labels("requiredSources"), selected.required_sources],
-                    [labels("available"), selected.available_capabilities],
-                    [labels("blocked"), selected.blocked_capabilities],
-                  ] as const
-                ).map(([title, values]) => (
-                  <div key={title} className="flex flex-col gap-1">
-                    <Text font="main-ui-action">{title}</Text>
-                    {values.length ? (
-                      values.map((value) => (
-                        <Text
-                          key={value}
-                          as="p"
-                          font="main-ui-body"
-                          color="text-03"
-                        >
-                          {value}
-                        </Text>
-                      ))
-                    ) : (
-                      <Text as="p" font="main-ui-body">
-                        {t("notAvailable")}
-                      </Text>
-                    )}
-                  </div>
-                ))}
-                <Text as="p" font="secondary-body">
-                  {labels("lastExecution", {
-                    date: selected.last_execution
-                      ? format.dateTime(new Date(selected.last_execution), {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })
-                      : t("notAvailable"),
-                  })}
-                </Text>
-              </div>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button
-                prominence="secondary"
-                onClick={() => setSelectedKey(null)}
-              >
-                {labels("close")}
-              </Button>
-              <Button href="/ton/chat">{t("chat")}</Button>
-            </Modal.Footer>
-          </Modal.Content>
-        )}
-      </Modal>
-    </div>
+      {specialists.isLoading && (
+        <TonCard className="p-5">
+          <LoadingBlock label={COPY.common.loading} />
+        </TonCard>
+      )}
+      {specialists.error && (
+        <TonCard className="p-5">
+          <Text font="main-ui-body" color="text-03">
+            {COPY.common.error}
+          </Text>
+        </TonCard>
+      )}
+      {working.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <Text as="h2" font="heading-h3" color="text-05">
+            {`${COPY.specialists.working} (${working.length})`}
+          </Text>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {working.map((item) => (
+              <WorkingCard key={item.key} specialist={item} />
+            ))}
+          </div>
+        </section>
+      )}
+      {waiting.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <Text as="h2" font="heading-h3" color="text-05">
+              {`${COPY.specialists.waiting} (${waiting.length})`}
+            </Text>
+            <Text font="secondary-body" color="text-03">
+              {COPY.specialists.waitingDescription}
+            </Text>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {waiting.map((item) => (
+              <WaitingCard key={item.key} specialist={item} />
+            ))}
+          </div>
+        </section>
+      )}
+    </PageContainer>
   );
 }

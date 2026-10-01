@@ -222,18 +222,22 @@ Pendente: a resposta do modelo ainda cita UUIDs de evidência (prompt da Persona
 
 # 5. Especialistas
 
-- [ ] nove especialistas canônicos preservados
-- [ ] status vem do runtime
-- [ ] shortcuts/contexto desenhados
-- [ ] specialist context reutiliza coordenador TON
-- [ ] sem nove chats fake
-- [ ] capacidades indisponíveis honestas
-- [ ] especialistas aparecem nas análises
-- [ ] página de especialistas é secundária
+- [x] nove especialistas canônicos preservados
+- [x] status vem do runtime
+- [x] shortcuts/contexto desenhados
+- [x] specialist context reutiliza coordenador TON
+- [x] sem nove chats fake
+- [x] capacidades indisponíveis honestas
+- [x] especialistas aparecem nas análises
+- [x] página de especialistas é secundária
 
 ### Demonstrável
 ```text
-TBD
+/ton/especialistas: política "Consultar e recomendar"; Atuando (3): TON CFO Parcial,
+TON AUDITOR e TON CEO Operacional, com objetivo, última atuação, o que já faz,
+limitações atuais e "Perguntar ao TON" (abre o Assistente com pergunta focada no
+domínio; a conversa continua com o coordenador). Aguardando fonte (6): COO, FROTA,
+CONTRATOS, COMPLIANCE, PROCUREMENT, RH com a fonte que falta.
 ```
 
 ---
@@ -457,28 +461,28 @@ próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar rel
 
 # 15. Browser QA
 
-- [ ] 1440+
+- [x] 1440+
 - [ ] ~1024
 - [ ] ~768
 - [ ] mobile básico
-- [ ] loading
-- [ ] empty
-- [ ] error
-- [ ] permission
+- [x] loading
+- [x] empty
+- [x] error
+- [x] permission
 - [ ] keyboard/focus
 
 ---
 
 # 16. Qualidade
 
-- [ ] focused frontend tests
+- [x] focused frontend tests
 - [ ] focused backend tests se necessário
-- [ ] TypeScript
-- [ ] lint
-- [ ] format
+- [x] TypeScript
+- [x] lint
+- [x] format
 - [ ] build
 - [ ] git diff --check
-- [ ] demo walkthrough completo
+- [x] demo walkthrough completo
 
 ---
 
@@ -486,15 +490,15 @@ próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar rel
 
 Somente após substituição estável:
 
-- [ ] shell TON antigo removido
-- [ ] dashboard antigo removido
-- [ ] chat presentation antiga removida se superseded
+- [x] shell TON antigo removido
+- [x] dashboard antigo removido
+- [x] chat presentation antiga removida se superseded
 - [ ] source UI duplicada removida
 - [ ] DRE duplicada removida
 - [ ] readiness duplicada removida
 - [ ] specialist UI obsoleta removida
-- [ ] routes antigas redirecionadas
-- [ ] nenhum legacy exposto ao cliente
+- [x] routes antigas redirecionadas
+- [x] nenhum legacy exposto ao cliente
 
 ---
 
@@ -554,6 +558,20 @@ Validation: Chrome com dados reais; tsc; oxlint; jest Sources/Automations 2/2.
 Known issues: views antigas ainda no repositório (sem rota); especialistas e
 cobertura ainda com layout antigo; resposta do modelo cita UUIDs.
 Next: Especialistas, limpeza do legado, responsivo, passada final da demo.
+
+### 2026-10-01 22:50
+Milestone: M4 — Especialistas, limpeza do legado, testes da jornada.
+Commit: feat(ton): rebuild specialists and retire the legacy TON client.
+What changed: SpecialistsPage nova; removidos TonChrome, TonSidebar antigo,
+ControladoriaPage (+ReportPage/CapabilitiesPanel), RoutinesPage, R3Execution;
+testes do ciclo R3 portados para R3Spotlight; spec Playwright fe001 (jornada
+completa e análise com LLM) e TonProductPage substituem ux002/TonWorkspacePage.
+What is demonstrable: jornada inteira, inclusive Especialistas.
+Validation: tsc do projeto sem erros; jest R3Spotlight 5/5, PendingPage 3/3,
+Sources/Automations 2/2, TonExecutionSummary 5/5; Playwright fe001 2/2 contra
+http://localhost:3005 com a conta autorizada (TON_E2E_EMAIL/PASSWORD no ambiente).
+Known issues: resposta do modelo cita UUIDs; responsivo < 1024 ainda não revisado.
+Next: responsivo, login/favicon, histórico completo de conversas, prompt sem UUIDs.
 
 ---
 

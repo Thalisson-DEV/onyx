@@ -517,6 +517,24 @@ export const COPY = {
         ? `${plural(imported, "registro importado", "registros importados")} · ${plural(rejected, "rejeitado", "rejeitados")}`
         : plural(imported, "registro importado", "registros importados"),
   },
+  specialists: {
+    title: "Especialistas",
+    description:
+      "O TON coordena especialistas por domínio. Cada especialista atua só quando suas fontes e regras estão disponíveis; a conversa é sempre com o TON.",
+    working: "Atuando",
+    waiting: "Aguardando fonte",
+    waitingDescription:
+      "Estes especialistas ficam inativos até a fonte de dados ou as regras do domínio estarem disponíveis.",
+    can: "O que já faz",
+    limits: "Limitações atuais",
+    needs: "Precisa de",
+    lastRun: (date: string) => `Última atuação: ${date}`,
+    neverRan: "Ainda não atuou",
+    ask: "Perguntar ao TON",
+    askPrompt: (name: string, objective: string) =>
+      `Com foco no ${name} (${objective.replace(/\.$/, "")}), o que precisa da minha atenção agora?`,
+    policy: "Consultar e recomendar. Decisões e aprovações exigem uma pessoa.",
+  },
   analysis: {
     running: "TON está analisando…",
     completed: "Análise concluída",

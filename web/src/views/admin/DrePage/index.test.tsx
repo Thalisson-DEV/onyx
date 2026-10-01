@@ -191,12 +191,10 @@ it("shows real style blockers and routes to readiness without a fabricated resul
   expect(screen.getByText("Unmapped units")).toBeInTheDocument();
   expect(screen.getByText("Unresolved budget periods")).toBeInTheDocument();
   expect(
-    screen.getByRole("link", { name: "Resolve pending items" })
+    screen.getAllByRole("link", { name: "Resolve pending items" })[0]
   ).toHaveAttribute(
     "href",
-    expect.stringContaining(
-      "/admin/financial-readiness?normalization=normalization-1"
-    )
+    expect.stringContaining("/ton/pendencias?normalization=normalization-1")
   );
   expect(screen.queryByText("Synthetic service")).not.toBeInTheDocument();
   expect(

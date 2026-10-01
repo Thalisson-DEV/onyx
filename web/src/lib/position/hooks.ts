@@ -82,6 +82,14 @@ class AppPosition {
     return hrefFor(this.value, this.chatPath);
   }
 
+  chatHref(chatSessionId: string): Route {
+    return hrefFor({ location: "chat", id: chatSessionId }, this.chatPath);
+  }
+
+  newSessionHref(): Route {
+    return hrefFor({ location: "new-session" }, this.chatPath);
+  }
+
   // # NOTE (@raunakab):
   // ## Going somewhere
   //

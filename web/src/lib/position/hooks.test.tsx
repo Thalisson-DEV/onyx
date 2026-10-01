@@ -20,6 +20,9 @@ beforeEach(() => {
 
 test("TON preserves native conversation and Persona navigation", () => {
   const { result } = renderHook(() => useAppPosition());
+  expect(result.current.chatHref("persisted-chat")).toBe(
+    "/ton/chat?chatId=persisted-chat"
+  );
   result.current.openChat("persisted-chat");
   expect(mockPush).toHaveBeenCalledWith("/ton/chat?chatId=persisted-chat");
   result.current.openAgent(42);

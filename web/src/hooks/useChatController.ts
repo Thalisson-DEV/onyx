@@ -264,16 +264,17 @@ export default function useChatController({
       chatSessionId,
       null,
       false,
-      true // skipReload
+      true, // skipReload
+      pathname === "/ton/chat" ? "/ton/chat" : "/app"
     );
 
     // Navigate immediately if still on chat page
     // For NRF pages (/chat/nrf, /chat/nrf/side-panel), don't navigate immediately
     // Let the streaming complete inline, then the user can continue chatting there
-    const isOnChatPage = pathname === "/app";
+    const isOnChatPage = pathname === "/app" || pathname === "/ton/chat";
 
     if (isOnChatPage && !navigatingAway.current) {
-      // SAFETY: buildChatUrl with search=false builds `/app?...`.
+      // SAFETY: search=false and chatPath limit the URL to the native chat routes.
       router.push(newUrl as Route, { scroll: false });
     }
 

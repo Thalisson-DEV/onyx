@@ -14485,7 +14485,8 @@
       "formulaCacheMissing": "Formula result missing",
       "competenceYearGap": "Billing period differs from the year",
       "other": "Other item requiring attention"
-    }
+    },
+    "fileReady": "已选择文件。扩展名和大小有效。请在处理后检查导入结果。"
   },
   "controladoria": {
     "title": "财务管理",
@@ -14549,5 +14550,34 @@
     "admin": "管理",
     "unavailable": "TON 聊天不可用。请检查访问权限和 TON Persona 配置。",
     "loading": "正在加载 TON 聊天…"
+  },
+  "tonRuntime": {
+    "coordinator": "专家是编排角色。请通过 TON 协调员与其对话。",
+    "details": "查看详情",
+    "requiredSources": "所需数据源",
+    "available": "可用能力",
+    "blocked": "待处理能力",
+    "lastExecution": "最近执行：{date}",
+    "close": "关闭",
+    "starting": "正在开始结账…",
+    "started": "结账已开始",
+    "running": "分析正在运行。请等待发布确认。",
+    "startedAt": "开始时间：{date}",
+    "completed": "结账完成",
+    "persisted": "结果已发布并保存。刷新页面后仍可查看。",
+    "openReport": "打开报告",
+    "advanced": "高级选项",
+    "execution": "TON 分析执行",
+    "analysisCompleted": "分析完成",
+    "analysisRunning": "分析正在运行",
+    "analysisStopped": "分析已中断",
+    "analysisPartial": "分析已完成，仍有待处理事项",
+    "family": "{name} ({count})",
+    "viewSteps": "查看步骤",
+    "technical": "查看技术数据 (JSON)",
+    "evidence": "证据",
+    "olderReports": "查看以前的版本 ({count})",
+    "previous": "上一页",
+    "next": "下一页"
   }
 }

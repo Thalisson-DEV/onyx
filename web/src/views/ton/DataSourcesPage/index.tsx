@@ -13,6 +13,7 @@ import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/lib/types";
 import { IMPORT_DIAGNOSTIC_KEYS } from "@/lib/ton/import-diagnostics";
 import { useUser } from "@/providers/UserProvider";
+import { TonStatusTag } from "@/views/ton/components/TonStatusTag";
 
 interface Diagnostic {
   code: string;
@@ -93,7 +94,19 @@ function SourceUpload({
     noKeyboard: true,
     disabled: busy,
     onDropAccepted: (files) => {
-      setFile(files[0] ?? null);
+      const chosen = files[0];
+      if (!chosen) return;
+      if (chosen.size > MAX_FILE_BYTES) {
+        setFile(null);
+        setError(t("fileTooLarge"));
+        return;
+      }
+      if (!chosen.name.toLowerCase().endsWith(`.${extension}`)) {
+        setFile(null);
+        setError(t("invalidFile"));
+        return;
+      }
+      setFile(chosen);
       setError("");
     },
     onDropRejected: () => setError(t("invalidFile")),
@@ -169,6 +182,11 @@ function SourceUpload({
             <Text font="secondary-body" color="text-03">
               {file ? file.name : t("dropFile")}
             </Text>
+            {file && (
+              <Text font="secondary-body" color="text-03">
+                {t("fileReady")}
+              </Text>
+            )}
           </div>
           {busy && (
             <div role="status" className="flex items-center gap-2 pt-4">
@@ -343,7 +361,7 @@ function ImportDetail({ result }: { result: ClientImport }) {
         >
           {t("readiness")}
         </Button>
-        <Button href="/admin/dre" prominence="secondary">
+        <Button href="/ton/dre" prominence="secondary">
           {t("dre")}
         </Button>
       </div>
@@ -383,10 +401,10 @@ function DataSourcesPage() {
           <Button href="/ton/data-sources" prominence="secondary">
             {t("title")}
           </Button>
-          <Button href="/admin/financial-readiness" prominence="secondary">
+          <Button href="/ton/pendencias" prominence="secondary">
             {t("readiness")}
           </Button>
-          <Button href="/admin/dre" prominence="secondary">
+          <Button href="/ton/dre" prominence="secondary">
             {t("dre")}
           </Button>
         </div>
@@ -441,9 +459,7 @@ function DataSourcesPage() {
                 <Text font="secondary-body" color="text-03">
                   {t("status")}
                 </Text>
-                <Text font="main-ui-body" color="text-05">
-                  {t(`statuses.${source.status}`)}
-                </Text>
+                <TonStatusTag status={source.status} />
               </div>
               <div className="flex flex-col gap-1">
                 <Text font="secondary-body" color="text-03">
@@ -496,52 +512,84 @@ function DataSourcesPage() {
               </div>
             )}
             {source.history.length > 0 && (
-              <div className="pt-5">
-                <Text as="h3" font="main-ui-action" color="text-05">
-                  {t("history")}
-                </Text>
-                {source.history.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex flex-wrap items-center justify-between gap-3 border-b border-01 py-2 last:border-0"
-                  >
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Text font="secondary-body" color="text-03">
-                        {format.dateTime(new Date(item.started_at), {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })}
-                      </Text>
-                      <Text font="main-ui-body" color="text-05">
-                        {item.filename || t("unprocessedFile")}
-                      </Text>
-                      <Text font="secondary-body" color="text-03">
-                        {item.status === "SUCCEEDED" && item.rejected === 0
-                          ? t("completed")
-                          : item.status === "RUNNING"
-                            ? t("processingStatus")
-                            : item.status === "FAILED"
-                              ? t("failed")
-                              : t("attention")}
-                      </Text>
-                      <Text font="secondary-body" color="text-03">
-                        {t("importedCount", { count: item.imported })}
-                      </Text>
-                      <Text font="secondary-body" color="text-03">
-                        {t("warningCount", {
-                          count: item.warnings + item.errors,
-                        })}
-                      </Text>
-                    </div>
-                    <Button
-                      prominence="tertiary"
-                      onClick={() => setSelected(item)}
-                    >
-                      {t("viewDetails")}
-                    </Button>
-                  </div>
-                ))}
-              </div>
+              <details className="pt-4">
+                <summary>
+                  <Text font="main-ui-action" color="text-05">
+                    {t("history")}
+                  </Text>
+                </summary>
+                <div className="overflow-x-auto pt-3">
+                  <table className="w-full" aria-label={t("history")}>
+                    <thead>
+                      <tr>
+                        <th className="p-2 text-start">
+                          <Text font="secondary-action">
+                            {t("lastAttempt")}
+                          </Text>
+                        </th>
+                        <th className="p-2 text-start">
+                          <Text font="secondary-action">{t("chooseFile")}</Text>
+                        </th>
+                        <th className="p-2 text-start">
+                          <Text font="secondary-action">{t("status")}</Text>
+                        </th>
+                        <th className="p-2 text-start">
+                          <Text font="secondary-action">
+                            {t("viewDetails")}
+                          </Text>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {source.history.map((item) => (
+                        <tr key={item.id} className="border-b border-01">
+                          <td className="p-2">
+                            <Text font="secondary-body" color="text-03">
+                              {format.dateTime(new Date(item.started_at), {
+                                dateStyle: "short",
+                                timeStyle: "short",
+                              })}
+                            </Text>
+                          </td>
+                          <td className="p-2">
+                            <Text font="main-ui-body" color="text-05">
+                              {item.filename || t("unprocessedFile")}
+                            </Text>
+                          </td>
+                          <td className="p-2">
+                            <Text font="secondary-body" color="text-03">
+                              {item.status === "SUCCEEDED" &&
+                              item.rejected === 0
+                                ? t("completed")
+                                : item.status === "RUNNING"
+                                  ? t("processingStatus")
+                                  : item.status === "FAILED"
+                                    ? t("failed")
+                                    : t("attention")}
+                            </Text>
+                            <Text font="secondary-body" color="text-03">
+                              {t("importedCount", { count: item.imported })}
+                            </Text>
+                            <Text font="secondary-body" color="text-03">
+                              {t("warningCount", {
+                                count: item.warnings + item.errors,
+                              })}
+                            </Text>
+                          </td>
+                          <td className="p-2">
+                            <Button
+                              prominence="tertiary"
+                              onClick={() => setSelected(item)}
+                            >
+                              {t("viewDetails")}
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
             )}
           </section>
         ))}

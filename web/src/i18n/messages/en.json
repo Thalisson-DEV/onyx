@@ -14485,7 +14485,8 @@
       "formulaCacheMissing": "Formula result missing",
       "competenceYearGap": "Billing period differs from the year",
       "other": "Other item requiring attention"
-    }
+    },
+    "fileReady": "File selected. Its extension and size are valid. Review the import result after processing."
   },
   "controladoria": {
     "title": "Controllership",
@@ -14549,5 +14550,34 @@
     "admin": "Administration",
     "unavailable": "TON Chat is unavailable. Check access and the TON Persona configuration.",
     "loading": "Loading TON Chat…"
+  },
+  "tonRuntime": {
+    "coordinator": "Specialists are orchestration roles. Talk to them through the TON coordinator.",
+    "details": "View details",
+    "requiredSources": "Required sources",
+    "available": "Available capabilities",
+    "blocked": "Pending capabilities",
+    "lastExecution": "Last execution: {date}",
+    "close": "Close",
+    "starting": "Starting closing…",
+    "started": "Closing started",
+    "running": "Analysis is running. Wait for publication confirmation.",
+    "startedAt": "Started at {date}",
+    "completed": "Closing completed",
+    "persisted": "Result published and persisted. You can return after refreshing the page.",
+    "openReport": "Open report",
+    "advanced": "Advanced options",
+    "execution": "TON analysis execution",
+    "analysisCompleted": "Analysis completed",
+    "analysisRunning": "Analysis in progress",
+    "analysisStopped": "Analysis stopped",
+    "analysisPartial": "Analysis completed with pending items",
+    "family": "{name} ({count})",
+    "viewSteps": "View steps",
+    "technical": "View technical data (JSON)",
+    "evidence": "Evidence",
+    "olderReports": "View previous versions ({count})",
+    "previous": "Previous",
+    "next": "Next"
   }
 }

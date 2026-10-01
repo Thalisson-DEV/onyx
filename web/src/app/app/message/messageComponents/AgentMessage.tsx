@@ -22,6 +22,8 @@ import { LlmDescriptor, LlmManager } from "@/lib/hooks";
 import { Message } from "@/app/app/interfaces";
 import Text from "@/refresh-components/texts/Text";
 import { AgentTimeline } from "@/app/app/message/messageComponents/timeline/AgentTimeline";
+import { TonExecutionSummary } from "@/app/app/message/messageComponents/renderers/TonExecutionSummary";
+import { getTonToolKey } from "@/lib/ton/chat-execution";
 import { useVoiceMode } from "@/providers/VoiceModeProvider";
 import { getTextContent } from "@/app/app/services/packetUtils";
 import { removeThinkingTokens } from "@/app/app/services/thinkingTokens";
@@ -288,7 +290,14 @@ const AgentMessage = React.memo(function AgentMessage({
       {/* Row 1: Two-column layout for tool steps */}
 
       <AgentTimeline
-        turnGroups={pacedTurnGroups}
+        turnGroups={pacedTurnGroups
+          .map((group) => ({
+            ...group,
+            steps: group.steps.filter(
+              (step) => !getTonToolKey(step, effectiveChatState.agent.tools)
+            ),
+          }))
+          .filter((group) => group.steps.length > 0)}
         chatState={effectiveChatState}
         stopPacketSeen={stopPacketSeen}
         stopReason={stopReason}
@@ -361,6 +370,13 @@ const AgentMessage = React.memo(function AgentMessage({
             </Text>
           )}
       </div>
+
+      <TonExecutionSummary
+        turnGroups={pacedTurnGroups}
+        tools={effectiveChatState.agent.tools}
+        stopped={stopPacketSeen}
+        stopReason={stopReason}
+      />
 
       {/* Feedback buttons - only show when streaming and rendering complete */}
       {isComplete && !hideFooter && (

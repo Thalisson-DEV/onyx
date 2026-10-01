@@ -14485,7 +14485,8 @@
       "formulaCacheMissing": "Formula result missing",
       "competenceYearGap": "Billing period differs from the year",
       "other": "Other item requiring attention"
-    }
+    },
+    "fileReady": "ファイルを選択しました。拡張子とサイズは有効です。処理後にインポート結果を確認してください。"
   },
   "controladoria": {
     "title": "財務管理",
@@ -14549,5 +14550,34 @@
     "admin": "管理",
     "unavailable": "TON チャットを利用できません。アクセス権と TON ペルソナの設定を確認してください。",
     "loading": "TON チャットを読み込み中…"
+  },
+  "tonRuntime": {
+    "coordinator": "専門家はオーケストレーションの役割です。TON コーディネーターを通じて会話してください。",
+    "details": "詳細を表示",
+    "requiredSources": "必要なソース",
+    "available": "利用可能な機能",
+    "blocked": "保留中の機能",
+    "lastExecution": "最終実行: {date}",
+    "close": "閉じる",
+    "starting": "決算を開始しています…",
+    "started": "決算を開始しました",
+    "running": "分析を実行中です。公開の確認をお待ちください。",
+    "startedAt": "開始日時: {date}",
+    "completed": "決算が完了しました",
+    "persisted": "結果を公開して保存しました。ページを更新した後も確認できます。",
+    "openReport": "レポートを開く",
+    "advanced": "詳細オプション",
+    "execution": "TON 分析の実行",
+    "analysisCompleted": "分析が完了しました",
+    "analysisRunning": "分析を実行中",
+    "analysisStopped": "分析を中断しました",
+    "analysisPartial": "未処理項目を残して分析が完了しました",
+    "family": "{name} ({count})",
+    "viewSteps": "手順を表示",
+    "technical": "技術データを表示 (JSON)",
+    "evidence": "根拠",
+    "olderReports": "以前のバージョンを表示 ({count})",
+    "previous": "前へ",
+    "next": "次へ"
   }
 }

@@ -1,135 +1,177 @@
 "use client";
 
+import { useState } from "react";
 import useSWR from "swr";
-import { useFormatter } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { Text, Button } from "@opal/components";
-import { SvgFileText, SvgDownload, SvgChevronRight, SvgClock } from "@opal/icons";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/lib/types";
 import { useUser } from "@/providers/UserProvider";
-import { getBusinessLabel } from "@/lib/ton/labels";
 import { TonStatusTag } from "@/views/ton/components/TonStatusTag";
-import type { Publication } from "@/views/ton/ControladoriaPage/types";
+import { getBusinessLabel } from "@/lib/ton/labels";
+import type {
+  Publication,
+  ReportGroup,
+} from "@/views/ton/ControladoriaPage/types";
 
-export default function ReportsPage() {
+interface ReportHistoryProps {
+  revisionId: string;
+  total: number;
+}
+
+function ReportHistory({ revisionId, total }: ReportHistoryProps) {
+  const t = useTranslations("controladoria");
+  const labels = useTranslations("tonRuntime");
   const format = useFormatter();
-  const { user } = useUser();
-  const permissions = user?.effective_permissions ?? [];
-  const canReadReports = hasPermission(permissions, Permission.READ_TON_REPORTS);
-
-  const publications = useSWR<Publication[]>(
-    canReadReports ? "/api/ton/agent/reports" : null,
+  const [offset, setOffset] = useState(0);
+  const history = useSWR<Publication[]>(
+    `/api/ton/agent/reports/${revisionId}/history?offset=${offset}`,
     errorHandlingFetcher
   );
-
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-6xl mx-auto w-full">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
-        <Text as="h1" font="heading-h2" color="text-05">
-          Relatórios da Controladoria
-        </Text>
-        <Text as="p" font="main-ui-body" color="text-03">
-          Entregáveis executivos oficiais, análises de fechamento e demonstrações auditadas.
-        </Text>
-      </div>
-
-      {publications.isLoading && (
-        <div className="p-8 text-center text-text-03 text-sm">
-          Carregando relatórios disponíveis…
-        </div>
-      )}
-
-      {publications.error && (
-        <div className="p-4 rounded-12 bg-status-error-01 text-status-error-05 text-sm">
-          Não foi possível carregar os relatórios. Verifique sua autorização.
-        </div>
-      )}
-
-      {publications.data && publications.data.length === 0 && (
-        <div className="border border-01 rounded-16 p-12 text-center background-neutral-00 flex flex-col items-center gap-3">
-          <SvgFileText className="w-10 h-10 text-text-02" />
-          <Text font="main-ui-action" color="text-05">
-            Nenhum relatório publicado ainda
+    <div className="flex flex-col gap-2 pt-3">
+      {history.isLoading && <Text font="main-ui-body">{t("loading")}</Text>}
+      {history.error && <Text font="main-ui-body">{t("error")}</Text>}
+      {history.data?.map((publication) => (
+        <div
+          key={publication.revision_id}
+          className="flex flex-wrap justify-between gap-2 border-t border-01 pt-2"
+        >
+          <Text font="secondary-body">
+            {t("published", {
+              date: format.dateTime(new Date(publication.output.generated_at), {
+                dateStyle: "short",
+                timeStyle: "short",
+              }),
+              status: publication.status,
+            })}
           </Text>
-          <Text font="main-ui-body" color="text-03">
-            Os relatórios são gerados automaticamente pela rotina de fechamento (R3) ou solicitados no TON.
-          </Text>
-          <Button href="/ton/rotinas" prominence="secondary">
-            Ir para Rotinas
+          <Button
+            href={publication.report_url}
+            prominence="secondary"
+            size="sm"
+          >
+            {t("openResult")}
+          </Button>
+        </div>
+      ))}
+      {total > 25 && (
+        <div className="flex gap-2">
+          <Button
+            disabled={offset === 0}
+            onClick={() => setOffset(Math.max(0, offset - 25))}
+            prominence="secondary"
+          >
+            {labels("previous")}
+          </Button>
+          <Button
+            disabled={offset + 25 >= total}
+            onClick={() => setOffset(offset + 25)}
+            prominence="secondary"
+          >
+            {labels("next")}
           </Button>
         </div>
       )}
+    </div>
+  );
+}
 
-      {publications.data && publications.data.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {publications.data.map((pub) => (
-            <div
-              key={pub.revision_id}
-              className="border border-01 rounded-16 p-5 background-neutral-00 flex flex-col justify-between gap-4 hover:border-02 transition-colors"
-            >
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded bg-background-neutral-02 text-text-04">
-                      {pub.output?.period ?? ""}
-                    </span>
-                    <TonStatusTag status={pub.status} />
-                  </div>
+interface ReportGroupCardProps {
+  group: ReportGroup;
+}
 
-                  <div>
-                    <h3 className="text-base font-semibold text-text-05">
-                      Relatório de Fechamento Contábil — {pub.output?.scope ?? ""}
-                    </h3>
-                    <p className="text-xs text-text-03 mt-1">
-                      {pub.output?.data_context ?? "Base financeira compilada e analisada."}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-01 text-text-03">
-                    <div>
-                      <span>Bloqueadores: </span>
-                      <span className="font-semibold text-text-04">
-                        {Object.values(pub.output?.blockers ?? {}).reduce((a, b) => a + b, 0)}
-                      </span>
-                    </div>
-                    <div>
-                      <span>Achados: </span>
-                      <span className="font-semibold text-text-04">
-                        {pub.output?.findings?.length ?? 0}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-3 border-t border-01">
-                  <span className="text-xs text-text-03 font-mono">
-                    Rev: {pub.revision_id.slice(0, 8)}…
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {pub.download_url && (
-                      <Button
-                        href={pub.download_url}
-                        prominence="tertiary"
-                        size="sm"
-                        icon={SvgDownload}
-                      >
-                        Baixar
-                      </Button>
-                    )}
-                    <Button
-                      href={`/ton/controladoria/reports/${pub.revision_id}`}
-                      size="sm"
-                      icon={SvgChevronRight}
-                    >
-                      Abrir
-                    </Button>
-                  </div>
-                </div>
-              </div>
-          ))}
-        </div>
+function ReportGroupCard({ group }: ReportGroupCardProps) {
+  const t = useTranslations("controladoria");
+  const labels = useTranslations("tonRuntime");
+  const format = useFormatter();
+  const [open, setOpen] = useState(false);
+  const publication = group.latest;
+  return (
+    <div
+      role="article"
+      className="flex flex-col gap-3 border border-01 rounded-12 p-4"
+    >
+      <Text as="h2" font="heading-h3">
+        {t("period", {
+          period: format.dateTime(
+            new Date(`${publication.output.period}T12:00:00Z`),
+            { month: "long", year: "numeric" }
+          ),
+          scope: publication.output.scope,
+        })}
+      </Text>
+      <TonStatusTag status={publication.status} />
+      {publication.report_type && (
+        <Text font="main-ui-action">
+          {getBusinessLabel(publication.report_type)}
+        </Text>
       )}
+      <Text as="p" font="main-ui-body">
+        {publication.output.executive_brief.RESULTADO}
+      </Text>
+      <Text as="p" font="secondary-body" color="text-03">
+        {publication.output.data_context}
+      </Text>
+      <div className="flex gap-2">
+        <Button href={publication.report_url} size="sm">
+          {t("openResult")}
+        </Button>
+        <Button
+          href={publication.download_url}
+          prominence="secondary"
+          size="sm"
+        >
+          {t("download")}
+        </Button>
+      </div>
+      {group.previous_count > 0 && (
+        <details onToggle={(event) => setOpen(event.currentTarget.open)}>
+          <summary>
+            <Text font="main-ui-action">
+              {labels("olderReports", { count: group.previous_count })}
+            </Text>
+          </summary>
+          {open && (
+            <ReportHistory
+              revisionId={publication.revision_id}
+              total={group.previous_count}
+            />
+          )}
+        </details>
+      )}
+    </div>
+  );
+}
+
+export default function ReportsPage() {
+  const t = useTranslations("controladoria");
+  const { user } = useUser();
+  const canRead = hasPermission(
+    user?.effective_permissions ?? [],
+    Permission.READ_TON_REPORTS
+  );
+  const groups = useSWR<ReportGroup[]>(
+    canRead ? "/api/ton/agent/reports/groups" : null,
+    errorHandlingFetcher
+  );
+  return (
+    <div className="flex flex-col gap-5 p-6 max-w-6xl mx-auto w-full">
+      <Text as="h1" font="heading-h2">
+        {t("reports")}
+      </Text>
+      {!canRead && <Text font="main-ui-body">{t("noAccess")}</Text>}
+      {groups.isLoading && <Text font="main-ui-body">{t("loading")}</Text>}
+      {groups.error && <Text font="main-ui-body">{t("error")}</Text>}
+      {groups.data?.length === 0 && (
+        <Text font="main-ui-body">{t("noReports")}</Text>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {groups.data?.map((group) => (
+          <ReportGroupCard key={group.latest.revision_id} group={group} />
+        ))}
+      </div>
     </div>
   );
 }

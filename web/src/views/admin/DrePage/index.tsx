@@ -20,6 +20,7 @@ import { errorHandlingFetcher } from "@/lib/fetcher";
 import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/lib/types";
 import { useUser } from "@/providers/UserProvider";
+import { BLOCKER_GROUPS, getBusinessLabel } from "@/lib/ton/labels";
 import type {
   ContributorPage,
   DreDefinition,
@@ -73,6 +74,7 @@ function isBlockerKey(value: string): value is (typeof BLOCKER_KEYS)[number] {
 function DrePage() {
   const t = useTranslations("dre");
   const nav = useTranslations("sidebar");
+  const runtime = useTranslations("tonRuntime");
   const format = useFormatter();
   const { user } = useUser();
   const permissions = user?.effective_permissions ?? [];
@@ -301,7 +303,7 @@ function DrePage() {
     0
   );
   const firstBlocker = Object.keys(blockers)[0] ?? "";
-  const readinessHref = `/admin/financial-readiness?normalization=${normalizationId ?? ""}&unit=${unitId === "consolidated" ? "" : (unitId ?? "")}&period=${periodValue ?? ""}&blocker=${firstBlocker}`;
+  const readinessHref = `/ton/pendencias?normalization=${normalizationId ?? ""}&unit=${unitId === "consolidated" ? "" : (unitId ?? "")}&period=${periodValue ?? ""}&blocker=${firstBlocker}`;
   const chartData = (series.data ?? []).map((point) => ({
     month: format.dateTime(new Date(`${point.period}T12:00:00Z`), {
       month: "short",
@@ -394,16 +396,18 @@ function DrePage() {
                       ...(units.data ?? []).map((item) => ({
                         value: item.id,
                         label: item.name
-                          ? `${item.code} · ${item.name}`
-                          : item.code,
+                          ? `${getBusinessLabel(item.code)} · ${getBusinessLabel(item.name)}`
+                          : getBusinessLabel(item.code),
                       })),
                     ]}
                   />
 
                   <details className="inline-block text-xs self-end pb-2 group">
                     <summary className="cursor-pointer text-text-03 hover:text-text-05 select-none font-medium flex items-center gap-1 list-none">
-                      <span>Opções avançadas</span>
-                      <span className="text-[10px] transform group-open:rotate-180 transition-transform">▼</span>
+                      <Text font="secondary-action">{runtime("advanced")}</Text>
+                      <span className="text-[10px] transform group-open:rotate-180 transition-transform">
+                        ▼
+                      </span>
                     </summary>
                     <div className="flex flex-wrap items-end gap-3 pt-3">
                       <Filter
@@ -429,7 +433,7 @@ function DrePage() {
                         }}
                         options={(structures.data ?? []).map((item) => ({
                           value: item.id,
-                          label: item.label,
+                          label: getBusinessLabel(item.label),
                         }))}
                       />
                     </div>
@@ -464,7 +468,54 @@ function DrePage() {
                     })}
                   </Text>
                   <div className="grid gap-2 py-4 sm:grid-cols-2">
+                    {BLOCKER_GROUPS.map((group) => {
+                      const entries = Object.entries(blockers).filter(([key]) =>
+                        group.blockerKeys.includes(key)
+                      );
+                      if (!entries.length) return null;
+                      return (
+                        <div
+                          key={group.id}
+                          className="flex flex-col gap-2 border border-01 rounded-12 p-3"
+                        >
+                          <Text as="h3" font="main-ui-action">
+                            {group.label}
+                          </Text>
+                          <Text as="p" font="secondary-body" color="text-03">
+                            {group.description}
+                          </Text>
+                          {entries.map(([key, count]) => (
+                            <div
+                              key={key}
+                              className="flex justify-between gap-2"
+                            >
+                              <Text font="main-ui-body">
+                                {isBlockerKey(key)
+                                  ? t(`blockers.${key}`)
+                                  : getBusinessLabel(key)}
+                              </Text>
+                              <Text font="main-ui-action">
+                                {format.number(count)}
+                              </Text>
+                            </div>
+                          ))}
+                          <Button
+                            href={`${readinessHref.replace(/&blocker=.*$/, "")}&blocker=${entries[0]?.[0] ?? ""}`}
+                            prominence="secondary"
+                            size="sm"
+                          >
+                            {t("resolve")}
+                          </Button>
+                        </div>
+                      );
+                    })}
                     {Object.entries(blockers)
+                      .filter(
+                        ([key]) =>
+                          !BLOCKER_GROUPS.some((group) =>
+                            group.blockerKeys.includes(key)
+                          )
+                      )
                       .sort(([a], [b]) => a.localeCompare(b))
                       .map(([key, count]) => (
                         <div
@@ -474,7 +525,7 @@ function DrePage() {
                           <Text font="main-ui-body" color="text-05">
                             {isBlockerKey(key)
                               ? t(`blockers.${key}`)
-                              : key.replaceAll("_", " ")}
+                              : getBusinessLabel(key)}
                           </Text>
                           <Text font="main-ui-action" color="text-05">
                             {format.number(count)}
@@ -725,10 +776,14 @@ function DrePage() {
                                               aria-label={
                                                 collapsed.includes(line.code)
                                                   ? t("expand", {
-                                                      line: line.label,
+                                                      line: getBusinessLabel(
+                                                        line.label
+                                                      ),
                                                     })
                                                   : t("collapse", {
-                                                      line: line.label,
+                                                      line: getBusinessLabel(
+                                                        line.label
+                                                      ),
                                                     })
                                               }
                                               onClick={() =>
@@ -756,14 +811,14 @@ function DrePage() {
                                                 openLine(line.code)
                                               }
                                             >
-                                              {line.label}
+                                              {getBusinessLabel(line.label)}
                                             </Button>
                                           ) : (
                                             <Text
                                               font="main-ui-body"
                                               color="text-05"
                                             >
-                                              {line.label}
+                                              {getBusinessLabel(line.label)}
                                             </Text>
                                           )}
                                         </div>
@@ -888,7 +943,7 @@ function DrePage() {
                             <div className="flex flex-col gap-4">
                               <div className="flex items-start justify-between gap-2">
                                 <Text as="h3" font="heading-h3" color="text-05">
-                                  {selectedLine.label}
+                                  {getBusinessLabel(selectedLine.label)}
                                 </Text>
                                 <Button
                                   size="sm"
@@ -982,7 +1037,7 @@ function DrePage() {
                                       <Text
                                         font="main-ui-body"
                                         color="text-05"
-                                      >{`${money(fact.amount)} · ${fact.unit_code}`}</Text>
+                                      >{`${money(fact.amount)} · ${getBusinessLabel(fact.unit_code)}`}</Text>
                                       <Text
                                         font="main-ui-muted"
                                         color="text-03"

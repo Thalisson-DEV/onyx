@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import useSWR from "swr";
 import { useSearchParams } from "next/navigation";
-import { Button, InputTypeIn, Text } from "@opal/components";
+import { Button, InputTypeIn, Text, Modal } from "@opal/components";
 import { SvgBarChart, SvgSimpleLoader } from "@opal/icons";
 import { SettingsLayouts } from "@opal/layouts";
 import { errorHandlingFetcher } from "@/lib/fetcher";
@@ -206,7 +206,7 @@ function FinancialReadinessPage() {
     ...extraBlockers.map((blocker) => ({
       key: "other",
       blocker,
-      label: blocker.replaceAll("_", " "),
+      label: getBusinessLabel(blocker),
     })),
   ];
   const category = categories[categoryIndex] ?? {
@@ -503,7 +503,7 @@ function FinancialReadinessPage() {
                     onClick={() => setStructureSelection(structure.id)}
                     size="sm"
                   >
-                    {structure.label}
+                    {getBusinessLabel(structure.label)}
                   </Button>
                 ))}
               </div>
@@ -520,7 +520,7 @@ function FinancialReadinessPage() {
                         setSelected(null);
                       }}
                     >
-                      {unit.code}
+                      {getBusinessLabel(unit.code)}
                     </Button>
                   ))}
                 </div>
@@ -633,7 +633,11 @@ function FinancialReadinessPage() {
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
                           <Text font="main-ui-action" color="text-05">
-                            {row.source_key ?? row.item_id ?? t("unknownSource")}
+                            {getBusinessLabel(
+                              row.source_key ??
+                                row.item_id ??
+                                t("unknownSource")
+                            )}
                           </Text>
                           <TonStatusTag status={row.status} />
                         </div>
@@ -651,7 +655,9 @@ function FinancialReadinessPage() {
                                   })
                                 : row.line_candidate
                                   ? t("candidate", { code: row.line_candidate })
-                                  : (row.evidence ?? t("noCandidate"))}
+                                  : getBusinessLabel(
+                                      row.evidence ?? t("noCandidate")
+                                    )}
                         </Text>
                       </div>
                       <Button
@@ -698,219 +704,258 @@ function FinancialReadinessPage() {
                 </div>
               </section>
               {selected && (
-                <section className="rounded-xl border border-01 background-neutral-00 p-4 flex flex-col gap-4">
-                  <Text as="h2" font="heading-h3" color="text-05">
-                    {t("reviewDecision")}
-                  </Text>
-                  <Text font="main-ui-body" color="text-03">
-                    {selected.evidence ?? t("sourceEvidence")}
-                  </Text>
-                  {selected.legacy_evidence && (
-                    <Text font="secondary-body" color="text-03">
-                      {`${selected.legacy_evidence.reference_label}: ${selected.legacy_evidence.suggested_code}${selected.legacy_evidence.suggested_label ? ` — ${selected.legacy_evidence.suggested_label}` : ""}`}
-                    </Text>
-                  )}
-                  {isMapping && selectedCanEdit && (
-                    <div className="flex flex-col gap-2">
-                      <InputTypeIn
-                        value={targetSearch}
-                        onChange={(event) =>
-                          setTargetSearch(event.target.value)
-                        }
-                        placeholder={t("searchTarget")}
-                        aria-label={t("searchTarget")}
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        {(targets.data ?? []).map((target) => (
-                          <Button
-                            key={target.id}
-                            size="sm"
-                            prominence={
-                              target.id === targetId ? "primary" : "secondary"
-                            }
-                            onClick={() => setTargetId(target.id)}
-                          >
-                            {target.code}
-                          </Button>
-                        ))}
-                      </div>
-                      {targets.isLoading && (
-                        <Text font="main-ui-muted" color="text-03">
-                          {t("loading")}
+                <Modal
+                  open
+                  onOpenChange={(open) => {
+                    if (!open && !busy) setSelected(null);
+                  }}
+                >
+                  <Modal.Content width="lg">
+                    <Modal.Header title={t("reviewDecision")} />
+                    <Modal.Body>
+                      <div className="flex flex-col gap-4">
+                        <Text as="p" font="main-ui-action">
+                          {getBusinessLabel(
+                            selected.source_key ??
+                              selected.item_id ??
+                              t("unknownSource")
+                          )}
                         </Text>
-                      )}
-                      {(category.key === "accounts" ||
-                        category.key === "budgetAccounts") &&
-                        canConfigure && (
-                          <div className="flex flex-col gap-2 border-t border-01 pt-3">
+                        <Text as="p" font="main-ui-body">
+                          {t("approvalConsequence", {
+                            count: selected.record_count,
+                          })}
+                        </Text>
+                        <Text font="main-ui-body" color="text-03">
+                          {getBusinessLabel(
+                            selected.evidence ?? t("sourceEvidence")
+                          )}
+                        </Text>
+                        {selected.legacy_evidence && (
+                          <Text font="secondary-body" color="text-03">
+                            {`${selected.legacy_evidence.reference_label}: ${selected.legacy_evidence.suggested_code}${selected.legacy_evidence.suggested_label ? ` — ${selected.legacy_evidence.suggested_label}` : ""}`}
+                          </Text>
+                        )}
+                        {isMapping && selectedCanEdit && (
+                          <div className="flex flex-col gap-2">
                             <InputTypeIn
-                              value={accountCode}
+                              value={targetSearch}
                               onChange={(event) =>
-                                setAccountCode(event.target.value)
+                                setTargetSearch(event.target.value)
                               }
-                              aria-label={t("accountCode")}
-                              placeholder={t("accountCode")}
+                              placeholder={t("searchTarget")}
+                              aria-label={t("searchTarget")}
                             />
-                            <InputTypeIn
-                              value={accountLabel}
-                              onChange={(event) =>
-                                setAccountLabel(event.target.value)
-                              }
-                              aria-label={t("accountLabel")}
-                              placeholder={t("accountLabel")}
-                            />
+                            <div className="flex flex-wrap gap-2">
+                              {(targets.data ?? []).map((target) => (
+                                <Button
+                                  key={target.id}
+                                  size="sm"
+                                  prominence={
+                                    target.id === targetId
+                                      ? "primary"
+                                      : "secondary"
+                                  }
+                                  onClick={() => setTargetId(target.id)}
+                                >
+                                  {getBusinessLabel(target.code)}
+                                </Button>
+                              ))}
+                            </div>
+                            {targets.isLoading && (
+                              <Text font="main-ui-muted" color="text-03">
+                                {t("loading")}
+                              </Text>
+                            )}
+                            {(category.key === "accounts" ||
+                              category.key === "budgetAccounts") &&
+                              canConfigure && (
+                                <div className="flex flex-col gap-2 border-t border-01 pt-3">
+                                  <InputTypeIn
+                                    value={accountCode}
+                                    onChange={(event) =>
+                                      setAccountCode(event.target.value)
+                                    }
+                                    aria-label={t("accountCode")}
+                                    placeholder={t("accountCode")}
+                                  />
+                                  <InputTypeIn
+                                    value={accountLabel}
+                                    onChange={(event) =>
+                                      setAccountLabel(event.target.value)
+                                    }
+                                    aria-label={t("accountLabel")}
+                                    placeholder={t("accountLabel")}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    prominence="secondary"
+                                    disabled={
+                                      !accountCode.trim() ||
+                                      !accountLabel.trim() ||
+                                      busy
+                                    }
+                                    onClick={createAccount}
+                                  >
+                                    {t("createAccount")}
+                                  </Button>
+                                </div>
+                              )}
+                          </div>
+                        )}
+                        {category.key === "amountBasis" && selectedCanEdit && (
+                          <div className="flex gap-2">
                             <Button
                               size="sm"
-                              prominence="secondary"
-                              disabled={
-                                !accountCode.trim() ||
-                                !accountLabel.trim() ||
-                                busy
+                              prominence={
+                                basis === "MOVEMENT" ? "primary" : "secondary"
                               }
-                              onClick={createAccount}
+                              onClick={() => setBasis("MOVEMENT")}
                             >
-                              {t("createAccount")}
+                              {t("movement")}
+                            </Button>
+                            <Button
+                              size="sm"
+                              prominence={
+                                basis === "FINAL" ? "primary" : "secondary"
+                              }
+                              onClick={() => setBasis("FINAL")}
+                            >
+                              {t("finalAmount")}
                             </Button>
                           </div>
                         )}
-                    </div>
-                  )}
-                  {category.key === "amountBasis" && selectedCanEdit && (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        prominence={
-                          basis === "MOVEMENT" ? "primary" : "secondary"
-                        }
-                        onClick={() => setBasis("MOVEMENT")}
-                      >
-                        {t("movement")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        prominence={basis === "FINAL" ? "primary" : "secondary"}
-                        onClick={() => setBasis("FINAL")}
-                      >
-                        {t("finalAmount")}
-                      </Button>
-                    </div>
-                  )}
-                  {(category.key === "dreAssignment" ||
-                    category.key === "drePending") &&
-                    selectedCanEdit && (
-                      <div className="flex flex-wrap gap-2">
-                        {version.data.lines
-                          .filter((line) => line.line_type === "SOURCE_SUM")
-                          .map((line) => (
+                        {(category.key === "dreAssignment" ||
+                          category.key === "drePending") &&
+                          selectedCanEdit && (
+                            <div className="flex flex-wrap gap-2">
+                              {version.data.lines
+                                .filter(
+                                  (line) => line.line_type === "SOURCE_SUM"
+                                )
+                                .map((line) => (
+                                  <Button
+                                    key={line.code}
+                                    size="sm"
+                                    prominence={
+                                      line.code === lineCode
+                                        ? "primary"
+                                        : "secondary"
+                                    }
+                                    onClick={() => setLineCode(line.code)}
+                                  >
+                                    {getBusinessLabel(line.label)}
+                                  </Button>
+                                ))}
+                            </div>
+                          )}
+                        {category.key === "budgetPeriods" &&
+                          selectedCanEdit && (
+                            <div className="flex gap-2">
+                              <InputTypeIn
+                                type="month"
+                                value={startMonth}
+                                onChange={(event) =>
+                                  setStartMonth(event.target.value)
+                                }
+                                aria-label={t("startMonth")}
+                              />
+                              <InputTypeIn
+                                type="month"
+                                value={endMonth}
+                                onChange={(event) =>
+                                  setEndMonth(event.target.value)
+                                }
+                                aria-label={t("endMonth")}
+                              />
+                            </div>
+                          )}
+                        {category.key.startsWith("reconciliation") &&
+                          selectedCanEdit && (
+                            <div className="flex flex-wrap gap-2">
+                              {RECONCILIATION_DECISIONS.filter(
+                                (value) =>
+                                  value !== "NG_AUTHORITATIVE" ||
+                                  selected.paired
+                              ).map((value) => (
+                                <Button
+                                  key={value}
+                                  size="sm"
+                                  prominence={
+                                    decision === value ? "primary" : "secondary"
+                                  }
+                                  onClick={() => setDecision(value)}
+                                >
+                                  {t(value)}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
+                        {selectedCanEdit && (
+                          <InputTypeIn
+                            value={reason}
+                            onChange={(event) => setReason(event.target.value)}
+                            placeholder={t("reason")}
+                            aria-label={t("reason")}
+                          />
+                        )}
+                        {confirming && (
+                          <Text font="main-ui-body" color="text-05">
+                            {t("approvalConsequence", {
+                              count: selected.record_count,
+                            })}
+                          </Text>
+                        )}
+                        {saved && (
+                          <Text font="main-ui-body" color="status-success-05">
+                            {t("savedRecompute")}
+                          </Text>
+                        )}
+                        {actionError && (
+                          <Text font="main-ui-body" color="status-error-05">
+                            {t("saveError")}
+                          </Text>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {selectedCanEdit && !confirming && (
                             <Button
-                              key={line.code}
-                              size="sm"
-                              prominence={
-                                line.code === lineCode ? "primary" : "secondary"
+                              disabled={
+                                !reason.trim() || !hasDecisionTarget || busy
                               }
-                              onClick={() => setLineCode(line.code)}
+                              onClick={() => setConfirming(true)}
                             >
-                              {line.label}
+                              {t("reviewApproval")}
                             </Button>
-                          ))}
-                      </div>
-                    )}
-                  {category.key === "budgetPeriods" && selectedCanEdit && (
-                    <div className="flex gap-2">
-                      <InputTypeIn
-                        type="month"
-                        value={startMonth}
-                        onChange={(event) => setStartMonth(event.target.value)}
-                        aria-label={t("startMonth")}
-                      />
-                      <InputTypeIn
-                        type="month"
-                        value={endMonth}
-                        onChange={(event) => setEndMonth(event.target.value)}
-                        aria-label={t("endMonth")}
-                      />
-                    </div>
-                  )}
-                  {category.key.startsWith("reconciliation") &&
-                    selectedCanEdit && (
-                      <div className="flex flex-wrap gap-2">
-                        {RECONCILIATION_DECISIONS.filter(
-                          (value) =>
-                            value !== "NG_AUTHORITATIVE" || selected.paired
-                        ).map((value) => (
+                          )}
+                          {selectedCanEdit && confirming && (
+                            <Button disabled={busy} onClick={approve}>
+                              {t("approve")}
+                            </Button>
+                          )}
+                          {selectedCanEdit &&
+                            (category.key === "units" ||
+                              category.key === "accounts") &&
+                            (selected.candidate?.evidence === "EXACT_CODE" ||
+                              selected.legacy_evidence) && (
+                              <Button
+                                prominence="secondary"
+                                disabled={!reason.trim() || busy}
+                                onClick={reject}
+                              >
+                                {t("rejectCandidate")}
+                              </Button>
+                            )}
                           <Button
-                            key={value}
-                            size="sm"
-                            prominence={
-                              decision === value ? "primary" : "secondary"
-                            }
-                            onClick={() => setDecision(value)}
+                            prominence="tertiary"
+                            onClick={() => setSelected(null)}
                           >
-                            {t(value)}
+                            {t("close")}
                           </Button>
-                        ))}
+                        </div>
                       </div>
-                    )}
-                  {selectedCanEdit && (
-                    <InputTypeIn
-                      value={reason}
-                      onChange={(event) => setReason(event.target.value)}
-                      placeholder={t("reason")}
-                      aria-label={t("reason")}
-                    />
-                  )}
-                  {confirming && (
-                    <Text font="main-ui-body" color="text-05">
-                      {t("approvalConsequence", {
-                        count: selected.record_count,
-                      })}
-                    </Text>
-                  )}
-                  {saved && (
-                    <Text font="main-ui-body" color="status-success-05">
-                      {t("savedRecompute")}
-                    </Text>
-                  )}
-                  {actionError && (
-                    <Text font="main-ui-body" color="status-error-05">
-                      {t("saveError")}
-                    </Text>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {selectedCanEdit && !confirming && (
-                      <Button
-                        disabled={!reason.trim() || !hasDecisionTarget || busy}
-                        onClick={() => setConfirming(true)}
-                      >
-                        {t("reviewApproval")}
-                      </Button>
-                    )}
-                    {selectedCanEdit && confirming && (
-                      <Button disabled={busy} onClick={approve}>
-                        {t("approve")}
-                      </Button>
-                    )}
-                    {selectedCanEdit &&
-                      (category.key === "units" ||
-                        category.key === "accounts") &&
-                      (selected.candidate?.evidence === "EXACT_CODE" ||
-                        selected.legacy_evidence) && (
-                        <Button
-                          prominence="secondary"
-                          disabled={!reason.trim() || busy}
-                          onClick={reject}
-                        >
-                          {t("rejectCandidate")}
-                        </Button>
-                      )}
-                    <Button
-                      prominence="tertiary"
-                      onClick={() => setSelected(null)}
-                    >
-                      {t("close")}
-                    </Button>
-                  </div>
-                </section>
+                    </Modal.Body>
+                  </Modal.Content>
+                </Modal>
               )}
             </div>
           )}

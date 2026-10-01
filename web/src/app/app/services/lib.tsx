@@ -548,7 +548,8 @@ export function buildChatUrl(
   chatSessionId: string | null,
   personaId: number | null,
   search?: boolean,
-  skipReload?: boolean
+  skipReload?: boolean,
+  chatPath: "/app" | "/ton/chat" = "/app"
 ) {
   const finalSearchParams: string[] = [];
   if (chatSessionId) {
@@ -573,10 +574,11 @@ export function buildChatUrl(
   }
 
   const finalSearchParamsString = finalSearchParams.join("&");
+  const path = search ? "/search" : chatPath;
 
   if (finalSearchParamsString) {
-    return `/${search ? "search" : "app"}?${finalSearchParamsString}`;
+    return `${path}?${finalSearchParamsString}`;
   }
 
-  return `/${search ? "search" : "app"}`;
+  return path;
 }

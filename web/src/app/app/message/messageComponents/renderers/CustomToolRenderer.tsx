@@ -9,9 +9,12 @@ import {
   CustomToolErrorInfo,
   PacketError,
   SectionEnd,
-} from "../../../services/streamingModels";
-import { MessageRenderer, RenderType } from "../interfaces";
-import { buildImgUrl } from "../../../components/files/images/utils";
+} from "@/app/app/services/streamingModels";
+import {
+  MessageRenderer,
+  RenderType,
+} from "@/app/app/message/messageComponents/interfaces";
+import { buildImgUrl } from "@/app/app/components/files/images/utils";
 import Text from "@/refresh-components/texts/Text";
 import { SvgDownload, SvgExternalLink } from "@opal/icons";
 import { CodeBlock } from "@/app/app/message/CodeBlock";
@@ -24,7 +27,10 @@ import {
   activityStateIcon,
   type ActivityState,
 } from "@/app/app/message/messageComponents/timeline/ActivityStatus";
-import { TonToolCard } from "./TonToolCard";
+import { TonToolCard } from "@/app/app/message/messageComponents/renderers/TonToolCard";
+import { useUser } from "@/providers/UserProvider";
+import { hasPermission } from "@/lib/permissions";
+import { Permission } from "@/lib/types";
 
 // Lazy registration for hljs JSON language
 function ensureHljsRegistered() {
@@ -112,6 +118,12 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
   children,
 }) => {
   const t = useTranslations("chat.messages");
+  const runtime = useTranslations("tonRuntime");
+  const { user } = useUser();
+  const canInspect = hasPermission(
+    user?.effective_permissions ?? [],
+    Permission.FULL_ADMIN_PANEL_ACCESS
+  );
   const {
     toolName,
     toolArgs,
@@ -260,7 +272,7 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
           <span className="text-[10px] inline-block transition-transform group-open:rotate-90">
             ▶
           </span>
-          Ver dados técnicos (JSON)
+          {runtime("technical")}
         </summary>
         <div className="flex flex-col gap-3 pt-2">
           {toolArgsJson && (
@@ -305,7 +317,7 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
         </div>
       </details>
     ),
-    [toolArgsJson, dataJson, data, error, t]
+    [toolArgsJson, dataJson, data, error, t, runtime]
   );
 
   // Any failure — not just an auth failure — gets the error surface, which also
@@ -338,7 +350,7 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
         content: (
           <div className="flex flex-col gap-3">
             {humanReadable}
-            {technicalDetail}
+            {canInspect && technicalDetail}
           </div>
         ),
       },

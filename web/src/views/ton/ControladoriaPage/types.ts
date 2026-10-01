@@ -57,6 +57,7 @@ export interface Publication {
   report_url: string;
   download_url: string;
   routine_code: string | null;
+  report_type?: string | null;
   output: ClosingOutput;
   steps: {
     specialist: string;
@@ -64,6 +65,11 @@ export interface Publication {
     status: string;
     reason?: string;
   }[];
+}
+
+export interface ReportGroup {
+  latest: Publication;
+  previous_count: number;
 }
 
 export interface Routine {

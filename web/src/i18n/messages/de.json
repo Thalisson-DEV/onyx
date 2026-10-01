@@ -14485,7 +14485,8 @@
       "formulaCacheMissing": "Formula result missing",
       "competenceYearGap": "Billing period differs from the year",
       "other": "Other item requiring attention"
-    }
+    },
+    "fileReady": "Datei ausgewählt. Erweiterung und Größe sind gültig. Prüfen Sie das Ergebnis nach der Verarbeitung."
   },
   "controladoria": {
     "title": "Finanzcontrolling",
@@ -14549,5 +14550,34 @@
     "admin": "Verwaltung",
     "unavailable": "TON Chat ist nicht verfügbar. Prüfen Sie den Zugriff und die TON-Persona-Konfiguration.",
     "loading": "TON Chat wird geladen…"
+  },
+  "tonRuntime": {
+    "coordinator": "Spezialisten sind Orchestrierungsrollen. Sprechen Sie über den TON-Koordinator mit ihnen.",
+    "details": "Details anzeigen",
+    "requiredSources": "Erforderliche Quellen",
+    "available": "Verfügbare Funktionen",
+    "blocked": "Ausstehende Funktionen",
+    "lastExecution": "Letzte Ausführung: {date}",
+    "close": "Schließen",
+    "starting": "Abschluss wird gestartet…",
+    "started": "Abschluss gestartet",
+    "running": "Analyse läuft. Warten Sie auf die Veröffentlichungsbestätigung.",
+    "startedAt": "Gestartet am {date}",
+    "completed": "Abschluss beendet",
+    "persisted": "Ergebnis veröffentlicht und gespeichert. Nach dem Neuladen können Sie zurückkehren.",
+    "openReport": "Bericht öffnen",
+    "advanced": "Erweiterte Optionen",
+    "execution": "TON-Analyseausführung",
+    "analysisCompleted": "Analyse abgeschlossen",
+    "analysisRunning": "Analyse läuft",
+    "analysisStopped": "Analyse unterbrochen",
+    "analysisPartial": "Analyse mit offenen Punkten abgeschlossen",
+    "family": "{name} ({count})",
+    "viewSteps": "Schritte anzeigen",
+    "technical": "Technische Daten anzeigen (JSON)",
+    "evidence": "Nachweis",
+    "olderReports": "Frühere Versionen anzeigen ({count})",
+    "previous": "Zurück",
+    "next": "Weiter"
   }
 }

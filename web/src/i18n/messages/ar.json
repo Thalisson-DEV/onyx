@@ -14485,7 +14485,8 @@
       "formulaCacheMissing": "Formula result missing",
       "competenceYearGap": "Billing period differs from the year",
       "other": "Other item requiring attention"
-    }
+    },
+    "fileReady": "تم اختيار الملف. الامتداد والحجم صالحان. راجع نتيجة الاستيراد بعد المعالجة."
   },
   "controladoria": {
     "title": "الرقابة المالية",
@@ -14549,5 +14550,34 @@
     "admin": "الإدارة",
     "unavailable": "محادثة TON غير متاحة. تحقق من الوصول وإعداد شخصية TON.",
     "loading": "جارٍ تحميل محادثة TON…"
+  },
+  "tonRuntime": {
+    "coordinator": "المتخصصون أدوار تنسيق. تحدث معهم من خلال منسق TON.",
+    "details": "عرض التفاصيل",
+    "requiredSources": "المصادر المطلوبة",
+    "available": "القدرات المتاحة",
+    "blocked": "القدرات المعلقة",
+    "lastExecution": "آخر تشغيل: {date}",
+    "close": "إغلاق",
+    "starting": "جارٍ بدء الإقفال…",
+    "started": "بدأ الإقفال",
+    "running": "التحليل قيد التشغيل. انتظر تأكيد النشر.",
+    "startedAt": "بدأ في {date}",
+    "completed": "اكتمل الإقفال",
+    "persisted": "تم نشر النتيجة وحفظها. يمكنك العودة إليها بعد تحديث الصفحة.",
+    "openReport": "فتح التقرير",
+    "advanced": "خيارات متقدمة",
+    "execution": "تشغيل تحليل TON",
+    "analysisCompleted": "اكتمل التحليل",
+    "analysisRunning": "التحليل قيد التشغيل",
+    "analysisStopped": "توقف التحليل",
+    "analysisPartial": "اكتمل التحليل مع عناصر معلقة",
+    "family": "{name} ({count})",
+    "viewSteps": "عرض الخطوات",
+    "technical": "عرض البيانات التقنية (JSON)",
+    "evidence": "دليل",
+    "olderReports": "عرض الإصدارات السابقة ({count})",
+    "previous": "السابق",
+    "next": "التالي"
   }
 }

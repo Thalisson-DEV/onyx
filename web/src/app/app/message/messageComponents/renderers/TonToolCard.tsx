@@ -1,17 +1,8 @@
 "use client";
 
-import React from "react";
+import { useTranslations } from "next-intl";
 import { Button, Text } from "@opal/components";
-import {
-  SvgFileText,
-  SvgDownload,
-  SvgExternalLink,
-  SvgCheckCircle,
-  SvgAlertTriangle,
-  SvgFiles,
-  SvgInfo,
-} from "@opal/icons";
-import { getBusinessLabel } from "@/lib/ton/labels";
+import { getBusinessLabel, TON_TOOL_NAMES } from "@/lib/ton/labels";
 import { TonStatusTag } from "@/views/ton/components/TonStatusTag";
 
 interface TonToolCardProps {
@@ -19,208 +10,231 @@ interface TonToolCardProps {
   data: unknown;
 }
 
+type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
+interface JsonObject {
+  [key: string]: JsonValue;
+}
+
+function isJsonValue(value: unknown): value is JsonValue {
+  return (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    (Array.isArray(value) ? value.every(isJsonValue) : record(value))
+  );
+}
+
+function record(value: unknown): value is JsonObject {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.values(value).every(isJsonValue)
+  );
+}
+
+interface EvidenceRow {
+  source_name?: string;
+  sheet_name?: string;
+  row_number?: number;
+  confidence_level?: string | number;
+  record_count?: number;
+  status?: string;
+  evidence?: string;
+}
+
+function evidenceRows(
+  value: JsonObject | JsonValue[],
+  depth = 0
+): EvidenceRow[] {
+  if (depth > 4) return [];
+  if (Array.isArray(value))
+    return value
+      .flatMap((item) =>
+        record(item) || Array.isArray(item) ? evidenceRows(item, depth + 1) : []
+      )
+      .slice(0, 10);
+  if (!record(value)) return [];
+  if (
+    typeof value.row_number === "number" ||
+    typeof value.sheet_name === "string" ||
+    typeof value.record_count === "number"
+  )
+    return [
+      {
+        source_name:
+          typeof value.source_name === "string"
+            ? value.source_name
+            : typeof value.source_key === "string" &&
+                !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(value.source_key)
+              ? value.source_key
+              : undefined,
+        record_count:
+          typeof value.record_count === "number"
+            ? value.record_count
+            : undefined,
+        status: typeof value.status === "string" ? value.status : undefined,
+        evidence:
+          typeof value.evidence === "string" ? value.evidence : undefined,
+        sheet_name:
+          typeof value.sheet_name === "string" ? value.sheet_name : undefined,
+        row_number:
+          typeof value.row_number === "number" ? value.row_number : undefined,
+        confidence_level:
+          typeof value.confidence_level === "string" ||
+          typeof value.confidence_level === "number"
+            ? value.confidence_level
+            : undefined,
+      },
+    ];
+  return ["evidence", "rows", "items", "details", "finding"]
+    .flatMap((key) => {
+      const child = value[key];
+      return record(child) || Array.isArray(child)
+        ? evidenceRows(child, depth + 1)
+        : [];
+    })
+    .slice(0, 10);
+}
+
 export function TonToolCard({ toolName, data }: TonToolCardProps) {
-  if (!data || typeof data !== "object") return null;
-
-  const rawObj = data as Record<string, unknown>;
-  const payload =
-    "data" in rawObj && rawObj.data !== undefined ? rawObj.data : rawObj;
-
-  if (!payload || typeof payload !== "object") return null;
-
-  // 1. Report publication result (R3 / Closing Report)
-  if ("report_url" in payload && typeof payload.report_url === "string") {
-    const pub = payload as {
-      report_url: string;
-      download_url?: string;
-      status?: string;
-      routine_code?: string;
-      period?: string;
-      output?: { dre_status?: string; blockers?: Record<string, number> };
-    };
-
-    return (
-      <div className="rounded-12 border border-01 background-neutral-00 p-3.5 flex flex-col gap-2.5 my-1 max-w-lg shadow-sm">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <SvgFileText className="w-4 h-4 text-action-selection-01 shrink-0" />
-            <span className="text-xs font-semibold text-text-05">
-              Relatório do Fechamento {pub.period ? `(${pub.period})` : ""}
-            </span>
-          </div>
-          {pub.status && (
-            <TonStatusTag status={pub.status} />
-          )}
-        </div>
-
-        {pub.output?.blockers && Object.keys(pub.output.blockers).length > 0 && (
-          <div className="flex flex-wrap gap-1.5 text-xs">
-            {Object.entries(pub.output.blockers).slice(0, 3).map(([k, count]) => (
-              <span
-                key={k}
-                className="bg-background-neutral-01 px-2 py-0.5 rounded text-text-04"
-              >
-                {getBusinessLabel(k)}: {count}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-center gap-2 pt-1">
-          <Button href={pub.report_url} size="sm" icon={SvgExternalLink}>
-            Abrir Relatório
-          </Button>
-          {pub.download_url && (
-            <Button
-              href={pub.download_url}
-              prominence="secondary"
-              size="sm"
-              icon={SvgDownload}
-            >
-              Baixar
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // 2. DRE Readiness / Blockers
-  if ("dre_status" in payload && typeof payload.dre_status === "string") {
-    const readiness = payload as {
-      dre_status: string;
-      period?: string;
-      scope?: string;
-      blockers?: Record<string, number>;
-    };
-
-    const blockers = readiness.blockers ?? {};
-    const blockerCount = Object.values(blockers).reduce((a, b) => a + b, 0);
-
-    return (
-      <div className="rounded-12 border border-01 background-neutral-00 p-3.5 flex flex-col gap-2.5 my-1 max-w-lg shadow-sm">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <SvgAlertTriangle className="w-4 h-4 text-status-warning-05 shrink-0" />
-            <span className="text-xs font-semibold text-text-05">
-              Prontidão da DRE
-            </span>
-          </div>
-          <TonStatusTag status={readiness.dre_status} />
-        </div>
-
-        <div className="flex flex-col gap-1.5 text-xs text-text-04">
-          <div className="flex items-center justify-between">
-            <span>Bloqueios pendentes:</span>
-            <span className="font-semibold text-text-05">{blockerCount}</span>
-          </div>
-          {Object.entries(blockers).slice(0, 4).map(([label, count]) => (
-            <div
-              key={label}
-              className="flex items-center justify-between bg-background-neutral-01 px-2 py-1 rounded"
-            >
-              <span className="truncate">{getBusinessLabel(label)}</span>
-              <span className="font-semibold ms-2">{count}</span>
-            </div>
-          ))}
-        </div>
-
-        <div className="pt-1">
-          <Button href="/ton/pendencias" prominence="secondary" size="sm">
-            Ver todas as pendências
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // 3. Evidence / Single Lineage
-  if (
-    "source_snapshot_id" in payload ||
-    "sheet_name" in payload ||
-    "row_number" in payload
-  ) {
-    const evidence = payload as {
-      source_snapshot_id?: string | null;
-      sheet_name?: string | null;
-      row_number?: number | null;
-      confidence_level?: string | number | null;
-      details?: string | null;
-    };
-
-    return (
-      <div className="rounded-12 border border-01 background-neutral-00 p-3.5 flex flex-col gap-2 my-1 max-w-lg shadow-sm">
-        <div className="flex items-center gap-2 text-xs font-semibold text-text-05">
-          <SvgInfo className="w-4 h-4 text-action-selection-01" />
-          Evidência Contábil
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-xs bg-background-neutral-01 p-2.5 rounded-8">
-          <div>
-            <span className="text-text-03">Planilha: </span>
-            <span className="font-medium text-text-05">
-              {evidence.sheet_name ?? "—"}
-            </span>
-          </div>
-          <div>
-            <span className="text-text-03">Linha: </span>
-            <span className="font-medium text-text-05">
-              {evidence.row_number ?? "—"}
-            </span>
-          </div>
-          <div className="col-span-2">
-            <span className="text-text-03">Confiança: </span>
-            <TonStatusTag status={String(evidence.confidence_level ?? "100%")} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // 4. Sources list
-  const sourcesList = Array.isArray(payload)
-    ? payload
-    : "sources" in payload && Array.isArray((payload as any).sources)
-      ? (payload as any).sources
+  const t = useTranslations("controladoria");
+  const labels = useTranslations("tonRuntime");
+  const readiness = useTranslations("financialReadiness");
+  const payload = record(data) && "data" in data ? data.data : data;
+  const body =
+    record(payload) && record(payload.output) ? payload.output : payload;
+  const publication =
+    record(payload) &&
+    typeof payload.report_url === "string" &&
+    payload.report_url.startsWith("/ton/controladoria/reports/")
+      ? payload
       : null;
-
-  if (
-    sourcesList &&
-    sourcesList.length > 0 &&
-    ("acquisition" in sourcesList[0] || "last_success_at" in sourcesList[0])
-  ) {
-    return (
-      <div className="rounded-12 border border-01 background-neutral-00 p-3.5 flex flex-col gap-2.5 my-1 max-w-lg shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-semibold text-text-05">
-            <SvgFiles className="w-4 h-4 text-action-selection-01" />
-            Fontes Financeiras ({sourcesList.length})
-          </div>
-          <Button href="/ton/data-sources" prominence="tertiary" size="sm">
-            Gerenciar
-          </Button>
-        </div>
-
-        <div className="flex flex-col gap-1.5 text-xs">
-          {sourcesList.slice(0, 4).map((src: any, idx: number) => (
-            <div
-              key={src.id ?? src.key ?? idx}
-              className="flex items-center justify-between p-2 rounded bg-background-neutral-01 border border-01"
-            >
-              <div className="flex flex-col min-w-0">
-                <span className="font-medium text-text-05 truncate">
-                  {src.name ?? src.source_id ?? "Fonte"}
-                </span>
-                <span className="text-[10px] text-text-03">
-                  {src.acquisition ?? "Importação"}
-                </span>
-              </div>
-              <TonStatusTag status={src.status} />
-            </div>
-          ))}
-        </div>
-      </div>
+  const rows = record(body) || Array.isArray(body) ? evidenceRows(body) : [];
+  const blockers =
+    record(body) && record(body.blockers)
+      ? Object.entries(body.blockers).filter(
+          (entry): entry is [string, number] => typeof entry[1] === "number"
+        )
+      : [];
+  const sources: JsonValue[] =
+    Array.isArray(body) && body.every(isJsonValue)
+      ? body
+      : record(body) && Array.isArray(body.sources)
+        ? body.sources
+        : [];
+  const sourceRows = sources
+    .filter(record)
+    .filter(
+      (source) =>
+        typeof source.acquisition === "string" ||
+        typeof source.last_success_at === "string"
     );
-  }
+  if (!publication && !rows.length && !blockers.length && !sourceRows.length)
+    return null;
 
-  return null;
+  return (
+    <div className="border border-01 rounded-12 p-3 flex flex-col gap-2">
+      <Text font="main-ui-action">
+        {TON_TOOL_NAMES[toolName] ?? labels("evidence")}
+      </Text>
+      {record(data) && typeof data.data_context === "string" && (
+        <Text as="p" font="secondary-body" color="text-03">
+          {data.data_context}
+        </Text>
+      )}
+      {record(body) && typeof body.dre_status === "string" && (
+        <TonStatusTag status={body.dre_status} />
+      )}
+      {publication && (
+        <>
+          {typeof publication.status === "string" && (
+            <TonStatusTag status={publication.status} />
+          )}
+          <Button href={String(publication.report_url)} size="sm">
+            {labels("openReport")}
+          </Button>
+          {typeof publication.download_url === "string" &&
+            publication.download_url.startsWith("/api/ton/agent/reports/") && (
+              <Button
+                href={publication.download_url}
+                prominence="secondary"
+                size="sm"
+              >
+                {t("download")}
+              </Button>
+            )}
+        </>
+      )}
+      {blockers.slice(0, 4).map(([key, count]) => (
+        <Text key={key} as="p" font="secondary-body">
+          {t("blocker", { label: getBusinessLabel(key), count })}
+        </Text>
+      ))}
+      {blockers.length > 0 && (
+        <Button href="/ton/pendencias" prominence="secondary" size="sm">
+          {t("readiness")}
+        </Button>
+      )}
+      {rows.map((row, index) => (
+        <div key={index} className="flex flex-col gap-2">
+          {row.record_count !== undefined && (
+            <Text as="p" font="secondary-body">
+              {readiness("affected", { count: row.record_count })}
+            </Text>
+          )}
+          {row.status && <TonStatusTag status={row.status} />}
+          {row.record_count !== undefined && row.source_name && (
+            <Text as="p" font="secondary-body">
+              {getBusinessLabel(row.source_name)}
+            </Text>
+          )}
+          {row.evidence && (
+            <Text as="p" font="secondary-body">
+              {getBusinessLabel(row.evidence)}
+            </Text>
+          )}
+          {(row.sheet_name !== undefined || row.row_number !== undefined) && (
+            <Text as="p" font="secondary-body">
+              {t("evidence", {
+                source:
+                  typeof row.source_name === "string"
+                    ? getBusinessLabel(row.source_name)
+                    : t("notAvailable"),
+                sheet:
+                  typeof row.sheet_name === "string"
+                    ? row.sheet_name
+                    : t("notAvailable"),
+                row:
+                  typeof row.row_number === "number"
+                    ? row.row_number
+                    : t("notAvailable"),
+                confidence:
+                  typeof row.confidence_level === "string" ||
+                  typeof row.confidence_level === "number"
+                    ? getBusinessLabel(String(row.confidence_level))
+                    : t("notAvailable"),
+              })}
+            </Text>
+          )}
+        </div>
+      ))}
+      {sourceRows.map((source, index) => (
+        <div key={index} className="flex justify-between gap-2">
+          <Text font="secondary-body">
+            {typeof source.name === "string" ? source.name : t("notAvailable")}
+          </Text>
+          {typeof source.status === "string" && (
+            <TonStatusTag status={source.status} />
+          )}
+        </div>
+      ))}
+      {sourceRows.length > 0 && (
+        <Button href="/ton/data-sources" prominence="secondary" size="sm">
+          {t("sources")}
+        </Button>
+      )}
+    </div>
+  );
 }

@@ -451,7 +451,7 @@ const ChatButton = memo(
               href={
                 isDragging || renaming
                   ? undefined
-                  : `/app?chatId=${chatSession.id}`
+                  : appPosition.chatHref(chatSession.id)
               }
               onClick={renaming ? undefined : handleClick}
               selected={active}

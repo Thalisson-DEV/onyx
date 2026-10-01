@@ -264,7 +264,7 @@ describe("TON navigation destinations", () => {
     mockPermissions = [Permission.READ_TON_SOURCES];
     renderSidebar();
     expect(
-      within(productNav()).getByRole("link", { name: "TON", exact: true })
+      within(productNav()).getByRole("link", { name: "TON" })
     ).toHaveAttribute("href", "/ton");
     expect(screen.queryByRole("link", { name: /administration/i })).toBeNull();
   });
@@ -272,7 +272,7 @@ describe("TON navigation destinations", () => {
   it("withholds TON without source permission", () => {
     renderSidebar();
     expect(
-      within(productNav()).queryByRole("link", { name: "TON", exact: true })
+      within(productNav()).queryByRole("link", { name: "TON" })
     ).toBeNull();
   });
   it("offers Central as the main entry point", () => {

@@ -14417,8 +14417,8 @@
     "never": "Sem atualização",
     "addFile": "Adicionar arquivo",
     "updateData": "Atualizar dados",
-    "importedCount": "{count, plural, =0 {# registros importados} one {# registro importado} other {# registros importados}}",
-    "warningCount": "{count, plural, =0 {# avisos ou erros} one {# aviso ou erro} other {# avisos ou erros}}",
+    "importedCount": "{count} registros importados",
+    "warningCount": "{count} avisos ou erros",
     "history": "Histórico de importações",
     "viewDetails": "Ver detalhes",
     "uploadTitle": "Atualizar {source}",
@@ -14485,7 +14485,8 @@
       "formulaCacheMissing": "Resultado de fórmula ausente",
       "competenceYearGap": "Competência fora do ano",
       "other": "Outra pendência encontrada"
-    }
+    },
+    "fileReady": "Arquivo selecionado. Extensão e tamanho válidos. Confira o resultado após o processamento."
   },
   "controladoria": {
     "title": "Controladoria",
@@ -14549,5 +14550,34 @@
     "admin": "Painel de administração",
     "unavailable": "Chat TON indisponível. Verifique o acesso e a configuração da Persona TON.",
     "loading": "Carregando Chat TON…"
+  },
+  "tonRuntime": {
+    "coordinator": "Especialistas são papéis de orquestração. Converse com eles pelo coordenador TON.",
+    "details": "Ver detalhes",
+    "requiredSources": "Fontes necessárias",
+    "available": "Capacidades disponíveis",
+    "blocked": "Capacidades pendentes",
+    "lastExecution": "Última execução: {date}",
+    "close": "Fechar",
+    "starting": "Iniciando fechamento…",
+    "started": "Fechamento iniciado",
+    "running": "Análise em execução. Aguarde a confirmação da publicação.",
+    "startedAt": "Iniciado em {date}",
+    "completed": "Fechamento concluído",
+    "persisted": "Resultado publicado e persistido. Você pode voltar a ele após atualizar a página.",
+    "openReport": "Abrir relatório",
+    "execution": "Execução da análise TON",
+    "analysisCompleted": "Análise concluída",
+    "analysisRunning": "Análise em execução",
+    "analysisStopped": "Análise interrompida",
+    "analysisPartial": "Análise concluída com pendências",
+    "family": "{name} ({count})",
+    "viewSteps": "Ver etapas",
+    "technical": "Ver dados técnicos (JSON)",
+    "evidence": "Evidência",
+    "olderReports": "Ver versões anteriores ({count})",
+    "previous": "Anterior",
+    "next": "Próxima",
+    "advanced": "Opções avançadas"
   }
 }

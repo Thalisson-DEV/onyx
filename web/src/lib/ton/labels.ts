@@ -6,11 +6,34 @@
  */
 
 export const BUSINESS_LABELS: Record<string, string> = {
+  UNRESOLVED: "Sem decisão",
+  "MONTHLY_CONTRACT: SOURCE HAS NO APPROVED CALENDAR START":
+    "O orçamento mensal não tem data inicial aprovada.",
+  "IMPORT REVIEWED NG ACTUALS FOR THIS PERIOD":
+    "Importe os lançamentos financeiros revisados deste período.",
+  "BILLING_ONLY; NG NO; BILLING YES; ACCOUNT MAPPED YES; UNIT MAPPED YES; DOCUMENT MATCH UNKNOWN; AMOUNT RELATION UNVERIFIED":
+    "Somente faturamento disponível. Conta e unidade vinculadas. Documento e valor precisam de conferência.",
+  "UNMAPPED; NG YES; BILLING NO; ACCOUNT MAPPED YES; UNIT MAPPED NO; DOCUMENT MATCH UNKNOWN; AMOUNT RELATION UNVERIFIED":
+    "Lançamento financeiro sem faturamento correspondente. Conta vinculada e unidade sem vínculo. Documento e valor precisam de conferência.",
   // General status
   READY: "Pronta",
   NOT_READY: "Pendente",
   BLOCKED: "Aguardando dados",
   PARTIAL: "Parcial",
+  IN_PROGRESS: "Parcial",
+  "IN PROGRESS": "Parcial",
+  NOT_IMPLEMENTED: "Não implementada",
+  UNCONFIGURED: "Não configurada",
+  MONTHLY_CLOSE: "Fechamento preliminar mensal",
+  EXECUTIVE: "Resumo executivo",
+  UNMAPPED: "Não vinculado",
+  "SYNTHETIC UNIT": "Unidade de demonstração",
+  "EXACT SOURCE FIELD FROM REVIEWED NG RECORDS":
+    "Origem: lançamentos financeiros revisados",
+  "EXACT SOURCE FIELD": "Origem: lançamentos financeiros revisados",
+  "GROSS REVENUE": "Receita bruta",
+  COST: "Custo",
+  RESULT: "Resultado",
   ACCEPTED: "Revisado",
   REVIEW_REQUIRED: "Revisão necessária",
   CORRECTION_REQUIRED: "Correção necessária",
@@ -76,8 +99,8 @@ export const BUSINESS_LABELS: Record<string, string> = {
   SOURCE_RECONCILIATION_UNRESOLVED: "Conciliação sem decisão",
   RECONCILIATION_UNRESOLVED: "Conciliação pendente",
   RECONCILIATION_PENDING: "Conciliação pendente",
-  NO_ACTUAL: "Períodos sem realizado no escopo",
-  "NO ACTUAL": "Períodos sem realizado no escopo",
+  NO_ACTUAL: "Sem realizado no período",
+  "NO ACTUAL": "Sem realizado no período",
   FORMULA_DENOMINATOR_ZERO: "Denominador da fórmula igual a zero",
   DRE_STRUCTURE_INVALID: "Estrutura DRE inválida",
   BASE_REPROVED: "Base reprovada para publicação",
@@ -98,7 +121,13 @@ export const BUSINESS_LABELS: Record<string, string> = {
  */
 export function getBusinessLabel(code: string | null | undefined): string {
   if (!code) return "—";
-  return BUSINESS_LABELS[code] ?? BUSINESS_LABELS[code.toUpperCase()] ?? code.replaceAll("_", " ");
+  return (
+    BUSINESS_LABELS[code] ??
+    BUSINESS_LABELS[code.toUpperCase()] ??
+    code
+      .replace(/\bSynthetic unit\b/gi, BUSINESS_LABELS["SYNTHETIC UNIT"] ?? "")
+      .replaceAll("_", " ")
+  );
 }
 
 export type StatusTone = "success" | "warning" | "error" | "neutral" | "info";
@@ -197,7 +226,8 @@ export const BLOCKER_GROUPS: BlockerCategoryGroup[] = [
   {
     id: "financial-classification",
     label: "Classificação financeira",
-    description: "Contas de origem aguardando enquadramento contábil ou estrutura da DRE",
+    description:
+      "Contas de origem aguardando enquadramento contábil ou estrutura da DRE",
     actionVerb: "Classificar",
     blockerKeys: [
       "UNMAPPED_ACCOUNT",
@@ -224,10 +254,7 @@ export const BLOCKER_GROUPS: BlockerCategoryGroup[] = [
     label: "Dotação e orçamento",
     description: "Valores ou períodos de orçamento aguardando sincronização",
     actionVerb: "Definir período",
-    blockerKeys: [
-      "BUDGET_PERIOD_UNRESOLVED",
-      "MISSING_BUDGET",
-    ],
+    blockerKeys: ["BUDGET_PERIOD_UNRESOLVED", "MISSING_BUDGET"],
   },
   {
     id: "reconciliation",

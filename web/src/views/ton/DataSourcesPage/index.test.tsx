@@ -77,10 +77,10 @@ it("shows a financial source and links to readiness and DRE", () => {
   expect(screen.getByText(source.name)).toBeInTheDocument();
   expect(
     screen.getByRole("link", { name: "Financial readiness" })
-  ).toHaveAttribute("href", "/admin/financial-readiness");
+  ).toHaveAttribute("href", "/ton/pendencias");
   expect(screen.getByRole("link", { name: "DRE" })).toHaveAttribute(
     "href",
-    "/admin/dre"
+    "/ton/dre"
   );
 });
 

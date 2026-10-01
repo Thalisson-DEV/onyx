@@ -24,6 +24,7 @@ import {
   activityStateIcon,
   type ActivityState,
 } from "@/app/app/message/messageComponents/timeline/ActivityStatus";
+import { TonToolCard } from "./TonToolCard";
 
 // Lazy registration for hljs JSON language
 function ensureHljsRegistered() {
@@ -199,6 +200,11 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
             </ActivityIndicator>
           )}
 
+        {/* TON Domain Card */}
+        {!error && data !== undefined && data !== null && (
+          <TonToolCard toolName={toolName} data={data} />
+        )}
+
         {/* Error display */}
         {(error || packetError?.message) && (
           <div className="ps-(--timeline-common-text-padding)">
@@ -239,7 +245,7 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
         )}
       </div>
     ),
-    [data, fileIds, error, packetError, isRunning, t]
+    [data, fileIds, error, packetError, isRunning, toolName, t]
   );
 
   /**
@@ -249,47 +255,55 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
    */
   const technicalDetail = useMemo(
     () => (
-      <div className="flex flex-col gap-3">
-        {toolArgsJson && (
-          <div>
-            <IoBlockLabel label={t("customTool.requestBlock.label")} />
-            <div className="prose prose-ton max-w-full">
-              <CodeBlock
-                className="font-secondary-mono"
-                codeText={toolArgsJson}
-                noPadding
-              >
-                <HighlightedJsonCode code={toolArgsJson} />
-              </CodeBlock>
+      <details className="mt-2 text-xs group">
+        <summary className="cursor-pointer text-text-03 hover:text-text-05 select-none font-medium py-1 list-none flex items-center gap-1.5">
+          <span className="text-[10px] inline-block transition-transform group-open:rotate-90">
+            ▶
+          </span>
+          Ver dados técnicos (JSON)
+        </summary>
+        <div className="flex flex-col gap-3 pt-2">
+          {toolArgsJson && (
+            <div>
+              <IoBlockLabel label={t("customTool.requestBlock.label")} />
+              <div className="prose prose-ton max-w-full">
+                <CodeBlock
+                  className="font-secondary-mono"
+                  codeText={toolArgsJson}
+                  noPadding
+                >
+                  <HighlightedJsonCode code={toolArgsJson} />
+                </CodeBlock>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {!error && data !== undefined && data !== null && (
-          <div>
-            <IoBlockLabel label={t("customTool.responseBlock.label")} />
-            <div className="prose prose-ton max-w-full">
-              {dataJson ? (
-                <CodeBlock
-                  className="font-secondary-mono"
-                  codeText={dataJson}
-                  noPadding
-                >
-                  <HighlightedJsonCode code={dataJson} />
-                </CodeBlock>
-              ) : (
-                <CodeBlock
-                  className="font-secondary-mono"
-                  codeText={String(data)}
-                  noPadding
-                >
-                  {String(data)}
-                </CodeBlock>
-              )}
+          {!error && data !== undefined && data !== null && (
+            <div>
+              <IoBlockLabel label={t("customTool.responseBlock.label")} />
+              <div className="prose prose-ton max-w-full">
+                {dataJson ? (
+                  <CodeBlock
+                    className="font-secondary-mono"
+                    codeText={dataJson}
+                    noPadding
+                  >
+                    <HighlightedJsonCode code={dataJson} />
+                  </CodeBlock>
+                ) : (
+                  <CodeBlock
+                    className="font-secondary-mono"
+                    codeText={String(data)}
+                    noPadding
+                  >
+                    {String(data)}
+                  </CodeBlock>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </details>
     ),
     [toolArgsJson, dataJson, data, error, t]
   );

@@ -20,6 +20,7 @@ import {
   SvgListTree,
   SvgActions,
 } from "@opal/icons";
+import { TON_TOOL_NAMES } from "@/lib/ton/labels";
 
 /**
  * Check if a packet group contains an ERROR packet (tool failed)
@@ -110,11 +111,13 @@ export function getToolName(packets: Packet[], t: TimelineTranslate): string {
       return t("toolNames.codeInterpreter");
     case PacketType.FETCH_TOOL_START:
       return t("toolNames.openUrls");
-    case PacketType.CUSTOM_TOOL_START:
-      return (
-        (firstPacket.obj as { tool_name?: string }).tool_name ||
-        t("toolNames.customTool")
-      );
+    case PacketType.CUSTOM_TOOL_START: {
+      const rawName = (firstPacket.obj as { tool_name?: string }).tool_name;
+      if (rawName && TON_TOOL_NAMES[rawName]) {
+        return TON_TOOL_NAMES[rawName];
+      }
+      return rawName || t("toolNames.customTool");
+    }
     case PacketType.IMAGE_GENERATION_TOOL_START:
       return t("toolNames.generateImage");
     case PacketType.DEEP_RESEARCH_PLAN_START:

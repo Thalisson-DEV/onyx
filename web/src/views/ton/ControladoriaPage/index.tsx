@@ -283,6 +283,7 @@ export default function ControladoriaPage() {
       setResult(publication);
       requestId.current = null;
       await publications.mutate();
+      await routines.mutate();
     } catch {
       setRunError(true);
     } finally {
@@ -422,6 +423,34 @@ export default function ControladoriaPage() {
               <Text as="p" font="main-ui-muted" color="text-03">
                 {routine.schedule}
               </Text>
+              {routine.next_run && (
+                <Text as="p" font="main-ui-muted" color="text-03">
+                  {t("nextRoutineRun", {
+                    date: format.dateTime(new Date(routine.next_run), {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                      timeZone: "America/Sao_Paulo",
+                    }),
+                  })}
+                </Text>
+              )}
+              {routine.last_run && routine.last_result && (
+                <Text as="p" font="main-ui-muted" color="text-03">
+                  {t("lastRoutineRun", {
+                    date: format.dateTime(new Date(routine.last_run), {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                      timeZone: "America/Sao_Paulo",
+                    }),
+                    result: routine.last_result,
+                  })}
+                </Text>
+              )}
+              {routine.last_report_url && (
+                <Button href={routine.last_report_url} prominence="secondary">
+                  {t("openResult")}
+                </Button>
+              )}
               {routine.manual_available && (
                 <div className="flex flex-wrap gap-2 pt-2">
                   <Button

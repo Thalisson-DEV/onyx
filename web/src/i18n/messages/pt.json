@@ -14529,6 +14529,8 @@
     "step": "{specialist} · {name} · {status}",
     "capabilities": "Cobertura do Prompt Mestre",
     "capabilityNote": "O registro não ativa uma regra. Cada item mostra sua capacidade atual e as dependências pendentes.",
-    "capabilityNeeds": "Fontes: {sources}. Configuração: {configuration}. Especialista: {owner}."
+    "capabilityNeeds": "Fontes: {sources}. Configuração: {configuration}. Especialista: {owner}.",
+    "nextRoutineRun": "Próxima execução (Brasília): {date}",
+    "lastRoutineRun": "Última execução agendada (Brasília): {date}. Resultado: {result}"
   }
 }

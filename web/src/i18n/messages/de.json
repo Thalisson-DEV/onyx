@@ -14529,6 +14529,8 @@
     "step": "{specialist} · {name} · {status}",
     "capabilities": "Abdeckung des Prompt Mestre",
     "capabilityNote": "Die Registrierung aktiviert keine Regel. Jeder Eintrag zeigt die aktuelle Funktion und fehlende Abhängigkeiten.",
-    "capabilityNeeds": "Quellen: {sources}. Konfiguration: {configuration}. Spezialist: {owner}."
+    "capabilityNeeds": "Quellen: {sources}. Konfiguration: {configuration}. Spezialist: {owner}.",
+    "nextRoutineRun": "Nächste Ausführung (Brasília): {date}",
+    "lastRoutineRun": "Letzte geplante Ausführung (Brasília): {date}. Ergebnis: {result}"
   }
 }

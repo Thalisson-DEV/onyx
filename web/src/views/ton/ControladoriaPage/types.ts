@@ -72,5 +72,9 @@ export interface Routine {
   status: string;
   reason: string;
   schedule: string;
+  next_run?: string | null;
+  last_run?: string | null;
+  last_result?: string | null;
+  last_report_url?: string | null;
   manual_available: boolean;
 }

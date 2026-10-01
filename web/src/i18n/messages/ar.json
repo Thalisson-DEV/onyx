@@ -14529,6 +14529,8 @@
     "step": "{specialist} · {name} · {status}",
     "capabilities": "تغطية Prompt Mestre",
     "capabilityNote": "لا يؤدي التسجيل إلى تفعيل القاعدة. يعرض كل عنصر قدرته الحالية والمتطلبات الناقصة.",
-    "capabilityNeeds": "المصادر: {sources}. الإعداد: {configuration}. المتخصص: {owner}."
+    "capabilityNeeds": "المصادر: {sources}. الإعداد: {configuration}. المتخصص: {owner}.",
+    "nextRoutineRun": "التشغيل التالي (برازيليا): {date}",
+    "lastRoutineRun": "آخر تشغيل مجدول (برازيليا): {date}. النتيجة: {result}"
   }
 }

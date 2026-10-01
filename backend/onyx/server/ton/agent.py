@@ -19,6 +19,7 @@ from onyx.db.ton.closing import (
     read_publication,
 )
 from onyx.db.ton.enums import AnalysisTrigger
+from onyx.db.ton.routine_schedule import configure_schedule, schedule_view
 from onyx.ton.agent.capabilities import CapabilityView
 from onyx.ton.agent.closing_models import (
     ClosingOutput,
@@ -28,6 +29,7 @@ from onyx.ton.agent.closing_models import (
 )
 from onyx.ton.agent.registry import ROUTINES, SPECIALISTS
 from onyx.ton.agent.rendering import render_markdown
+from onyx.ton.agent.scheduling import R3ScheduleRequest, R3ScheduleView
 
 router = APIRouter(prefix="/ton/agent", tags=["TON Agent"])
 
@@ -43,6 +45,9 @@ class RoutineView(BaseModel):
     reason: str
     schedule: str = "Agendamento não configurado"
     next_run: str | None = None
+    last_run: str | None = None
+    last_result: str | None = None
+    last_report_url: str | None = None
     manual_available: bool
 
 
@@ -56,18 +61,52 @@ def agent_configuration(
 
 @router.get("/routines")
 def routine_definitions(
-    _user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
 ) -> list[RoutineView]:
+    schedule = schedule_view(session, user)
     return [
         RoutineView(
             key=key,
             name=name,
-            status="Execução manual disponível" if key == "R3" else "Bloqueada",
-            reason=reason if key == "R3" else "Capacidade pendente: " + reason + ".",
+            status=("Agendada" if schedule.enabled else "Execução manual disponível")
+            if key == "R3"
+            else "Bloqueada",
+            reason=schedule.reason
+            if key == "R3"
+            else "Capacidade pendente: " + reason + ".",
+            schedule=schedule.schedule
+            if key == "R3"
+            else "Agendamento não configurado",
+            next_run=schedule.next_run_at.isoformat()
+            if key == "R3" and schedule.next_run_at
+            else None,
+            last_run=schedule.last_run_at.isoformat()
+            if key == "R3" and schedule.last_run_at
+            else None,
+            last_result=schedule.last_result if key == "R3" else None,
+            last_report_url=schedule.last_report_url if key == "R3" else None,
             manual_available=key == "R3",
         )
         for key, name, reason in ROUTINES
     ]
+
+
+@router.get("/routines/R3/schedule")
+def r3_schedule(
+    user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    session: Session = Depends(get_session),
+) -> R3ScheduleView:
+    return schedule_view(session, user)
+
+
+@router.put("/routines/R3/schedule")
+def update_r3_schedule(
+    request: R3ScheduleRequest,
+    user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    session: Session = Depends(get_session),
+) -> R3ScheduleView:
+    return configure_schedule(session, user, request)
 
 
 class AgentView(BaseModel):

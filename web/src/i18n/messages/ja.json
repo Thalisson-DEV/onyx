@@ -14529,6 +14529,8 @@
     "step": "{specialist} · {name} · {status}",
     "capabilities": "Prompt Mestreの対応範囲",
     "capabilityNote": "登録によってルールが有効になることはありません。各項目に現在の機能と未対応の依存関係を表示します。",
-    "capabilityNeeds": "データソース：{sources}。設定：{configuration}。専門担当：{owner}。"
+    "capabilityNeeds": "データソース：{sources}。設定：{configuration}。専門担当：{owner}。",
+    "nextRoutineRun": "次回の実行（ブラジリア）：{date}",
+    "lastRoutineRun": "前回の予定実行（ブラジリア）：{date}。結果：{result}"
   }
 }

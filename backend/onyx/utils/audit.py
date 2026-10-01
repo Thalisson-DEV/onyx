@@ -125,6 +125,7 @@ class AuditAction(str, Enum):
     TON_PROFILE_PARTIAL = "ton_sources.profile_partial"
     TON_PROFILE_FAIL = "ton_sources.profile_fail"
     TON_REPORT_GENERATE = "ton_report.generate"
+    TON_ROUTINE_SCHEDULE_UPDATE = "ton_routine.schedule_update"
     TON_RULE_VERSION_CHANGE = "ton_rule_version.change"
     TON_MANUAL_OVERRIDE = "ton_occurrence.manual_override"
     TON_HUMAN_APPROVAL = "ton_occurrence.human_approval"
@@ -218,6 +219,7 @@ _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
     AuditAction.TON_PROFILE_PARTIAL: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_PROFILE_FAIL: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_REPORT_GENERATE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_ROUTINE_SCHEDULE_UPDATE: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_RULE_VERSION_CHANGE: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_MANUAL_OVERRIDE: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_HUMAN_APPROVAL: OCSFEventClass.API_ACTIVITY,

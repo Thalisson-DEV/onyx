@@ -14529,6 +14529,8 @@
     "step": "{specialist} · {name} · {status}",
     "capabilities": "Prompt Mestre coverage",
     "capabilityNote": "Registration does not activate a rule. Each item shows its current capability and missing dependencies.",
-    "capabilityNeeds": "Sources: {sources}. Configuration: {configuration}. Specialist: {owner}."
+    "capabilityNeeds": "Sources: {sources}. Configuration: {configuration}. Specialist: {owner}.",
+    "nextRoutineRun": "Next run (Brasília): {date}",
+    "lastRoutineRun": "Last scheduled run (Brasília): {date}. Result: {result}"
   }
 }

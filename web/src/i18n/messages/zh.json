@@ -14529,6 +14529,8 @@
     "step": "{specialist} · {name} · {status}",
     "capabilities": "Prompt Mestre覆盖范围",
     "capabilityNote": "注册不会启用规则。各项目显示当前功能和待满足的依赖条件。",
-    "capabilityNeeds": "数据源：{sources}。配置：{configuration}。专家：{owner}。"
+    "capabilityNeeds": "数据源：{sources}。配置：{configuration}。专家：{owner}。",
+    "nextRoutineRun": "下次运行（巴西利亚）：{date}",
+    "lastRoutineRun": "上次计划运行（巴西利亚）：{date}。结果：{result}"
   }
 }

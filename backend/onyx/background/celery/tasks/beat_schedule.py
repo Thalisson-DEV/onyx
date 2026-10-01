@@ -41,6 +41,16 @@ CLOUD_DOC_PERMISSION_SYNC_MULTIPLIER_DEFAULT = 1.0
 # tasks that run in either self-hosted on cloud
 beat_task_templates: list[dict] = [
     {
+        "name": "dispatch-due-ton-r3",
+        "task": OnyxCeleryTask.TON_R3_DISPATCH_DUE,
+        "schedule": timedelta(minutes=1),
+        "options": {
+            "priority": OnyxCeleryPriority.MEDIUM,
+            "expires": 60,
+            "queue": OnyxCeleryQueues.PRIMARY,
+        },
+    },
+    {
         "name": "check-for-user-file-processing",
         "task": OnyxCeleryTask.CHECK_FOR_USER_FILE_PROCESSING,
         "schedule": timedelta(seconds=20),

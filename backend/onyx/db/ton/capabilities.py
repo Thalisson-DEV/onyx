@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from onyx.db.models import User
 from onyx.db.ton.closing import inspect_closing
+from onyx.db.ton.routine_schedule import schedule_view
 from onyx.ton.agent.capabilities import (
     STATUS_LABELS,
     CapabilityStatus,
@@ -46,6 +47,7 @@ def capability_registry(
                 ),
             )
         )
+    schedule = schedule_view(session, user)
     for key, name, reason in ROUTINES:
         status = "PARTIAL" if key == "R3" else "BLOCKED"
         result.append(
@@ -55,7 +57,8 @@ def capability_registry(
                 family="Rotinas",
                 status=status,
                 status_label=STATUS_LABELS[status],
-                reason="Execução manual e publicação persistida disponíveis. Agendamento não configurado."
+                reason="Execução manual e publicação persistida disponíveis. "
+                + schedule.reason
                 if key == "R3"
                 else reason,
                 required_sources=[reason],

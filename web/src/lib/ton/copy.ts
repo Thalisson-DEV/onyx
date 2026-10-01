@@ -428,6 +428,95 @@ export const COPY = {
       confirmTitle: "Confirme antes de registrar",
     },
   },
+  automations: {
+    title: "Automações",
+    description:
+      "Rotinas que o TON executa no calendário ou sob demanda. Nenhuma rotina aprova decisões financeiras.",
+    flagship: "Rotina principal",
+    active: "Ativas",
+    waiting: "Aguardando capacidade",
+    waitingDescription:
+      "Estas rotinas dependem de fontes ou regras que ainda não estão disponíveis. Elas não executam até a dependência ser liberada.",
+    dependsOn: "Depende de",
+    schedule: "Agenda",
+    notScheduled: "Sem agenda",
+    history: "Histórico de execuções",
+    historyEmpty: "Nenhuma execução publicada ainda.",
+    historyAll: "Ver no catálogo de relatórios",
+    code: (code: string) => `Rotina ${code}`,
+    guardrail:
+      "As rotinas publicam relatórios internos. Decisões e aprovações continuam exigindo uma pessoa.",
+  },
+  reports: {
+    title: "Relatórios",
+    description:
+      "Versão atual de cada relatório publicado pelo TON. Versões anteriores ficam preservadas para auditoria.",
+    current: "Versão atual",
+    previousVersions: "Ver versões anteriores",
+    hideVersions: "Ocultar versões anteriores",
+    versionsCount: (count: number) =>
+      plural(count, "versão anterior", "versões anteriores"),
+    open: "Abrir",
+    download: "Baixar",
+    empty: "Nenhum relatório publicado ainda.",
+    generatedAt: (date: string) => `Gerado em ${date}`,
+    byRoutine: (code: string) => `Publicado pela rotina ${code}`,
+    byAssistant: "Publicado pelo Assistente",
+  },
+  report: {
+    back: "Relatórios",
+    download: "Baixar relatório",
+    period: "Período",
+    scope: "Escopo",
+    generated: "Gerado em",
+    status: "Situação",
+    summary: "Resumo executivo",
+    blockers: "Pendências que impedem a publicação",
+    findings: "Achados",
+    noFindings: "Nenhum achado aberto na revisão financeira.",
+    actions: "Próximas ações",
+    sources: "Fontes consultadas",
+    specialists: "Especialistas",
+    traceability: "Rastreabilidade",
+    traceabilityHint:
+      "Etapas executadas e referências internas para auditoria.",
+    resolve: "Resolver pendências",
+    notFound: "Relatório não encontrado ou sem acesso.",
+    evidence: (sheet: string, row: string) =>
+      `Planilha ${sheet} · linha ${row}`,
+  },
+  sources: {
+    title: "Fontes",
+    description:
+      "De onde vêm os dados que o TON analisa, quando foram atualizados e o que ainda falta integrar.",
+    acquisition: "Modo de aquisição",
+    fileFormat: (format: string) => `Arquivo ${format}`,
+    lastUpdate: "Última atualização",
+    records: "Registros",
+    warnings: "Avisos",
+    never: "Nunca importado",
+    update: "Atualizar dados",
+    history: "Histórico de importações",
+    hideHistory: "Ocultar histórico",
+    directTitle: "Integração direta",
+    directPending: "Aguardando acesso VPN/API",
+    directNotConfigured: "Não configurada",
+    directExplainNg:
+      "A conexão direta com o NG/Keevo depende de acesso VPN ou API e de uma base de leitura autorizada. Até lá, os dados entram por arquivo exportado.",
+    directExplainOther:
+      "Sem integração automática configurada. Os dados entram por arquivo.",
+    pendingAccess: "Pendente de acesso",
+    usedBy: "Alimenta",
+    downstream: {
+      financial_review: "Revisão financeira",
+      financial_readiness: "Prontidão da DRE",
+      dre: "DRE",
+    } as Record<string, string>,
+    importedRows: (imported: number, rejected: number) =>
+      rejected
+        ? `${plural(imported, "registro importado", "registros importados")} · ${plural(rejected, "rejeitado", "rejeitados")}`
+        : plural(imported, "registro importado", "registros importados"),
+  },
   analysis: {
     running: "TON está analisando…",
     completed: "Análise concluída",

@@ -1,4 +1,4 @@
-import ReportPage from "@/views/ton/ControladoriaPage/ReportPage";
+import ReportViewer from "@/views/ton/ReportViewer";
 
 export default async function ReportRoute({
   params,
@@ -6,5 +6,5 @@ export default async function ReportRoute({
   params: Promise<{ revisionId: string }>;
 }) {
   const { revisionId } = await params;
-  return <ReportPage revisionId={revisionId} />;
+  return <ReportViewer revisionId={revisionId} />;
 }

@@ -1,1 +1,1 @@
-export { default } from "@/views/ton/DataSourcesPage";
+export { default } from "@/views/ton/SourcesPage";

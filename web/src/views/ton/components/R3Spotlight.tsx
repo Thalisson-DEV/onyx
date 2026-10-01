@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { useSWRConfig } from "swr";
+
 import { Button, Text } from "@opal/components";
 import {
   SvgArrowRight,
@@ -10,7 +13,13 @@ import {
 } from "@opal/icons";
 import { useUser } from "@/providers/UserProvider";
 import { useR3Execution } from "@/lib/ton/hooks";
-import { useTonAccess, useTonClosing, useTonRoutines } from "@/lib/ton/api";
+import {
+  TON_API,
+  TON_REPORTS_RECENT,
+  useTonAccess,
+  useTonClosing,
+  useTonRoutines,
+} from "@/lib/ton/api";
 import { COPY, formatRelativeDateTime } from "@/lib/ton/copy";
 import { getBusinessLabel } from "@/lib/ton/labels";
 import {
@@ -55,6 +64,18 @@ export default function R3Spotlight({
     user?.id,
     access.canReadReports
   );
+  const { mutate } = useSWRConfig();
+  const announced = useRef<string | null>(null);
+  const latestRevision = execution.latest?.revision_id ?? null;
+  // A finished run publishes a new revision; refresh every list that shows it.
+  useEffect(() => {
+    if (!execution.startedAt || !latestRevision) return;
+    if (announced.current === latestRevision) return;
+    announced.current = latestRevision;
+    void mutate(TON_API.reportGroups);
+    void mutate(TON_REPORTS_RECENT);
+    void mutate(TON_API.routines);
+  }, [execution.startedAt, latestRevision, mutate]);
   const routine = routines.data?.find((item) => item.key === "R3");
   const latest = execution.latest;
   const lastRun = latest?.output.generated_at ?? routine?.last_run ?? null;

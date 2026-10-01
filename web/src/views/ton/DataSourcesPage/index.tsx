@@ -74,7 +74,7 @@ function isClientImport(value: unknown): value is ClientImport {
   );
 }
 
-function SourceUpload({
+export function SourceUpload({
   source,
   onClose,
   onComplete,
@@ -223,7 +223,7 @@ function SourceUpload({
   );
 }
 
-function ImportDetail({ result }: { result: ClientImport }) {
+export function ImportDetail({ result }: { result: ClientImport }) {
   const t = useTranslations("dataSources");
   const format = useFormatter();
   const fileSize =

@@ -1,177 +1,163 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import useSWR from "swr";
-import { useFormatter, useTranslations } from "next-intl";
-import { Text, Button } from "@opal/components";
+import { Button, Text } from "@opal/components";
+import {
+  SvgArrowRight,
+  SvgChevronDown,
+  SvgDownload,
+  SvgFileText,
+} from "@opal/icons";
 import { errorHandlingFetcher } from "@/lib/fetcher";
-import { hasPermission } from "@/lib/permissions";
-import { Permission } from "@/lib/types";
-import { useUser } from "@/providers/UserProvider";
-import { TonStatusTag } from "@/views/ton/components/TonStatusTag";
+import { useTonReportGroups } from "@/lib/ton/api";
+import { COPY, formatPeriod, formatRelativeDateTime } from "@/lib/ton/copy";
 import { getBusinessLabel } from "@/lib/ton/labels";
-import type {
-  Publication,
-  ReportGroup,
-} from "@/views/ton/ControladoriaPage/types";
+import type { Publication, ReportGroup } from "@/lib/ton/types";
+import {
+  IconTile,
+  LoadingBlock,
+  PageContainer,
+  PageHeader,
+  StatusPill,
+  TonCard,
+} from "@/views/ton/components/ui";
 
-interface ReportHistoryProps {
-  revisionId: string;
-  total: number;
+export function reportTitle(publication: Publication): string {
+  return getBusinessLabel(publication.report_type ?? "MONTHLY_CLOSE");
 }
 
-function ReportHistory({ revisionId, total }: ReportHistoryProps) {
-  const t = useTranslations("controladoria");
-  const labels = useTranslations("tonRuntime");
-  const format = useFormatter();
-  const [offset, setOffset] = useState(0);
+function origin(publication: Publication): string {
+  return publication.routine_code
+    ? COPY.reports.byRoutine(publication.routine_code)
+    : COPY.reports.byAssistant;
+}
+
+function History({ revisionId }: { revisionId: string }) {
   const history = useSWR<Publication[]>(
-    `/api/ton/agent/reports/${revisionId}/history?offset=${offset}`,
+    `/api/ton/agent/reports/${encodeURIComponent(revisionId)}/history?limit=25`,
     errorHandlingFetcher
   );
+  if (history.isLoading) return <LoadingBlock label={COPY.common.loading} />;
+  const previous = (history.data ?? []).filter(
+    (item) => item.revision_id !== revisionId
+  );
   return (
-    <div className="flex flex-col gap-2 pt-3">
-      {history.isLoading && <Text font="main-ui-body">{t("loading")}</Text>}
-      {history.error && <Text font="main-ui-body">{t("error")}</Text>}
-      {history.data?.map((publication) => (
-        <div
-          key={publication.revision_id}
-          className="flex flex-wrap justify-between gap-2 border-t border-01 pt-2"
-        >
-          <Text font="secondary-body">
-            {t("published", {
-              date: format.dateTime(new Date(publication.output.generated_at), {
-                dateStyle: "short",
-                timeStyle: "short",
-              }),
-              status: publication.status,
-            })}
-          </Text>
-          <Button
-            href={publication.report_url}
-            prominence="secondary"
-            size="sm"
+    <ul className="flex flex-col divide-y divide-border-01 rounded-12 border border-01">
+      {previous.map((item) => (
+        <li key={item.revision_id}>
+          <Link
+            href={item.report_url as Route}
+            className="ton-row-link ton-focusable flex flex-wrap items-center gap-3 px-3 py-2.5"
           >
-            {t("openResult")}
-          </Button>
-        </div>
+            <span className="flex-1 min-w-0">
+              <Text font="secondary-action" color="text-05">
+                {formatRelativeDateTime(item.output.generated_at)}
+              </Text>
+            </span>
+            <Text font="secondary-body" color="text-03">
+              {origin(item)}
+            </Text>
+            <StatusPill tone="neutral">
+              {getBusinessLabel(item.status)}
+            </StatusPill>
+          </Link>
+        </li>
       ))}
-      {total > 25 && (
-        <div className="flex gap-2">
-          <Button
-            disabled={offset === 0}
-            onClick={() => setOffset(Math.max(0, offset - 25))}
-            prominence="secondary"
-          >
-            {labels("previous")}
-          </Button>
-          <Button
-            disabled={offset + 25 >= total}
-            onClick={() => setOffset(offset + 25)}
-            prominence="secondary"
-          >
-            {labels("next")}
-          </Button>
-        </div>
-      )}
-    </div>
+    </ul>
   );
 }
 
-interface ReportGroupCardProps {
-  group: ReportGroup;
-}
-
-function ReportGroupCard({ group }: ReportGroupCardProps) {
-  const t = useTranslations("controladoria");
-  const labels = useTranslations("tonRuntime");
-  const format = useFormatter();
+function ReportCard({ group }: { group: ReportGroup }) {
   const [open, setOpen] = useState(false);
-  const publication = group.latest;
+  const { latest, previous_count } = group;
   return (
-    <div
-      role="article"
-      className="flex flex-col gap-3 border border-01 rounded-12 p-4"
-    >
-      <Text as="h2" font="heading-h3">
-        {t("period", {
-          period: format.dateTime(
-            new Date(`${publication.output.period}T12:00:00Z`),
-            { month: "long", year: "numeric" }
-          ),
-          scope: publication.output.scope,
-        })}
+    <TonCard as="article" className="flex flex-col gap-4 p-5">
+      <div className="flex flex-wrap items-start gap-4">
+        <IconTile icon={SvgFileText} tone="gold" size="lg" />
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Text as="h2" font="heading-h3" color="text-05">
+              {reportTitle(latest)}
+            </Text>
+            <StatusPill tone="brand">{COPY.reports.current}</StatusPill>
+          </div>
+          <Text font="main-ui-body" color="text-04">
+            {`${formatPeriod(latest.output.period)} · ${latest.output.scope}`}
+          </Text>
+          <Text font="secondary-body" color="text-03">
+            {`${COPY.reports.generatedAt(formatRelativeDateTime(latest.output.generated_at))} · ${origin(latest)}`}
+          </Text>
+        </div>
+        <StatusPill tone="warning">
+          {getBusinessLabel(latest.status)}
+        </StatusPill>
+      </div>
+      <Text as="p" font="main-ui-body" color="text-04">
+        {latest.output.executive_brief.RESULTADO ?? latest.output.data_context}
       </Text>
-      <TonStatusTag status={publication.status} />
-      {publication.report_type && (
-        <Text font="main-ui-action">
-          {getBusinessLabel(publication.report_type)}
-        </Text>
-      )}
-      <Text as="p" font="main-ui-body">
-        {publication.output.executive_brief.RESULTADO}
-      </Text>
-      <Text as="p" font="secondary-body" color="text-03">
-        {publication.output.data_context}
-      </Text>
-      <div className="flex gap-2">
-        <Button href={publication.report_url} size="sm">
-          {t("openResult")}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button href={latest.report_url} rightIcon={SvgArrowRight}>
+          {COPY.reports.open}
         </Button>
         <Button
-          href={publication.download_url}
+          href={latest.download_url}
           prominence="secondary"
-          size="sm"
+          icon={SvgDownload}
         >
-          {t("download")}
+          {COPY.reports.download}
         </Button>
+        {previous_count > 0 && (
+          <Button
+            prominence="tertiary"
+            rightIcon={SvgChevronDown}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {open
+              ? COPY.reports.hideVersions
+              : `${COPY.reports.previousVersions} (${previous_count})`}
+          </Button>
+        )}
       </div>
-      {group.previous_count > 0 && (
-        <details onToggle={(event) => setOpen(event.currentTarget.open)}>
-          <summary>
-            <Text font="main-ui-action">
-              {labels("olderReports", { count: group.previous_count })}
-            </Text>
-          </summary>
-          {open && (
-            <ReportHistory
-              revisionId={publication.revision_id}
-              total={group.previous_count}
-            />
-          )}
-        </details>
-      )}
-    </div>
+      {open && <History revisionId={latest.revision_id} />}
+    </TonCard>
   );
 }
 
 export default function ReportsPage() {
-  const t = useTranslations("controladoria");
-  const { user } = useUser();
-  const canRead = hasPermission(
-    user?.effective_permissions ?? [],
-    Permission.READ_TON_REPORTS
-  );
-  const groups = useSWR<ReportGroup[]>(
-    canRead ? "/api/ton/agent/reports/groups" : null,
-    errorHandlingFetcher
-  );
+  const reports = useTonReportGroups();
   return (
-    <div className="flex flex-col gap-5 p-6 max-w-6xl mx-auto w-full">
-      <Text as="h1" font="heading-h2">
-        {t("reports")}
-      </Text>
-      {!canRead && <Text font="main-ui-body">{t("noAccess")}</Text>}
-      {groups.isLoading && <Text font="main-ui-body">{t("loading")}</Text>}
-      {groups.error && <Text font="main-ui-body">{t("error")}</Text>}
-      {groups.data?.length === 0 && (
-        <Text font="main-ui-body">{t("noReports")}</Text>
+    <PageContainer>
+      <PageHeader
+        title={COPY.reports.title}
+        description={COPY.reports.description}
+      />
+      {reports.isLoading && (
+        <TonCard className="p-5">
+          <LoadingBlock label={COPY.common.loading} />
+        </TonCard>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {groups.data?.map((group) => (
-          <ReportGroupCard key={group.latest.revision_id} group={group} />
+      {reports.error && (
+        <TonCard className="p-5">
+          <Text font="main-ui-body" color="text-03">
+            {COPY.common.error}
+          </Text>
+        </TonCard>
+      )}
+      {reports.data?.length === 0 && (
+        <TonCard className="p-5">
+          <Text font="main-ui-body" color="text-03">
+            {COPY.reports.empty}
+          </Text>
+        </TonCard>
+      )}
+      <div className="flex flex-col gap-4">
+        {reports.data?.map((group) => (
+          <ReportCard key={group.latest.revision_id} group={group} />
         ))}
       </div>
-    </div>
+    </PageContainer>
   );
 }

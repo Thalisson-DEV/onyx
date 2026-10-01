@@ -298,62 +298,81 @@ jest PendingPage 3/3.
 
 # 8. Fontes
 
-- [ ] cards estilo integração
-- [ ] acquisition mode
-- [ ] freshness/status
-- [ ] quantidade/warnings
-- [ ] NG direto honestamente pendente
-- [ ] upload
-- [ ] resumo de resultado
-- [ ] histórico colapsado
-- [ ] sem estado fake de VPN/API
+- [x] cards estilo integração
+- [x] acquisition mode
+- [x] freshness/status
+- [x] quantidade/warnings
+- [x] NG direto honestamente pendente
+- [x] upload
+- [x] resumo de resultado
+- [x] histórico colapsado
+- [x] sem estado fake de VPN/API
 
 ### Demonstrável
 ```text
-TBD
+/ton/fontes: um cartão por fonte (NG / Lançamentos financeiros, Faturamento /
+Notas fiscais, Dotação / Orçamento) com modo de aquisição (Arquivo XLSX/XLS),
+última atualização, registros, avisos, bloco "Integração direta" com o estado do
+backend (NG: "Aguardando acesso e configuração" + explicação VPN/API/base de
+leitura; demais: "Não configurada"), "Alimenta" (Revisão financeira, Prontidão
+da DRE, DRE), Atualizar dados (diálogo de upload existente, só com permissão de
+importação) e histórico de importações colapsado com detalhe por importação.
+Validação: Chrome (histórico abre, upload abre e cancela); jest 1/1.
 ```
 
 ---
 
 # 9. Automações
 
-- [ ] conceito `Automações`
-- [ ] R3 flagship
-- [ ] schedule real
-- [ ] next run
-- [ ] last run
-- [ ] execute-now lifecycle
-- [ ] completion CTA
-- [ ] report CTA
-- [ ] outras rotinas agrupadas por readiness
-- [ ] código R1–R9 secundário
-- [ ] steps técnicos escondidos
+- [x] conceito `Automações`
+- [x] R3 flagship
+- [x] schedule real
+- [x] next run
+- [x] last run
+- [x] execute-now lifecycle
+- [x] completion CTA
+- [x] report CTA
+- [x] outras rotinas agrupadas por readiness
+- [x] código R1–R9 secundário
+- [x] steps técnicos escondidos
 
 ### Demonstrável
 ```text
-TBD
+/ton/automacoes: R3 "Fechamento preliminar mensal" em destaque (Agendada,
+1º dia útil 08:00 Brasília com calendário Petrolina-PE, próxima 03/11/2026 08:00,
+última execução, último resultado, Executar agora com feedback e retomada após
+refresh, Abrir resultado), histórico de execuções R3, aviso de que rotinas não
+aprovam decisões, e oito rotinas "Aguardando capacidade" com a dependência real.
+Validação: Executar agora no Chrome publicou nova revisão ("Execução concluída",
+listas revalidadas); jest 1/1.
 ```
 
 ---
 
 # 10. Relatórios
 
-- [ ] catálogo polido
-- [ ] versão atual priorizada
-- [ ] histórico de versões colapsado
-- [ ] report header profissional
-- [ ] executive summary
-- [ ] findings
-- [ ] actions
-- [ ] sources/provenance
-- [ ] traceability colapsada
-- [ ] download
-- [ ] branding Vale Norte + TON
-- [ ] não parece Markdown preview
+- [x] catálogo polido
+- [x] versão atual priorizada
+- [x] histórico de versões colapsado
+- [x] report header profissional
+- [x] executive summary
+- [x] findings
+- [x] actions
+- [x] sources/provenance
+- [x] traceability colapsada
+- [x] download
+- [x] branding Vale Norte + TON
+- [x] não parece Markdown preview
 
 ### Demonstrável
 ```text
-TBD
+/ton/relatorios: versão atual por tipo/período/escopo (Fechamento preliminar
+mensal, Resumo executivo), situação, origem (rotina R3 ou Assistente), Abrir,
+Baixar, "Ver versões anteriores (N)" expandindo o histórico.
+Viewer /ton/controladoria/reports/{id}: documento com logo Vale Norte + TON,
+título, contexto de dados, metadados (Período, Escopo, Gerado em, Situação),
+resumo executivo, pendências que impedem a publicação (com Resolver), achados,
+próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar relatório.
 ```
 
 ---
@@ -420,19 +439,19 @@ TBD
 - [~] READY sintética só se claramente marcada
 
 ## R3
-- [ ] schedule
-- [ ] execute
-- [ ] feedback
-- [ ] persistência
+- [x] schedule
+- [x] execute
+- [x] feedback
+- [x] persistência
 
 ## Relatório
-- [ ] open
-- [ ] presentation
+- [x] open
+- [x] presentation
 - [ ] download
 
 ## Fontes
-- [ ] NG manual
-- [ ] integração direta pendente
+- [x] NG manual
+- [x] integração direta pendente
 
 ---
 
@@ -522,6 +541,19 @@ What is demonstrable: Home → Fechamento → Pendências filtradas → decisão
 Validation: Chrome com dados reais; tsc; oxlint; jest PendingPage 3/3.
 Known issues: estado DRE pronto não demonstrável na base atual (sem fixture READY).
 Next: Automações, Relatórios, Fontes.
+
+### 2026-10-01 22:10
+Milestone: M3 — Automações, Relatórios, Fontes.
+Commit: feat(ton): rebuild automations, reports and sources surfaces.
+What changed: AutomationsPage, ReportsPage (catálogo novo), ReportViewer,
+SourcesPage (reusa upload/detalhe existentes), revalidação após execução R3,
+rotas /ton/automacoes e /ton/fontes apontando para as views novas.
+What is demonstrable: jornada completa Home → Assistente → Fechamento →
+Pendências → DRE → Automações (Executar agora) → Relatórios → Fontes.
+Validation: Chrome com dados reais; tsc; oxlint; jest Sources/Automations 2/2.
+Known issues: views antigas ainda no repositório (sem rota); especialistas e
+cobertura ainda com layout antigo; resposta do modelo cita UUIDs.
+Next: Especialistas, limpeza do legado, responsivo, passada final da demo.
 
 ---
 

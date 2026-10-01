@@ -22,6 +22,8 @@ export const TON_API = {
   dataSources: "/api/ton/data-sources",
 } as const;
 
+export const TON_REPORTS_RECENT = "/api/ton/agent/reports?limit=25";
+
 export interface TonAccess {
   canRead: boolean;
   canReadReports: boolean;

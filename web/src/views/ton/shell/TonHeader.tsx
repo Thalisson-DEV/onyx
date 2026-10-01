@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LineItemButton, Popover, PopoverMenu, Text } from "@opal/components";
-import { SvgLogOut, SvgMenu, SvgSettings, SvgSliders } from "@opal/icons";
+import { SvgLogOut, SvgMenu, SvgSettings } from "@opal/icons";
 import { Content, toast } from "@opal/layouts";
 import { cn } from "@opal/utils";
 import { useUser } from "@/providers/UserProvider";
@@ -132,15 +132,6 @@ function AccountMenu() {
               />
             </div>,
             null,
-            <LineItemButton
-              key="preferences"
-              sizePreset="main-ui"
-              variant="section"
-              rounding={2}
-              icon={SvgSliders}
-              title={COPY.shell.preferences}
-              href="/app/settings"
-            />,
             adminRoute && (
               <LineItemButton
                 key="admin"

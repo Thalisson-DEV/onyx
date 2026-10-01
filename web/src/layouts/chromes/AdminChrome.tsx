@@ -83,12 +83,12 @@ export default function AdminChrome({
 
   useEffect(() => {
     if (!denied) return;
-    // Some reach left → first permitted page; fully revoked → /app (else they'd bounce to an
+    // Some reach left → first permitted page; fully revoked → /ton (else they'd bounce to an
     // admin page they still can't open).
     router.replace(
       (hasAnyAdminPermission(adminCapabilities)
         ? getFirstPermittedAdminRoute(adminCapabilities)
-        : "/app") as Route
+        : "/ton") as Route
     );
   }, [denied, router, adminCapabilities]);
 

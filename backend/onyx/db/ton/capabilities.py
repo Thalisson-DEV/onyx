@@ -49,7 +49,11 @@ def capability_registry(
         )
     schedule = schedule_view(session, user)
     for key, name, reason in ROUTINES:
-        status = "PARTIAL" if key == "R3" else "BLOCKED"
+        status = (
+            ("OPERATIONAL" if schedule.enabled else "PARTIAL")
+            if key == "R3"
+            else "BLOCKED"
+        )
         result.append(
             CapabilityView(
                 key=key,
@@ -68,7 +72,11 @@ def capability_registry(
                 owner_specialist="CFO / AUDITOR / CEO"
                 if key == "R3"
                 else "A definir na configuração da rotina",
-                next_dependency="Configurar agendamento e limites de publicação."
+                next_dependency=(
+                    "Renovar o calendário antes do fim de sua validade e resolver as pendências financeiras."
+                    if schedule.enabled
+                    else "Configurar agendamento e limites de publicação."
+                )
                 if key == "R3"
                 else reason,
             )

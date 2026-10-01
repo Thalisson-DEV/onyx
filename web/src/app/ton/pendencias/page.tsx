@@ -1,1 +1,1 @@
-export { default } from "@/views/admin/FinancialReadinessPage";
+export { default } from "@/views/ton/PendingPage";

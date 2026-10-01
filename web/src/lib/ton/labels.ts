@@ -28,6 +28,7 @@ export const BUSINESS_LABELS: Record<string, string> = {
   EXECUTIVE: "Resumo executivo",
   UNMAPPED: "Não vinculado",
   "SYNTHETIC UNIT": "Unidade de demonstração",
+  "SYN-READY-UNIT": "Demonstração",
   "EXACT SOURCE FIELD FROM REVIEWED NG RECORDS":
     "Origem: lançamentos financeiros revisados",
   "EXACT SOURCE FIELD": "Origem: lançamentos financeiros revisados",

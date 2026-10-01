@@ -239,6 +239,195 @@ export const COPY = {
       allSpecialists: "Ver especialistas",
     },
   },
+  closing: {
+    eyebrow: "Fechamento",
+    tabs: {
+      overview: "Visão geral",
+      dre: "DRE",
+      pending: "Pendências",
+    },
+    overviewTitle: "Fechamento do período",
+    overviewDescription:
+      "Situação do fechamento, o que impede a publicação da DRE e quem está atuando.",
+    blockedTitle: (period: string) =>
+      `DRE de ${period} ainda não pode ser publicada`,
+    readyTitle: (period: string) => `DRE de ${period} pronta para revisão`,
+    attentionCount: (count: number) =>
+      count === 1
+        ? "1 item exige atenção"
+        : `${formatNumber(count)} itens exigem atenção`,
+    blockedBody:
+      "A base financeira foi importada e revisada, mas decisões humanas e dados faltantes impedem um resultado oficial. Nenhum valor foi estimado.",
+    readyBody:
+      "Nenhum bloqueio de prontidão no escopo. Revise o resultado calculado antes de publicar.",
+    resolve: "Resolver pendências",
+    askTon: "Perguntar ao TON",
+    askPrompt:
+      "Explique por que a DRE do período atual ainda não pode ser publicada e qual pendência devo resolver primeiro.",
+    openDre: "Abrir DRE",
+    summaryTitle: "Leitura do TON",
+    summary: {
+      RESULTADO: "Situação",
+      PROBLEMA: "Bloqueios",
+      IMPACTO: "Impacto",
+      "CAUSA / HIPÓTESE": "Causa",
+      AÇÃO: "Próxima ação",
+    } as Record<string, string>,
+    specialistsTitle: "Especialistas envolvidos",
+    sourcesTitle: "Fontes da análise",
+    findingsTitle: "Achados da revisão financeira",
+    noFindings: "A revisão financeira não retornou achados abertos.",
+    directIntegration: (status: string) => `Integração direta: ${status}`,
+  },
+  dre: {
+    title: "DRE",
+    description:
+      "Demonstrativo de resultado versionado por período e escopo. Valores só aparecem quando a base está pronta.",
+  },
+  pending: {
+    title: "Pendências do fechamento",
+    description:
+      "Itens que precisam de decisão humana ou de dados antes da publicação da DRE. Nada é aprovado automaticamente.",
+    recompute: "Recalcular prontidão",
+    periodStatus: (period: string, count: number) =>
+      `${period} · ${count === 1 ? "1 item pendente" : `${formatNumber(count)} itens pendentes`}`,
+    ready: "Pronta para publicação",
+    notReady: "Não pronta",
+    categoriesLabel: "Tipos de pendência",
+    search: "Buscar pelo valor de origem",
+    empty: "Nenhum item nesta categoria.",
+    noBase: "Ainda não há base normalizada ou estrutura de DRE para analisar.",
+    loadError:
+      "Não foi possível carregar as pendências. Tente novamente em instantes.",
+    affected: (count: number) =>
+      plural(count, "registro afetado", "registros afetados"),
+    candidate: (code: string) => `Sugestão do TON: ${code}`,
+    approvedCandidate: (code: string) => `Decisão registrada: ${code}`,
+    noCandidate: "Sem sugestão determinística",
+    analyze: "Analisar",
+    previous: "Anterior",
+    next: "Próxima",
+    pageRange: (start: number, end: number, total: number) =>
+      `${start}–${end} de ${total}`,
+    advanced: "Opções avançadas",
+    advancedBase: "Base normalizada",
+    advancedStructure: "Estrutura da DRE",
+    advancedUnit: "Unidade",
+    categories: {
+      units: {
+        label: "Unidades",
+        description: "Unidades de origem sem vínculo com uma unidade da DRE.",
+        action: "Escolha a unidade da DRE que corresponde ao valor de origem.",
+        rowTitle: "Unidade de origem",
+      },
+      accounts: {
+        label: "Contas",
+        description: "Contas de origem sem vínculo com uma conta canônica.",
+        action: "Escolha ou crie a conta canônica correspondente.",
+        rowTitle: "Conta de origem",
+      },
+      budgetAccounts: {
+        label: "Contas da dotação",
+        description: "Contas do orçamento sem vínculo com uma conta canônica.",
+        action: "Escolha a conta canônica da linha de orçamento.",
+        rowTitle: "Conta do orçamento",
+      },
+      budgetUnits: {
+        label: "Unidades da dotação",
+        description: "Unidades do orçamento sem vínculo com a DRE.",
+        action: "Escolha a unidade da DRE da linha de orçamento.",
+        rowTitle: "Unidade do orçamento",
+      },
+      amountBasis: {
+        label: "Base do realizado",
+        description: "Contas sem definição de movimento ou saldo final.",
+        action:
+          "Defina se o valor realizado representa movimento ou saldo final.",
+        rowTitle: "Conta",
+      },
+      dreAssignment: {
+        label: "Classificação DRE",
+        description: "Contas sem linha da DRE.",
+        action: "Escolha a linha da DRE em que a conta entra.",
+        rowTitle: "Conta",
+      },
+      drePending: {
+        label: "Aprovação DRE pendente",
+        description: "Classificações da DRE aguardando aprovação.",
+        action: "Confirme a linha da DRE proposta para a conta.",
+        rowTitle: "Conta",
+      },
+      budgetPeriods: {
+        label: "Períodos da dotação",
+        description: "Linhas do orçamento sem período inicial aprovado.",
+        action:
+          "Defina o primeiro e, se houver, o último mês da linha de orçamento.",
+        rowTitle: "Linha de orçamento",
+      },
+      reconciliation: {
+        label: "Conciliação",
+        description:
+          "Diferenças entre NG e faturamento aguardando decisão humana.",
+        action: "Classifique a diferença entre os lançamentos.",
+        rowTitle: "Item de conciliação",
+      },
+      reconciliationAmbiguous: {
+        label: "Correspondências ambíguas",
+        description: "Lançamentos com mais de uma correspondência possível.",
+        action: "Classifique a correspondência entre os lançamentos.",
+        rowTitle: "Correspondência",
+      },
+      other: {
+        label: "Outros",
+        description: "Itens que exigem dados adicionais.",
+        action: "Este item não é resolvido por decisão nesta tela.",
+        rowTitle: "Item",
+      },
+    },
+    noActual: {
+      label: "Realizado ausente",
+      description: "Meses do escopo sem lançamentos realizados revisados.",
+      action:
+        "Importe o realizado revisado desses meses em Fontes. Depois, recalcule a prontidão.",
+      cta: "Abrir Fontes",
+    },
+    decisions: {
+      SUPPLEMENTAL: "Lançamento complementar",
+      EXPECTED_DIFFERENCE: "Diferença esperada",
+      NOT_SAME_EVENT: "Eventos distintos",
+      NG_AUTHORITATIVE: "Prevalece o NG/Keevo",
+    },
+    dialog: {
+      title: "Decisão necessária",
+      found: "O que o TON encontrou",
+      scope: "Escopo afetado",
+      decision: "Sua decisão",
+      reason: "Justificativa",
+      reasonPlaceholder: "Motivo ou referência do documento",
+      consequence: (count: number) =>
+        `Esta decisão pode afetar ${plural(count, "registro", "registros")} após o recálculo. Ela não cria um resultado oficial de DRE.`,
+      searchTarget: "Buscar destino",
+      accountCode: "Código da conta",
+      accountLabel: "Nome da conta",
+      createAccount: "Criar conta canônica",
+      movement: "Movimento",
+      finalAmount: "Saldo final",
+      startMonth: "Primeiro mês",
+      endMonth: "Último mês (opcional)",
+      review: "Revisar decisão",
+      confirm: "Confirmar decisão",
+      back: "Voltar",
+      reject: "Rejeitar sugestão",
+      close: "Fechar",
+      saved:
+        "Decisão registrada. Recalcule a prontidão para aplicá-la ao fechamento.",
+      error:
+        "Não foi possível registrar a decisão. Confira a evidência e tente novamente.",
+      noPermission:
+        "Somente usuários autorizados podem registrar esta decisão. Você pode consultar a evidência.",
+      confirmTitle: "Confirme antes de registrar",
+    },
+  },
   analysis: {
     running: "TON está analisando…",
     completed: "Análise concluída",

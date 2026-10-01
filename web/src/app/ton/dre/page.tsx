@@ -1,1 +1,1 @@
-export { default } from "@/views/admin/DrePage";
+export { default } from "@/views/ton/DrePage";

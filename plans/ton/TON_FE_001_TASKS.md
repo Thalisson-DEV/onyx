@@ -240,41 +240,58 @@ TBD
 
 # 6. Fechamento / DRE
 
-- [ ] conceito de Fechamento estabelecido
-- [ ] experiência DRE bloqueada
-- [ ] experiência DRE pronta
-- [ ] agrupamento de bloqueios
-- [ ] blocker → pendência filtrada
-- [ ] métricas financeiras
-- [ ] tabela DRE hierárquica
-- [ ] drill-down
-- [ ] revision metadata em advanced
-- [ ] export
-- [ ] sem enums internos
+- [x] conceito de Fechamento estabelecido
+- [x] experiência DRE bloqueada
+- [~] experiência DRE pronta
+- [x] agrupamento de bloqueios
+- [x] blocker → pendência filtrada
+- [~] métricas financeiras
+- [~] tabela DRE hierárquica
+- [~] drill-down
+- [~] revision metadata em advanced
+- [~] export
+- [x] sem enums internos
 
 ### Demonstrável
 ```text
-TBD
+/ton/fechamento: "DRE de julho de 2026 ainda não pode ser publicada", "13 itens
+exigem atenção", grade Unidades 2 / Dotação 2 / Conciliação 3 / Realizado 6 (cada
+uma abre Pendências filtradas), Resolver pendências, Perguntar ao TON (envia o
+prompt ao Assistente), Leitura do TON (Situação, Impacto, Causa, Próxima ação),
+achados, R3, especialistas envolvidos e fontes da análise.
+/ton/dre: a view DRE existente (estado bloqueado agrupado; estado pronto com
+Realizado/Orçado/Variação/YTD, tabela hierárquica, drill-down, export CSV e
+revisão em Opções avançadas) embutida no frame do Fechamento.
+READY sintética: a unidade de demonstração tem 14 bloqueios na base atual; não há
+DRE pronta para exibir, e nada foi fabricado. Estado pronto validado só por testes.
 ```
 
 ---
 
 # 7. Pendências
 
-- [ ] work queue clara
-- [ ] filtros úteis
-- [ ] origem/contexto
-- [ ] quantidade afetada
-- [ ] candidate/sugestão
-- [ ] modal/drawer de decisão
-- [ ] justificativa
-- [ ] consequência da decisão
-- [ ] sem auto-approval
-- [ ] sem IDs crus
+- [x] work queue clara
+- [x] filtros úteis
+- [x] origem/contexto
+- [x] quantidade afetada
+- [x] candidate/sugestão
+- [x] modal/drawer de decisão
+- [x] justificativa
+- [x] consequência da decisão
+- [x] sem auto-approval
+- [x] sem IDs crus
 
 ### Demonstrável
 ```text
-TBD
+/ton/pendencias: status do período (Não pronta · Julho de 2026 · 13 itens),
+tipos de pendência com contagem (Unidades, Períodos da dotação, Conciliação,
+Realizado ausente), fila com título de negócio (nunca UUID), registros afetados,
+período, evidência humanizada, Analisar → diálogo "Decisão necessária" (o que o
+TON encontrou, escopo afetado, sua decisão, justificativa, consequência) com
+revisão e confirmação em duas etapas. Conciliação sem decisão pré-selecionada.
+Realizado ausente leva a Fontes. Base/estrutura em Opções avançadas.
+Validação: Chrome com dados reais (diálogo aberto e fechado, nada registrado);
+jest PendingPage 3/3.
 ```
 
 ---
@@ -346,7 +363,7 @@ TBD
 - [x] estratégia desktop decidida
 - [x] fontes
 - [x] automação
-- [ ] status fechamento
+- [x] status fechamento
 - [x] especialistas/alertas quando úteis
 - [x] responsive collapse
 - [x] nenhum claim falso
@@ -395,12 +412,12 @@ TBD
 - [ ] sem JSON
 
 ## Pendência
-- [ ] item
-- [ ] decisão humana clara
+- [x] item
+- [x] decisão humana clara
 
 ## DRE
-- [ ] blocked state clara
-- [ ] READY sintética só se claramente marcada
+- [x] blocked state clara
+- [~] READY sintética só se claramente marcada
 
 ## R3
 - [ ] schedule
@@ -494,6 +511,17 @@ Validation: Chrome com conta admin real; tsc; oxlint; jest TON.
 Known issues: resposta do modelo cita UUIDs; Fechamento ainda redireciona para DRE;
 DRE/Pendências/Fontes/Automações/Relatórios ainda com layout antigo dentro do shell.
 Next: Fechamento + Pendências (work queue e decisão humana).
+
+### 2026-10-01 21:30
+Milestone: M2 — Fechamento, DRE no frame, Pendências.
+Commit: feat(ton): add closing overview and pending-decision work queue.
+What changed: ClosingFrame (abas Visão geral/DRE/Pendências), ClosingPage,
+PendingPage (lógica de decisão portada da view admin, mesmos endpoints),
+DrePage com modo embedded, label da unidade de demonstração.
+What is demonstrable: Home → Fechamento → Pendências filtradas → decisão humana.
+Validation: Chrome com dados reais; tsc; oxlint; jest PendingPage 3/3.
+Known issues: estado DRE pronto não demonstrável na base atual (sem fixture READY).
+Next: Automações, Relatórios, Fontes.
 
 ---
 

@@ -38,10 +38,10 @@ duplicaria auth/streaming. Um layout próprio sob `/ton` troca toda a apresenta�
 sem tocar no runtime.
 
 Milestone atual:
-M1 — shell Vale Norte/TON + entrada do produto.
+P0 concluído; handoff da sessão 2026-10-01.
 
 Última atualização:
-2026-10-01 18:37
+2026-10-02 01:10
 
 ---
 
@@ -469,7 +469,7 @@ próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar rel
 - [x] empty
 - [x] error
 - [x] permission
-- [~] keyboard/focus
+- [x] keyboard/focus
 
 ---
 
@@ -480,7 +480,7 @@ próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar rel
 - [x] TypeScript
 - [x] lint
 - [x] format
-- [ ] build
+- [x] build
 - [x] git diff --check
 - [x] demo walkthrough completo
 
@@ -584,6 +584,23 @@ Nova página /ton/conversas (busca, agrupamento por data, carregar mais) ligada
 em "Ver todas as conversas"; histórico da sidebar limitado a 6.
 Validation: Playwright fe001 2/2 com verificação de ausência de UUID na resposta.
 Next: passada final, decisões e handoff.
+
+### 2026-10-02 01:10
+Milestone: Handoff — build de produção, stack restaurada, validação final.
+Commits: 892a7f0d1a (admin → TON), 7b20836c04 (dark mode + D-011..D-014),
+b1f250a645 (botão Nova conversa no dark).
+What changed: imagem web reconstruída do repositório com a stack parada (o
+primeiro build, feito com todos os containers ativos, estourou a memória do WSL
+e derrubou o engine; o usuário reiniciou). Containers religados um a um:
+relational_db → cache → opensearch → model servers → code-interpreter →
+api_server → background → web_server → nginx (~4,3 GB de 5,8 GB).
+Rollback: onyx-backend:pre-fe001 e onyx-web-server:pre-fe001.
+What is demonstrable: jornada completa em http://localhost:3000 (build de produção).
+Validation: Playwright fe001 2/2 contra :3000; foco por teclado visível e em ordem
+lógica; modo escuro legível; sem overflow horizontal em 1024/768/390; console limpo
+nas rotas TON; git diff --check limpo.
+Known issues: a imagem em :3000 não inclui b1f250a645 (botão Nova conversa no modo
+escuro); entra no próximo build.
 
 ---
 

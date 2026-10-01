@@ -12,7 +12,7 @@ from onyx.db.models import User
 from onyx.db.permissions import recompute_user_permissions__no_commit
 from onyx.db.ton import dre, reports
 from onyx.db.ton.acl import report_group_ids
-from onyx.db.ton.closing import execute_closing, read_publication
+from onyx.db.ton.closing import analyze_closing, execute_closing, read_publication
 from onyx.db.ton.enums import AnalysisStepStatus, AnalysisTrigger
 from onyx.db.ton.models import (
     AnalysisRun,
@@ -35,6 +35,36 @@ from tests.external_dependency_unit.ton.test_financial_domain import (
 )
 
 pytest_plugins = ("tests.external_dependency_unit.ton.test_financial_domain",)
+
+
+def test_interactive_analysis_records_steps_without_report_permission(
+    ton_session: Session,
+) -> None:
+    reader = factories.make_user(ton_session)
+    group = factories.make_group(ton_session)
+    factories.add_member(ton_session, group=group, user=reader)
+    factories.grant_permissions(
+        ton_session,
+        group=group,
+        permissions=[Permission.READ_TON_SOURCES, Permission.READ_TON_OCCURRENCES],
+    )
+    recompute_user_permissions__no_commit(reader.id, ton_session)
+    ton_session.refresh(reader)
+    ton_session.commit()
+    result = analyze_closing(
+        ton_session, reader, ClosingRequest(request_id=uuid4(), period=date(2026, 1, 1))
+    )
+    run = ton_session.get(AnalysisRun, result.run_id)
+    assert run is not None and run.trigger == AnalysisTrigger.INTERACTIVE
+    assert run.triggered_by_user_id == reader.id
+    assert len(result.steps) == 21
+    assert any(
+        step["specialist"] == "CEO" and step["status"] == "Concluído"
+        for step in result.steps
+    )
+    assert ton_session.scalar(select(func.count()).select_from(TonReport)) == 0
+    with pytest.raises(OnyxError):
+        execute_closing(ton_session, reader, ClosingRequest(request_id=uuid4()))
 
 
 def test_r3_blocked_finance_keeps_audit_and_publication(

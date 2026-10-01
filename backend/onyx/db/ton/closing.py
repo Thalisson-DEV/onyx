@@ -23,6 +23,7 @@ from onyx.db.ton.agent import financial_context
 from onyx.db.ton.audit import emit_ton_audit_event
 from onyx.db.ton.canonical import compute_content_hash
 from onyx.db.ton.enums import (
+    AnalysisRunStatus,
     AnalysisSpecialist,
     AnalysisStepBlockedReason,
     AnalysisStepCode,
@@ -35,6 +36,7 @@ from onyx.db.ton.enums import (
 )
 from onyx.db.ton.interpretations import is_interpretation_final
 from onyx.db.ton.models import (
+    AnalysisRun,
     BusinessUnit,
     BusinessUnit__UserGroup,
     Contract__UserGroup,
@@ -52,6 +54,7 @@ from onyx.db.ton.models import (
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.ton.agent.closing_models import (
+    AnalyzedClosing,
     ClosingOutput,
     ClosingRequest,
     PublishedClosing,
@@ -301,7 +304,7 @@ def inspect_closing(
 
 
 def _input_rows(
-    session: Session, user: User, output: ClosingOutput
+    session: Session, user: User, output: ClosingOutput, *, publication: bool = True
 ) -> tuple[list[SourceSnapshot], list[Finding]]:
     snapshot_ids: set[UUID] = set()
     for item in output.sources:
@@ -336,7 +339,9 @@ def _input_rows(
             )
         )
     )
-    if any(not is_interpretation_final(finding) for finding in findings):
+    if publication and any(
+        not is_interpretation_final(finding) for finding in findings
+    ):
         raise OnyxError(
             OnyxErrorCode.CONFLICT,
             "A interpretação de um achado ainda está pendente. Conclua a revisão antes de publicar.",
@@ -406,6 +411,27 @@ def _publication_groups(
     return groups
 
 
+def analyze_closing(
+    session: Session, user: User, request: ClosingRequest
+) -> AnalyzedClosing:
+    output = inspect_closing(session, user, request)
+    snapshots, _ = _input_rows(session, user, output, publication=False)
+    identity = compute_content_hash(
+        dict(
+            user=str(user.id),
+            request=request.model_dump(mode="json"),
+            output=output.model_dump(mode="json"),
+        )
+    )
+    run, steps, status = _record_analysis(
+        session, user, output, snapshots, identity, AnalysisTrigger.INTERACTIVE, None
+    )
+    session.commit()
+    return AnalyzedClosing(
+        run_id=run.id, status=business_label(status.value), output=output, steps=steps
+    )
+
+
 def execute_closing(
     session: Session,
     user: User,
@@ -441,82 +467,9 @@ def execute_closing(
     output = inspect_closing(session, user, request)
     snapshots, findings = _input_rows(session, user, output)
     groups = _publication_groups(session, user, snapshots, findings, output)
-    run, _ = analysis_runs.get_or_create_analysis_run__no_commit(
-        session,
-        idempotency_key=identity,
-        trigger=trigger,
-        specialist=AnalysisSpecialist.CEO,
-        domain=RuleDomain.FINANCIAL,
-        period_start=output.period,
-        period_end=output.period.replace(
-            day=calendar.monthrange(output.period.year, output.period.month)[1]
-        ),
-        executor_version=EXECUTOR_VERSION,
-        business_unit_id=output.unit_id,
-        triggered_by_user_id=user.id,
-        routine_code=routine_code,
+    run, step_details, status = _record_analysis(
+        session, user, output, snapshots, identity, trigger, routine_code
     )
-    for snapshot in snapshots:
-        analysis_runs.attach_source_snapshot__no_commit(
-            session, analysis_run=run, source_snapshot=snapshot
-        )
-    step_details: list[dict[str, str | None]] = []
-    for domain, specialist in [
-        (RuleDomain.FINANCIAL, "CFO"),
-        (RuleDomain.AUDIT, "AUDITOR"),
-        (RuleDomain.QUALITY, "CEO"),
-    ]:
-        outcome = next(item for item in output.specialists if item.key == specialist)
-        steps = {
-            code: analysis_steps.create_analysis_step__no_commit(
-                session,
-                analysis_run=run,
-                step_code=code,
-                domain=domain,
-                business_unit_id=output.unit_id,
-            )
-            for code in analysis_steps.STEP_ORDER
-        }
-        for code, step in steps.items():
-            reason: str | None = None
-            if step.status == AnalysisStepStatus.BLOCKED:
-                reason = (
-                    business_label(step.blocked_reason.value)
-                    if step.blocked_reason
-                    else outcome.reason
-                )
-            elif code == AnalysisStepCode.BASE_VALIDATION and (
-                outcome.status == "Bloqueado"
-                or (specialist == "CFO" and output.dre_status != "Pronta")
-            ):
-                analysis_steps.fail_step__no_commit(
-                    session,
-                    step=step,
-                    blocked_reason=AnalysisStepBlockedReason.AWAITING_HUMAN_DECISION
-                    if outcome.status != "Bloqueado"
-                    else AnalysisStepBlockedReason.MISSING_SOURCE,
-                )
-                reason = outcome.reason + " Publicação financeira bloqueada."
-            elif code == AnalysisStepCode.QUANTIFICATION:
-                analysis_steps.skip_step__no_commit(session, step=step)
-                reason = "Impacto não quantificado; a rotina não calcula uma nova DRE."
-            elif (
-                specialist in ("AUDITOR", "CEO")
-                and code == AnalysisStepCode.CHAIN_RECONCILIATION
-            ):
-                analysis_steps.skip_step__no_commit(session, step=step)
-                reason = "Conciliação pertence ao CFO; este especialista usa os resultados disponíveis."
-            else:
-                analysis_steps.pass_step__no_commit(session, step=step)
-            step_details.append(
-                dict(
-                    specialist=specialist,
-                    code=business_label(code.value),
-                    status=business_label(step.status.value),
-                    reason=reason,
-                )
-            )
-    status = analysis_runs.finalize_analysis_run__no_commit(session, analysis_run=run)
     title = "Resumo executivo" if request.executive else "Pendências do fechamento"
     report = reports.create_report__no_commit(
         session,
@@ -665,3 +618,91 @@ def list_publications(
         .limit(limit)
     )
     return [read_publication(session, user, revision.id) for revision in revisions]
+
+
+def _record_analysis(
+    session: Session,
+    user: User,
+    output: ClosingOutput,
+    snapshots: list[SourceSnapshot],
+    identity: str,
+    trigger: AnalysisTrigger,
+    routine_code: str | None,
+) -> tuple[AnalysisRun, list[dict[str, str | None]], AnalysisRunStatus]:
+    run, _ = analysis_runs.get_or_create_analysis_run__no_commit(
+        session,
+        idempotency_key=identity,
+        trigger=trigger,
+        specialist=AnalysisSpecialist.CEO,
+        domain=RuleDomain.FINANCIAL,
+        period_start=output.period,
+        period_end=output.period.replace(
+            day=calendar.monthrange(output.period.year, output.period.month)[1]
+        ),
+        executor_version=EXECUTOR_VERSION,
+        business_unit_id=output.unit_id,
+        triggered_by_user_id=user.id,
+        routine_code=routine_code,
+    )
+    for snapshot in snapshots:
+        analysis_runs.attach_source_snapshot__no_commit(
+            session, analysis_run=run, source_snapshot=snapshot
+        )
+    step_details: list[dict[str, str | None]] = []
+    for domain, specialist in [
+        (RuleDomain.FINANCIAL, "CFO"),
+        (RuleDomain.AUDIT, "AUDITOR"),
+        (RuleDomain.QUALITY, "CEO"),
+    ]:
+        outcome = next(item for item in output.specialists if item.key == specialist)
+        steps = {
+            code: analysis_steps.create_analysis_step__no_commit(
+                session,
+                analysis_run=run,
+                step_code=code,
+                domain=domain,
+                business_unit_id=output.unit_id,
+            )
+            for code in analysis_steps.STEP_ORDER
+        }
+        for code, step in steps.items():
+            reason: str | None = None
+            if step.status == AnalysisStepStatus.BLOCKED:
+                reason = (
+                    business_label(step.blocked_reason.value)
+                    if step.blocked_reason
+                    else outcome.reason
+                )
+            elif code == AnalysisStepCode.BASE_VALIDATION and (
+                outcome.status == "Bloqueado"
+                or (specialist == "CFO" and output.dre_status != "Pronta")
+            ):
+                analysis_steps.fail_step__no_commit(
+                    session,
+                    step=step,
+                    blocked_reason=AnalysisStepBlockedReason.AWAITING_HUMAN_DECISION
+                    if outcome.status != "Bloqueado"
+                    else AnalysisStepBlockedReason.MISSING_SOURCE,
+                )
+                reason = outcome.reason + " Publicação financeira bloqueada."
+            elif code == AnalysisStepCode.QUANTIFICATION:
+                analysis_steps.skip_step__no_commit(session, step=step)
+                reason = "Impacto não quantificado; a rotina não calcula uma nova DRE."
+            elif (
+                specialist in ("AUDITOR", "CEO")
+                and code == AnalysisStepCode.CHAIN_RECONCILIATION
+            ):
+                analysis_steps.skip_step__no_commit(session, step=step)
+                reason = "Conciliação pertence ao CFO; este especialista usa os resultados disponíveis."
+            else:
+                analysis_steps.pass_step__no_commit(session, step=step)
+            step_details.append(
+                dict(
+                    specialist=specialist,
+                    code=business_label(code.value),
+                    status=business_label(step.status.value),
+                    reason=reason,
+                )
+            )
+    status = analysis_runs.finalize_analysis_run__no_commit(session, analysis_run=run)
+    return run, step_details, status

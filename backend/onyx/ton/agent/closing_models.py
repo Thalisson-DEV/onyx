@@ -60,6 +60,13 @@ class ClosingOutput(BaseModel):
     generated_at: datetime
 
 
+class AnalyzedClosing(BaseModel):
+    run_id: UUID
+    status: str
+    output: ClosingOutput
+    steps: list[dict[str, str | None]]
+
+
 class PublishedClosing(BaseModel):
     run_id: UUID
     report_id: UUID

@@ -46,7 +46,7 @@ def query_domain(
         "ton_generate_closing_report",
         "ton_generate_executive_brief",
     ):
-        from onyx.db.ton.closing import execute_closing, inspect_closing
+        from onyx.db.ton.closing import analyze_closing, execute_closing
         from onyx.ton.agent.closing_models import ClosingRequest, PublicationLink
 
         request = ClosingRequest(
@@ -58,7 +58,7 @@ def query_domain(
             executive=operation == "ton_generate_executive_brief",
         )
         if operation == "ton_analyze_closing":
-            return inspect_closing(session, user, request)
+            return analyze_closing(session, user, request)
         result = execute_closing(session, user, request)
         return PublicationLink(
             run_id=result.run_id,

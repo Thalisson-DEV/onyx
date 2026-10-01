@@ -5,7 +5,7 @@ from onyx.ton.agent.closing_models import SpecialistDefinition
 SPECIALISTS = (
     SpecialistDefinition(
         key="CFO",
-        name="CFO",
+        name="TON CFO",
         objective="Identificar pendências do fechamento financeiro.",
         domain="FINANCIAL",
         required_capabilities=["base financeira normalizada", "estrutura DRE"],
@@ -20,7 +20,7 @@ SPECIALISTS = (
     ),
     SpecialistDefinition(
         key="AUDITOR",
-        name="AUDITOR",
+        name="TON AUDITOR",
         objective="Verificar revisão da base e rastrear evidências.",
         domain="AUDIT",
         required_capabilities=["revisão financeira"],
@@ -34,7 +34,7 @@ SPECIALISTS = (
     ),
     SpecialistDefinition(
         key="CEO",
-        name="CEO",
+        name="TON CEO",
         objective="Resumir os resultados dos especialistas para decisão.",
         domain="AUDIT",
         required_capabilities=["resultado CFO ou AUDITOR"],
@@ -42,7 +42,7 @@ SPECIALISTS = (
     ),
     SpecialistDefinition(
         key="COO",
-        name="COO",
+        name="TON COO",
         objective="Analisar produção e produtividade.",
         domain="OPERATIONAL",
         required_capabilities=["produção integrada e regras aprovadas"],
@@ -50,7 +50,7 @@ SPECIALISTS = (
     ),
     SpecialistDefinition(
         key="FLEET",
-        name="FROTA",
+        name="TON FROTA",
         objective="Analisar frota e abastecimento.",
         domain="FLEET",
         required_capabilities=["frota e abastecimento integrados"],
@@ -58,7 +58,7 @@ SPECIALISTS = (
     ),
     SpecialistDefinition(
         key="CONTRACTS",
-        name="CONTRATOS",
+        name="TON CONTRATOS",
         objective="Analisar obrigações e vigência contratual.",
         domain="CONTRACT",
         required_capabilities=["cadastro mestre contratual e regras aprovadas"],
@@ -66,7 +66,7 @@ SPECIALISTS = (
     ),
     SpecialistDefinition(
         key="COMPLIANCE",
-        name="COMPLIANCE",
+        name="TON COMPLIANCE",
         objective="Identificar pendências documentais para revisão humana.",
         domain="COMPLIANCE",
         required_capabilities=["documentos legais e regras aprovadas"],
@@ -74,7 +74,7 @@ SPECIALISTS = (
     ),
     SpecialistDefinition(
         key="PROCUREMENT",
-        name="COMPRAS",
+        name="TON PROCUREMENT",
         objective="Analisar compras e fornecedores.",
         domain="PROCUREMENT",
         required_capabilities=["compras integradas e regras aprovadas"],
@@ -82,7 +82,7 @@ SPECIALISTS = (
     ),
     SpecialistDefinition(
         key="HR",
-        name="RH",
+        name="TON RH",
         objective="Analisar custos de pessoal.",
         domain="HR",
         required_capabilities=["folha integrada e regras aprovadas"],
@@ -91,17 +91,29 @@ SPECIALISTS = (
 )
 
 ROUTINES = (
-    ("R1", "Varredura de exceções", "Regras de exceção e limiares aprovados"),
-    ("R2", "Auditoria de combustível", "Frota e abastecimento integrados"),
+    ("R1", "Varredura diária de exceções", "Regras de exceção e limiares aprovados"),
+    ("R2", "Auditoria semanal de combustível", "Frota e abastecimento integrados"),
     (
         "R3",
-        "Fechamento preliminar",
+        "Fechamento preliminar mensal",
         "Fontes financeiras autorizadas; decisões pendentes são publicadas como bloqueios",
     ),
-    ("R4", "Reconciliação contratual", "Cadastro mestre contratual e regras aprovadas"),
+    (
+        "R4",
+        "Reconciliação contratual mensal",
+        "Cadastro mestre contratual e regras aprovadas",
+    ),
     ("R5", "Dinheiro Escondido", "Oportunidades e fontes de quantificação"),
     ("R6", "Pacote executivo", "Configuração de execução autônoma e destinatários"),
-    ("R7", "Vigência e reajuste", "Contrato, vigência e índices autorizados"),
-    ("R8", "Recebimento", "Recebíveis e registros de pagamento integrados"),
-    ("R9", "Verificação de ações", "Executor de verificação de ações e prazos"),
+    (
+        "R7",
+        "Sentinela de vigência/reajuste contratual",
+        "Contrato, vigência e índices autorizados",
+    ),
+    ("R8", "Sentinela de recebíveis", "Recebíveis e registros de pagamento integrados"),
+    (
+        "R9",
+        "Verificação de ações vencidas",
+        "Executor de verificação de ações e prazos",
+    ),
 )

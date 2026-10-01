@@ -7,7 +7,9 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from onyx.db.enums import Permission
 from onyx.db.models import KVStore
+from onyx.db.permissions import recompute_user_permissions__no_commit
 from onyx.db.ton.enums import AnalysisTrigger
 from onyx.db.ton.models import AnalysisRun, AnalysisStep, TonReportRevision
 from onyx.db.ton.routine_schedule import (
@@ -48,6 +50,18 @@ def test_schedule_publication_retry_and_calendar_expiry(
     due = datetime(2026, 11, 3, 11, tzinfo=timezone.utc)
     view = configure_schedule(ton_session, admin, config, now=before)
     assert view.next_run_at == due
+    reader = factories.make_user(ton_session)
+    group = factories.make_group(ton_session)
+    factories.add_member(ton_session, group=group, user=reader)
+    factories.grant_permissions(
+        ton_session, group=group, permissions=[Permission.READ_TON_SOURCES]
+    )
+    recompute_user_permissions__no_commit(reader.id, ton_session)
+    ton_session.refresh(reader)
+    reader_view = schedule_view(ton_session, reader)
+    assert reader_view.schedule == view.schedule
+    assert reader_view.enabled == view.enabled
+    assert reader_view.next_run_at == due
     assert not dispatch_due_r3(
         ton_session, now=datetime(2026, 11, 3, 10, 59, tzinfo=timezone.utc)
     )

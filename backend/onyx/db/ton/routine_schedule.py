@@ -50,10 +50,6 @@ def _save(session: Session, state: R3ScheduleState) -> None:
 
 def schedule_view(session: Session, user: User) -> R3ScheduleView:
     acl.assert_global(user, permission=Permission.READ_TON_SOURCES)
-    if not acl.is_ton_administrator(user):
-        return R3ScheduleView(
-            reason="Configuração do agendamento disponível ao administrador."
-        )
     row = session.get(KVStore, SCHEDULE_KEY)
     if row is None:
         return R3ScheduleView()

@@ -58,7 +58,9 @@ from onyx.ton.agent.closing_models import (
     ClosingOutput,
     ClosingRequest,
     PublishedClosing,
+    ReportGroup,
     SpecialistOutcome,
+    SpecialistView,
 )
 from onyx.ton.agent.labels import business_label, humanize
 from onyx.ton.agent.policy import SYNTHETIC_DATA_NOTICE, uses_synthetic_demo_data
@@ -69,6 +71,40 @@ from onyx.ton.financial_review import service as review_service
 from onyx.utils.audit import AuditAction, AuditOutcome
 
 EXECUTOR_VERSION = "ton-closing-1"
+
+
+def specialist_views(
+    session: Session, user: User, request: ClosingRequest
+) -> list[SpecialistView]:
+    output = inspect_closing(session, user, request)
+    latest = (
+        list_publications(session, user, 1)
+        if acl.has_global_permission(user, Permission.READ_TON_REPORTS)
+        else []
+    )
+    outcomes = {item.key: item for item in output.specialists}
+    return [
+        SpecialistView(
+            **definition.model_dump(),
+            status="Aguardando fonte"
+            if outcomes[definition.key].status == "Bloqueado"
+            and not definition.allowed_tools
+            else outcomes[definition.key].status,
+            reason=outcomes[definition.key].reason,
+            required_sources=definition.required_capabilities,
+            available_capabilities=[definition.objective]
+            if outcomes[definition.key].status != "Bloqueado"
+            else [],
+            blocked_capabilities=outcomes[definition.key].limitations
+            if outcomes[definition.key].status != "Bloqueado"
+            else definition.required_capabilities,
+            last_execution=latest[0].output.generated_at
+            if latest
+            and any(step["specialist"] == definition.key for step in latest[0].steps)
+            else None,
+        )
+        for definition in SPECIALISTS
+    ]
 
 
 def inspect_closing(
@@ -592,6 +628,7 @@ def read_publication(
     return PublishedClosing(
         run_id=body["run_id"],
         report_id=revision.report_id,
+        report_type=report.report_type.value,
         revision_id=revision.id,
         status=body["status"],
         output=ClosingOutput.model_validate(body["output"]),
@@ -618,6 +655,112 @@ def list_publications(
         .limit(limit)
     )
     return [read_publication(session, user, revision.id) for revision in revisions]
+
+
+def latest_r3_publication(
+    session: Session, user: User, period: datetime.date, unit_id: UUID | None
+) -> PublishedClosing | None:
+    acl.assert_global(user, permission=Permission.READ_TON_REPORTS)
+    revision_id = session.scalar(
+        sa.select(reports.TonReportRevision.id)
+        .join(
+            reports.TonReport,
+            reports.TonReportRevision.report_id == reports.TonReport.id,
+        )
+        .where(
+            acl.report_revision_visible_clause(user),
+            reports.TonReportRevision.generator_version == EXECUTOR_VERSION,
+            reports.TonReportRevision.canonical_payload["body"]["routine_code"].astext
+            == "R3",
+            reports.TonReport.period_start == period,
+            reports.TonReport.business_unit_id == unit_id,
+        )
+        .order_by(
+            reports.TonReportRevision.generated_at.desc(),
+            reports.TonReportRevision.id.desc(),
+        )
+        .limit(1)
+    )
+    return read_publication(session, user, revision_id) if revision_id else None
+
+
+def list_report_groups(
+    session: Session, user: User, limit: int = 25
+) -> list[ReportGroup]:
+    acl.assert_global(user, permission=Permission.READ_TON_REPORTS)
+    partition = [
+        reports.TonReport.period_start,
+        reports.TonReport.business_unit_id,
+        reports.TonReport.report_type,
+    ]
+    ranked = (
+        sa.select(
+            reports.TonReportRevision.id.label("revision_id"),
+            reports.TonReportRevision.generated_at,
+            sa.func.row_number()
+            .over(
+                partition_by=partition,
+                order_by=[
+                    reports.TonReportRevision.generated_at.desc(),
+                    reports.TonReportRevision.id.desc(),
+                ],
+            )
+            .label("position"),
+            sa.func.count().over(partition_by=partition).label("revision_count"),
+        )
+        .join(
+            reports.TonReport,
+            reports.TonReportRevision.report_id == reports.TonReport.id,
+        )
+        .where(
+            acl.report_revision_visible_clause(user),
+            reports.TonReportRevision.generator_version == EXECUTOR_VERSION,
+        )
+        .subquery()
+    )
+    rows = session.execute(
+        sa.select(ranked.c.revision_id, ranked.c.revision_count)
+        .where(ranked.c.position == 1)
+        .order_by(ranked.c.generated_at.desc(), ranked.c.revision_id.desc())
+        .limit(limit)
+    )
+    return [
+        ReportGroup(
+            latest=read_publication(session, user, row.revision_id),
+            previous_count=row.revision_count - 1,
+        )
+        for row in rows
+    ]
+
+
+def report_group_history(
+    session: Session, user: User, revision_id: UUID, limit: int = 25, offset: int = 0
+) -> list[PublishedClosing]:
+    revision = acl.get_report_revision_for_user(session, user, revision_id)
+    report = acl.get_report_for_user(session, user, revision.report_id)
+    revisions = session.scalars(
+        sa.select(reports.TonReportRevision)
+        .join(
+            reports.TonReport,
+            reports.TonReportRevision.report_id == reports.TonReport.id,
+        )
+        .where(
+            acl.report_revision_visible_clause(user),
+            reports.TonReportRevision.generator_version == EXECUTOR_VERSION,
+            reports.TonReport.period_start == report.period_start,
+            reports.TonReport.business_unit_id == report.business_unit_id,
+            reports.TonReport.report_type == report.report_type,
+            reports.TonReportRevision.id != revision_id,
+            reports.TonReportRevision.generated_at <= revision.generated_at,
+        )
+        .order_by(
+            reports.TonReportRevision.generated_at.desc(),
+            reports.TonReportRevision.id.desc(),
+        )
+        .limit(limit)
+        .offset(offset)
+    )
+    return [read_publication(session, user, item.id) for item in revisions]
 
 
 def _record_analysis(

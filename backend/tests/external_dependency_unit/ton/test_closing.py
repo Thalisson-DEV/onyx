@@ -12,7 +12,14 @@ from onyx.db.models import User
 from onyx.db.permissions import recompute_user_permissions__no_commit
 from onyx.db.ton import dre, reports
 from onyx.db.ton.acl import report_group_ids
-from onyx.db.ton.closing import analyze_closing, execute_closing, read_publication
+from onyx.db.ton.closing import (
+    analyze_closing,
+    execute_closing,
+    latest_r3_publication,
+    list_report_groups,
+    read_publication,
+    report_group_history,
+)
 from onyx.db.ton.enums import AnalysisStepStatus, AnalysisTrigger
 from onyx.db.ton.models import (
     AnalysisRun,
@@ -35,6 +42,56 @@ from tests.external_dependency_unit.ton.test_financial_domain import (
 )
 
 pytest_plugins = ("tests.external_dependency_unit.ton.test_financial_domain",)
+
+
+def test_report_groups_keep_period_and_type_and_count_real_history(
+    ton_session: Session,
+) -> None:
+    admin = factories.make_admin(ton_session)
+    first = execute_closing(
+        ton_session,
+        admin,
+        ClosingRequest(request_id=uuid4(), period=date(2026, 1, 1)),
+        routine_code="R3",
+    )
+    latest = execute_closing(
+        ton_session,
+        admin,
+        ClosingRequest(request_id=uuid4(), period=date(2026, 1, 1)),
+        routine_code="R3",
+    )
+    executive = execute_closing(
+        ton_session,
+        admin,
+        ClosingRequest(request_id=uuid4(), period=date(2026, 1, 1), executive=True),
+    )
+    february = execute_closing(
+        ton_session,
+        admin,
+        ClosingRequest(request_id=uuid4(), period=date(2026, 2, 1)),
+        routine_code="R3",
+    )
+    assert latest_r3_publication(ton_session, admin, date(2026, 1, 1), None) == latest
+    assert latest_r3_publication(ton_session, admin, date(2026, 3, 1), None) is None
+    groups = list_report_groups(ton_session, admin)
+    assert len(groups) == 3
+    assert {group.latest.revision_id for group in groups} == {
+        latest.revision_id,
+        executive.revision_id,
+        february.revision_id,
+    }
+    closing_group = next(
+        group for group in groups if group.latest.revision_id == latest.revision_id
+    )
+    assert closing_group.previous_count == 1
+    assert [
+        item.revision_id
+        for item in report_group_history(ton_session, admin, latest.revision_id)
+    ] == [first.revision_id]
+    assert report_group_history(ton_session, admin, latest.revision_id, offset=1) == []
+    outsider = factories.make_user(ton_session)
+    with pytest.raises(OnyxError):
+        report_group_history(ton_session, outsider, latest.revision_id)
 
 
 def test_interactive_analysis_records_steps_without_report_permission(

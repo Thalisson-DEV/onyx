@@ -7,10 +7,62 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from onyx.db.ton.capabilities import capability_registry
+from onyx.db.ton.closing import inspect_closing, specialist_views
 from onyx.db.ton.models import RuleVersion
 from onyx.error_handling.exceptions import OnyxError
 from onyx.ton.agent.closing_models import ClosingRequest
 from tests.external_dependency_unit.ton import factories
+
+
+def test_specialists_use_canonical_identity_and_runtime_status(
+    ton_session: Session,
+) -> None:
+    admin = factories.make_admin(ton_session)
+    request = ClosingRequest(request_id=uuid4())
+    output = inspect_closing(ton_session, admin, request)
+    views = specialist_views(ton_session, admin, request)
+    assert {item.name for item in views} == {
+        "TON CFO",
+        "TON COO",
+        "TON FROTA",
+        "TON CONTRATOS",
+        "TON COMPLIANCE",
+        "TON PROCUREMENT",
+        "TON RH",
+        "TON AUDITOR",
+        "TON CEO",
+    }
+    outcomes = {item.key: item for item in output.specialists}
+    for view in views:
+        assert view.reason == outcomes[view.key].reason
+        assert view.required_sources == view.required_capabilities
+        assert view.interaction == "coordinator"
+        if view.key not in {"CFO", "AUDITOR", "CEO"}:
+            assert view.status == "Aguardando fonte"
+            assert view.available_capabilities == []
+            assert view.blocked_capabilities
+
+
+def test_routines_use_registry_labels(ton_session: Session) -> None:
+    from onyx.server.ton.agent import routine_definitions
+
+    admin = factories.make_admin(ton_session)
+    routines = routine_definitions(user=admin, session=ton_session)
+    assert [item.name for item in routines] == [
+        "Varredura diária de exceções",
+        "Auditoria semanal de combustível",
+        "Fechamento preliminar mensal",
+        "Reconciliação contratual mensal",
+        "Dinheiro Escondido",
+        "Pacote executivo",
+        "Sentinela de vigência/reajuste contratual",
+        "Sentinela de recebíveis",
+        "Verificação de ações vencidas",
+    ]
+    assert routines[2].schedule.startswith(
+        "Primeiro dia útil do mês, às 08:00 de Brasília"
+    )
+    assert all(not item.manual_available for item in routines if item.key != "R3")
 
 
 def test_registry_covers_master_keys_without_rule_activation(

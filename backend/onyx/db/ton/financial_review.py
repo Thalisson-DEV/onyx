@@ -1082,6 +1082,7 @@ _CASE = aliased(Occurrence)
 def _finding_query(user: User) -> sa.Select[Any]:
     return (
         sa.select(Finding, _CASE, Rule.code, RuleVersion.version, ReviewRun.id)
+        .select_from(Finding)
         .join(_CASE, _CASE.id == Finding.occurrence_id)
         .join(RuleVersion, RuleVersion.id == Finding.rule_version_id)
         .join(Rule, Rule.id == RuleVersion.rule_id)

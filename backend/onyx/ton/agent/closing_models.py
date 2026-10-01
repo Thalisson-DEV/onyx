@@ -41,6 +41,16 @@ class SpecialistOutcome(BaseModel):
     actions: list[str] = Field(default_factory=list)
 
 
+class SpecialistView(SpecialistDefinition):
+    status: str
+    reason: str
+    required_sources: list[str]
+    available_capabilities: list[str]
+    blocked_capabilities: list[str]
+    last_execution: datetime | None = None
+    interaction: Literal["coordinator"] = "coordinator"
+
+
 class ClosingOutput(BaseModel):
     period: date
     scope: str
@@ -77,6 +87,12 @@ class PublishedClosing(BaseModel):
     output: ClosingOutput
     steps: list[dict[str, str | None]]
     routine_code: str | None = None
+    report_type: str | None = None
+
+
+class ReportGroup(BaseModel):
+    latest: PublishedClosing
+    previous_count: int
 
 
 class PublicationLink(BaseModel):

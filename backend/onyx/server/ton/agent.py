@@ -15,8 +15,12 @@ from onyx.db.ton.capabilities import capability_registry
 from onyx.db.ton.closing import (
     execute_closing,
     inspect_closing,
+    latest_r3_publication,
     list_publications,
+    list_report_groups,
     read_publication,
+    report_group_history,
+    specialist_views,
 )
 from onyx.db.ton.enums import AnalysisTrigger
 from onyx.db.ton.routine_schedule import configure_schedule, schedule_view
@@ -25,9 +29,10 @@ from onyx.ton.agent.closing_models import (
     ClosingOutput,
     ClosingRequest,
     PublishedClosing,
-    SpecialistDefinition,
+    ReportGroup,
+    SpecialistView,
 )
-from onyx.ton.agent.registry import ROUTINES, SPECIALISTS
+from onyx.ton.agent.registry import ROUTINES
 from onyx.ton.agent.rendering import render_markdown
 from onyx.ton.agent.scheduling import R3ScheduleRequest, R3ScheduleView
 
@@ -139,9 +144,13 @@ def closing_snapshot(
 
 @router.get("/specialists")
 def specialists(
-    _user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
-) -> list[SpecialistDefinition]:
-    return list(SPECIALISTS)
+    unit_id: UUID | None = None,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> list[SpecialistView]:
+    return specialist_views(
+        session, user, ClosingRequest(request_id=uuid4(), unit_id=unit_id)
+    )
 
 
 @router.get("/capabilities")
@@ -173,6 +182,36 @@ def report_list(
     session: Session = Depends(get_session),
 ) -> list[PublishedClosing]:
     return list_publications(session, user, limit)
+
+
+@router.get("/routines/R3/latest")
+def latest_r3_result(
+    period: date,
+    unit_id: UUID | None = None,
+    user: User = Depends(require_permission(Permission.READ_TON_REPORTS)),
+    session: Session = Depends(get_session),
+) -> PublishedClosing | None:
+    return latest_r3_publication(session, user, period, unit_id)
+
+
+@router.get("/reports/groups")
+def report_groups(
+    limit: int = Query(default=25, ge=1, le=100),
+    user: User = Depends(require_permission(Permission.READ_TON_REPORTS)),
+    session: Session = Depends(get_session),
+) -> list[ReportGroup]:
+    return list_report_groups(session, user, limit)
+
+
+@router.get("/reports/{revision_id}/history")
+def report_history(
+    revision_id: UUID,
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    user: User = Depends(require_permission(Permission.READ_TON_REPORTS)),
+    session: Session = Depends(get_session),
+) -> list[PublishedClosing]:
+    return report_group_history(session, user, revision_id, limit, offset)
 
 
 @router.get("/reports/{revision_id}")

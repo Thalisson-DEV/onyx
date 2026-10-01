@@ -13556,8 +13556,12 @@
         "webSearch": {
           "label": "Recherche web"
         },
-        "dre": { "label": "DRE" },
-        "dataSources": { "label": "Data sources" },
+        "dre": {
+          "label": "DRE"
+        },
+        "dataSources": {
+          "label": "Data sources"
+        },
         "financialReadiness": {
           "label": "Pr?paration financi?re"
         }
@@ -14522,6 +14526,9 @@
     "reportTitle": "Rapport de clôture",
     "download": "Télécharger Markdown",
     "steps": "Étapes d’exécution",
-    "step": "{specialist} · {name} · {status}"
+    "step": "{specialist} · {name} · {status}",
+    "capabilities": "Couverture du Prompt Mestre",
+    "capabilityNote": "L’enregistrement n’active pas une règle. Chaque élément indique sa capacité actuelle et les dépendances manquantes.",
+    "capabilityNeeds": "Sources : {sources}. Configuration : {configuration}. Spécialiste : {owner}."
   }
 }

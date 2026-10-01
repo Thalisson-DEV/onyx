@@ -10,6 +10,7 @@ import { errorHandlingFetcher } from "@/lib/fetcher";
 import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/lib/types";
 import { useUser } from "@/providers/UserProvider";
+import CapabilitiesPanel from "@/views/ton/ControladoriaPage/CapabilitiesPanel";
 import type {
   ClosingOutput,
   Publication,
@@ -323,6 +324,9 @@ export default function ControladoriaPage() {
           <Button href="#reports" prominence="secondary">
             {t("reports")}
           </Button>
+          <Button href="#capabilities" prominence="secondary">
+            {t("capabilities")}
+          </Button>
         </div>
         {!canRead && (
           <Text as="p" font="main-ui-body" color="text-03">
@@ -446,6 +450,7 @@ export default function ControladoriaPage() {
             </div>
           )}
         </section>
+        {canRead && <CapabilitiesPanel unitId={unitId} />}
         <section id="reports" className="flex flex-col gap-3 pb-6">
           <Text as="h2" font="heading-h3" color="text-05">
             {t("reports")}

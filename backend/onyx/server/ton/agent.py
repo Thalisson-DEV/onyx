@@ -11,6 +11,7 @@ from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.db.ton.agent import configured_agent_id, provision_agent
+from onyx.db.ton.capabilities import capability_registry
 from onyx.db.ton.closing import (
     execute_closing,
     inspect_closing,
@@ -18,6 +19,7 @@ from onyx.db.ton.closing import (
     read_publication,
 )
 from onyx.db.ton.enums import AnalysisTrigger
+from onyx.ton.agent.capabilities import CapabilityView
 from onyx.ton.agent.closing_models import (
     ClosingOutput,
     ClosingRequest,
@@ -101,6 +103,17 @@ def specialists(
     _user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
 ) -> list[SpecialistDefinition]:
     return list(SPECIALISTS)
+
+
+@router.get("/capabilities")
+def capabilities(
+    unit_id: UUID | None = None,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> list[CapabilityView]:
+    return capability_registry(
+        session, user, ClosingRequest(request_id=uuid4(), unit_id=unit_id)
+    )
 
 
 @router.post("/routines/R3/run")

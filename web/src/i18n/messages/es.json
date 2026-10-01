@@ -13556,8 +13556,12 @@
         "webSearch": {
           "label": "Búsqueda web"
         },
-        "dre": { "label": "DRE" },
-        "dataSources": { "label": "Data sources" },
+        "dre": {
+          "label": "DRE"
+        },
+        "dataSources": {
+          "label": "Data sources"
+        },
         "financialReadiness": {
           "label": "Preparaci?n financiera"
         }
@@ -14522,6 +14526,9 @@
     "reportTitle": "Informe de cierre",
     "download": "Descargar Markdown",
     "steps": "Pasos de ejecución",
-    "step": "{specialist} · {name} · {status}"
+    "step": "{specialist} · {name} · {status}",
+    "capabilities": "Cobertura del Prompt Mestre",
+    "capabilityNote": "El registro no activa una regla. Cada elemento muestra su capacidad actual y las dependencias pendientes.",
+    "capabilityNeeds": "Fuentes: {sources}. Configuración: {configuration}. Especialista: {owner}."
   }
 }

@@ -13556,8 +13556,12 @@
         "webSearch": {
           "label": "Websuche"
         },
-        "dre": { "label": "DRE" },
-        "dataSources": { "label": "Data sources" },
+        "dre": {
+          "label": "DRE"
+        },
+        "dataSources": {
+          "label": "Data sources"
+        },
         "financialReadiness": {
           "label": "Finanzielle Bereitschaft"
         }
@@ -14522,6 +14526,9 @@
     "reportTitle": "Abschlussbericht",
     "download": "Markdown herunterladen",
     "steps": "Ausführungsschritte",
-    "step": "{specialist} · {name} · {status}"
+    "step": "{specialist} · {name} · {status}",
+    "capabilities": "Abdeckung des Prompt Mestre",
+    "capabilityNote": "Die Registrierung aktiviert keine Regel. Jeder Eintrag zeigt die aktuelle Funktion und fehlende Abhängigkeiten.",
+    "capabilityNeeds": "Quellen: {sources}. Konfiguration: {configuration}. Spezialist: {owner}."
   }
 }

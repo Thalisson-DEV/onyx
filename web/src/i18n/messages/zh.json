@@ -13556,8 +13556,12 @@
         "webSearch": {
           "label": "网页搜索"
         },
-        "dre": { "label": "DRE" },
-        "dataSources": { "label": "Data sources" },
+        "dre": {
+          "label": "DRE"
+        },
+        "dataSources": {
+          "label": "Data sources"
+        },
         "financialReadiness": {
           "label": "??????"
         }
@@ -14522,6 +14526,9 @@
     "reportTitle": "结账报告",
     "download": "下载Markdown",
     "steps": "执行步骤",
-    "step": "{specialist} · {name} · {status}"
+    "step": "{specialist} · {name} · {status}",
+    "capabilities": "Prompt Mestre覆盖范围",
+    "capabilityNote": "注册不会启用规则。各项目显示当前功能和待满足的依赖条件。",
+    "capabilityNeeds": "数据源：{sources}。配置：{configuration}。专家：{owner}。"
   }
 }

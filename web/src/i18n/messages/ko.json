@@ -13556,8 +13556,12 @@
         "webSearch": {
           "label": "웹 검색"
         },
-        "dre": { "label": "DRE" },
-        "dataSources": { "label": "Data sources" },
+        "dre": {
+          "label": "DRE"
+        },
+        "dataSources": {
+          "label": "Data sources"
+        },
         "financialReadiness": {
           "label": "?? ?? ??"
         }
@@ -14522,6 +14526,9 @@
     "reportTitle": "마감 보고서",
     "download": "Markdown 다운로드",
     "steps": "실행 단계",
-    "step": "{specialist} · {name} · {status}"
+    "step": "{specialist} · {name} · {status}",
+    "capabilities": "Prompt Mestre 지원 범위",
+    "capabilityNote": "등록만으로 규칙이 활성화되지 않습니다. 각 항목은 현재 기능과 필요한 의존성을 표시합니다.",
+    "capabilityNeeds": "소스: {sources}. 설정: {configuration}. 전문가: {owner}."
   }
 }

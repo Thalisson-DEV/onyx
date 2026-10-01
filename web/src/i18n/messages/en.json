@@ -13556,11 +13556,15 @@
         "webSearch": {
           "label": "Web Search"
         },
-        "dataSources": { "label": "Data sources" },
+        "dataSources": {
+          "label": "Data sources"
+        },
         "financialReadiness": {
           "label": "Financial Readiness"
         },
-        "dre": { "label": "DRE" }
+        "dre": {
+          "label": "DRE"
+        }
       },
       "sections": {
         "agentsAndActions": {
@@ -14522,6 +14526,9 @@
     "reportTitle": "Closing report",
     "download": "Download Markdown",
     "steps": "Execution steps",
-    "step": "{specialist} · {name} · {status}"
+    "step": "{specialist} · {name} · {status}",
+    "capabilities": "Prompt Mestre coverage",
+    "capabilityNote": "Registration does not activate a rule. Each item shows its current capability and missing dependencies.",
+    "capabilityNeeds": "Sources: {sources}. Configuration: {configuration}. Specialist: {owner}."
   }
 }

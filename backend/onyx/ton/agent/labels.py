@@ -3,6 +3,21 @@
 from typing import Any
 
 LABELS = {
+    "NEW": "Nova",
+    "REOPENED": "Reaberta",
+    "CONFIRMED": "Confirmada",
+    "RESOLVED": "Resolvida",
+    "RISK_ACCEPTED": "Risco aceito",
+    "DISMISSED": "Dispensada",
+    "SUPERSEDED": "Substituída",
+    "OPEN": "Aberta",
+    "CANCELLED": "Cancelada",
+    "CRITICAL": "Crítica",
+    "HIGH": "Alta",
+    "MEDIUM": "Média",
+    "LOW": "Baixa",
+    "ACTIVE": "Ativa",
+    "FILE_UPLOAD": "Envio de arquivo",
     "CURRENT": "Importação concluída",
     "PROCESSING": "Em processamento",
     "ATTENTION": "Requer atenção",

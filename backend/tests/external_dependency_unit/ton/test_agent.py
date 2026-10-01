@@ -86,6 +86,36 @@ def test_tools_preserve_readiness_and_source_acl(
         ),
     )
     assert readiness.model_dump()["status"] == "NOT_READY"
+    from onyx.ton.agent.labels import business_label
+    from onyx.ton.financial_domain.readiness_models import BlockerPage
+
+    blocker = next(iter(readiness.model_dump()["blockers"]))
+    evidence = query_domain(
+        ton_session,
+        admin,
+        "ton_get_readiness_evidence",
+        ToolQuery(
+            normalization_run_id=normalization_id,
+            structure_version_id=version.id,
+            blocker=business_label(blocker),
+            unit_id=unit_id,
+            limit=1,
+        ),
+    )
+    assert isinstance(evidence, BlockerPage)
+    assert len(evidence.rows) <= 1
+    assert evidence.blocker == blocker
+    with pytest.raises(OnyxError):
+        query_domain(
+            ton_session,
+            admin,
+            "ton_get_readiness_evidence",
+            ToolQuery(
+                normalization_run_id=normalization_id,
+                structure_version_id=version.id,
+                blocker="unsupported-query",
+            ),
+        )
     blocked = dre.execute(
         ton_session,
         admin,

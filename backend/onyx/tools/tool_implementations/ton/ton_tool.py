@@ -38,6 +38,10 @@ TON_TOOL_DISPLAY_NAMES = {
     "ton_get_billing_summary": "Resumo do faturamento",
     "ton_get_budget_summary": "Resumo do orçamento",
     "ton_get_reconciliation_summary": "Resumo da conciliação",
+    "ton_list_occurrences": "Ocorrências",
+    "ton_get_occurrence": "Detalhe da ocorrência",
+    "ton_list_overdue_actions": "Ações vencidas",
+    "ton_get_readiness_evidence": "Evidência da prontidão",
 }
 
 
@@ -236,6 +240,37 @@ class TonReconciliationSummaryTool(TonBillingSummaryTool):
     DESCRIPTION = "Consultar conciliação determinística entre realizado e faturamento no período e escopo."
 
 
+class TonListOccurrencesTool(TonDomainTool):
+    NAME = "ton_list_occurrences"
+    DESCRIPTION = "Consultar ocorrências autorizadas e a atribuição atual de responsável e prazo. Página não equivale ao total. Somente leitura."
+    FIELDS = ("limit", "offset")
+
+
+class TonGetOccurrenceTool(TonDomainTool):
+    NAME = "ton_get_occurrence"
+    DESCRIPTION = "Consultar uma ocorrência autorizada, seu estado, responsável, prazo e critério de verificação. Não encerrar nem alterar."
+    FIELDS = REQUIRED = ("occurrence_id",)
+
+
+class TonOverdueActionsTool(TonListOccurrencesTool):
+    NAME = "ton_list_overdue_actions"
+    DESCRIPTION = "Consultar somente atribuições atuais abertas com prazo anterior à data UTC, em ocorrências não encerradas. Prazo ausente não significa vencido. Nenhuma ação é encerrada."
+
+
+class TonReadinessEvidenceTool(TonDomainTool):
+    NAME = "ton_get_readiness_evidence"
+    DESCRIPTION = "Detalhar um bloqueio da Prontidão financeira usando seu rótulo retornado pela análise. Paginação e evidências de fonte da base inteira, não apenas do mês. Lacunas de cobertura retornam orientação, sem inventar linhas."
+    FIELDS = (
+        "normalization_run_id",
+        "structure_version_id",
+        "blocker",
+        "unit_id",
+        "limit",
+        "offset",
+    )
+    REQUIRED = ("normalization_run_id", "structure_version_id", "blocker")
+
+
 TON_TOOL_CLASSES = (
     TonListSourcesTool,
     TonGetSourceStatusTool,
@@ -251,4 +286,8 @@ TON_TOOL_CLASSES = (
     TonBillingSummaryTool,
     TonBudgetSummaryTool,
     TonReconciliationSummaryTool,
+    TonListOccurrencesTool,
+    TonGetOccurrenceTool,
+    TonOverdueActionsTool,
+    TonReadinessEvidenceTool,
 )

@@ -23,10 +23,24 @@ def query_domain(
 ) -> BaseModel | list[BaseModel]:
     permission = (
         Permission.READ_TON_OCCURRENCES
-        if operation in ("ton_list_findings", "ton_get_finding")
+        if operation
+        in (
+            "ton_list_findings",
+            "ton_get_finding",
+            "ton_list_occurrences",
+            "ton_get_occurrence",
+            "ton_list_overdue_actions",
+        )
         else Permission.READ_TON_SOURCES
     )
     assert_global(user, permission=permission)
+    if operation in (
+        "ton_get_readiness_evidence",
+        "ton_list_occurrences",
+        "ton_get_occurrence",
+        "ton_list_overdue_actions",
+    ):
+        return _supporting_evidence(session, user, operation, query)
     if operation in (
         "ton_analyze_closing",
         "ton_generate_closing_report",
@@ -167,3 +181,48 @@ def query_domain(
 
         return financial_context(session, user, query.limit, query.offset)
     raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Ferramenta TON desconhecida")
+
+
+def _supporting_evidence(
+    session: Session, user: User, operation: str, query: ToolQuery
+) -> BaseModel:
+    if operation != "ton_get_readiness_evidence":
+        from onyx.db.ton.agent_occurrences import query_occurrences
+
+        return query_occurrences(session, user, operation, query)
+    from onyx.db.ton import financial_readiness
+    from onyx.ton.agent.labels import business_label
+
+    if query.normalization_run_id is None or query.structure_version_id is None:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT, "Informe a base e a estrutura DRE."
+        )
+    supported = financial_readiness.SUMMARY_BLOCKERS | {
+        "UNMAPPED_UNIT",
+        "UNMAPPED_ACCOUNT",
+        "AMOUNT_BASIS_UNRESOLVED",
+        "DRE_ACCOUNT_UNMAPPED",
+        "DRE_MAPPING_PENDING_APPROVAL",
+        "BUDGET_PERIOD_UNRESOLVED",
+        "SOURCE_RECONCILIATION_UNRESOLVED",
+        "SOURCE_RECONCILIATION_AMBIGUOUS",
+    }
+    blocker = next(
+        (code for code in supported if query.blocker in (code, business_label(code))),
+        None,
+    )
+    if blocker is None:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT, "Informe um bloqueio obtido da prontidão."
+        )
+    return financial_readiness.list_blockers(
+        session,
+        user,
+        query.normalization_run_id,
+        query.structure_version_id,
+        blocker,
+        query.limit,
+        query.offset,
+        None,
+        query.unit_id,
+    )

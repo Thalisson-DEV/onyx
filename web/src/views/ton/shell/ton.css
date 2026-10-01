@@ -154,7 +154,8 @@ html:has(.ton-shell) body {
 }
 
 .ton-new-conversation {
-  background: var(--ton-surface);
+  /* Always the light brand surface: it sits on the green chrome in both themes. */
+  background: var(--vale-norte-green-01);
   color: var(--vale-norte-green-90);
   border-radius: 0.75rem;
   box-shadow: 0 1px 2px color-mix(in srgb, black 20%, transparent);

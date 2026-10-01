@@ -34,6 +34,7 @@
   --ton-brand: var(--vale-norte-green-80);
   --ton-brand-soft: var(--vale-norte-green-05);
   --ton-brand-line: var(--vale-norte-green-10);
+  --ton-heading: var(--vale-norte-green-90);
   --ton-workspace: var(--background-neutral-01);
   --ton-surface: var(--background-neutral-00);
   --ton-radius-card: 0.875rem;
@@ -43,6 +44,15 @@
       color-mix(in srgb, var(--vale-norte-green-95) 12%, transparent);
   --ton-header-height: 4rem;
   --ton-sidebar-width: 16rem;
+}
+
+/* Dark workspace: lift brand greens so text and tiles stay legible. */
+.dark .ton-shell {
+  --ton-brand: var(--vale-norte-green-40);
+  --ton-brand-soft: color-mix(in srgb, var(--vale-norte-green-60) 22%, transparent);
+  --ton-brand-line: var(--vale-norte-green-60);
+  --ton-heading: var(--vale-norte-green-05);
+  --ton-gold-soft: color-mix(in srgb, var(--vale-norte-gold-50) 20%, transparent);
 }
 
 html:has(.ton-shell),
@@ -193,7 +203,7 @@ html:has(.ton-shell) body {
   line-height: 1.08;
   letter-spacing: -0.025em;
   font-weight: 700;
-  color: var(--vale-norte-green-90);
+  color: var(--ton-heading);
 }
 .ton-display-accent {
   color: var(--ton-gold-strong);

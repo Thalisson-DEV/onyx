@@ -191,14 +191,14 @@ Chrome 1488px, dados reais. Nenhum UUID, enum ou JSON visível.
 - [x] progress summary
 - [x] tool trace escondida por padrão
 - [x] evidence component
-- [ ] finding component
+- [~] finding component
 - [x] DRE status component
 - [x] source status component
-- [ ] pending-decision component
-- [ ] routine result component
+- [d] pending-decision component
+- [d] routine result component
 - [x] report artifact component
 - [x] technical details disclosure
-- [ ] cancel funciona
+- [x] cancel funciona
 - [x] respostas longas legíveis
 
 ### Demonstrável
@@ -395,13 +395,13 @@ próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar rel
 
 # 12. Cliente x Admin
 
-- [ ] generic agent catalog oculto de cliente
-- [ ] models ocultos
-- [ ] MCP/OpenAPI ocultos
-- [ ] generic connectors ocultos
+- [x] generic agent catalog oculto de cliente
+- [x] models ocultos
+- [x] MCP/OpenAPI ocultos
+- [x] generic connectors ocultos
 - [x] Cobertura removida da nav principal
 - [x] admin preservado para autorizado
-- [ ] retorno admin → TON
+- [x] retorno admin → TON
 
 ---
 
@@ -440,7 +440,7 @@ próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar rel
 
 ## DRE
 - [x] blocked state clara
-- [~] READY sintética só se claramente marcada
+- [d] READY sintética só se claramente marcada
 
 ## R3
 - [x] schedule
@@ -451,7 +451,7 @@ próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar rel
 ## Relatório
 - [x] open
 - [x] presentation
-- [ ] download
+- [x] download
 
 ## Fontes
 - [x] NG manual
@@ -469,19 +469,19 @@ próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar rel
 - [x] empty
 - [x] error
 - [x] permission
-- [ ] keyboard/focus
+- [~] keyboard/focus
 
 ---
 
 # 16. Qualidade
 
 - [x] focused frontend tests
-- [ ] focused backend tests se necessário
+- [x] focused backend tests se necessário
 - [x] TypeScript
 - [x] lint
 - [x] format
 - [ ] build
-- [ ] git diff --check
+- [x] git diff --check
 - [x] demo walkthrough completo
 
 ---
@@ -493,10 +493,10 @@ Somente após substituição estável:
 - [x] shell TON antigo removido
 - [x] dashboard antigo removido
 - [x] chat presentation antiga removida se superseded
-- [ ] source UI duplicada removida
-- [ ] DRE duplicada removida
-- [ ] readiness duplicada removida
-- [ ] specialist UI obsoleta removida
+- [d] source UI duplicada removida
+- [d] DRE duplicada removida
+- [d] readiness duplicada removida
+- [x] specialist UI obsoleta removida
 - [x] routes antigas redirecionadas
 - [x] nenhum legacy exposto ao cliente
 
@@ -590,20 +590,25 @@ Next: passada final, decisões e handoff.
 # 19. Bloqueios atuais
 
 ```text
-Nenhum registrado ainda.
+Nenhum bloqueio de implementação P0.
+- DRE pronta não demonstrável: nenhuma base sintética está pronta (D-013). Não fabricado.
+- Componentes de chat "pendência" e "resultado de rotina" adiados (P1): o chat usa o
+  cartão de DRE com link para Pendências e o cartão de relatório.
+- Concessão de permissão TON à conta de teste do Playwright foi negada pelo
+  classificador; a validação usa a conta autorizada do usuário (D-010).
 ```
 
 ---
 
 # 20. Dependências externas / reunião
 
-Registrar apenas dependências reais, por exemplo:
-- VPN NG/Keevo
-- API/read-only DB
-- amostra real aprovada
-- Zeev oficial
-- decisões de autoridade de fonte
-
 ```text
-TBD
+- NG/Keevo: acesso VPN ou API e base de leitura autorizada (Fontes mostra
+  "Aguardando acesso e configuração"; dados entram por arquivo).
+- Amostra real aprovada da Vale Norte para substituir a base sintética.
+- Fontes de frota, contratos, produção, compras, compliance e RH para liberar
+  os seis especialistas em "Aguardando fonte" e as rotinas R1, R2, R4–R9.
+- Decisões humanas das 13 pendências (unidades, dotação, conciliação) e
+  importação do realizado dos meses faltantes para a DRE ficar pronta.
+- WhatsApp e outros canais: não integrados; não aparecem como conectados.
 ```

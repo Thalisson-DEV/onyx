@@ -306,3 +306,64 @@ credenciais fornecidas pelo usuário) e um `next dev` local na porta 3005 contra
 API (cookies de `localhost` valem para qualquer porta). Nenhuma permissão foi alterada.
 
 Consequências: validações de browser deste rebuild usam a base sintética real.
+
+## D-011 — Remoção do frontend TON legado
+
+Data: 2026-10-01
+Status: Accepted
+
+Contexto: após as superfícies novas estarem estáveis e validadas no Chrome e no
+Playwright, o shell antigo e as views Controladoria/Rotinas/R3Execution ficaram sem rota.
+
+Decisão: removidos TonChrome, sections/sidebar/TonSidebar, views/ton/ControladoriaPage
+(incl. ReportPage e CapabilitiesPanel), views/ton/RoutinesPage e R3Execution. Os testes
+do ciclo de execução R3 foram portados para R3Spotlight. As views admin
+`/admin/dre` e `/admin/financial-readiness` permanecem como superfícies técnicas de
+administração; DataSourcesPage permanece como dona do diálogo de upload reutilizado.
+
+Consequências: nenhuma rota cliente renderiza layout legado; rotas antigas do TON
+redirecionam (D-007).
+
+## D-012 — Respostas do coordenador sem identificadores internos
+
+Data: 2026-10-01
+Status: Accepted
+
+Contexto: o prompt do coordenador pedia identificadores "como referências de
+evidência", e as respostas mostravam UUIDs — proibido pelo critério visual.
+
+Decisão: o prompt passa a proibir UUIDs/run_id na resposta e a rastreabilidade fica
+no relatório (seção colapsada). Regras financeiras, ferramentas, especialistas e
+limites de aprovação não mudaram.
+
+Aplicação local: imagem `onyxdotapp/onyx-backend:latest` reconstruída do repositório
+(rollback em `:pre-fe001`), `api_server` e `background` recriados, nginx reiniciado e a
+Persona TON reprovisionada por `POST /api/ton/agent/provision`. Em outro ambiente, o
+mesmo passo de reprovisionamento é necessário depois do deploy do backend.
+
+Validação: Playwright fe001 verifica que a resposta da análise não contém UUID.
+
+## D-013 — DRE pronta na demonstração
+
+Data: 2026-10-01
+Status: Accepted
+
+Contexto: a roadmap permite mostrar uma DRE READY sintética se houver fixture segura.
+Na base atual, inclusive a unidade de demonstração `SYN-READY-UNIT`, todos os
+escopos estão "Não pronto" (13 e 14 bloqueios).
+
+Decisão: não fabricar estado pronto. A demo mostra o bloqueio honesto; a experiência
+de DRE pronta (tabela hierárquica, variação, YTD, drill-down, export) continua
+disponível no código existente e coberta por testes, e aparece sozinha quando uma
+base ficar pronta.
+
+## D-014 — Chat genérico /app e configurações
+
+Data: 2026-10-01
+Status: Accepted
+
+Decisão: `/app` (chat Onyx genérico, catálogo de agentes, configurações) continua
+existindo para administração e compatibilidade, mas nenhum caminho do cliente leva
+até ele: login, "/", retorno do admin e menu de conta apontam para o TON. Rotas
+admin continuam protegidas por permissão no backend; esconder links não é controle
+de segurança.

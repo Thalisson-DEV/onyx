@@ -353,6 +353,7 @@ function ImportDetail({ result }: { result: ClientImport }) {
 
 function DataSourcesPage() {
   const t = useTranslations("dataSources");
+  const controladoria = useTranslations("controladoria");
   const format = useFormatter();
   const { user } = useUser();
   const canRead = hasPermission(
@@ -376,6 +377,9 @@ function DataSourcesPage() {
       />
       <SettingsLayouts.Body>
         <div className="flex flex-wrap gap-2 pb-6">
+          <Button href="/ton/controladoria" prominence="secondary">
+            {controladoria("title")}
+          </Button>
           <Button href="/ton/data-sources" prominence="secondary">
             {t("title")}
           </Button>

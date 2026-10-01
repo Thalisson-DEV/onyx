@@ -7,8 +7,17 @@ from onyx.db.enums import Permission
 from onyx.db.models import Persona, StarterMessage, Tool, User
 from onyx.db.persona import upsert_persona
 from onyx.db.ton import dre, financial_domain, sources
-from onyx.db.ton.acl import assert_global
-from onyx.db.ton.models import DreCalculationRun, FinancialActualFact, ReviewRun
+from onyx.db.ton.acl import (
+    assert_global,
+    business_unit_visible_clause,
+    is_ton_administrator,
+)
+from onyx.db.ton.models import (
+    BusinessUnit,
+    DreCalculationRun,
+    FinancialActualFact,
+    ReviewRun,
+)
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.prompts.ton.agent import TON_SYSTEM_PROMPT
@@ -16,12 +25,37 @@ from onyx.ton.agent.models import (
     FinancialBaseContext,
     FinancialContext,
     StoredDreContext,
+    ToolQuery,
 )
 from onyx.ton.agent.policy import SYNTHETIC_DATA_NOTICE, uses_synthetic_demo_data
 from onyx.tools.tool_implementations.ton.ton_tool import (
     TON_TOOL_CLASSES,
     TON_TOOL_DISPLAY_NAMES,
 )
+
+
+def finance_summary(
+    session: Session, user: User, query: ToolQuery
+) -> financial_domain.ReadinessView:
+    if query.normalization_run_id is None or query.period is None:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT, "Informe normalization_run_id e period"
+        )
+    if query.unit_id is None and not is_ton_administrator(user):
+        raise OnyxError(OnyxErrorCode.ADMIN_ONLY, "Selecione uma unidade autorizada")
+    if (
+        query.unit_id is not None
+        and session.scalar(
+            sa.select(BusinessUnit.id).where(
+                BusinessUnit.id == query.unit_id, business_unit_visible_clause(user)
+            )
+        )
+        is None
+    ):
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Unidade indisponível")
+    return financial_domain.readiness(
+        session, user, query.normalization_run_id, query.period, query.unit_id
+    )
 
 
 def financial_context(
@@ -64,7 +98,7 @@ def financial_context(
                 sa.select(FinancialActualFact.calendar_period)
                 .where(FinancialActualFact.run_id == run.id)
                 .distinct()
-                .order_by(FinancialActualFact.calendar_period)
+                .order_by(FinancialActualFact.calendar_period.desc())
                 .limit(25)
             )
         )
@@ -154,3 +188,17 @@ def provision_agent(session: Session, user: User) -> Persona:
     )
     session.commit()
     return persona
+
+
+def configured_agent_id(session: Session, user: User) -> int | None:
+    assert_global(user, permission=Permission.READ_TON_SOURCES)
+    return session.scalar(
+        sa.select(Persona.id)
+        .where(
+            Persona.name == "TON",
+            Persona.builtin_persona.is_(True),
+            Persona.deleted.is_(False),
+            Persona.is_public.is_(True),
+        )
+        .limit(1)
+    )

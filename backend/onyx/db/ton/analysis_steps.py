@@ -216,6 +216,16 @@ def block_step__no_commit(
     return step
 
 
+def skip_step__no_commit(db_session: Session, *, step: AnalysisStep) -> AnalysisStep:
+    """Record unsupported work without claiming it passed."""
+    now = datetime.datetime.now(datetime.UTC)
+    step.started_at = step.started_at or now
+    step.finished_at = now
+    step.status = AnalysisStepStatus.SKIPPED
+    db_session.flush()
+    return step
+
+
 def fail_step__no_commit(
     db_session: Session,
     *,

@@ -82,6 +82,10 @@ export enum Permission {
   MANAGE_BOTS = "manage:bots",
   FULL_ADMIN_PANEL_ACCESS = "admin",
   READ_TON_SOURCES = "read:ton_sources",
+  READ_TON_OCCURRENCES = "read:ton_occurrences",
+  MANAGE_TON_OCCURRENCES = "manage:ton_occurrences",
+  READ_TON_REPORTS = "read:ton_reports",
+  MANAGE_TON_REPORTS = "manage:ton_reports",
   MANAGE_TON_SOURCES = "manage:ton_sources",
   IMPORT_TON_SOURCES = "import:ton_sources",
 }

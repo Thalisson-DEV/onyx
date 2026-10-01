@@ -1,4 +1,6 @@
-"""Read-only TON operations shared by chat and specialist analysis."""
+"""Bounded TON queries and report publication through the shared chat runtime."""
+
+from uuid import uuid4
 
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -25,6 +27,43 @@ def query_domain(
         else Permission.READ_TON_SOURCES
     )
     assert_global(user, permission=permission)
+    if operation in (
+        "ton_analyze_closing",
+        "ton_generate_closing_report",
+        "ton_generate_executive_brief",
+    ):
+        from onyx.db.ton.closing import execute_closing, inspect_closing
+        from onyx.ton.agent.closing_models import ClosingRequest, PublicationLink
+
+        request = ClosingRequest(
+            request_id=query.request_id or uuid4(),
+            normalization_run_id=query.normalization_run_id,
+            structure_version_id=query.structure_version_id,
+            period=query.period,
+            unit_id=query.unit_id,
+            executive=operation == "ton_generate_executive_brief",
+        )
+        if operation == "ton_analyze_closing":
+            return inspect_closing(session, user, request)
+        result = execute_closing(session, user, request)
+        return PublicationLink(
+            run_id=result.run_id,
+            revision_id=result.revision_id,
+            status=result.status,
+            period=result.output.period,
+            data_context=result.output.data_context,
+            executive_brief=result.output.executive_brief,
+            report_url=result.report_url,
+            download_url=result.download_url,
+        )
+    if operation in (
+        "ton_get_billing_summary",
+        "ton_get_budget_summary",
+        "ton_get_reconciliation_summary",
+    ):
+        from onyx.db.ton.agent import finance_summary
+
+        return finance_summary(session, user, query)
     if operation == "ton_list_sources":
         return [
             item.model_copy(update={"history": []})

@@ -15,6 +15,7 @@ from onyx.server.query_and_chat.streaming_models import (
     CustomToolStart,
     Packet,
 )
+from onyx.ton.agent.labels import humanize
 from onyx.ton.agent.models import ToolQuery
 from onyx.ton.agent.policy import SYNTHETIC_DATA_NOTICE, uses_synthetic_demo_data
 from onyx.ton.agent.service import query_domain
@@ -31,6 +32,12 @@ TON_TOOL_DISPLAY_NAMES = {
     "ton_get_dre_readiness": "Prontidão da DRE",
     "ton_get_dre_result": "Resultado da DRE",
     "ton_get_financial_context": "Contexto financeiro",
+    "ton_analyze_closing": "Análise do fechamento",
+    "ton_generate_closing_report": "Relatório de fechamento",
+    "ton_generate_executive_brief": "Resumo executivo",
+    "ton_get_billing_summary": "Resumo do faturamento",
+    "ton_get_budget_summary": "Resumo do orçamento",
+    "ton_get_reconciliation_summary": "Resumo da conciliação",
 }
 
 
@@ -112,6 +119,7 @@ class TonDomainTool(Tool[None]):
             ) from error
         if uses_synthetic_demo_data():
             data = {"data_context": SYNTHETIC_DATA_NOTICE, "data": data}
+        data = humanize(data)
         response = json.dumps(data, ensure_ascii=False)
         if len(response) > 48000:
             raise ToolCallException(
@@ -188,6 +196,46 @@ class TonFinancialContextTool(TonDomainTool):
     FIELDS = ("limit", "offset")
 
 
+class TonAnalyzeClosingTool(TonDomainTool):
+    NAME = "ton_analyze_closing"
+    DESCRIPTION = "Analisar fechamento com CFO, AUDITOR e CEO usando serviços determinísticos. Sem parâmetros, selecionar a base mais recente e informar seu período. Não aprovar nem calcular DRE."
+    FIELDS = ("normalization_run_id", "structure_version_id", "period", "unit_id")
+
+
+class TonClosingReportTool(TonDomainTool):
+    NAME = "ton_generate_closing_report"
+    DESCRIPTION = "Gerar relatório imutável de pendências do fechamento, com evidências e link para abrir e baixar. Exige permissão de gestão de relatórios. Pode repetir request_id para recuperar a mesma publicação."
+    FIELDS = (
+        "request_id",
+        "normalization_run_id",
+        "structure_version_id",
+        "period",
+        "unit_id",
+    )
+
+
+class TonExecutiveBriefTool(TonClosingReportTool):
+    NAME = "ton_generate_executive_brief"
+    DESCRIPTION = "Gerar resumo executivo persistido dos resultados CFO e AUDITOR, sem estimar valores. Retornar link da publicação."
+
+
+class TonBillingSummaryTool(TonDomainTool):
+    NAME = "ton_get_billing_summary"
+    DESCRIPTION = "Consultar quantidade de registros normalizados de faturamento no período, alinhamento do orçamento e conciliação. Não equivale a total monetário nem aprovação."
+    FIELDS = ("normalization_run_id", "period", "unit_id")
+    REQUIRED = ("normalization_run_id", "period")
+
+
+class TonBudgetSummaryTool(TonBillingSummaryTool):
+    NAME = "ton_get_budget_summary"
+    DESCRIPTION = "Consultar cobertura do orçamento no período e escopo, sem estimar valores ausentes."
+
+
+class TonReconciliationSummaryTool(TonBillingSummaryTool):
+    NAME = "ton_get_reconciliation_summary"
+    DESCRIPTION = "Consultar conciliação determinística entre realizado e faturamento no período e escopo."
+
+
 TON_TOOL_CLASSES = (
     TonListSourcesTool,
     TonGetSourceStatusTool,
@@ -197,4 +245,10 @@ TON_TOOL_CLASSES = (
     TonDreReadinessTool,
     TonDreResultTool,
     TonFinancialContextTool,
+    TonAnalyzeClosingTool,
+    TonClosingReportTool,
+    TonExecutiveBriefTool,
+    TonBillingSummaryTool,
+    TonBudgetSummaryTool,
+    TonReconciliationSummaryTool,
 )

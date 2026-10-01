@@ -16,6 +16,7 @@ class ToolQuery(BaseModel):
     normalization_run_id: UUID | None = None
     structure_version_id: UUID | None = None
     run_id: UUID | None = None
+    request_id: UUID | None = None
     period: date | None = None
     unit_id: UUID | None = None
     blocking: bool | None = None

@@ -2,7 +2,14 @@
 
 import { redirect, useRouter, useSearchParams } from "next/navigation";
 import { endIncognitoSession } from "@/app/app/services/lib";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { Section } from "@/layouts/general-layouts";
 import { useFederatedConnectors, useLlmManager } from "@/lib/hooks";
@@ -151,11 +158,26 @@ function ChatDropOverlay({ active }: { active: boolean }) {
   );
 }
 
-export interface ChatPageProps {
-  firstMessage?: string;
+/**
+ * Product presentation overrides. The TON assistant uses them to present the
+ * same chat runtime with its own welcome, suggestions and composer copy.
+ */
+export interface AppPagePresentation {
+  /** Replaces the welcome message above the composer on a new session. */
+  welcome?: ReactNode;
+  /** Replaces the suggestions below the composer on a new session. */
+  renderSuggestions?: (submit: (message: string) => void) => ReactNode;
+  /** Hides the model selector; the provider stays a technical setting. */
+  hideModelSelector?: boolean;
+  placeholder?: string;
 }
 
-export default function AppPage({ firstMessage }: ChatPageProps) {
+export interface ChatPageProps {
+  firstMessage?: string;
+  presentation?: AppPagePresentation;
+}
+
+export default function AppPage({ firstMessage, presentation }: ChatPageProps) {
   // Performance tracking
   // Keeping this here in case we need to track down slow renders in the future
   // const renderCount = useRef(0);
@@ -740,6 +762,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   // still waits for a provider before offering a choice. `isWelcomeFocus`
   // already excludes the search phases, so it carries no `isSearch` term.
   const modelSelectorVisible =
+    !presentation?.hideModelSelector &&
     !!activeAgent &&
     (appPosition.isChat() ||
       (isWelcomeFocus &&
@@ -959,10 +982,12 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       {/* Model selection used to sit here as well, with a
                           different visual treatment. It now has one position,
                           above the composer. */}
-                      <WelcomeMessage
-                        agent={activeAgent}
-                        isDefaultAgent={isPlainChat}
-                      />
+                      {presentation?.welcome ?? (
+                        <WelcomeMessage
+                          agent={activeAgent}
+                          isDefaultAgent={isPlainChat}
+                        />
+                      )}
                     </Section>
                     <Spacer rem={1.5} />
                   </Fade>
@@ -1024,9 +1049,10 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                           ) : undefined
                         }
                         placeholder={
-                          isPlainChat
+                          presentation?.placeholder ??
+                          (isPlainChat
                             ? centralHomeT("inputPlaceholder")
-                            : undefined
+                            : undefined)
                         }
                         toolConfiguration={toolConfiguration}
                         ref={chatInputBarRef}
@@ -1071,7 +1097,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                 <div className="row-start-3 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col items-center w-full px-2 sm:px-4">
                   {/* Agent description below input */}
                   {(appPosition.isNewSession() || appPosition.isAgent()) &&
-                    !isPlainChat && (
+                    !isPlainChat &&
+                    !presentation && (
                       <>
                         <Spacer rem={1} />
                         <AgentDescription agent={activeAgent} />
@@ -1089,16 +1116,26 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                   <Fade
                     show={
                       (appPosition.isNewSession() || appPosition.isAgent()) &&
-                      hasHomeSuggestions
+                      (hasHomeSuggestions || !!presentation?.renderSuggestions)
                     }
                     className="h-full flex-1 w-full max-w-(--app-page-main-content-width)"
                   >
                     <Spacer rem={0.5} />
-                    <Suggestions
-                      onSubmit={onSubmit}
-                      isDefaultAgent={isPlainChat}
-                      currentMessageFiles={currentMessageFiles}
-                    />
+                    {presentation?.renderSuggestions ? (
+                      presentation.renderSuggestions((message) =>
+                        onSubmit({
+                          message,
+                          currentMessageFiles,
+                          deepResearch: false,
+                        })
+                      )
+                    ) : (
+                      <Suggestions
+                        onSubmit={onSubmit}
+                        isDefaultAgent={isPlainChat}
+                        currentMessageFiles={currentMessageFiles}
+                      />
+                    )}
                   </Fade>
 
                   {/* SearchUI */}

@@ -309,6 +309,13 @@ const AgentMessage = React.memo(function AgentMessage({
         toolProcessingDuration={toolProcessingDuration}
       />
 
+      <TonExecutionSummary
+        turnGroups={pacedTurnGroups}
+        tools={effectiveChatState.agent.tools}
+        stopped={stopPacketSeen}
+        stopReason={stopReason}
+      />
+
       {/* Row 2: Display content + MessageToolbar */}
       <div
         ref={markdownRef}
@@ -372,6 +379,7 @@ const AgentMessage = React.memo(function AgentMessage({
       </div>
 
       <TonExecutionSummary
+        part="artifacts"
         turnGroups={pacedTurnGroups}
         tools={effectiveChatState.agent.tools}
         stopped={stopPacketSeen}

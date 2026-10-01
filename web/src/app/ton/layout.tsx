@@ -1,9 +1,14 @@
 import { redirect } from "next/navigation";
-import type { Route } from "next";
+import type { Metadata, Route } from "next";
 import { requireAuth } from "@/lib/auth/svcSS";
-import TonChrome from "@/layouts/chromes/TonChrome";
+import TonShell from "@/views/ton/shell/TonShell";
 import { ProjectsProvider } from "@/lib/projects/providers";
 import { VoiceModeProvider } from "@/providers/VoiceModeProvider";
+
+export const metadata: Metadata = {
+  title: "TON — Vale Norte",
+  description: "Inteligência Operacional e Controladoria com IA",
+};
 
 export default async function TonLayout({
   children,
@@ -19,7 +24,7 @@ export default async function TonLayout({
   return (
     <ProjectsProvider>
       <VoiceModeProvider>
-        <TonChrome>{children}</TonChrome>
+        <TonShell>{children}</TonShell>
       </VoiceModeProvider>
     </ProjectsProvider>
   );

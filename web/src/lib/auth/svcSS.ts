@@ -153,7 +153,7 @@ export async function requireAdminAuth(): Promise<AuthCheckResult> {
   // Reaching the admin panel means holding some permission an admin route requires —
   // a scoped group manager may be a plain BASIC user, so a role check would bounce them.
   if (user && !hasAnyAdminPermission(user.admin_capabilities ?? [])) {
-    return { user, authTypeMetadata, redirect: "/app" };
+    return { user, authTypeMetadata, redirect: "/ton" };
   }
 
   return authResult;

@@ -1,0 +1,332 @@
+/*
+  TON product tokens. A thin semantic layer over the Vale Norte primitives
+  (--vale-norte-*). The chrome (header, sidebar) is the brand green in both
+  themes; the workspace follows the app's neutral tokens.
+*/
+.ton-shell {
+  --ton-chrome: var(--vale-norte-green-90);
+  --ton-chrome-deep: var(--vale-norte-green-95);
+  --ton-chrome-raised: var(--vale-norte-green-85);
+  --ton-chrome-hover: color-mix(
+    in srgb,
+    var(--vale-norte-green-60) 35%,
+    transparent
+  );
+  --ton-chrome-selected: color-mix(
+    in srgb,
+    var(--vale-norte-green-60) 55%,
+    transparent
+  );
+  --ton-chrome-line: color-mix(
+    in srgb,
+    var(--vale-norte-green-20) 18%,
+    transparent
+  );
+  --ton-on-chrome: var(--vale-norte-green-01);
+  --ton-on-chrome-muted: color-mix(
+    in srgb,
+    var(--vale-norte-green-05) 68%,
+    transparent
+  );
+  --ton-gold: var(--vale-norte-gold-40);
+  --ton-gold-strong: var(--vale-norte-gold-50);
+  --ton-gold-soft: var(--vale-norte-gold-05);
+  --ton-brand: var(--vale-norte-green-80);
+  --ton-brand-soft: var(--vale-norte-green-05);
+  --ton-brand-line: var(--vale-norte-green-10);
+  --ton-workspace: var(--background-neutral-01);
+  --ton-surface: var(--background-neutral-00);
+  --ton-radius-card: 0.875rem;
+  --ton-shadow-card:
+    0 1px 2px color-mix(in srgb, var(--vale-norte-green-95) 6%, transparent),
+    0 4px 16px -8px
+      color-mix(in srgb, var(--vale-norte-green-95) 12%, transparent);
+  --ton-header-height: 4rem;
+  --ton-sidebar-width: 16rem;
+}
+
+html:has(.ton-shell),
+html:has(.ton-shell) body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.ton-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  background: var(--ton-workspace);
+}
+
+/* Header */
+.ton-header {
+  height: var(--ton-header-height);
+  flex-shrink: 0;
+  background: var(--ton-chrome);
+  color: var(--ton-on-chrome);
+  border-bottom: 1px solid var(--ton-chrome-line);
+}
+
+.ton-product-badge {
+  border: 1.5px solid var(--ton-on-chrome);
+  color: var(--ton-on-chrome);
+  border-radius: 999px;
+  padding: 0.125rem 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 1.0625rem;
+  line-height: 1.5rem;
+}
+
+.ton-header-chip {
+  background: color-mix(in srgb, var(--vale-norte-green-01) 8%, transparent);
+  border: 1px solid var(--ton-chrome-line);
+  border-radius: 0.625rem;
+}
+
+.ton-demo-chip {
+  background: color-mix(in srgb, var(--vale-norte-gold-40) 16%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--vale-norte-gold-40) 45%, transparent);
+  color: var(--vale-norte-gold-20);
+  border-radius: 999px;
+}
+
+.ton-avatar {
+  background: var(--ton-chrome-deep);
+  color: var(--ton-on-chrome);
+  border: 1.5px solid var(--ton-chrome-line);
+}
+
+/* Sidebar */
+.ton-sidebar {
+  width: var(--ton-sidebar-width);
+  background: var(--ton-chrome-raised);
+  color: var(--ton-on-chrome);
+}
+
+.ton-sidebar-section-label {
+  color: var(--ton-on-chrome-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ton-nav-link {
+  color: var(--ton-on-chrome);
+  border-radius: 0.625rem;
+  transition: background-color 120ms ease;
+}
+.ton-nav-link:hover {
+  background: var(--ton-chrome-hover);
+}
+.ton-nav-link[aria-current="page"] {
+  background: var(--ton-chrome-selected);
+}
+.ton-nav-link:focus-visible,
+.ton-focusable:focus-visible {
+  outline: 2px solid var(--ton-gold);
+  outline-offset: 1px;
+}
+.ton-nav-link svg {
+  stroke: currentColor;
+}
+
+.ton-nav-sublink {
+  color: var(--ton-on-chrome-muted);
+}
+.ton-nav-sublink[aria-current="page"],
+.ton-nav-sublink:hover {
+  color: var(--ton-on-chrome);
+}
+
+.ton-new-conversation {
+  background: var(--ton-surface);
+  color: var(--vale-norte-green-90);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px color-mix(in srgb, black 20%, transparent);
+  transition: transform 120ms ease;
+}
+.ton-new-conversation:hover {
+  transform: translateY(-1px);
+}
+.ton-new-conversation svg {
+  stroke: currentColor;
+}
+
+.ton-chrome-divider {
+  border-color: var(--ton-chrome-line);
+}
+
+/* Workspace */
+.ton-card {
+  background: var(--ton-surface);
+  border: 1px solid var(--border-01);
+  border-radius: var(--ton-radius-card);
+  box-shadow: var(--ton-shadow-card);
+}
+
+.ton-card-interactive {
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+}
+.ton-card-interactive:hover {
+  border-color: var(--ton-brand-line);
+  transform: translateY(-1px);
+}
+
+.ton-eyebrow {
+  color: var(--text-03);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ton-display {
+  font-size: clamp(2rem, 3.6vw, 3.25rem);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  font-weight: 700;
+  color: var(--vale-norte-green-90);
+}
+.ton-display-accent {
+  color: var(--ton-gold-strong);
+}
+
+.ton-title {
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  color: var(--text-05);
+}
+
+.ton-metric {
+  font-size: 1.5rem;
+  line-height: 1.875rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-05);
+}
+
+.ton-brand-text {
+  color: var(--ton-brand);
+}
+.ton-gold-text {
+  color: var(--ton-gold-strong);
+}
+
+.ton-icon-tile {
+  background: var(--ton-brand-soft);
+  color: var(--ton-brand);
+  border-radius: 0.625rem;
+}
+.ton-icon-tile svg {
+  stroke: currentColor;
+}
+.ton-icon-tile[data-tone="warning"] {
+  background: var(--status-warning-01);
+  color: var(--status-warning-05);
+}
+.ton-icon-tile[data-tone="neutral"] {
+  background: var(--background-neutral-02);
+  color: var(--text-04);
+}
+.ton-icon-tile[data-tone="gold"] {
+  background: var(--ton-gold-soft);
+  color: var(--vale-norte-gold-60);
+}
+
+.ton-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--text-02);
+}
+.ton-dot[data-tone="success"] {
+  background: var(--status-success-05);
+}
+.ton-dot[data-tone="warning"] {
+  background: var(--status-warning-05);
+}
+.ton-dot[data-tone="danger"] {
+  background: var(--status-error-05);
+}
+.ton-dot[data-tone="neutral"] {
+  background: var(--text-02);
+}
+
+.ton-pill {
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--background-neutral-02);
+  color: var(--text-04);
+}
+.ton-pill[data-tone="success"] {
+  background: var(--status-success-01);
+  color: var(--status-success-05);
+}
+.ton-pill[data-tone="warning"] {
+  background: var(--status-warning-01);
+  color: var(--status-warning-05);
+}
+.ton-pill[data-tone="danger"] {
+  background: var(--status-error-01);
+  color: var(--status-error-05);
+}
+.ton-pill[data-tone="brand"] {
+  background: var(--ton-brand-soft);
+  color: var(--ton-brand);
+}
+
+.ton-row-link {
+  border-radius: 0.625rem;
+  transition: background-color 120ms ease;
+}
+.ton-row-link:hover {
+  background: var(--background-neutral-01);
+}
+
+.ton-rail {
+  background: var(--ton-workspace);
+  border-inline-start: 1px solid var(--border-01);
+}
+
+.ton-hero-art {
+  background-image:
+    radial-gradient(
+      ellipse at 70% 20%,
+      color-mix(in srgb, var(--vale-norte-green-10) 55%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at 20% 80%,
+      color-mix(in srgb, var(--vale-norte-gold-05) 70%, transparent),
+      transparent 55%
+    );
+}
+
+/* Mobile drawer */
+.ton-scrim {
+  background: color-mix(in srgb, var(--vale-norte-green-95) 55%, transparent);
+}
+
+/* Display styles wrap an Opal Text; the wrapper owns the type scale. */
+.ton-display > span,
+.ton-title > span,
+.ton-metric > span {
+  font: inherit;
+  letter-spacing: inherit;
+}

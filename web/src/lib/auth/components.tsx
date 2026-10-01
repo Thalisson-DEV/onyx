@@ -405,7 +405,7 @@ export function EmailPasswordForm({
       const validatedNextUrl = validateInternalRedirect(nextUrl);
       window.location.href =
         validatedNextUrl ??
-        `/app${isSignup && !isJoin ? "?new_team=true" : ""}`;
+        (isSignup && !isJoin ? "/app?new_team=true" : "/ton");
     } else {
       const errorBody: FastApiUsersErrorBody = await loginResponse
         .json()

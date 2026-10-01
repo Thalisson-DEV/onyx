@@ -1,5 +1,1 @@
-import { redirect } from "next/navigation";
-
-export default function TonPage() {
-  redirect("/ton/controladoria");
-}
+export { default } from "@/views/ton/HomePage";

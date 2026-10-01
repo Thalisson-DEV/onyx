@@ -109,6 +109,13 @@
       "rules": {
         "i18n/no-raw-jsx-text": "off"
       }
+    },
+    {
+      // TON ships in pt-BR only; its screens read copy from src/lib/ton/copy.ts.
+      "files": ["src/views/ton/**", "src/lib/ton/**", "src/app/ton/**"],
+      "rules": {
+        "i18n/no-raw-jsx-text": "off"
+      }
     }
   ],
   "ignorePatterns": [

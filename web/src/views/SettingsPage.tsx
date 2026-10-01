@@ -44,6 +44,7 @@ import {
 import useUserPersonalization from "@/hooks/useUserPersonalization";
 import ModelSelector from "@/sections/model-selector/ModelSelector";
 import { structureValue } from "@/lib/languageModels/utils";
+import { SHOW_LANGUAGE_PICKER } from "@/lib/ton/product-surface";
 import { deleteAllChatSessions } from "@/app/app/services/lib";
 import { useLlmManager } from "@/lib/hooks";
 import { useIsMultiTenant } from "@/lib/auth/hooks";
@@ -828,44 +829,46 @@ function GeneralSettings() {
           </Card>
         </Section>
 
-        <Section gap={3}>
-          <Content
-            title={t("language.title")}
-            sizePreset="main-content"
-            variant="section"
-            width="full"
-          />
-          <Card border="solid" rounding={4}>
-            <Section alignItems="start" height="fit">
-              <InputHorizontal
-                title={t("language.displayLanguage.title")}
-                description={t("language.displayLanguage.description")}
-                center
-                withLabel
-              >
-                <InputSelect
-                  value={currentLanguage}
-                  onValueChange={(value) => {
-                    // SAFETY: the items below only carry SUPPORTED_LOCALES
-                    // values, so the select can't emit anything else.
-                    updateUserLanguage(value as Locale).catch(() => {
-                      toast.error(t("language.toasts.updateFailed"));
-                    });
-                  }}
+        {SHOW_LANGUAGE_PICKER && (
+          <Section gap={3}>
+            <Content
+              title={t("language.title")}
+              sizePreset="main-content"
+              variant="section"
+              width="full"
+            />
+            <Card border="solid" rounding={4}>
+              <Section alignItems="start" height="fit">
+                <InputHorizontal
+                  title={t("language.displayLanguage.title")}
+                  description={t("language.displayLanguage.description")}
+                  center
+                  withLabel
                 >
-                  <InputSelect.Trigger />
-                  <InputSelect.Content>
-                    {SUPPORTED_LOCALES.map((locale) => (
-                      <InputSelect.Item key={locale} value={locale}>
-                        {LOCALE_ENDONYMS[locale]}
-                      </InputSelect.Item>
-                    ))}
-                  </InputSelect.Content>
-                </InputSelect>
-              </InputHorizontal>
-            </Section>
-          </Card>
-        </Section>
+                  <InputSelect
+                    value={currentLanguage}
+                    onValueChange={(value) => {
+                      // SAFETY: the items below only carry SUPPORTED_LOCALES
+                      // values, so the select can't emit anything else.
+                      updateUserLanguage(value as Locale).catch(() => {
+                        toast.error(t("language.toasts.updateFailed"));
+                      });
+                    }}
+                  >
+                    <InputSelect.Trigger />
+                    <InputSelect.Content>
+                      {SUPPORTED_LOCALES.map((locale) => (
+                        <InputSelect.Item key={locale} value={locale}>
+                          {LOCALE_ENDONYMS[locale]}
+                        </InputSelect.Item>
+                      ))}
+                    </InputSelect.Content>
+                  </InputSelect>
+                </InputHorizontal>
+              </Section>
+            </Card>
+          </Section>
+        )}
 
         <Divider paddingParallel={0} paddingPerpendicular={0} />
 

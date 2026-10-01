@@ -1,3 +1,5 @@
+import type { Locale } from "@/i18n/config";
+
 /**
  * TON client-surface policy.
  *
@@ -41,3 +43,11 @@ export const SHOW_COMMERCE_SURFACES = false;
  * the admin configuration pages and the backend capability all stay in place.
  */
 export const SHOW_BUILDER_PRODUCT_ENTRY = false;
+
+/**
+ * TON ships in Brazilian Portuguese only. The request locale is pinned to this
+ * value and the language picker is hidden. The next-intl catalogs stay as the
+ * rendering mechanism for inherited screens; TON screens use `lib/ton/copy`.
+ */
+export const TON_LOCALE: Locale = "pt";
+export const SHOW_LANGUAGE_PICKER = false;

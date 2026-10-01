@@ -1,1 +1,5 @@
-export { default } from "@/views/ton/RoutinesPage";
+import { redirect } from "next/navigation";
+
+export default function Page() {
+  redirect("/ton/automacoes");
+}

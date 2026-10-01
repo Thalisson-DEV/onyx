@@ -1,12 +1,7 @@
 import { getRequestConfig } from "next-intl/server";
-import { cookies } from "next/headers";
 
-import {
-  DEFAULT_LOCALE,
-  LOCALE_COOKIE_NAME,
-  isSupportedLocale,
-  runtimeLocale,
-} from "@/i18n/config";
+import { DEFAULT_LOCALE, runtimeLocale, type Locale } from "@/i18n/config";
+import { TON_LOCALE } from "@/lib/ton/product-surface";
 import englishMessages from "@/i18n/messages/en.json";
 
 type MessageTree = { [key: string]: string | MessageTree };
@@ -34,11 +29,8 @@ function withEnglishFallback(base: MessageTree, overlay: MessageTree) {
 const english = englishMessages as MessageTree;
 
 export default getRequestConfig(async () => {
-  const cookieStore = await cookies();
-  const cookieLocale = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
-  const locale = isSupportedLocale(cookieLocale)
-    ? cookieLocale
-    : DEFAULT_LOCALE;
+  // TON is Brazilian Portuguese only; the stored preference is ignored.
+  const locale: Locale = TON_LOCALE;
 
   const messages =
     locale === DEFAULT_LOCALE

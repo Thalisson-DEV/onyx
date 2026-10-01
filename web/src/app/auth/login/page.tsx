@@ -60,10 +60,9 @@ export default async function Page(props: PageProps) {
     }
 
     // Honor a validated return-to (e.g. the session re-established in another
-    // tab); otherwise land on the main app page. The `from=login` query
-    // parameter helps prevent redirect loops.
+    // tab); otherwise land on the TON product.
     const validatedNextUrl = validateInternalRedirect(nextUrl);
-    return redirect((validatedNextUrl ?? "/app?from=login") as Route);
+    return redirect((validatedNextUrl ?? "/ton") as Route);
   }
 
   // get where to send the user to authenticate

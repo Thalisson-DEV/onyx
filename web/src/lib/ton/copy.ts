@@ -93,6 +93,7 @@ export const COPY = {
     diagnostics: "Diagnóstico de cobertura",
     demo: "Ambiente de demonstração — dados sintéticos",
     demoShort: "Demonstração",
+    demoTiny: "Demo",
     sourcesCurrent: "Fontes atualizadas",
     sourcesAttention: "Fontes exigem atenção",
     sourcesLastImport: (date: string) => `Última importação: ${date}`,

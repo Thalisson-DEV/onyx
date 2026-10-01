@@ -65,7 +65,7 @@ function DemoIndicator() {
     <span
       role="note"
       title={COPY.shell.demo}
-      className="ton-demo-chip hidden sm:inline-flex items-center gap-2 px-3 py-1"
+      className="ton-demo-chip inline-flex items-center gap-2 px-2.5 sm:px-3 py-1"
     >
       <span className="ton-dot" data-tone="warning" />
       <span className="hidden xl:inline">
@@ -73,9 +73,14 @@ function DemoIndicator() {
           {COPY.shell.demo}
         </Text>
       </span>
-      <span className="xl:hidden">
+      <span className="hidden sm:inline xl:hidden">
         <Text font="secondary-action" color="inherit">
           {COPY.shell.demoShort}
+        </Text>
+      </span>
+      <span className="sm:hidden">
+        <Text font="secondary-action" color="inherit">
+          {COPY.shell.demoTiny}
         </Text>
       </span>
     </span>

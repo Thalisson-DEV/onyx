@@ -324,9 +324,9 @@ html:has(.ton-shell) body {
 }
 
 /* Display styles wrap an Opal Text; the wrapper owns the type scale. */
-.ton-display > span,
-.ton-title > span,
-.ton-metric > span {
+.ton-display span,
+.ton-title span,
+.ton-metric span {
   font: inherit;
   letter-spacing: inherit;
 }

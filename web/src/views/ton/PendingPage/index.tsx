@@ -327,7 +327,10 @@ export default function PendingPage() {
 
   const category: QueueCategory | undefined =
     categories.find((item) => item.blocker === blockerSelection) ??
-    [...categories].sort((a, b) => b.count - a.count)[0];
+    // Default to the largest category that needs a human decision.
+    [...categories].sort(
+      (a, b) => Number(a.noActual) - Number(b.noActual) || b.count - a.count
+    )[0];
 
   const blockerUrl =
     scopeReady && category

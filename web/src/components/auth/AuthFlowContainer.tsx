@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { SvgOnyxLogo } from "@opal/logos";
+import Image from "next/image";
 import { useSettings } from "@/lib/settings/hooks";
 import { Text } from "@opal/components";
 
@@ -35,7 +35,22 @@ export default function AuthFlowContainer({
             />
           </div>
         ) : (
-          <SvgOnyxLogo size={44} className="text-theme-primary-05" />
+          <div className="flex items-center gap-3">
+            <Image
+              src="/ton/vale-norte-logo.png"
+              alt={t("logo.alt")}
+              width={1057}
+              height={412}
+              priority
+              className="h-10 w-auto"
+            />
+            <span className="h-8 border-s border-02" aria-hidden />
+            <span className="rounded-full border-2 border-(--vale-norte-green-80) px-3 py-0.5 text-(--vale-norte-green-80)">
+              <Text font="main-ui-action" color="inherit">
+                {appName}
+              </Text>
+            </span>
+          </div>
         )}
         <div className="w-full mt-3">{children}</div>
       </div>

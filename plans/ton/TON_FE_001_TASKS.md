@@ -409,12 +409,12 @@ próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar rel
 
 - [x] Vale Norte logo
 - [x] TON product name
-- [~] nenhum branding Onyx visível no cliente
+- [x] nenhum branding Onyx visível no cliente
 - [x] UI cliente pt-BR
 - [~] formatação BRL/data/percentual
-- [ ] favicon
+- [x] favicon
 - [x] browser title
-- [~] entry/login coerente
+- [x] entry/login coerente
 - [x] sem `0.0.0-dev` no cliente
 
 ---
@@ -423,7 +423,7 @@ próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar rel
 
 ## Home
 - [x] entrada natural
-- [ ] apresentação-ready
+- [x] apresentação-ready
 
 ## Análise de fechamento
 - [x] prompt
@@ -462,9 +462,9 @@ próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar rel
 # 15. Browser QA
 
 - [x] 1440+
-- [ ] ~1024
-- [ ] ~768
-- [ ] mobile básico
+- [x] ~1024
+- [x] ~768
+- [x] mobile básico
 - [x] loading
 - [x] empty
 - [x] error

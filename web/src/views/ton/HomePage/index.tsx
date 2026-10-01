@@ -86,7 +86,7 @@ function AskTon() {
 
   return (
     <form onSubmit={submit} className="flex flex-col sm:flex-row gap-2 w-full">
-      <div className="flex-1 min-w-0">
+      <div className="w-full sm:flex-1 min-w-0">
         <InputTypeIn
           aria-label={COPY.home.ask}
           placeholder={COPY.home.askPlaceholder}

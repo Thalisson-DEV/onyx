@@ -13,7 +13,8 @@ async function fetchAppName(): Promise<string> {
 }
 
 export async function generateFaviconMetadata(): Promise<Metadata["icons"]> {
-  let iconSrc = "/onyx.ico";
+  // TON product mark (Vale Norte); a custom enterprise logo still wins.
+  let iconSrc = "/ton/favicon.png";
 
   if (SERVER_SIDE_ONLY__PAID_ENTERPRISE_FEATURES_ENABLED) {
     const enterprise = await fetchEnterpriseSettingsSS();
@@ -22,7 +23,7 @@ export async function generateFaviconMetadata(): Promise<Metadata["icons"]> {
     }
   }
 
-  return { icon: iconSrc };
+  return { icon: iconSrc, apple: "/ton/apple-touch-icon.png" };
 }
 
 export async function generateAdminTitleMetadata(): Promise<Metadata["title"]> {

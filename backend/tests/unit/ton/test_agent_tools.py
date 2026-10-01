@@ -56,3 +56,14 @@ def test_tool_rejects_scope_override_and_unbounded_query(
         with pytest.raises(ToolCallException):
             tool.run(Placement(turn_index=0), None, **arguments)
         sessions.assert_not_called()
+
+
+def test_demo_mode_requires_explicit_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from onyx.ton.agent.policy import uses_synthetic_demo_data
+
+    monkeypatch.delenv("TON_DEMO_SYNTHETIC_DATA", raising=False)
+    assert not uses_synthetic_demo_data()
+    monkeypatch.setenv("TON_DEMO_SYNTHETIC_DATA", "true")
+    assert uses_synthetic_demo_data()

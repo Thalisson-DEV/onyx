@@ -23,11 +23,21 @@ class ToolQuery(BaseModel):
     offset: int = Field(default=0, ge=0, le=10000)
 
 
+class StoredDreContext(BaseModel):
+    run_id: UUID
+    period: date
+    unit_id: UUID | None
+    structure_version_id: UUID
+    status: str
+
+
 class FinancialBaseContext(BaseModel):
     normalization_run_id: UUID
     source_id: UUID
     review_run_id: UUID
     periods: list[date]
+    source_name: str
+    stored_dre_results: list[StoredDreContext]
 
 
 class FinancialContext(BaseModel):

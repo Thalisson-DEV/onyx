@@ -6,12 +6,22 @@ from sqlalchemy.orm import Session
 from onyx.db.enums import Permission
 from onyx.db.models import Persona, StarterMessage, Tool, User
 from onyx.db.persona import upsert_persona
-from onyx.db.ton import dre, financial_domain
+from onyx.db.ton import dre, financial_domain, sources
 from onyx.db.ton.acl import assert_global
-from onyx.db.ton.models import FinancialActualFact, ReviewRun
+from onyx.db.ton.models import DreCalculationRun, FinancialActualFact, ReviewRun
+from onyx.error_handling.error_codes import OnyxErrorCode
+from onyx.error_handling.exceptions import OnyxError
 from onyx.prompts.ton.agent import TON_SYSTEM_PROMPT
-from onyx.ton.agent.models import FinancialBaseContext, FinancialContext
-from onyx.tools.tool_implementations.ton.ton_tool import TON_TOOL_CLASSES
+from onyx.ton.agent.models import (
+    FinancialBaseContext,
+    FinancialContext,
+    StoredDreContext,
+)
+from onyx.ton.agent.policy import SYNTHETIC_DATA_NOTICE, uses_synthetic_demo_data
+from onyx.tools.tool_implementations.ton.ton_tool import (
+    TON_TOOL_CLASSES,
+    TON_TOOL_DISPLAY_NAMES,
+)
 
 
 def financial_context(
@@ -21,6 +31,34 @@ def financial_context(
     for run in financial_domain.list_runs(session, user, limit, offset):
         review = session.get(ReviewRun, run.review_run_id)
         assert review is not None
+        source = sources.get_source(session, user, review.source_id)
+        stored_results: list[StoredDreContext] = []
+        calculations = session.scalars(
+            sa.select(DreCalculationRun)
+            .where(DreCalculationRun.normalization_run_id == run.id)
+            .order_by(DreCalculationRun.finished_at.desc(), DreCalculationRun.id)
+            .limit(10)
+        )
+        for calculation in calculations:
+            try:
+                view = dre.get_calculation(session, user, calculation.id)
+            except OnyxError as error:
+                if error.error_code in (
+                    OnyxErrorCode.ADMIN_ONLY,
+                    OnyxErrorCode.NOT_FOUND,
+                    OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
+                ):
+                    continue
+                raise
+            stored_results.append(
+                StoredDreContext(
+                    run_id=view.id,
+                    period=view.scope.period,
+                    unit_id=view.scope.unit_id,
+                    structure_version_id=view.scope.structure_version_id,
+                    status=view.status,
+                )
+            )
         periods = list(
             session.scalars(
                 sa.select(FinancialActualFact.calendar_period)
@@ -36,6 +74,8 @@ def financial_context(
                 source_id=review.source_id,
                 review_run_id=review.id,
                 periods=periods,
+                source_name=source.display_name,
+                stored_dre_results=stored_results,
             )
         )
     structures = dre.list_structures(session, user, limit, offset)
@@ -60,11 +100,13 @@ def provision_agent(session: Session, user: User) -> Persona:
             tool = Tool(
                 name=tool_class.NAME,
                 description=tool_class.DESCRIPTION,
-                display_name=tool_class.DESCRIPTION,
+                display_name=TON_TOOL_DISPLAY_NAMES[tool_class.NAME],
                 in_code_tool_id=tool_class.__name__,
                 enabled=True,
             )
             session.add(tool)
+        else:
+            tool.display_name = TON_TOOL_DISPLAY_NAMES[tool_class.NAME]
         tools.append(tool)
     session.flush()
     existing = session.scalar(
@@ -91,7 +133,14 @@ def provision_agent(session: Session, user: User) -> Persona:
                 message="Me mostre a evidência da principal pendência.",
             ),
         ],
-        system_prompt=TON_SYSTEM_PROMPT,
+        system_prompt=(
+            TON_SYSTEM_PROMPT
+            + "\n"
+            + SYNTHETIC_DATA_NOTICE
+            + "\nInforme esse aviso no início de toda análise financeira. Chame resultados de 'resultados persistidos de demonstração'."
+        )
+        if uses_synthetic_demo_data()
+        else TON_SYSTEM_PROMPT,
         task_prompt=None,
         datetime_aware=True,
         is_public=True,

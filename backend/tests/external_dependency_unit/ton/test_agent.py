@@ -101,6 +101,13 @@ def test_tools_preserve_readiness_and_source_acl(
     )
     assert not isinstance(result, list)
     assert result.model_dump()["status"] == "NOT_READY"
+    refreshed = financial_context(ton_session, admin, 10, 0)
+    refreshed_base = next(
+        item
+        for item in refreshed.bases
+        if item.normalization_run_id == normalization_id
+    )
+    assert any(item.run_id == blocked.id for item in refreshed_base.stored_dre_results)
     outsider = factories.make_user(ton_session)
     group = factories.make_group(ton_session)
     from onyx.db.enums import Permission

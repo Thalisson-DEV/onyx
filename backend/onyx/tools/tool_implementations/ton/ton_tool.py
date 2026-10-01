@@ -16,10 +16,22 @@ from onyx.server.query_and_chat.streaming_models import (
     Packet,
 )
 from onyx.ton.agent.models import ToolQuery
+from onyx.ton.agent.policy import SYNTHETIC_DATA_NOTICE, uses_synthetic_demo_data
 from onyx.ton.agent.service import query_domain
 from onyx.tools.interface import Tool
 from onyx.tools.models import CustomToolCallSummary, ToolCallException, ToolResponse
 from shared_configs.contextvars import get_current_tenant_id
+
+TON_TOOL_DISPLAY_NAMES = {
+    "ton_list_sources": "Fontes financeiras",
+    "ton_get_source_status": "Estado da fonte",
+    "ton_list_findings": "Pendências financeiras",
+    "ton_get_finding": "Evidência da pendência",
+    "ton_get_financial_review_summary": "Resumo da revisão financeira",
+    "ton_get_dre_readiness": "Prontidão da DRE",
+    "ton_get_dre_result": "Resultado da DRE",
+    "ton_get_financial_context": "Contexto financeiro",
+}
 
 
 class TonDomainTool(Tool[None]):
@@ -48,7 +60,7 @@ class TonDomainTool(Tool[None]):
 
     @property
     def display_name(self) -> str:
-        return self.DESCRIPTION
+        return TON_TOOL_DISPLAY_NAMES[self.name]
 
     def tool_definition(self) -> dict[str, Any]:
         properties = ToolQuery.model_json_schema()["properties"]
@@ -70,7 +82,7 @@ class TonDomainTool(Tool[None]):
         self.emitter.emit(
             Packet(
                 placement=placement,
-                obj=CustomToolStart(tool_name=self.name, tool_id=self.id),
+                obj=CustomToolStart(tool_name=self.display_name, tool_id=self.id),
             )
         )
 
@@ -98,6 +110,8 @@ class TonDomainTool(Tool[None]):
                 "TON query rejected",
                 "Consulta indisponível. Verifique os parâmetros e sua autorização. Não invente dados.",
             ) from error
+        if uses_synthetic_demo_data():
+            data = {"data_context": SYNTHETIC_DATA_NOTICE, "data": data}
         response = json.dumps(data, ensure_ascii=False)
         if len(response) > 48000:
             raise ToolCallException(
@@ -108,7 +122,7 @@ class TonDomainTool(Tool[None]):
             Packet(
                 placement=placement,
                 obj=CustomToolDelta(
-                    tool_name=self.name,
+                    tool_name=self.display_name,
                     tool_id=self.id,
                     response_type="json",
                     data=data,

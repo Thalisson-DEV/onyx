@@ -1,5 +1,6 @@
 """Business labels for agent output; internal service codes stay unchanged."""
 
+import re
 from typing import Any
 
 LABELS = {
@@ -91,7 +92,13 @@ LABELS = {
 
 
 def business_label(code: str) -> str:
-    return LABELS.get(code, code)
+    return LABELS.get(
+        code,
+        LABELS.get(
+            code.upper(),
+            re.sub(r"\bSynthetic unit\b", "Unidade de demonstração", code, flags=re.I),
+        ),
+    )
 
 
 def humanize(value: Any) -> Any:

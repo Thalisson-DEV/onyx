@@ -11,6 +11,8 @@ import { errorHandlingFetcher } from "@/lib/fetcher";
 import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/lib/types";
 import { useUser } from "@/providers/UserProvider";
+import { getBusinessLabel } from "@/lib/ton/labels";
+import { TonStatusTag } from "@/views/ton/components/TonStatusTag";
 
 interface Normalization {
   id: string;
@@ -577,7 +579,7 @@ function FinancialReadinessPage() {
                               setSelected(null);
                             }}
                           >
-                            {`${blocker.replaceAll("_", " ")} (${count})`}
+                            {`${getBusinessLabel(blocker)} (${count})`}
                           </Button>
                         )
                       )}
@@ -626,12 +628,15 @@ function FinancialReadinessPage() {
                   {(blockers.data?.rows ?? []).map((row, index) => (
                     <div
                       key={`${row.source_key ?? row.item_id ?? row.account_id}-${index}`}
-                      className="flex flex-wrap items-center justify-between gap-3 border-b border-01 p-3"
+                      className="flex flex-wrap items-center justify-between gap-3 border-b border-01 p-3.5 hover:bg-background-neutral-01/60 transition-colors"
                     >
                       <div className="flex flex-col gap-1">
-                        <Text font="main-ui-action" color="text-05">
-                          {row.source_key ?? row.item_id ?? t("unknownSource")}
-                        </Text>
+                        <div className="flex items-center gap-2">
+                          <Text font="main-ui-action" color="text-05">
+                            {row.source_key ?? row.item_id ?? t("unknownSource")}
+                          </Text>
+                          <TonStatusTag status={row.status} />
+                        </div>
                         <Text font="main-ui-muted" color="text-03">
                           {t("affected", { count: row.record_count })}
                         </Text>

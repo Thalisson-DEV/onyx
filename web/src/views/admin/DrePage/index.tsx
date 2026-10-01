@@ -363,67 +363,78 @@ function DrePage() {
           version.data &&
           unitId && (
             <div className="flex flex-col gap-6">
-              <div className="flex flex-wrap items-end gap-3 border-b border-01 pb-5">
-                <Filter
-                  label={t("normalization")}
-                  value={normalizationId}
-                  onChange={(value) => {
-                    setNormalizationChoice(value);
-                    changeScope();
-                  }}
-                  options={(normalizations.data ?? []).map((run) => ({
-                    value: run.id,
-                    label: format.dateTime(new Date(run.started_at), {
-                      dateStyle: "medium",
-                    }),
-                  }))}
-                />
-                <Filter
-                  label={t("structure")}
-                  value={structureId ?? ""}
-                  onChange={(value) => {
-                    setStructureChoice(value);
-                    changeScope();
-                  }}
-                  options={(structures.data ?? []).map((item) => ({
-                    value: item.id,
-                    label: item.label,
-                  }))}
-                />
-                <Filter
-                  label={t("scope")}
-                  value={unitId}
-                  onChange={(value) => {
-                    setUnitChoice(value);
-                    changeScope();
-                  }}
-                  options={[
-                    ...(isAdmin
-                      ? [{ value: "consolidated", label: t("consolidated") }]
-                      : []),
-                    ...(units.data ?? []).map((item) => ({
-                      value: item.id,
-                      label: item.name
-                        ? `${item.code} · ${item.name}`
-                        : item.code,
-                    })),
-                  ]}
-                />
-                <Filter
-                  label={t("period")}
-                  value={periodValue ?? ""}
-                  onChange={(value) => {
-                    setPeriodChoice(value);
-                    changeScope();
-                  }}
-                  options={periods.map((item) => ({
-                    value: item.scope.period,
-                    label: format.dateTime(
-                      new Date(`${item.scope.period}T12:00:00Z`),
-                      { month: "long", year: "numeric" }
-                    ),
-                  }))}
-                />
+              <div className="flex flex-col gap-3 border-b border-01 pb-5">
+                <div className="flex flex-wrap items-end gap-3">
+                  <Filter
+                    label={t("period")}
+                    value={periodValue ?? ""}
+                    onChange={(value) => {
+                      setPeriodChoice(value);
+                      changeScope();
+                    }}
+                    options={periods.map((item) => ({
+                      value: item.scope.period,
+                      label: format.dateTime(
+                        new Date(`${item.scope.period}T12:00:00Z`),
+                        { month: "long", year: "numeric" }
+                      ),
+                    }))}
+                  />
+                  <Filter
+                    label={t("scope")}
+                    value={unitId}
+                    onChange={(value) => {
+                      setUnitChoice(value);
+                      changeScope();
+                    }}
+                    options={[
+                      ...(isAdmin
+                        ? [{ value: "consolidated", label: t("consolidated") }]
+                        : []),
+                      ...(units.data ?? []).map((item) => ({
+                        value: item.id,
+                        label: item.name
+                          ? `${item.code} · ${item.name}`
+                          : item.code,
+                      })),
+                    ]}
+                  />
+
+                  <details className="inline-block text-xs self-end pb-2 group">
+                    <summary className="cursor-pointer text-text-03 hover:text-text-05 select-none font-medium flex items-center gap-1 list-none">
+                      <span>Opções avançadas</span>
+                      <span className="text-[10px] transform group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div className="flex flex-wrap items-end gap-3 pt-3">
+                      <Filter
+                        label={t("normalization")}
+                        value={normalizationId}
+                        onChange={(value) => {
+                          setNormalizationChoice(value);
+                          changeScope();
+                        }}
+                        options={(normalizations.data ?? []).map((run) => ({
+                          value: run.id,
+                          label: format.dateTime(new Date(run.started_at), {
+                            dateStyle: "medium",
+                          }),
+                        }))}
+                      />
+                      <Filter
+                        label={t("structure")}
+                        value={structureId ?? ""}
+                        onChange={(value) => {
+                          setStructureChoice(value);
+                          changeScope();
+                        }}
+                        options={(structures.data ?? []).map((item) => ({
+                          value: item.id,
+                          label: item.label,
+                        }))}
+                      />
+                    </div>
+                  </details>
+                </div>
               </div>
               {!period && (
                 <Text font="main-ui-body" color="text-03">
@@ -634,7 +645,13 @@ function DrePage() {
                           />
                         </section>
                       )}
-                      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+                      <div
+                        className={`grid gap-6 ${
+                          selectedLine && selectedDefinition
+                            ? "xl:grid-cols-[minmax(0,1fr)_380px]"
+                            : "grid-cols-1"
+                        }`}
+                      >
                         <div className="min-w-0 flex flex-col gap-6">
                           <section
                             aria-label={t("statement")}
@@ -687,9 +704,11 @@ function DrePage() {
                                     <tr
                                       key={line.code}
                                       className={
-                                        emphasized
-                                          ? "border-t-2 border-02 font-semibold"
-                                          : "border-t border-01"
+                                        definition.line_type === "RESULT"
+                                          ? "border-y-2 border-03 bg-background-neutral-01 font-bold text-text-05"
+                                          : definition.line_type === "SUBTOTAL"
+                                            ? "border-t-2 border-02 bg-background-neutral-00 font-semibold text-text-05"
+                                            : "border-t border-01 hover:bg-background-neutral-01/60 transition-colors"
                                       }
                                     >
                                       <td className="px-3 py-2 text-start">
@@ -861,11 +880,11 @@ function DrePage() {
                             )}
                           </section>
                         </div>
-                        <aside
-                          className="min-w-0 border-t border-01 pt-4 xl:border-t-0 xl:border-s xl:ps-5 xl:pt-0"
-                          aria-label={t("details")}
-                        >
-                          {selectedLine && selectedDefinition ? (
+                        {selectedLine && selectedDefinition && (
+                          <aside
+                            className="min-w-0 border-t border-01 pt-4 xl:border-t-0 xl:border-s xl:ps-5 xl:pt-0"
+                            aria-label={t("details")}
+                          >
                             <div className="flex flex-col gap-4">
                               <div className="flex items-start justify-between gap-2">
                                 <Text as="h3" font="heading-h3" color="text-05">
@@ -1053,12 +1072,8 @@ function DrePage() {
                                 </>
                               )}
                             </div>
-                          ) : (
-                            <Text font="main-ui-body" color="text-03">
-                              {t("selectLine")}
-                            </Text>
-                          )}
-                        </aside>
+                          </aside>
+                        )}
                       </div>
                       <section className="border-t border-01 pt-4">
                         <Button

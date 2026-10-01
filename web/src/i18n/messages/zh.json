@@ -14532,5 +14532,22 @@
     "capabilityNeeds": "数据源：{sources}。配置：{configuration}。专家：{owner}。",
     "nextRoutineRun": "下次运行（巴西利亚）：{date}",
     "lastRoutineRun": "上次计划运行（巴西利亚）：{date}。结果：{result}"
+  },
+  "tonNavigation": {
+    "entry": "TON",
+    "central": "首页",
+    "chat": "TON 聊天",
+    "sources": "数据源",
+    "dre": "利润表",
+    "readiness": "待处理事项",
+    "specialists": "专家",
+    "routines": "例行任务",
+    "reports": "报告",
+    "coverage": "TON 覆盖范围",
+    "navigation": "TON 导航",
+    "history": "对话",
+    "admin": "管理",
+    "unavailable": "TON 聊天不可用。请检查访问权限和 TON Persona 配置。",
+    "loading": "正在加载 TON 聊天…"
   }
 }

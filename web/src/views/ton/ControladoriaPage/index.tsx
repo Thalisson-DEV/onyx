@@ -93,9 +93,7 @@ export function ClosingContent({ output }: ClosingContentProps) {
                     {label}
                   </span>
                 </div>
-                <p className="text-sm text-text-04 leading-relaxed">
-                  {value}
-                </p>
+                <p className="text-sm text-text-04 leading-relaxed">{value}</p>
               </div>
             ))}
         </div>
@@ -124,7 +122,8 @@ export function ClosingContent({ output }: ClosingContentProps) {
                   </Text>
                 </div>
                 <p className="text-xs text-text-03">
-                  Exige intervenção humana para classificação ou pareamento contábil antes do fechamento.
+                  Exige intervenção humana para classificação ou pareamento
+                  contábil antes do fechamento.
                 </p>
               </div>
 
@@ -166,9 +165,14 @@ export function ClosingContent({ output }: ClosingContentProps) {
 
               {finding.recommendations.length > 0 && (
                 <div className="flex flex-col gap-1 text-sm text-text-04">
-                  <span className="font-semibold text-xs text-text-03">Recomendações:</span>
+                  <span className="font-semibold text-xs text-text-03">
+                    Recomendações:
+                  </span>
                   {finding.recommendations.map((action, index) => (
-                    <p key={index} className="text-sm text-text-04 leading-relaxed">
+                    <p
+                      key={index}
+                      className="text-sm text-text-04 leading-relaxed"
+                    >
                       • {action}
                     </p>
                   ))}
@@ -178,11 +182,25 @@ export function ClosingContent({ output }: ClosingContentProps) {
               {finding.evidence.length > 0 && (
                 <div className="pt-2 border-t border-01 flex flex-col gap-1 text-xs text-text-03">
                   {finding.evidence.map((evidence) => (
-                    <div key={evidence.id} className="flex flex-wrap gap-x-3 gap-y-1">
-                      <span><strong>Fonte:</strong> {evidence.source_snapshot_id ?? t("notAvailable")}</span>
-                      <span><strong>Planilha:</strong> {evidence.sheet_name ?? t("notAvailable")}</span>
-                      <span><strong>Linha:</strong> {evidence.row_number ?? t("notAvailable")}</span>
-                      <span><strong>Confiança:</strong> {evidence.confidence_level}</span>
+                    <div
+                      key={evidence.id}
+                      className="flex flex-wrap gap-x-3 gap-y-1"
+                    >
+                      <span>
+                        <strong>Fonte:</strong>{" "}
+                        {evidence.source_snapshot_id ?? t("notAvailable")}
+                      </span>
+                      <span>
+                        <strong>Planilha:</strong>{" "}
+                        {evidence.sheet_name ?? t("notAvailable")}
+                      </span>
+                      <span>
+                        <strong>Linha:</strong>{" "}
+                        {evidence.row_number ?? t("notAvailable")}
+                      </span>
+                      <span>
+                        <strong>Confiança:</strong> {evidence.confidence_level}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -219,9 +237,13 @@ export function ClosingContent({ output }: ClosingContentProps) {
 
               {specialist.actions.length > 0 && (
                 <div className="text-xs text-text-04 pt-2 border-t border-01">
-                  <span className="font-semibold text-text-03">Ações recomendadas:</span>
+                  <span className="font-semibold text-text-03">
+                    Ações recomendadas:
+                  </span>
                   {specialist.actions.slice(0, 2).map((act, i) => (
-                    <p key={i} className="truncate">• {act}</p>
+                    <p key={i} className="truncate">
+                      • {act}
+                    </p>
                   ))}
                 </div>
               )}
@@ -418,9 +440,7 @@ export default function ControladoriaPage() {
 
           {/* Primary CTA */}
           {configuration.data?.persona_id && (
-            <Button href={`/app?agentId=${configuration.data.persona_id}`}>
-              {t("chat")}
-            </Button>
+            <Button href="/ton/chat">{t("chat")}</Button>
           )}
 
           {/* Secondary CTA */}
@@ -439,7 +459,10 @@ export default function ControladoriaPage() {
 
       {/* Execution Error Notice */}
       {runError && (
-        <div role="alert" className="p-4 rounded-12 bg-status-error-01 border border-status-error-02 text-status-error-05 text-sm flex items-center justify-between">
+        <div
+          role="alert"
+          className="p-4 rounded-12 bg-status-error-01 border border-status-error-02 text-status-error-05 text-sm flex items-center justify-between"
+        >
           <span>{t("runError")}</span>
           <Button prominence="tertiary" size="sm" onClick={runR3}>
             {t("retry")}
@@ -475,7 +498,9 @@ export default function ControladoriaPage() {
           <span className="text-xs text-text-03">DRE</span>
           <div className="flex items-center justify-between mt-1">
             <span className="text-sm font-semibold text-text-05">
-              {snapshot.data?.dre_status === "READY" ? "Pronta" : "Com bloqueios"}
+              {snapshot.data?.dre_status === "READY"
+                ? "Pronta"
+                : "Com bloqueios"}
             </span>
             <Button href="/ton/dre" prominence="tertiary" size="sm">
               Ver
@@ -536,22 +561,46 @@ export default function ControladoriaPage() {
                 Acesso Rápido
               </Text>
               <div className="flex flex-col gap-1">
-                <Button href="/ton/dre" prominence="tertiary" icon={SvgBarChart}>
+                <Button
+                  href="/ton/dre"
+                  prominence="tertiary"
+                  icon={SvgBarChart}
+                >
                   Demonstrativo DRE
                 </Button>
-                <Button href="/ton/pendencias" prominence="tertiary" icon={SvgAlertTriangle}>
+                <Button
+                  href="/ton/pendencias"
+                  prominence="tertiary"
+                  icon={SvgAlertTriangle}
+                >
                   Pendências do Fechamento
                 </Button>
-                <Button href="/ton/data-sources" prominence="tertiary" icon={SvgUploadCloud}>
+                <Button
+                  href="/ton/data-sources"
+                  prominence="tertiary"
+                  icon={SvgUploadCloud}
+                >
                   Atualizar Fontes (Upload)
                 </Button>
-                <Button href="/ton/relatorios" prominence="tertiary" icon={SvgFileText}>
+                <Button
+                  href="/ton/relatorios"
+                  prominence="tertiary"
+                  icon={SvgFileText}
+                >
                   Relatórios Publicados
                 </Button>
-                <Button href="/ton/especialistas" prominence="tertiary" icon={SvgManageAgent}>
+                <Button
+                  href="/ton/especialistas"
+                  prominence="tertiary"
+                  icon={SvgManageAgent}
+                >
                   Especialistas (9 agentes)
                 </Button>
-                <Button href="/ton/rotinas" prominence="tertiary" icon={SvgSliders}>
+                <Button
+                  href="/ton/rotinas"
+                  prominence="tertiary"
+                  icon={SvgSliders}
+                >
                   Rotinas Automáticas (R1–R9)
                 </Button>
               </div>
@@ -608,8 +657,13 @@ export default function ControladoriaPage() {
 
               <div className="flex flex-col gap-2 text-xs">
                 {routines.data?.slice(0, 3).map((rt) => (
-                  <div key={rt.key} className="flex items-center justify-between py-1 border-b border-01 last:border-0">
-                    <span className="font-semibold text-text-04">{rt.key} — {rt.name}</span>
+                  <div
+                    key={rt.key}
+                    className="flex items-center justify-between py-1 border-b border-01 last:border-0"
+                  >
+                    <span className="font-semibold text-text-04">
+                      {rt.key} — {rt.name}
+                    </span>
                     <TonStatusTag status={rt.status} />
                   </div>
                 ))}

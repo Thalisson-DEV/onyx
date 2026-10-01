@@ -65,6 +65,15 @@ const PINNED_AGENTS = [{ id: 7, name: "Frota" }];
 let chatSessions: ChatSessionFixture[] = CHAT_SESSIONS;
 let pinnedAgents: { id: number; name: string }[] = PINNED_AGENTS;
 let projects: { id: number; name: string }[] = [{ id: 1, name: "Vale Norte" }];
+let mockPermissions: Permission[] = [];
+
+jest.mock("@/providers/UserProvider", () => ({
+  useUser: () => ({
+    user: { effective_permissions: mockPermissions },
+    hasAdminAccess: false,
+    adminCapabilities: [],
+  }),
+}));
 
 // ---------------------------------------------------------------------------
 // Stubs — data sources and the row components other slices own
@@ -240,6 +249,7 @@ function historyNav(locale: "en" | "pt" = "en") {
 }
 
 beforeEach(() => {
+  mockPermissions = [];
   chatSessions = CHAT_SESSIONS;
   pinnedAgents = PINNED_AGENTS;
   projects = [{ id: 1, name: "Vale Norte" }];
@@ -250,6 +260,21 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("TON navigation destinations", () => {
+  it("offers TON to an authorized user without admin access", () => {
+    mockPermissions = [Permission.READ_TON_SOURCES];
+    renderSidebar();
+    expect(
+      within(productNav()).getByRole("link", { name: "TON", exact: true })
+    ).toHaveAttribute("href", "/ton");
+    expect(screen.queryByRole("link", { name: /administration/i })).toBeNull();
+  });
+
+  it("withholds TON without source permission", () => {
+    renderSidebar();
+    expect(
+      within(productNav()).queryByRole("link", { name: "TON", exact: true })
+    ).toBeNull();
+  });
   it("offers Central as the main entry point", () => {
     renderSidebar();
 

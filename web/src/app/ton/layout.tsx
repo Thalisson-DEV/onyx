@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { requireAuth } from "@/lib/auth/svcSS";
 import TonChrome from "@/layouts/chromes/TonChrome";
+import { ProjectsProvider } from "@/lib/projects/providers";
+import { VoiceModeProvider } from "@/providers/VoiceModeProvider";
 
 export default async function TonLayout({
   children,
@@ -14,5 +16,11 @@ export default async function TonLayout({
     return redirect(authResult.redirect as Route);
   }
 
-  return <TonChrome>{children}</TonChrome>;
+  return (
+    <ProjectsProvider>
+      <VoiceModeProvider>
+        <TonChrome>{children}</TonChrome>
+      </VoiceModeProvider>
+    </ProjectsProvider>
+  );
 }

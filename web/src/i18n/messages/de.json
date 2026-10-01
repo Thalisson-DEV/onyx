@@ -14532,5 +14532,22 @@
     "capabilityNeeds": "Quellen: {sources}. Konfiguration: {configuration}. Spezialist: {owner}.",
     "nextRoutineRun": "Nächste Ausführung (Brasília): {date}",
     "lastRoutineRun": "Letzte geplante Ausführung (Brasília): {date}. Ergebnis: {result}"
+  },
+  "tonNavigation": {
+    "entry": "TON",
+    "central": "Zentrale",
+    "chat": "TON Chat",
+    "sources": "Datenquellen",
+    "dre": "Gewinn- und Verlustrechnung",
+    "readiness": "Offene Punkte",
+    "specialists": "Spezialisten",
+    "routines": "Routinen",
+    "reports": "Berichte",
+    "coverage": "TON-Abdeckung",
+    "navigation": "TON-Navigation",
+    "history": "Unterhaltungen",
+    "admin": "Verwaltung",
+    "unavailable": "TON Chat ist nicht verfügbar. Prüfen Sie den Zugriff und die TON-Persona-Konfiguration.",
+    "loading": "TON Chat wird geladen…"
   }
 }

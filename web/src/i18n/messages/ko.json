@@ -14532,5 +14532,22 @@
     "capabilityNeeds": "소스: {sources}. 설정: {configuration}. 전문가: {owner}.",
     "nextRoutineRun": "다음 실행 (브라질리아): {date}",
     "lastRoutineRun": "마지막 예약 실행 (브라질리아): {date}. 결과: {result}"
+  },
+  "tonNavigation": {
+    "entry": "TON",
+    "central": "홈",
+    "chat": "TON 채팅",
+    "sources": "데이터 소스",
+    "dre": "손익계산서",
+    "readiness": "대기 항목",
+    "specialists": "전문가",
+    "routines": "루틴",
+    "reports": "보고서",
+    "coverage": "TON 지원 범위",
+    "navigation": "TON 탐색",
+    "history": "대화",
+    "admin": "관리",
+    "unavailable": "TON 채팅을 사용할 수 없습니다. 접근 권한과 TON 페르소나 설정을 확인하세요.",
+    "loading": "TON 채팅을 불러오는 중…"
   }
 }

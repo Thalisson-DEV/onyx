@@ -14532,5 +14532,22 @@
     "capabilityNeeds": "المصادر: {sources}. الإعداد: {configuration}. المتخصص: {owner}.",
     "nextRoutineRun": "التشغيل التالي (برازيليا): {date}",
     "lastRoutineRun": "آخر تشغيل مجدول (برازيليا): {date}. النتيجة: {result}"
+  },
+  "tonNavigation": {
+    "entry": "TON",
+    "central": "الرئيسية",
+    "chat": "محادثة TON",
+    "sources": "مصادر البيانات",
+    "dre": "قائمة الدخل",
+    "readiness": "العناصر المعلقة",
+    "specialists": "المتخصصون",
+    "routines": "المهام الدورية",
+    "reports": "التقارير",
+    "coverage": "تغطية TON",
+    "navigation": "التنقل في TON",
+    "history": "المحادثات",
+    "admin": "الإدارة",
+    "unavailable": "محادثة TON غير متاحة. تحقق من الوصول وإعداد شخصية TON.",
+    "loading": "جارٍ تحميل محادثة TON…"
   }
 }

@@ -36,7 +36,6 @@ import {
   ChatExportFormat,
 } from "@/lib/chat/exportChatSession";
 import { UNNAMED_CHAT } from "@/lib/constants";
-import { useRouter } from "next/navigation";
 import { MoveCustomAgentChatModal } from "@/lib/agents/components";
 import { ConfirmationModalLayout } from "@opal/layouts";
 import {
@@ -120,7 +119,6 @@ export default function AppHeader() {
     refreshChatSessions,
     removeSession,
   } = useChatSessions();
-  const router = useRouter();
 
   const customHeaderContent = settings.enterprise?.custom_header_content;
   const pageWithHeaderContent =
@@ -201,7 +199,7 @@ export default function AppHeader() {
       }
       removeSession(currentChatSession.id);
       await Promise.all([refreshChatSessions(), fetchProjects()]);
-      router.replace("/app");
+      appPosition.openNewSession({ replace: true });
       setDeleteModalOpen(false);
     } catch (error) {
       console.error("Failed to delete chat:", error);
@@ -212,7 +210,7 @@ export default function AppHeader() {
     refreshChatSessions,
     removeSession,
     fetchProjects,
-    router,
+    appPosition,
   ]);
 
   const setDeleteConfirmationModalOpen = useCallback((open: boolean) => {
@@ -245,14 +243,14 @@ export default function AppHeader() {
     setIncognitoEnabled(false);
     setCurrentMessageFiles([]);
     if (sessionId) {
-      router.replace("/app");
+      appPosition.openNewSession({ replace: true });
     }
   }, [
     currentChatSessionId,
     setIncognitoEnabled,
     setCurrentMessageFiles,
     removeSession,
-    router,
+    appPosition,
   ]);
 
   const handleExport = useCallback(

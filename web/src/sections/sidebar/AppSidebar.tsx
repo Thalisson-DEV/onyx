@@ -64,7 +64,8 @@ import { handleMoveOperation } from "@/lib/sidebar/svc";
 import { Divider, SidebarTab } from "@opal/components";
 import { ChatSession } from "@/app/app/interfaces";
 import { useUser } from "@/providers/UserProvider";
-import { getFirstPermittedAdminRoute } from "@/lib/permissions";
+import { getFirstPermittedAdminRoute, hasPermission } from "@/lib/permissions";
+import { Permission } from "@/lib/types";
 import { useAppPosition } from "@/lib/position/hooks";
 import { useCreateModal } from "@opal/components";
 import { useModalContext } from "@/components/context/ModalContext";
@@ -243,6 +244,7 @@ function RecentsSection({
 export default function AppSidebar() {
   const t = useTranslations("sidebar");
   const moveChatErrorMessage = t("appSidebar.moveChatError.message");
+  const tonT = useTranslations("tonNavigation");
   const { folded } = useSidebarState();
   const router = useRouter();
   const combinedSettingsData = useSettings();
@@ -636,6 +638,14 @@ export default function AppSidebar() {
           {/* The two TON destinations, pinned above the scroll area so neither
           a long history nor a folded sidebar can push them out of reach. */}
           <nav aria-label={t("appSidebar.productNav.ariaLabel")}>
+            {hasPermission(
+              user?.effective_permissions ?? [],
+              Permission.READ_TON_SOURCES
+            ) && (
+              <SidebarTab icon={SvgManageAgent} href="/ton">
+                {tonT("entry")}
+              </SidebarTab>
+            )}
             <div data-testid="AppSidebar/new-session">
               <SidebarTab
                 icon={SvgEditBig}

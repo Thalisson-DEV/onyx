@@ -40,14 +40,17 @@ function rowId(raw: string | null): number | null {
  * position and going to one cannot drift apart: they are the same knowledge,
  * stated once in each direction.
  */
-function hrefFor(value: AppPositionType): Route {
+function hrefFor(
+  value: AppPositionType,
+  chatPath: "/app" | "/ton/chat" = "/app"
+): Route {
   switch (value.location) {
     case "chat":
-      return routeWithQuery("/app", {
+      return routeWithQuery(chatPath, {
         [SEARCH_PARAM_NAMES.CHAT_ID]: value.id,
       });
     case "agent":
-      return routeWithQuery("/app", {
+      return routeWithQuery(chatPath, {
         [SEARCH_PARAM_NAMES.AGENT_ID]: value.id,
       });
     case "project":
@@ -60,14 +63,15 @@ function hrefFor(value: AppPositionType): Route {
       return "/app/settings";
     case "shared-chat":
     case "new-session":
-      return "/app";
+      return chatPath;
   }
 }
 
 class AppPosition {
   constructor(
     private value: AppPositionType,
-    private router: Router
+    private router: Router,
+    private chatPath: "/app" | "/ton/chat" = "/app"
   ) {}
 
   /**
@@ -75,7 +79,7 @@ class AppPosition {
    * middle-click and open-in-new-tab, which a navigation method cannot.
    */
   href(): Route {
-    return hrefFor(this.value);
+    return hrefFor(this.value, this.chatPath);
   }
 
   // # NOTE (@raunakab):
@@ -106,7 +110,7 @@ class AppPosition {
     value: AppPositionType,
     { replace = false }: NavigationOptions = {}
   ) {
-    const href = hrefFor(value);
+    const href = hrefFor(value, this.chatPath);
     if (replace) this.router.replace(href);
     else this.router.push(href);
   }
@@ -215,6 +219,7 @@ export function useAppPosition(): AppPosition {
   // Memoize on the values that determine which AppPosition is constructed.
   // AppPosition is immutable, so same inputs → same instance.
   return useMemo(() => {
+    const chatPath = pathname.startsWith("/ton/chat") ? "/ton/chat" : "/app";
     if (pathname.startsWith("/app/shared/")) {
       return new AppPosition({ location: "shared-chat" }, router);
     }
@@ -225,12 +230,20 @@ export function useAppPosition(): AppPosition {
       return new AppPosition({ location: "more-agents" }, router);
     }
     if (chatId)
-      return new AppPosition({ location: "chat", id: chatId }, router);
+      return new AppPosition(
+        { location: "chat", id: chatId },
+        router,
+        chatPath
+      );
     if (agentId)
-      return new AppPosition({ location: "agent", id: agentId }, router);
+      return new AppPosition(
+        { location: "agent", id: agentId },
+        router,
+        chatPath
+      );
     if (projectId) {
       return new AppPosition({ location: "project", id: projectId }, router);
     }
-    return new AppPosition({ location: "new-session" }, router);
+    return new AppPosition({ location: "new-session" }, router, chatPath);
   }, [pathname, chatId, agentId, projectId, router]);
 }

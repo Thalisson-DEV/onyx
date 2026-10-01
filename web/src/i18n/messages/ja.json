@@ -14532,5 +14532,22 @@
     "capabilityNeeds": "データソース：{sources}。設定：{configuration}。専門担当：{owner}。",
     "nextRoutineRun": "次回の実行（ブラジリア）：{date}",
     "lastRoutineRun": "前回の予定実行（ブラジリア）：{date}。結果：{result}"
+  },
+  "tonNavigation": {
+    "entry": "TON",
+    "central": "ホーム",
+    "chat": "TON チャット",
+    "sources": "データソース",
+    "dre": "損益計算書",
+    "readiness": "未処理項目",
+    "specialists": "専門家",
+    "routines": "ルーチン",
+    "reports": "レポート",
+    "coverage": "TON 対応範囲",
+    "navigation": "TON ナビゲーション",
+    "history": "会話",
+    "admin": "管理",
+    "unavailable": "TON チャットを利用できません。アクセス権と TON ペルソナの設定を確認してください。",
+    "loading": "TON チャットを読み込み中…"
   }
 }

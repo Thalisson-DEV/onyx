@@ -14532,5 +14532,22 @@
     "capabilityNeeds": "Sources : {sources}. Configuration : {configuration}. Spécialiste : {owner}.",
     "nextRoutineRun": "Prochaine exécution (Brasilia) : {date}",
     "lastRoutineRun": "Dernière exécution planifiée (Brasilia) : {date}. Résultat : {result}"
+  },
+  "tonNavigation": {
+    "entry": "TON",
+    "central": "Accueil",
+    "chat": "Chat TON",
+    "sources": "Sources de données",
+    "dre": "Compte de résultat",
+    "readiness": "Éléments en attente",
+    "specialists": "Spécialistes",
+    "routines": "Routines",
+    "reports": "Rapports",
+    "coverage": "Couverture TON",
+    "navigation": "Navigation TON",
+    "history": "Conversations",
+    "admin": "Administration",
+    "unavailable": "Chat TON indisponible. Vérifiez l’accès et la configuration de la Persona TON.",
+    "loading": "Chargement de Chat TON…"
   }
 }

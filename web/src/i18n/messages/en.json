@@ -14532,5 +14532,22 @@
     "capabilityNeeds": "Sources: {sources}. Configuration: {configuration}. Specialist: {owner}.",
     "nextRoutineRun": "Next run (Brasília): {date}",
     "lastRoutineRun": "Last scheduled run (Brasília): {date}. Result: {result}"
+  },
+  "tonNavigation": {
+    "entry": "TON",
+    "central": "Central",
+    "chat": "TON Chat",
+    "sources": "Data sources",
+    "dre": "Income statement",
+    "readiness": "Pending items",
+    "specialists": "Specialists",
+    "routines": "Routines",
+    "reports": "Reports",
+    "coverage": "TON coverage",
+    "navigation": "TON navigation",
+    "history": "Conversations",
+    "admin": "Administration",
+    "unavailable": "TON Chat is unavailable. Check access and the TON Persona configuration.",
+    "loading": "Loading TON Chat…"
   }
 }

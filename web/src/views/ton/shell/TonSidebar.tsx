@@ -8,6 +8,7 @@ import {
   SvgBarChart,
   SvgBookOpen,
   SvgBubbleText,
+  SvgChevronRight,
   SvgClipboard,
   SvgFileText,
   SvgHome,
@@ -27,7 +28,7 @@ import { COPY } from "@/lib/ton/copy";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 
 const UNTITLED_SESSION_NAMES = new Set(["", "new chat", "nova conversa"]);
-const HISTORY_LIMIT = 8;
+const HISTORY_LIMIT = 6;
 
 interface NavItem {
   href: Route;
@@ -173,6 +174,16 @@ function ConversationHistory({ onNavigate }: { onNavigate: () => void }) {
           </Link>
         );
       })}
+      <Link
+        href="/ton/conversas"
+        onClick={onNavigate}
+        className="ton-nav-link ton-nav-sublink flex items-center justify-between gap-2 px-3 py-1.5"
+      >
+        <Text font="secondary-action" color="inherit">
+          {COPY.shell.allConversations}
+        </Text>
+        <SvgChevronRight size={14} />
+      </Link>
     </section>
   );
 }

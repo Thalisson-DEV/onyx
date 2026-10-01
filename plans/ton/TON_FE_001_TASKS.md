@@ -186,7 +186,7 @@ Chrome 1488px, dados reais. Nenhum UUID, enum ou JSON visível.
 - [x] provider/modelo não exposto no cliente
 - [x] nova conversa
 - [x] histórico pt-BR
-- [~] títulos significativos
+- [x] títulos significativos
 - [x] sugestões iniciais
 - [x] progress summary
 - [x] tool trace escondida por padrão
@@ -199,7 +199,7 @@ Chrome 1488px, dados reais. Nenhum UUID, enum ou JSON visível.
 - [x] report artifact component
 - [x] technical details disclosure
 - [ ] cancel funciona
-- [~] respostas longas legíveis
+- [x] respostas longas legíveis
 
 ### Demonstrável
 ```text
@@ -431,8 +431,8 @@ próximas ações, fontes, especialistas e rastreabilidade colapsada; Baixar rel
 - [x] resposta estruturada
 
 ## Evidência
-- [ ] card
-- [ ] sem JSON
+- [x] card
+- [x] sem JSON
 
 ## Pendência
 - [x] item
@@ -572,6 +572,18 @@ Sources/Automations 2/2, TonExecutionSummary 5/5; Playwright fe001 2/2 contra
 http://localhost:3005 com a conta autorizada (TON_E2E_EMAIL/PASSWORD no ambiente).
 Known issues: resposta do modelo cita UUIDs; responsivo < 1024 ainda não revisado.
 Next: responsivo, login/favicon, histórico completo de conversas, prompt sem UUIDs.
+
+### 2026-10-01 23:40
+Milestone: M6 — respostas sem UUID, histórico completo de conversas.
+Commit: fix(ton): keep internal identifiers out of assistant answers.
+What changed: prompt do coordenador não pede mais identificadores como referência
+(links "Abrir relatório"/"Baixar relatório"); imagem backend reconstruída
+(rollback: onyxdotapp/onyx-backend:pre-fe001), api_server e background recriados,
+nginx reiniciado, Persona TON reprovisionada via POST /api/ton/agent/provision.
+Nova página /ton/conversas (busca, agrupamento por data, carregar mais) ligada
+em "Ver todas as conversas"; histórico da sidebar limitado a 6.
+Validation: Playwright fe001 2/2 com verificação de ausência de UUID na resposta.
+Next: passada final, decisões e handoff.
 
 ---
 

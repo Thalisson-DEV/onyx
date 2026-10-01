@@ -518,6 +518,17 @@ export const COPY = {
         ? `${plural(imported, "registro importado", "registros importados")} · ${plural(rejected, "rejeitado", "rejeitados")}`
         : plural(imported, "registro importado", "registros importados"),
   },
+  conversations: {
+    title: "Conversas",
+    description: "Todas as suas conversas com o TON.",
+    search: "Buscar conversa",
+    noMatch: "Nenhuma conversa encontrada.",
+    loadMore: "Carregar mais",
+    today: "Hoje",
+    yesterday: "Ontem",
+    week: "Últimos 7 dias",
+    older: "Anteriores",
+  },
   specialists: {
     title: "Especialistas",
     description:

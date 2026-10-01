@@ -93,6 +93,11 @@ export class TonProductPage {
     await expect(
       this.page.getByRole("link", { name: "Abrir relatório" }).first()
     ).toBeVisible();
+    await expect(
+      this.page.getByTestId("onyx-ai-message").last()
+    ).not.toContainText(
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
+    );
   }
 
   async expectClosingBlocked(): Promise<void> {

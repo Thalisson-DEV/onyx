@@ -1,6 +1,6 @@
 /** @jest-environment jsdom */
 
-import { render, screen, within } from "@tests/setup/test-utils";
+import { render, screen, setupUser, within } from "@tests/setup/test-utils";
 import useSWR from "swr";
 import SourcesPage from "@/views/ton/SourcesPage";
 import AutomationsPage from "@/views/ton/AutomationsPage";
@@ -92,9 +92,13 @@ beforeEach(() => {
   });
 });
 
-it("shows NG as file-fed with direct integration still pending", () => {
+it("shows NG as file-fed with direct integration still pending", async () => {
+  const user = setupUser();
   const { container } = render(<SourcesPage />);
   const card = screen.getByRole("article");
+  await user.click(
+    within(card).getByRole("button", { name: /Mostrar detalhes de/ })
+  );
   expect(within(card).getByText("Arquivo XLSX")).toBeInTheDocument();
   expect(
     within(card).getByText("Aguardando acesso e configuração")

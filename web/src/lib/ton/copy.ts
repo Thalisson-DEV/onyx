@@ -624,6 +624,31 @@ export const COPY = {
     directExplainOther:
       "Sem integração automática configurada. Os dados entram por arquivo.",
     pendingAccess: "Pendente de acesso",
+    listTitle: "Fontes",
+    updatedShort: "Atualização",
+    showDetails: (name: string) => `Mostrar detalhes de ${name}`,
+    hideDetails: (name: string) => `Ocultar detalhes de ${name}`,
+    health: {
+      healthy: "Fontes configuradas estão atualizadas",
+      attention: (count: number) =>
+        count === 1
+          ? "1 fonte exige atenção"
+          : `${formatNumber(count)} fontes exigem atenção`,
+      body: "Estado real de cada importação. O TON só analisa o que foi importado; o que falta integrar aparece como pendente.",
+      configured: "Fontes atualizadas",
+      current: "configuradas com importação válida",
+      manual: "Arquivo exportado",
+      manualDetail: "Importação manual (XLSX/XLS)",
+      ngDirect: "Integração direta NG",
+      ngDirectDetail: "Sem conexão direta",
+      pathLabel: "Caminho da integração com o NG/Keevo",
+      nowTitle: "Hoje: arquivo exportado do NG",
+      nowBadge: "Em uso",
+      nowBody:
+        "Os lançamentos entram por planilha exportada, validada e revisada antes de alimentar a DRE.",
+      nextTitle: "Próximo: conexão direta (VPN/API ou base de leitura)",
+      nextBadge: "Aguardando acesso",
+    },
     usedBy: "Alimenta",
     downstream: {
       financial_review: "Revisão financeira",

@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session
 
 from onyx.db.models import Persona, Tool, User
 from onyx.db.ton import dre
-from onyx.db.ton.agent import financial_context, provision_agent
+from onyx.db.ton.agent import (
+    financial_context,
+    latest_stored_results,
+    provision_agent,
+    stored_result_for_scope,
+)
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import FileStore
 from onyx.ton.agent.models import SourceToolStatus, ToolQuery
@@ -158,3 +163,49 @@ def test_tools_preserve_readiness_and_source_acl(
             ToolQuery(source_id=base.source_id),
         )
     assert financial_context(ton_session, outsider, 10, 0).bases == []
+
+
+def test_stored_results_keep_consolidated_and_exact_scope(
+    ton_session: Session, admin: User, store: FileStore
+) -> None:
+    normalization_id, _, unit_id = build_complete_synthetic_scope(
+        ton_session, admin, store
+    )
+    version = dre.create_structure(
+        ton_session,
+        admin,
+        DreStructureCreate(
+            key="synthetic-agent-stored", label="Synthetic stored DRE", lines=_lines()
+        ),
+    )
+    ton_session.commit()
+    period = date(2026, 1, 1)
+    consolidated = dre.execute(
+        ton_session,
+        admin,
+        DreScope(
+            normalization_run_id=normalization_id,
+            structure_version_id=version.id,
+            period=period,
+            unit_id=None,
+        ),
+    )
+    unit_scope = DreScope(
+        normalization_run_id=normalization_id,
+        structure_version_id=version.id,
+        period=period,
+        unit_id=unit_id,
+    )
+    # The unit is calculated last; the consolidated result must still lead.
+    unit_run = dre.execute(ton_session, admin, unit_scope)
+    ton_session.commit()
+
+    latest = latest_stored_results(ton_session, admin, normalization_id, 1)
+    assert [item.run_id for item in latest] == [consolidated.id]
+    both = latest_stored_results(ton_session, admin, normalization_id, 10)
+    assert {item.run_id for item in both} == {consolidated.id, unit_run.id}
+
+    exact = stored_result_for_scope(ton_session, admin, unit_scope)
+    assert exact is not None and exact.run_id == unit_run.id
+    outsider = factories.make_user(ton_session)
+    assert stored_result_for_scope(ton_session, outsider, unit_scope) is None

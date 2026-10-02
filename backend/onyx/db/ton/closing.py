@@ -19,7 +19,7 @@ from onyx.db.ton import (
     reports,
     sources,
 )
-from onyx.db.ton.agent import financial_context
+from onyx.db.ton.agent import financial_context, stored_result_for_scope
 from onyx.db.ton.audit import emit_ton_audit_event
 from onyx.db.ton.canonical import compute_content_hash
 from onyx.db.ton.enums import (
@@ -241,13 +241,8 @@ def inspect_closing(
                 for code, count in readiness.blockers.items()
             }
             dre_status = business_label(readiness.status)
-            stored = [
-                item.model_dump(mode="json")
-                for item in base.stored_dre_results
-                if item.period == period
-                and item.unit_id == request.unit_id
-                and item.structure_version_id == version_id
-            ]
+            stored = stored_result_for_scope(session, user, scope)
+            stored_ready = stored is not None and stored.status == "READY"
             cfo = SpecialistOutcome(
                 key="CFO",
                 status="Operacional" if readiness.status == "READY" else "Parcial",
@@ -256,12 +251,19 @@ def inspect_closing(
                     dict(
                         readiness=readiness.model_dump(mode="json"),
                         finance=finance.model_dump(mode="json"),
-                        stored_results=stored,
+                        stored_results=[stored.model_dump(mode="json")]
+                        if stored
+                        else [],
                     )
                 ),
                 limitations=[
+                    "Esta análise não recalcula a DRE nem estima margem ou previsão.",
+                    "Os valores da DRE estão no resultado persistido indicado; consulte-o pelo run_id antes de apresentá-los.",
+                ]
+                if stored_ready
+                else [
                     "Nenhuma margem, previsão ou DRE foi calculada nesta análise.",
-                    "Uma base pronta exige um resultado persistido para apresentar valores de DRE.",
+                    "Não há resultado persistido pronto para este período e escopo; sem ele, não há valores de DRE.",
                 ],
                 actions=[
                     "Resolver os bloqueios no espaço de Prontidão financeira; aprovações exigem uma pessoa."

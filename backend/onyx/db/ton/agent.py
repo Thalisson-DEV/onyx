@@ -1,5 +1,8 @@
 """Provision the TON persona using the shared Onyx persona and tool models."""
 
+from datetime import date
+from uuid import UUID
+
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 
@@ -28,6 +31,7 @@ from onyx.ton.agent.models import (
     ToolQuery,
 )
 from onyx.ton.agent.policy import SYNTHETIC_DATA_NOTICE, uses_synthetic_demo_data
+from onyx.ton.dre.models import DreScope
 from onyx.tools.tool_implementations.python.python_tool import PythonTool
 from onyx.tools.tool_implementations.ton.ton_tool import (
     TON_TOOL_CLASSES,
@@ -59,6 +63,86 @@ def finance_summary(
     )
 
 
+def _stored_view(
+    session: Session, user: User, calculation: DreCalculationRun
+) -> StoredDreContext | None:
+    try:
+        view = dre.get_calculation(session, user, calculation.id)
+    except OnyxError as error:
+        if error.error_code in (
+            OnyxErrorCode.ADMIN_ONLY,
+            OnyxErrorCode.NOT_FOUND,
+            OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
+        ):
+            return None
+        raise
+    return StoredDreContext(
+        run_id=view.id,
+        period=view.scope.period,
+        unit_id=view.scope.unit_id,
+        structure_version_id=view.scope.structure_version_id,
+        status=view.status,
+    )
+
+
+def latest_stored_results(
+    session: Session, user: User, normalization_run_id: UUID, limit: int
+) -> list[StoredDreContext]:
+    """Latest visible calculation per scope, consolidated and recent periods first.
+
+    Recalculating many units must not push the consolidated result out of view.
+    """
+    calculations = session.scalars(
+        sa.select(DreCalculationRun)
+        .where(DreCalculationRun.normalization_run_id == normalization_run_id)
+        .order_by(
+            DreCalculationRun.unit_id.is_not(None),
+            DreCalculationRun.period.desc(),
+            DreCalculationRun.finished_at.desc(),
+            DreCalculationRun.id,
+        )
+    )
+    seen: set[tuple[date, UUID | None, UUID]] = set()
+    results: list[StoredDreContext] = []
+    for calculation in calculations:
+        key = (
+            calculation.period,
+            calculation.unit_id,
+            calculation.structure_version_id,
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        stored = _stored_view(session, user, calculation)
+        if stored is None:
+            continue
+        results.append(stored)
+        if len(results) >= limit:
+            break
+    return results
+
+
+def stored_result_for_scope(
+    session: Session, user: User, scope: DreScope
+) -> StoredDreContext | None:
+    """Latest visible calculation for one exact DRE scope."""
+    calculations = session.scalars(
+        sa.select(DreCalculationRun)
+        .where(
+            DreCalculationRun.normalization_run_id == scope.normalization_run_id,
+            DreCalculationRun.structure_version_id == scope.structure_version_id,
+            DreCalculationRun.period == scope.period,
+            DreCalculationRun.unit_id == scope.unit_id,
+        )
+        .order_by(DreCalculationRun.finished_at.desc(), DreCalculationRun.id)
+    )
+    for calculation in calculations:
+        stored = _stored_view(session, user, calculation)
+        if stored is not None:
+            return stored
+    return None
+
+
 def financial_context(
     session: Session, user: User, limit: int, offset: int
 ) -> FinancialContext:
@@ -67,33 +151,7 @@ def financial_context(
         review = session.get(ReviewRun, run.review_run_id)
         assert review is not None
         source = sources.get_source(session, user, review.source_id)
-        stored_results: list[StoredDreContext] = []
-        calculations = session.scalars(
-            sa.select(DreCalculationRun)
-            .where(DreCalculationRun.normalization_run_id == run.id)
-            .order_by(DreCalculationRun.finished_at.desc(), DreCalculationRun.id)
-            .limit(10)
-        )
-        for calculation in calculations:
-            try:
-                view = dre.get_calculation(session, user, calculation.id)
-            except OnyxError as error:
-                if error.error_code in (
-                    OnyxErrorCode.ADMIN_ONLY,
-                    OnyxErrorCode.NOT_FOUND,
-                    OnyxErrorCode.INSUFFICIENT_PERMISSIONS,
-                ):
-                    continue
-                raise
-            stored_results.append(
-                StoredDreContext(
-                    run_id=view.id,
-                    period=view.scope.period,
-                    unit_id=view.scope.unit_id,
-                    structure_version_id=view.scope.structure_version_id,
-                    status=view.status,
-                )
-            )
+        stored_results = latest_stored_results(session, user, run.id, 10)
         periods = list(
             session.scalars(
                 sa.select(FinancialActualFact.calendar_period)

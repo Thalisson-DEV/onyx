@@ -138,6 +138,10 @@ describe("Email/Password Login Workflow", () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith("Invalid email or password");
     });
+    // The failure also stays next to the form after the toast fades.
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Invalid email or password"
+    );
   });
 });
 

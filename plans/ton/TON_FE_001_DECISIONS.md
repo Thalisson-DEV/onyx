@@ -426,3 +426,26 @@ variáveis `--ton-*` não existiam (links verdes saíam pretos dentro do popover
 
 Decisão: as variáveis ficam em `:root` (e o ajuste escuro em `.dark`). Só nomes
 `--ton-*` são definidos; telas não-TON não os usam.
+
+## D-019 — Login controlado e identidade Vale Norte
+
+Data: 2026-10-01
+Status: Accepted
+
+Contexto: modelo de autenticação local = senha (basic), sem SSO, sem SMTP
+(`NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED` desligado), deploy interno da Vale Norte.
+
+Decisão:
+- `AuthFlowContainer` vira layout TON em duas colunas (painel verde Vale Norte com
+  logo oficial invertido + formulário neutro). Vale para login, cadastro, convite e
+  redefinição de senha.
+- O login não oferece "Criar uma conta"; mostra "Acesso restrito" (contas criadas
+  pelo administrador do TON). As rotas `/auth/signup` e `/auth/join` continuam para o
+  primeiro usuário e convites — a semântica de autenticação não mudou.
+- Sem SMTP não há recuperação self-service; o login diz para falar com o
+  administrador. Com a flag ligada, o link "Esqueceu a senha" do Onyx volta.
+- Falha de login fica visível no formulário (alerta inline), além do toast.
+
+Dívida: o backend basic auth ainda aceita cadastro direto em `/auth/signup`. Fechar
+isso é decisão de autenticação (ex.: domínio permitido ou convite obrigatório) e
+fica para o responsável pelo deploy.

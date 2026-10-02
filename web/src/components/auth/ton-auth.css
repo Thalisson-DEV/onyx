@@ -1,0 +1,66 @@
+/* TON authentication surfaces: Vale Norte brand panel + neutral form panel. */
+.ton-auth {
+  background: var(--background-neutral-00);
+}
+
+.ton-auth-brand {
+  position: relative;
+  overflow: hidden;
+  color: var(--vale-norte-green-05);
+  background:
+    radial-gradient(
+      ellipse at 85% 10%,
+      color-mix(in srgb, var(--vale-norte-green-60) 45%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 10% 95%,
+      color-mix(in srgb, var(--vale-norte-gold-40) 18%, transparent),
+      transparent 50%
+    ),
+    var(--vale-norte-green-90);
+}
+
+.ton-auth-mobile-bar {
+  background: var(--vale-norte-green-90);
+}
+
+.ton-auth-divider {
+  border-color: color-mix(in srgb, var(--vale-norte-green-20) 30%, transparent);
+}
+
+.ton-auth-badge {
+  border: 1.5px solid var(--vale-norte-green-01);
+  color: var(--vale-norte-green-01);
+  border-radius: 999px;
+  padding: 0.125rem 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+.ton-auth-badge-sm {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  padding: 0.0625rem 0.625rem;
+}
+
+.ton-auth-headline {
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  color: var(--vale-norte-green-01);
+}
+
+.ton-auth-accent {
+  color: var(--vale-norte-gold-40);
+}
+svg.ton-auth-accent {
+  stroke: currentColor;
+}
+
+.ton-auth-note {
+  background: var(--background-neutral-01);
+  border: 1px solid var(--border-01);
+}

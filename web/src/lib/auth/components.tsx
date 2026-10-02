@@ -6,14 +6,14 @@ import { useRouter } from "next/navigation";
 import { useSessionWatcher } from "@/lib/auth/hooks";
 import { getExtensionContext } from "@/lib/extension/utils";
 import { Modal } from "@opal/components";
-import { Button, Text } from "@opal/components";
+import { Button, MessageCard, Text } from "@opal/components";
 import { SvgLogOut, SvgCheckCircle, SvgXCircle } from "@opal/icons";
 import { SessionEndReason, type FastApiUsersErrorBody } from "@/lib/auth/types";
 import { SvgGoogle } from "@opal/logos";
 import { useCaptcha } from "@/lib/hooks/useCaptcha";
 import { verifyCaptchaForOAuth } from "@/lib/auth/svc";
 import { basicLogin, basicSignup } from "@/lib/users/svc";
-import { Formik } from "formik";
+import { Formik, type FormikHelpers } from "formik";
 import * as Yup from "yup";
 import { requestEmailVerification } from "@/lib/auth/svc";
 import Link from "next/link";
@@ -350,8 +350,14 @@ export function EmailPasswordForm({
     password: "",
   };
 
-  async function handleSubmit(values: FormValues) {
+  async function handleSubmit(
+    values: FormValues,
+    helpers: FormikHelpers<FormValues>
+  ) {
     const email = values.email.toLowerCase();
+    // A failed sign-in stays visible next to the form; the toast alone
+    // disappears before people read it.
+    helpers.setStatus(undefined);
 
     if (isSignup) {
       const captchaToken = await getCaptchaToken("signup");
@@ -375,6 +381,7 @@ export function EmailPasswordForm({
         } else if (typeof errorDetail === "string" && errorDetail) {
           errorMsg = errorDetail;
         }
+        helpers.setStatus(errorMsg);
         toast.error(errorMsg);
         return;
       }
@@ -423,6 +430,7 @@ export function EmailPasswordForm({
       } else if (typeof errorDetail === "string") {
         errorMsg = errorDetail;
       }
+      helpers.setStatus(errorMsg);
       toast.error(errorMsg);
     }
   }
@@ -436,9 +444,14 @@ export function EmailPasswordForm({
       validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
-      {({ isSubmitting, isValid, dirty, values, errors }) => {
+      {({ isSubmitting, isValid, dirty, values, errors, status }) => {
         return (
           <AuthLayouts.FormBody>
+            {typeof status === "string" && (
+              <div role="alert">
+                <MessageCard variant="error" title={status} />
+              </div>
+            )}
             <AuthLayouts.Fields>
               <InputVertical
                 title={t("emailPasswordForm.email.label")}

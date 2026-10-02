@@ -7,7 +7,8 @@ import ProviderSignInButton from "@/app/auth/login/ProviderSignInButton";
 import { SignInButton, EmailPasswordForm } from "@/lib/auth/components";
 import { NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED } from "@/lib/constants";
 import { useSendAuthRequiredMessage } from "@/lib/extension/hooks";
-import { Button, MessageCard } from "@opal/components";
+import { Button, MessageCard, Text } from "@opal/components";
+import { COPY } from "@/lib/ton/copy";
 import { AuthLayouts } from "@opal/layouts";
 import { useTranslations } from "next-intl";
 
@@ -93,6 +94,16 @@ export default function LoginPage({
           {passwordAuthEnabled && (
             <EmailPasswordForm label="submit" nextUrl={effectiveNextUrl} />
           )}
+          {passwordAuthEnabled &&
+            (NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED ? (
+              <Button href="/auth/forgot-password" prominence="tertiary">
+                {t("login.resetPasswordButton.label")}
+              </Button>
+            ) : (
+              <Text font="secondary-body" color="text-03">
+                {`${COPY.auth.forgotPassword} ${COPY.auth.forgotPasswordHelp}`}
+              </Text>
+            ))}
         </div>
       )}
 

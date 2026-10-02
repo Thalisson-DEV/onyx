@@ -773,4 +773,20 @@ export const COPY = {
       `Fontes: ${sources} · Responsável: ${owner}`,
     next: "Próxima dependência",
   },
+  auth: {
+    points: [
+      "Fechamento e DRE com evidência de origem",
+      "Rotinas automáticas no calendário da Vale Norte",
+      "Decisões e aprovações sempre humanas",
+    ],
+    headline: "Inteligência operacional e controladoria",
+    headlineAccent: "com IA",
+    footer: "Vale Norte Construtora · uso interno",
+    restrictedTitle: "Acesso restrito",
+    restrictedBody:
+      "O TON é de uso interno da Vale Norte. Contas são criadas pelo administrador do TON; peça acesso a ele.",
+    forgotPassword: "Esqueceu a senha?",
+    forgotPasswordHelp:
+      "Fale com o administrador do TON para redefinir o acesso.",
+  },
 } as const;

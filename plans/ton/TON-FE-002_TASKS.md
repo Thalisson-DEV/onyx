@@ -93,338 +93,344 @@ Ordem escolhida: shell/sistema → login → assistente → DRE/pendências → 
 
 # 2. Design system
 
-- [ ] global tokens consolidated
-- [ ] typography hierarchy
-- [ ] card primitives
-- [ ] status badges
-- [ ] KPI
-- [ ] buttons
-- [ ] modal/drawer
-- [ ] alerts
-- [ ] loading
-- [ ] empty
-- [ ] error
-- [ ] table
-- [ ] timeline/activity
-- [ ] structured evidence
-- [ ] artifact
-- [ ] source
-- [ ] routine
-- [ ] specialist
+- [x] global tokens consolidated
+- [x] typography hierarchy
+- [x] card primitives
+- [x] status badges
+- [x] KPI
+- [x] buttons
+- [x] modal/drawer
+- [x] alerts
+- [x] loading
+- [x] empty
+- [x] error
+- [x] table
+- [x] timeline/activity
+- [x] structured evidence
+- [x] artifact
+- [x] source
+- [x] routine
+- [~] specialist
 
 ---
 
 # 3. Navigation / shell
 
-- [ ] final information architecture
-- [ ] active state
-- [ ] back behavior
-- [ ] deep links
-- [ ] no duplicate concepts
-- [ ] no generic Onyx client nav
-- [ ] technical diagnostics moved away from client
-- [ ] admin escape hatch role-gated
+- [x] final information architecture
+- [x] active state
+- [x] back behavior
+- [x] deep links
+- [x] no duplicate concepts
+- [x] no generic Onyx client nav
+- [x] technical diagnostics moved away from client
+- [x] admin escape hatch role-gated
 
 ---
 
 # 4. Header / global status
 
-- [ ] Vale Norte + TON
-- [ ] environment indicator
-- [ ] real sync freshness
-- [ ] notifications
-- [ ] help
-- [ ] user menu
+- [x] Vale Norte + TON
+- [x] environment indicator
+- [x] real sync freshness
+- [x] notifications
+- [x] help
+- [x] user menu
 
 ---
 
 # 5. Login
 
-- [ ] branded login
-- [ ] no test credentials exposed
-- [ ] account creation behavior audited
-- [ ] password recovery
-- [ ] loading
-- [ ] auth error
-- [ ] post-login routing
+- [x] branded login
+- [x] no test credentials exposed
+- [x] account creation behavior audited
+- [~] password recovery
+- [x] loading
+- [x] auth error
+- [x] post-login routing
 
 ---
 
 # 6. Home
 
-- [ ] executive strip
-- [ ] attention queue
-- [ ] TON activity
-- [ ] R3 spotlight
-- [ ] source health
-- [ ] latest report
-- [ ] specialist context
-- [ ] reduced duplication
-- [ ] meaningful healthy state
+- [x] executive strip
+- [x] attention queue
+- [x] TON activity
+- [x] R3 spotlight
+- [x] source health
+- [x] latest report
+- [x] specialist context
+- [x] reduced duplication
+- [x] meaningful healthy state
 
 ---
 
 # 7. Assistant
 
-- [ ] custom workspace
-- [ ] context bar
-- [ ] specialist focus
-- [ ] structured outputs
-- [ ] rich evidence
-- [ ] artifact cards
-- [ ] follow-up actions
-- [ ] meaningful history
-- [ ] grouped execution states
-- [ ] tool trace hidden
-- [ ] file flow
-- [ ] Code Interpreter preserved
-- [ ] cancellation
-- [ ] long response UX
+- [x] custom workspace
+- [x] context bar
+- [x] specialist focus
+- [~] structured outputs
+- [x] rich evidence
+- [x] artifact cards
+- [x] follow-up actions
+- [~] meaningful history
+- [x] grouped execution states
+- [x] tool trace hidden
+- [x] file flow
+- [x] Code Interpreter preserved
+- [x] cancellation
+- [~] long response UX
 
 ---
 
 # 8. Closing / DRE
 
-- [ ] closing overview
-- [ ] blocked DRE
-- [ ] blocker cards
-- [ ] blocker → pending filter
-- [ ] ready DRE
-- [ ] hierarchy
-- [ ] monthly
-- [ ] YTD
-- [ ] variance
-- [ ] source drilldown
-- [ ] export
-- [ ] no internal enums
+- [x] closing overview
+- [x] blocked DRE
+- [x] blocker cards
+- [x] blocker → pending filter
+- [x] ready DRE
+- [x] hierarchy
+- [x] monthly
+- [x] YTD
+- [x] variance
+- [x] source drilldown
+- [x] export
+- [x] no internal enums
 
 ---
 
 # 9. Pending decisions
 
-- [ ] work queue
-- [ ] filters
-- [ ] category views
-- [ ] source context
-- [ ] affected records
-- [ ] candidate/suggestion
-- [ ] impact
-- [ ] review
-- [ ] justify
-- [ ] confirm
-- [ ] audit
+- [x] work queue
+- [~] filters
+- [x] category views
+- [x] source context
+- [x] affected records
+- [x] candidate/suggestion
+- [x] impact
+- [x] review
+- [x] justify
+- [x] confirm
+- [~] audit
 
 ---
 
 # 10. Sources
 
-- [ ] integration health model
-- [ ] current acquisition state
-- [ ] freshness
-- [ ] warnings
-- [ ] NG current truth
-- [ ] NG direct integration pending state
-- [ ] guided upload
-- [ ] processing lifecycle
-- [ ] history drawer/table
-- [ ] no fake connectivity
+- [x] integration health model
+- [x] current acquisition state
+- [x] freshness
+- [x] warnings
+- [x] NG current truth
+- [x] NG direct integration pending state
+- [x] guided upload
+- [x] processing lifecycle
+- [x] history drawer/table
+- [x] no fake connectivity
 
 ---
 
 # 11. Automations
 
-- [ ] automation home
-- [ ] R3 flagship
-- [ ] schedule from backend
-- [ ] next run
-- [ ] last run
-- [ ] lifecycle state
-- [ ] history
-- [ ] execute-now feedback
-- [ ] other routines by readiness
-- [ ] technical trace secondary
+- [x] automation home
+- [x] R3 flagship
+- [x] schedule from backend
+- [x] next run
+- [x] last run
+- [x] lifecycle state
+- [x] history
+- [x] execute-now feedback
+- [x] other routines by readiness
+- [x] technical trace secondary
 
 ---
 
 # 12. Reports
 
-- [ ] grouped catalog
-- [ ] latest first
-- [ ] revision history
-- [ ] branded viewer
-- [ ] executive summary
-- [ ] findings
-- [ ] actions
-- [ ] sources
-- [ ] traceability
-- [ ] print
-- [ ] download
+- [x] grouped catalog
+- [x] latest first
+- [x] revision history
+- [x] branded viewer
+- [x] executive summary
+- [x] findings
+- [x] actions
+- [x] sources
+- [x] traceability
+- [x] print
+- [x] download
 
 ---
 
 # 13. Specialists
 
-- [ ] canonical nine
-- [ ] runtime status
-- [ ] specialist activity context
-- [ ] focused analysis
-- [ ] no fake chat
-- [ ] detail view
-- [ ] source/capability explanation
-- [ ] no Onyx Persona terminology in client
+- [x] canonical nine
+- [x] runtime status
+- [x] specialist activity context
+- [x] focused analysis
+- [x] no fake chat
+- [~] detail view
+- [x] source/capability explanation
+- [x] no Onyx Persona terminology in client
 
 ---
 
 # 14. Activity / notifications
 
-- [ ] event model
-- [ ] header notifications
-- [ ] import events
-- [ ] automation events
-- [ ] DRE state events
-- [ ] report events
-- [ ] decision events
-- [ ] spam control
+- [x] event model
+- [x] header notifications
+- [x] import events
+- [x] automation events
+- [d] DRE state events
+- [x] report events
+- [d] decision events
+- [x] spam control
 
 ---
 
 # 15. Search / command
 
-- [ ] product search
-- [ ] route-independent commands
-- [ ] natural commands
-- [ ] contextual search
-- [ ] reuse existing infrastructure where possible
+- [x] product search
+- [x] route-independent commands
+- [x] natural commands
+- [~] contextual search
+- [x] reuse existing infrastructure where possible
 
 ---
 
 # 16. Admin / configuration
 
-- [ ] TON administration boundary
-- [ ] technical administration boundary
-- [ ] branded/admin shell
-- [ ] user access
-- [ ] source configuration
-- [ ] automation config
-- [ ] specialist availability
-- [ ] financial readiness controls
-- [ ] report settings
-- [ ] audit
-- [ ] technical Onyx admin remains available
-- [ ] normal client cannot access technical admin
+- [x] TON administration boundary
+- [x] technical administration boundary
+- [~] branded/admin shell
+- [x] user access
+- [x] source configuration
+- [~] automation config
+- [x] specialist availability
+- [x] financial readiness controls
+- [~] report settings
+- [d] audit
+- [x] technical Onyx admin remains available
+- [x] normal client cannot access technical admin
 
 ---
 
 # 17. Global states
 
-- [ ] loading
-- [ ] empty
-- [ ] success
-- [ ] partial
-- [ ] warning
-- [ ] error
-- [ ] unauthorized
-- [ ] degraded connection
-- [ ] background execution feedback
+- [x] loading
+- [x] empty
+- [x] success
+- [x] partial
+- [x] warning
+- [x] error
+- [x] unauthorized
+- [d] degraded connection
+- [x] background execution feedback
 
 ---
 
 # 18. Responsive/accessibility
 
-- [ ] 1440+
-- [ ] 1280
-- [ ] 1024
-- [ ] 768
-- [ ] 390
-- [ ] no horizontal scroll
-- [ ] keyboard
-- [ ] focus
-- [ ] modal trap
-- [ ] contrast
-- [ ] semantic controls
+- [x] 1440+
+- [x] 1280
+- [x] 1024
+- [x] 768
+- [x] 390
+- [x] no horizontal scroll
+- [~] keyboard
+- [x] focus
+- [~] modal trap
+- [~] contrast
+- [x] semantic controls
 
 ---
 
 # 19. Production polish
 
-- [ ] titles
-- [ ] favicon
-- [ ] metadata
-- [ ] manifest
-- [ ] loading/splash
-- [ ] error pages
-- [ ] not-found
-- [ ] auth failure
-- [ ] no 0.0.0-dev client text
-- [ ] no UUIDs
-- [ ] no raw JSON
-- [ ] no provider branding
-- [ ] no Onyx branding
+- [x] titles
+- [x] favicon
+- [x] metadata
+- [d] manifest
+- [x] loading/splash
+- [~] error pages
+- [x] not-found
+- [x] auth failure
+- [x] no 0.0.0-dev client text
+- [x] no UUIDs
+- [x] no raw JSON
+- [x] no provider branding
+- [x] no Onyx branding
 
 ---
 
 # 20. UI/backend truth matrix
 
 ## DRE
-API:
-UI:
-PASS:
+API: GET /api/ton/financial-domain/normalizations/{run}/readiness?structure_version_id (periods[].status,
+blockers); GET /api/ton/dre/calculations?period (READY run matching normalization+structure);
+GET /calculations/{id}/statement; /series; /lines/{code}/contributors; export.csv.
+UI: views/ton/DrePage/useDreWorkspace → blocked cards (groupBlockers) or statement/KPIs/drill-down.
+Transformação: só agrupamento por categoria e formatação BRL/%. Nenhum valor calculado no React.
+PASS: Chrome (bloqueada, 13 itens reais); jest (pronta, fixture).
 
 ## Sources
-API:
-UI:
-PASS:
+API: GET /api/ton/data-sources (status, last_success_at, latest, history);
+GET /api/ton/agent/closing (sources[].direct_integration).
+UI: SourcesPage HealthSummary + SourceRow; header SourcesStatus.
+PASS: Chrome — 3/3 atualizadas por arquivo; NG direto "Aguardando acesso e configuração".
 
 ## R3
-API:
-UI:
-PASS:
+API: GET /api/ton/agent/routines (status, schedule, next_run); GET /routines/R3/latest;
+POST /routines/R3/run; GET /api/ton/agent/reports?limit=25 (routine_code=R3) para histórico;
+GET /routines/R3/schedule (admin).
+UI: R3Spotlight, AutomationsPage R3History (agrupado por dia), AdminPage.
+PASS: Chrome — próxima 03/11/2026 08:00, histórico real de execuções.
 
 ## Specialists
-API:
-UI:
-PASS:
+API: GET /api/ton/agent/specialists; GET /api/ton/agent/closing (specialists[]).
+UI: SpecialistsPage, Home InvolvedSpecialists (só status não neutro), barra de contexto (foco).
+PASS: Chrome — CFO parcial, AUDITOR e CEO operacionais, 6 aguardando fonte.
 
 ## Reports
-API:
-UI:
-PASS:
+API: GET /api/ton/agent/reports/groups; /reports/{id}; /reports/{id}/history; /download.
+UI: ReportsPage, ReportViewer (impressão, versões anteriores, IDs só para admin).
+PASS: Chrome — versão atual + 21 anteriores preservadas.
 
 ## Notifications
-API:
-UI:
-PASS:
+API: derivado de reports/groups, data-sources (history), specialists (last_execution).
+UI: lib/ton/activity.ts → Home "Atividade do TON" e sino do header; "novo" via localStorage.
+PASS: Chrome — eventos reais; badge após nova publicação.
 
 ---
 
 # 21. Browser QA
 
-- [ ] login
-- [ ] Home
-- [ ] Assistant
-- [ ] Closing
-- [ ] DRE
-- [ ] Pendências
-- [ ] Sources
-- [ ] Automations
-- [ ] Reports
-- [ ] Specialists
-- [ ] Admin as authorized role
-- [ ] client role
-- [ ] full natural demo journey
-- [ ] reference visual comparison
+- [x] login
+- [x] Home
+- [x] Assistant
+- [x] Closing
+- [x] DRE
+- [x] Pendências
+- [x] Sources
+- [x] Automations
+- [x] Reports
+- [x] Specialists
+- [x] Admin as authorized role
+- [!] client role
+- [x] full natural demo journey
+- [x] reference visual comparison
 
 ---
 
 # 22. Quality
 
-- [ ] focused frontend tests
-- [ ] focused backend tests when touched
-- [ ] TypeScript
-- [ ] lint
-- [ ] format
-- [ ] build
-- [ ] git diff --check
+- [x] focused frontend tests
+- [d] focused backend tests when touched
+- [x] TypeScript
+- [x] lint
+- [x] format
+- [!] build
+- [x] git diff --check
 
 ---
 
@@ -448,7 +454,12 @@ Next:
 # 24. Blockers
 
 ```text
-None recorded yet.
+- Validação com papel cliente (sem admin) não feita: a conta de teste do Playwright não tem
+  permissões TON e conceder via SQL foi negado no FE-001 (D-010). Telas escondem admin por
+  hasAdminAccess e as rotas/APIs continuam protegidas no backend.
+- Build de produção da imagem web não refeito nesta sessão (memória do WSL; ver memória
+  docker-sequential-startup). Validação feita em next dev :3005 contra a API local.
+- DRE pronta não demonstrável na base local (D-013); coberta por testes.
 ```
 
 ---
@@ -467,7 +478,11 @@ Record only real external dependencies:
 - Zeev official integration details
 
 ```text
-TBD
+- NG/Keevo: acesso VPN/API ou base de leitura (Fontes mostra o caminho como pendente).
+- Amostra real aprovada da Vale Norte.
+- Fontes de frota, contratos, produção, compras, compliance e RH (especialistas e R1, R2, R4–R9).
+- SMTP para recuperação de senha self-service.
+- Decisão de autenticação sobre cadastro direto em /auth/signup (D-019).
 ```
 
 ### 2026-10-01 22:30
@@ -482,3 +497,24 @@ Next: barra de contexto e ações de continuidade no Assistente; workspace DRE
 nativo (substituir views/admin/DrePage embutida); Pendências como fila de
 trabalho; Fontes (resumo de saúde); Automações (histórico por dia); Relatórios;
 Especialistas; Home sem duplicação; responsivo 1024/768/390; títulos por página.
+
+### 2026-10-02 03:00
+Milestone: M3–M8 — assistente, DRE, pendências, fontes, automações, home, relatórios, polimento.
+Commits: 6ac8f5aa32 (contexto e continuidade no assistente), 0485bbfa63 + 22a32ea5df (workspace
+DRE), fdc4f82c44 (pendências como fila guiada), 39afa9ce5e (fontes/saúde), 0c72b54c6e
+(automações), 3d14f0986e (home sem duplicação), 2932d4009c (relatório imprimível + versões),
+6f4163d2af (títulos + not-found), b2b7071c3a (header em 390px), 2c61b990fa (cartões após a
+resposta), eb66f1dffe (lint/format).
+What is demonstrable: Home → pergunta → Assistente (barra de contexto, progresso por fases,
+evidência, relatório, "Continuar em") → Pendências (fila guiada, etapas da decisão) → DRE
+(bloqueio por categoria com links para a fila) → Automações (R3, histórico por dia) →
+Relatório (impressão, versões) → Fontes (saúde e caminho NG).
+Validation: Chrome real :3005 em todas as telas; 390/768/1024 sem rolagem horizontal (iframes
+de mesma origem); tsc limpo; oxlint sem erros nos diretórios tocados; oxfmt; jest 462/462
+(--maxWorkers=4; com 20 workers dois suites estouram timeout no transform frio).
+Known issues: resposta do modelo às vezes começa com preâmbulo ("Antes de qualquer número…")
+e cabeçalhos em caixa alta — conteúdo do LLM/prompt, não da UI; "Fontes atualizadas" no
+header considera só fontes configuradas.
+Next (P1): filtros por período/resolvidas em Pendências; detalhe por especialista; trilha de
+auditoria de decisões (precisa de endpoint de leitura); manifest/PWA; validação com papel
+cliente; build de produção.

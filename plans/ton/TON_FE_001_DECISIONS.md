@@ -474,3 +474,36 @@ A view admin continua em `/admin/dre`. Nenhum valor é calculado no React.
 
 Validação: Chrome (estado bloqueado real, 13 itens); jest cobre o estado pronto com
 fixture (D-013: a base local não tem período pronto).
+
+## D-021 — Fila de pendências guiada sem mudar a semântica de decisão
+
+Data: 2026-10-02
+Status: Accepted
+
+Decisão: linhas da fila recebem título pelo que aconteceu (primeira frase da evidência
+traduzida) em vez de rótulos genéricos; o diálogo mostra etapas explícitas (Revisar →
+Decidir e justificar → Confirmar → Registrada) e seções em forma de pergunta (o que
+aconteceu, sugestão do TON, quantos registros, o que precisa ser decidido, o que muda se
+você confirmar). Payloads, permissões e a dupla confirmação continuam idênticos; nada é
+aprovado automaticamente. Filtros por período/resolvidas e trilha de auditoria ficam
+para P1 (não há endpoint de leitura de histórico para todos os tipos de pendência).
+
+## D-022 — Fontes como centro de saúde de dados
+
+Data: 2026-10-02
+Status: Accepted
+
+Decisão: Fontes abre com o resumo real (fontes atualizadas/configuradas, última
+atualização, modo de aquisição e integração direta NG) e o caminho de integração
+"Hoje: arquivo exportado" → "Próximo: conexão direta (aguardando acesso)". Cada fonte vira
+uma linha compacta; integração direta, consumidores e histórico ficam em disclosure. Nenhum
+texto afirma conexão direta.
+
+## D-023 — Visão Geral sem rail duplicado
+
+Data: 2026-10-02
+Status: Accepted (substitui parte de D-008)
+
+Decisão: o rail direito sai da Visão Geral — repetia R3 e fontes já presentes na faixa
+executiva e no destaque da R3. Entram "Saúde das fontes" e "Especialistas no fechamento"
+(só os envolvidos na análise). O rail contextual continua no estado inicial do Assistente.

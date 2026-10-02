@@ -410,6 +410,30 @@ class TestDuplicates:
         _, evaluation = review(book({"Jan": [row], "Fev": [row]}))
         assert detections(evaluation, "NGF-DUP-EXACT") == []
 
+    def test_year_prefixed_document_copy_is_flagged_and_first_is_kept(self) -> None:
+        prefixed = f"{JAN_1.year % 100:02d}" + "123".zfill(11)
+        _, evaluation = review(
+            book(
+                {
+                    "Jan": [
+                        launch("1.1 - Synthetic account", JAN_1, document="123"),
+                        launch(None, None, document=prefixed, history="Other"),
+                        launch(None, JAN_2, document="124"),
+                    ]
+                }
+            )
+        )
+        [item] = detections(evaluation, "NGF-DUP-DOC")
+        assert len(item.detection.record_ids) == 1
+        assert item.detection.facts["row_number"] == 2
+        assert item.detection.facts["kept_row_number"] == 1
+        assert item.detection.facts["kept_document_number"] == "123"
+
+    def test_plain_repetition_is_not_a_document_format_duplicate(self) -> None:
+        row = launch("1.1 - Synthetic account", JAN_1, document="123")
+        _, evaluation = review(book({"Jan": [row, launch(None, None, document="123")]}))
+        assert detections(evaluation, "NGF-DUP-DOC") == []
+
 
 class TestLabelConsistency:
     def drift(self) -> bytes:
@@ -730,6 +754,7 @@ class TestCatalog:
             "NGF-SRC-ROW-REJECTED",
             "NGF-UNIT-MISSING",
             "NGF-DUP-EXACT",
+            "NGF-DUP-DOC",
             "NGF-ACCT-LABEL-DRIFT",
             "NGF-UNIT-LABEL-DRIFT",
         }

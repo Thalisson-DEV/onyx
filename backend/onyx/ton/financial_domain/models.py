@@ -96,7 +96,9 @@ class NormalizationRequest(BaseModel):
     review_run_id: UUID
     billing_source_id: UUID
     billing_execution_id: UUID
-    budgets: list[BudgetInput] = Field(min_length=1)
+    # Empty means an Actual-only run: Orçado stays zero and budget coverage
+    # is not evaluated.
+    budgets: list[BudgetInput] = Field(default_factory=list)
 
 
 class NormalizationView(BaseModel):

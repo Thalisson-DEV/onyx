@@ -69,11 +69,12 @@ def invoice(
     gross: object = 100.25,
     retained: object = 0,
     competence: object = "01/2026",
+    emitted: datetime = datetime(2026, 1, 10),
 ) -> tuple[object, ...]:
     return (
         "Synthetic payer",
         number,
-        datetime(2026, 1, 10),
+        emitted,
         gross,
         retained,
         retained,

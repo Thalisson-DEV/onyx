@@ -188,7 +188,14 @@ def build_complete_synthetic_scope(
     reviewed = dataset_summary(ton_session, admin, pipeline.source_id, review.id)
     invoices = [invoice(gross=100.25)]
     if include_february:
-        invoices.append(invoice(number=102, gross=40.75, competence="02/2026"))
+        invoices.append(
+            invoice(
+                number=102,
+                gross=40.75,
+                competence="02/2026",
+                emitted=datetime.datetime(2026, 2, 10),
+            )
+        )
     billing_source_id, billing_execution_id = _operational_execution(
         ton_session,
         admin,
@@ -666,6 +673,7 @@ def test_exact_reconciliation_keeps_unmatched_and_ambiguous() -> None:
         return {
             "id": uuid4(),
             "calendar_period": month,
+            "emission_date": month,
             "unit_id": unit_id,
             "account_id": account_id,
             "movement_amount": amount,
@@ -676,14 +684,27 @@ def test_exact_reconciliation_keeps_unmatched_and_ambiguous() -> None:
         return {
             "id": uuid4(),
             "competence_period": month,
+            "emission_date": month,
             "unit_id": unit_id,
             "account_id": account_id,
             "service_amount": amount,
             "document": document,
         }
 
-    actuals = [actual("A", 10), actual("B", 20), actual("D", 40)]
-    billings = [billing("A", 10), billing("C", 30), billing("D", 15), billing("D", 25)]
+    actuals = [
+        actual("A", 10),
+        actual("B", 20),
+        actual("D", 40),
+        actual("2600000000411", 50),
+    ]
+    billings = [
+        billing("A", 10),
+        billing("C", 30),
+        billing("D", 15),
+        billing("D", 25),
+        billing("411", 50),
+        billing("E", 0),
+    ]
     rows = financial_domain._reconcile(
         actuals,
         billings,
@@ -693,7 +714,9 @@ def test_exact_reconciliation_keeps_unmatched_and_ambiguous() -> None:
         run_id,
     )
     statuses = [item["status"] for item in rows]
-    assert statuses.count("MATCHED") == 1
+    # NG year-prefixed invoice 2600000000411 matches invoice 411; the zero
+    # invoice E carries no revenue and is not reconciled.
+    assert statuses.count("MATCHED") == 2
     assert statuses.count("NG_ONLY") == 1
     assert statuses.count("BILLING_ONLY") == 1
     assert statuses.count("AMBIGUOUS") == 3

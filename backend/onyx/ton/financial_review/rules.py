@@ -13,6 +13,7 @@ import unicodedata
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
@@ -326,6 +327,74 @@ def evaluate_exact_duplicates(
     return output
 
 
+def ng_invoice_key(document: str, emission_date: date) -> str:
+    """Invoice number as NG and billing state it.
+
+    NG writes some invoice documents as a 13-digit value: the two-digit
+    emission year, then the invoice number padded with zeros.
+    """
+    value = document.strip()
+    year = f"{emission_date.year % 100:02d}"
+    if len(value) == 13 and value.isdigit() and value.startswith(year):
+        return str(int(value[2:]))
+    return value
+
+
+def evaluate_document_format_duplicates(
+    definition: RuleDefinition, index: ReviewIndex, context: RuleContext
+) -> RuleOutput:
+    del context
+    keys = record_keys(index.records, frozenset())
+    groups: dict[tuple[object, ...], list[ReviewRecord]] = defaultdict(list)
+    for record in index.records:
+        document = _text(record.document_number)
+        if document is None:
+            continue
+        groups[
+            (
+                record.sheet_month,
+                record.account_code,
+                record.emission_date,
+                ng_invoice_key(document, record.emission_date),
+                _canonical(record.amounts.get("movement_amount")),
+            )
+        ].append(record)
+    output = RuleOutput()
+    for members in groups.values():
+        documents = {_text(member.document_number) for member in members}
+        if len(members) < 2 or len(documents) < 2:
+            continue
+        ordered = sorted(members, key=lambda item: item.row_number)
+        for record in ordered[1:]:
+            key = keys[record.id]
+            output.detections.append(
+                Detection(
+                    rule_key=definition.key,
+                    rule_version=definition.version,
+                    scope=DetectionScope.RECORD,
+                    review_key=key.review_key,
+                    base_key=key.base_key,
+                    base_key_count=key.base_count,
+                    sheet_month=record.sheet_month,
+                    record_ids=(record.id,),
+                    facts={
+                        "sheet_name": record.sheet_name,
+                        "row_number": record.row_number,
+                        "kept_row_number": ordered[0].row_number,
+                        "document_number": _text(record.document_number),
+                        "kept_document_number": _text(ordered[0].document_number),
+                        "verification_mode": VerificationMode.RECORD,
+                    },
+                    impact=_impact(
+                        record.amounts.get("final_amount"),
+                        "DUPLICATE_FINAL_AMOUNT",
+                        ImpactStatus.EXACT,
+                    ),
+                )
+            )
+    return output
+
+
 def _label_drift(
     definition: RuleDefinition,
     groups: Mapping[str, Sequence[tuple[ReviewRecord, str]]],
@@ -569,6 +638,7 @@ DEFAULT_EXECUTORS: dict[str, RuleExecutor] = {
     "NGF-SRC-ROW-REJECTED.v1": evaluate_rejected_rows,
     "NGF-UNIT-MISSING.v1": evaluate_unit_missing,
     "NGF-DUP-EXACT.v1": evaluate_exact_duplicates,
+    "NGF-DUP-DOC.v2": evaluate_document_format_duplicates,
     "NGF-ACCT-LABEL-DRIFT.v1": evaluate_account_label_drift,
     "NGF-UNIT-LABEL-DRIFT.v1": evaluate_unit_label_drift,
     "NGF-HIER-RECONCILIATION.v1": evaluate_hierarchy_reconciliation,

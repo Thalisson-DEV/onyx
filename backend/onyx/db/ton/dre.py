@@ -339,11 +339,13 @@ def _blockers(
         "BUDGET_PERIOD_UNRESOLVED",
         "REVIEW_UNRESOLVED",
         "EXCLUDED_SOURCE_ROWS",
+    }
+    # The DRE reads NG actuals and budgets only. Billing-derived facts never
+    # enter it, so their derivation gaps stay in Financial Readiness.
+    billing_derivation_keys = {
         "BILLING_COMPETENCE_UNRESOLVED",
         "UNSUPPORTED_DERIVATION",
         "IR_RETENTION_UNRESOLVED",
-        "SOURCE_RECONCILIATION_AMBIGUOUS",
-        "SOURCE_RECONCILIATION_UNRESOLVED",
     }
     if datasets:
         blockers.update(
@@ -358,7 +360,9 @@ def _blockers(
             {
                 key: value
                 for key, value in dataset.readiness.blockers.items()
-                if key not in global_keys and key != "UNCLASSIFIED_ACCOUNT"
+                if key not in global_keys
+                and key not in billing_derivation_keys
+                and key != "UNCLASSIFIED_ACCOUNT"
             }
         )
         for fact in [*dataset.actuals, *dataset.budgets]:

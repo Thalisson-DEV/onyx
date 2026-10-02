@@ -59,7 +59,11 @@ from onyx.ton.financial_review.dataset import (
     excluded_rows,
     record_dispositions,
 )
-from onyx.ton.financial_review.models import DOWNSTREAM_SAFE_DISPOSITIONS
+from onyx.ton.financial_review.models import (
+    DOWNSTREAM_SAFE_DISPOSITIONS,
+    ReviewDisposition,
+)
+from onyx.ton.financial_review.rules import ng_invoice_key
 from onyx.ton.ng_financial.models import ProfileExecutionStatus
 from onyx.ton.operational_import.parser import (
     BILLING_KEY,
@@ -69,8 +73,12 @@ from onyx.ton.operational_import.parser import (
 from onyx.utils.audit import AuditAction, AuditOutcome
 
 BATCH_SIZE = 500
-DERIVATION_VERSION = "billing-vba-proven-1"
+DERIVATION_VERSION = "billing-vba-emission-match-1"
 AUTHORITY_POLICY_VERSION = "ng-actual-billing-diagnostic-1"
+DUPLICATE_DOCUMENT_RULE = "NGF-DUP-DOC"
+# UNIT mapping key for NG records whose source unit is blank. An explicit
+# mapping keeps these records in one visible bucket instead of no unit.
+BLANK_UNIT_KEY = "(sem unidade)"
 TAX_COMPONENTS: tuple[tuple[str, str], ...] = (
     ("iss_retained", "ISS"),
     ("inss_retained", "INSS"),
@@ -518,7 +526,7 @@ def _reconcile(
             actual["calendar_period"],
             actual["unit_id"],
             actual["account_id"],
-            document.strip(),
+            ng_invoice_key(document, actual["emission_date"]),
         )
         actual_keys[key].append(actual)
     for billing in billings:
@@ -536,7 +544,10 @@ def _reconcile(
             continue
         if billing["account_id"] not in revenue_accounts:
             continue
-        if billing["unit_id"] is None or billing["competence_period"] is None:
+        # An invoice with no service amount carries no revenue to reconcile.
+        if billing["service_amount"] == 0:
+            continue
+        if billing["unit_id"] is None:
             items.append(
                 {
                     "id": uuid4(),
@@ -548,11 +559,13 @@ def _reconcile(
                 }
             )
             continue
+        # NG books revenue on the invoice emission date, so both sides match
+        # on the emission month. Competence is the service month and differs.
         key = (
-            billing["competence_period"],
+            _period(billing["emission_date"]),
             billing["unit_id"],
             billing["account_id"],
-            billing_documents[billing["id"]].strip(),
+            ng_invoice_key(billing_documents[billing["id"]], billing["emission_date"]),
         )
         billing_keys[key].append(billing)
     for key in actual_keys.keys() | billing_keys.keys():
@@ -697,6 +710,14 @@ def _persist_projection(
         item = dispositions.get(record.id)
         disposition = item.disposition.value if item else "ACCEPTED"
         if item is not None and item.disposition not in DOWNSTREAM_SAFE_DISPOSITIONS:
+            # A copy confirmed as a document-format duplicate has one known
+            # treatment, removal at source, so it leaves the dataset unblocked.
+            if (
+                item.disposition is ReviewDisposition.CORRECTION_REQUIRED
+                and item.rule_keys == (DUPLICATE_DOCUMENT_RULE,)
+            ):
+                counts["excluded_confirmed_duplicates"] += 1
+                continue
             counts["blocked_reviewed_records"] += 1
             continue
         account_map = mappings.find(
@@ -708,7 +729,7 @@ def _persist_projection(
         unit_map = mappings.find(
             record.source_id,
             MappingKind.UNIT,
-            record.administrative_unit,
+            record.administrative_unit or BLANK_UNIT_KEY,
             record.emission_date,
         )
         actual_id = uuid4()
@@ -1566,14 +1587,42 @@ def readiness(
         )
         for item in actuals
     )
-    blockers["MISSING_BUDGET"] = sum(
-        (item.account_id, item.unit_id) not in budget_keys
-        for item in actuals
-        if item.account_id is not None and item.unit_id is not None
+    # Budget coverage is only evaluated when the run has budget inputs. A run
+    # without budgets is an Actual-only scope, not a gap in every record.
+    if run.budget_execution_ids:
+        blockers["MISSING_BUDGET"] = sum(
+            (item.account_id, item.unit_id) not in budget_keys
+            for item in actuals
+            if item.account_id is not None and item.unit_id is not None
+        )
+    # Reconciliation items count in the period of the facts they concern. Both
+    # sides use the emission month, the same key the reconciliation uses.
+    next_period = (period + datetime.timedelta(days=32)).replace(day=1)
+    in_scope_actuals = sa.select(FinancialActualFact.id).where(
+        FinancialActualFact.run_id == run_id,
+        FinancialActualFact.calendar_period == period,
     )
+    in_scope_billings = sa.select(FinancialBillingFact.id).where(
+        FinancialBillingFact.run_id == run_id,
+        FinancialBillingFact.emission_date >= period,
+        FinancialBillingFact.emission_date < next_period,
+    )
+    if unit_id is not None:
+        in_scope_actuals = in_scope_actuals.where(
+            FinancialActualFact.unit_id == unit_id
+        )
+        in_scope_billings = in_scope_billings.where(
+            FinancialBillingFact.unit_id == unit_id
+        )
     reconciliation_rows = session.execute(
         sa.select(FinancialReconciliationItem.status, sa.func.count())
-        .where(FinancialReconciliationItem.run_id == run_id)
+        .where(
+            FinancialReconciliationItem.run_id == run_id,
+            sa.or_(
+                FinancialReconciliationItem.actual_fact_id.in_(in_scope_actuals),
+                FinancialReconciliationItem.billing_fact_id.in_(in_scope_billings),
+            ),
+        )
         .group_by(FinancialReconciliationItem.status)
     ).all()
     reconciliation = {status: int(count) for status, count in reconciliation_rows}

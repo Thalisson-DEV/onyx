@@ -302,6 +302,37 @@ _ACTIVE: tuple[RuleDefinition, ...] = (
         ),
     ),
     RuleDefinition(
+        key="NGF-DUP-DOC",
+        version=2,
+        name="Lançamento duplicado com o documento em outro formato",
+        description=(
+            "Two or more records in one monthly sheet share account, effective "
+            "date, gross movement amount and the same invoice number, written once "
+            "as the plain number and once as the two-digit year followed by the "
+            "zero-padded number. Every copy after the "
+            "first in sheet order is flagged; the first is kept."
+        ),
+        category=ReviewCategory.POP_01,
+        related_categories=(ReviewCategory.POP_06,),
+        rule_type=RuleType.DETERMINISTIC,
+        rule_kind=RuleKind.DETECTION,
+        status=EngineRuleStatus.ACTIVE,
+        severity=OccurrenceCriticality.HIGH,
+        blocking=True,
+        origin=IssueOrigin.SOURCE_BUSINESS_ERROR,
+        required_fields=("document_number",),
+        recommendation_capability=(RecommendationKind.SOURCE_CORRECTION_REQUIRED,),
+        verification_criterion=(
+            "Uma importação posterior contém um único lançamento desse documento "
+            "no mês."
+        ),
+        known_limitations=(
+            "Only the year-prefixed invoice notation is recognized.",
+            "Retention and net amounts may differ between the copies.",
+            "A confirmed copy leaves the reviewed dataset; the first copy stays.",
+        ),
+    ),
+    RuleDefinition(
         key="NGF-ACCT-LABEL-DRIFT",
         version=1,
         name="Código de conta com mais de uma descrição",

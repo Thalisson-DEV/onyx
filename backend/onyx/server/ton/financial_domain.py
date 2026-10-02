@@ -10,8 +10,8 @@ from onyx.auth.permissions import require_permission
 from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import Permission
 from onyx.db.models import User
+from onyx.db.ton import decision_loop, financial_readiness
 from onyx.db.ton import financial_domain as repository
-from onyx.db.ton import financial_readiness
 from onyx.db.ton.audit import emit_ton_audit_event
 from onyx.db.ton.enums import TonAuditResourceKind
 from onyx.error_handling.error_codes import OnyxErrorCode
@@ -33,7 +33,9 @@ from onyx.ton.financial_domain.models import (
 from onyx.ton.financial_domain.readiness_models import (
     BlockerPage,
     CandidateRejection,
+    DecisionLog,
     LegacyCandidateImport,
+    ReadinessChanges,
     ReadinessOverview,
     ReconciliationApproval,
 )
@@ -252,6 +254,28 @@ def financial_readiness_overview(
     return financial_readiness.overview(
         session, user, run_id, structure_version_id, unit_id
     )
+
+
+@router.get("/normalizations/{run_id}/readiness/changes")
+def financial_readiness_changes(
+    run_id: UUID,
+    structure_version_id: UUID,
+    unit_id: UUID | None = None,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> ReadinessChanges:
+    return decision_loop.readiness_changes(
+        session, user, run_id, structure_version_id, unit_id
+    )
+
+
+@router.get("/decisions")
+def list_financial_decisions(
+    limit: int = Query(20, ge=1, le=100),
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> DecisionLog:
+    return decision_loop.decision_log(session, user, limit)
 
 
 @router.get("/normalizations/{run_id}/readiness/blockers/{blocker}")

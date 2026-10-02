@@ -78,10 +78,13 @@ export function SourceUpload({
   source,
   onClose,
   onComplete,
+  guidance,
 }: {
   source: ClientSource;
   onClose: () => void;
   onComplete: (result: ClientImport) => void;
+  /** What the file must contain for the workflow that opened the upload. */
+  guidance?: string;
 }) {
   const t = useTranslations("dataSources");
   const [file, setFile] = useState<File | null>(null);
@@ -161,6 +164,13 @@ export function SourceUpload({
           onClose={() => !busy && onClose()}
         />
         <Modal.Body>
+          {guidance && (
+            <div className="pb-4">
+              <Text font="main-ui-body" color="text-04">
+                {guidance}
+              </Text>
+            </div>
+          )}
           <div
             {...getRootProps()}
             className={cn(

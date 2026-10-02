@@ -36,6 +36,12 @@ const dayKey = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Sao_Paulo",
 });
 
+/** A calendar date ("2026-01-10") as the source wrote it, without timezone shifts. */
+export function formatDay(value: string): string {
+  const [year, month, day] = value.slice(0, 10).split("-");
+  return year && month && day ? `${day}/${month}/${year}` : value;
+}
+
 export function formatDate(value: string | Date): string {
   return dateFormatter.format(new Date(value));
 }
@@ -406,7 +412,6 @@ export const COPY = {
     title: "Pendências do fechamento",
     description:
       "Itens que precisam de decisão humana ou de dados antes da publicação da DRE. Nada é aprovado automaticamente.",
-    recompute: "Recalcular prontidão",
     periodStatus: (period: string, count: number) =>
       `${period} · ${count === 1 ? "1 item pendente" : `${formatNumber(count)} itens pendentes`}`,
     ready: "Pronta para publicação",
@@ -513,8 +518,7 @@ export const COPY = {
     noActual: {
       label: "Realizado ausente",
       description: "Meses do escopo sem lançamentos realizados revisados.",
-      action:
-        "Importe o realizado revisado desses meses em Fontes. Depois, recalcule a prontidão.",
+      action: "Importe em Fontes os lançamentos revisados do NG desses meses.",
       cta: "Abrir Fontes",
     },
     decisions: {
@@ -529,11 +533,8 @@ export const COPY = {
       suggestion: "Sugestão do TON",
       scope: "Quantos registros são afetados",
       decision: "O que precisa ser decidido",
-      impact: "O que muda se você confirmar",
       reason: "Justificativa",
       reasonPlaceholder: "Motivo ou referência do documento",
-      consequence: (count: number) =>
-        `Esta decisão pode afetar ${plural(count, "registro", "registros")} após o recálculo. Ela não cria um resultado oficial de DRE.`,
       searchTarget: "Buscar destino",
       accountCode: "Código da conta",
       accountLabel: "Nome da conta",
@@ -547,13 +548,269 @@ export const COPY = {
       back: "Voltar",
       reject: "Rejeitar sugestão",
       close: "Fechar",
-      saved:
-        "Decisão registrada. Recalcule a prontidão para aplicá-la ao fechamento.",
       error:
         "Não foi possível registrar a decisão. Confira a evidência e tente novamente.",
       noPermission:
         "Somente usuários autorizados podem registrar esta decisão. Você pode consultar a evidência.",
       confirmTitle: "Confirme antes de registrar",
+    },
+  },
+  decisionLoop: {
+    evidenceTitle: "Registros de origem",
+    evidenceSample: (shown: number, total: number) =>
+      `Mostrando ${formatNumber(shown)} de ${plural(total, "registro", "registros")}`,
+    noEvidence:
+      "A origem não traz registros individuais para este item. Ele é avaliado pelo período inteiro.",
+    origin: {
+      NG: "NG / Lançamentos financeiros",
+      BILLING: "Faturamento",
+    },
+    fields: {
+      document: "Documento",
+      invoice: "Nota fiscal",
+      emission: "Emissão",
+      competence: "Competência",
+      account: "Conta",
+      unit: "Unidade de origem",
+      counterparty: "Tomador",
+      history: "Histórico",
+      movement: "Movimento",
+      final: "Saldo final",
+      service: "Valor do serviço",
+      net: "Líquido da nota",
+    },
+    location: (sheet: string, row: number) => `Aba ${sheet}, linha ${row}`,
+    reconciliationGap:
+      "Não há registro correspondente do outro lado. Compare documento, data e valor antes de classificar.",
+    preview: {
+      title: "O que muda se você confirmar",
+      unit: (source: string, target: string) =>
+        `“${source}” passa a ser lido como a unidade ${target}.`,
+      account: (source: string, target: string) =>
+        `“${source}” passa a ser lido como a conta ${target}.`,
+      amountBasis: (basis: string) =>
+        `O realizado desta conta passa a usar ${basis.toLowerCase()}.`,
+      dre: (line: string) =>
+        `A conta entra na linha “${line}” da DRE. A estrutura ganha uma nova versão.`,
+      budgetPeriod: (start: string, end: string | null) =>
+        end
+          ? `A linha de orçamento passa a valer de ${start} a ${end}.`
+          : `A linha de orçamento passa a valer a partir de ${start}.`,
+      reconciliation: (decision: string) =>
+        `O item passa a ser classificado como “${decision}”.`,
+      scope: (records: string, periods: string | null) =>
+        periods ? `Afeta ${records} em ${periods}.` : `Afeta ${records}.`,
+      recompute:
+        "Ao confirmar, o TON registra a decisão com seu nome e recalcula a prontidão para mostrar o antes e o depois.",
+      recordOnly:
+        "Ao confirmar, a decisão é registrada com seu nome. O recálculo da prontidão depende de uma pessoa com permissão de importação.",
+      nothingAutomatic: "Nenhum valor é aprovado automaticamente.",
+    },
+    working: {
+      recording: "Registrando a decisão…",
+      recomputing: "Recalculando a prontidão…",
+    },
+    result: {
+      title: "Decisão registrada",
+      meta: (version: number | null, who: string | null, when: string) =>
+        [version != null ? `Versão ${version}` : null, who, when]
+          .filter(Boolean)
+          .join(" · "),
+      recomputed: "Prontidão recalculada com a decisão",
+      notRecomputed:
+        "Aguardando recálculo. A prontidão só muda depois que uma pessoa com permissão de importação recalcular a base.",
+      before: "Antes",
+      now: "Agora",
+      total: "Total de pendências",
+      unchanged:
+        "A prontidão não mudou com esta decisão. Os itens restantes dependem de outras decisões ou dados.",
+      nowReady: (period: string) =>
+        `A DRE de ${period} não tem mais bloqueios. O cálculo continua sendo uma ação explícita.`,
+      stillBlocked: (period: string, count: number) =>
+        `A DRE de ${period} ainda tem ${plural(count, "pendência", "pendências")}.`,
+      next: "Próxima pendência",
+      openDre: "Abrir DRE",
+      done: "Concluir",
+      rejected:
+        "Sugestão rejeitada e registrada. Ela não será proposta de novo.",
+    },
+    status: {
+      READY: "Pronta",
+      NOT_READY: "Não pronta",
+    },
+    pendingBanner: (count: number) =>
+      count === 1
+        ? "1 decisão registrada ainda não foi aplicada à base do fechamento."
+        : `${formatNumber(count)} decisões registradas ainda não foram aplicadas à base do fechamento.`,
+    applyNow: "Recalcular agora",
+    applying: "Recalculando…",
+    applyNeedsPermission:
+      "Uma pessoa com permissão de importação precisa recalcular a prontidão.",
+    log: {
+      title: "Decisões recentes",
+      empty: "Nenhuma decisão registrada até agora.",
+      applied: "Aplicada",
+      pending: "Aguardando recálculo",
+      by: (who: string) => `por ${who}`,
+      version: (version: number) => `versão ${version}`,
+      kinds: {
+        UNIT_MAPPING: "Unidade vinculada",
+        ACCOUNT_MAPPING: "Conta vinculada",
+        BUDGET_ACCOUNT_MAPPING: "Conta da dotação vinculada",
+        BUDGET_UNIT_MAPPING: "Unidade da dotação vinculada",
+        BUDGET_PERIOD: "Período da dotação definido",
+        AMOUNT_BASIS: "Base do realizado definida",
+        RECONCILIATION: "Conciliação classificada",
+        CANDIDATE_REJECTION: "Sugestão rejeitada",
+        DRE_ASSIGNMENT: "Classificação da DRE",
+      },
+      outcomes: {
+        MOVEMENT: "Movimento",
+        FINAL: "Saldo final",
+        SUPPLEMENTAL: "Lançamento complementar",
+        EXPECTED_DIFFERENCE: "Diferença esperada",
+        NOT_SAME_EVENT: "Eventos distintos",
+        NG_AUTHORITATIVE: "Prevalece o NG/Keevo",
+        EXACT_CODE: "Código idêntico rejeitado",
+        LEGACY_REFERENCE: "Referência anterior rejeitada",
+      } as Record<string, string>,
+    },
+    triage: {
+      evidence: "Sugestão com evidência",
+      decision: "Precisa da sua decisão",
+      data: "Depende de dados",
+    },
+    evidenceReady: {
+      title: "Pronta para avançar",
+      body: (basis: string) =>
+        `Há evidência determinística (${basis}). Confira os registros e confirme ou rejeite a sugestão.`,
+      EXACT_CODE: "o código de origem é idêntico ao do cadastro",
+      APPROVED_MAPPING: "o mesmo valor já foi aprovado antes",
+      LEGACY: "referência da planilha anterior da Controladoria",
+    },
+    explain: {
+      title: "Entenda",
+      changesNumbers: "Muda números da DRE",
+      keepsNumbers: "Não muda números da DRE",
+      categories: {
+        units: {
+          question:
+            "O NG usa um nome de unidade que o TON ainda não conhece. Indique a qual unidade da DRE ele corresponde.",
+          effect:
+            "Os lançamentos passam a contar no resultado dessa unidade, inclusive nas próximas importações com o mesmo nome.",
+          changes: true,
+        },
+        accounts: {
+          question:
+            "A conta do NG ainda não está ligada a uma conta do plano do TON.",
+          effect:
+            "Os valores passam a entrar na DRE pela conta escolhida, inclusive nas próximas importações.",
+          changes: true,
+        },
+        budgetAccounts: {
+          question:
+            "A conta da planilha de dotação ainda não está ligada a uma conta do plano do TON.",
+          effect:
+            "O orçado dessa linha passa a ser comparado na conta escolhida.",
+          changes: true,
+        },
+        budgetUnits: {
+          question:
+            "A unidade da planilha de dotação ainda não está ligada a uma unidade da DRE.",
+          effect: "O orçado dessa linha passa a contar na unidade escolhida.",
+          changes: true,
+        },
+        amountBasis: {
+          question:
+            "O NG traz dois valores por lançamento: o movimento e o saldo final. O TON precisa saber qual deles representa o realizado desta conta.",
+          effect: "O realizado desta conta passa a usar o valor escolhido.",
+          changes: true,
+        },
+        dreAssignment: {
+          question: "A conta ainda não tem lugar na estrutura da DRE.",
+          effect: "Os valores da conta passam a aparecer na linha escolhida.",
+          changes: true,
+        },
+        drePending: {
+          question:
+            "A linha da DRE desta conta foi proposta e falta aprovação.",
+          effect: "Os valores da conta passam a aparecer na linha aprovada.",
+          changes: true,
+        },
+        budgetPeriods: {
+          question:
+            "A planilha de dotação não diz a partir de quando o orçamento vale. O TON não deduz o calendário pelo nome do arquivo nem pelo valor.",
+          effect: "O orçado passa a ser distribuído nos meses informados.",
+          changes: true,
+        },
+        reconciliation: {
+          question:
+            "O TON compara cada receita do NG com as notas do faturamento. Este registro não encontrou par do outro lado.",
+          effect:
+            "O realizado da DRE vem só do NG. A decisão registra por que a diferença existe e libera o item.",
+          changes: false,
+        },
+        reconciliationAmbiguous: {
+          question:
+            "Este registro tem mais de um par possível do outro lado, e o TON não escolhe sozinho.",
+          effect:
+            "O realizado da DRE vem só do NG. A decisão registra qual relação vale e libera o item.",
+          changes: false,
+        },
+      } as Record<
+        string,
+        { question: string; effect: string; changes: boolean } | undefined
+      >,
+      options: {
+        SUPPLEMENTAL:
+          "O registro é válido e complementa o outro lado, por exemplo quando a contrapartida está em outro documento ou mês.",
+        EXPECTED_DIFFERENCE:
+          "A diferença é conhecida e aceita, por exemplo por prazo, retenção ou arredondamento.",
+        NOT_SAME_EVENT:
+          "Os registros tratam de fatos diferentes e não devem ser comparados.",
+        NG_AUTHORITATIVE:
+          "Os dois lados existem e vale o registro do NG/Keevo.",
+      },
+      askTon: "Perguntar ao TON sobre este item",
+      askPrompt: (category: string, item: string, periods: string | null) =>
+        `Explique em linguagem simples a pendência "${category}: ${item}"${periods ? ` (${periods})` : ""} do fechamento: o que aconteceu, quais evidências devo conferir e o que cada opção muda. Não decida por mim.`,
+    },
+    missing: {
+      title: "Faltam lançamentos do NG de alguns meses",
+      why: (period: string) =>
+        `A DRE de ${period} é acumulada no ano: soma janeiro até ${period}. Cada mês sem lançamentos revisados do NG impede a publicação.`,
+      have: "A base atual tem",
+      missing: "Faltam",
+      notDecision:
+        "Isto não se resolve com uma decisão: é preciso importar os dados.",
+      steps: [
+        (range: string) =>
+          `Exporte do NG os lançamentos de ${range} em um único arquivo.`,
+        (_range: string) =>
+          "Importe o arquivo em Fontes, em NG / Lançamentos financeiros. A nova importação substitui a anterior, então o arquivo precisa trazer também os meses que já estão na base.",
+        (_range: string) =>
+          "O TON revisa os lançamentos e recalcula a prontidão sozinho. Depois volte aqui para ver o que mudou.",
+      ],
+      range: (from: string, to: string) => `${from} a ${to}`,
+      cta: "Importar lançamentos do NG",
+    },
+    uploadGuidance: {
+      ng: "A importação do NG substitui a anterior. O arquivo deve cobrir de janeiro até o mês do fechamento.",
+      ngRange: (range: string) =>
+        `Para o fechamento, o arquivo deve cobrir ${range}. A importação do NG substitui a anterior.`,
+    },
+    changes: {
+      title: "O que mudou na última atualização",
+      since: (when: string) => `Comparado com a base anterior, de ${when}`,
+      appliedDecisions: (count: number) =>
+        `${plural(count, "decisão aplicada", "decisões aplicadas")} nesta atualização`,
+      first:
+        "Esta é a primeira base com estes dados importados. Ainda não há comparação.",
+      noChange: "Nenhuma pendência mudou em relação à base anterior.",
+      resolved: (count: number) =>
+        plural(count, "pendência resolvida", "pendências resolvidas"),
+      added: (count: number) =>
+        plural(count, "nova pendência", "novas pendências"),
     },
   },
   automations: {

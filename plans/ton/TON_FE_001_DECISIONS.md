@@ -507,3 +507,73 @@ Status: Accepted (substitui parte de D-008)
 Decisão: o rail direito sai da Visão Geral — repetia R3 e fontes já presentes na faixa
 executiva e no destaque da R3. Entram "Saúde das fontes" e "Especialistas no fechamento"
 (só os envolvidos na análise). O rail contextual continua no estado inicial do Assistente.
+
+## D-024 — Loop de decisão sobre versões já persistidas (TON-FE-003)
+
+Data: 2026-10-02
+Status: Accepted
+
+Contexto: decisões financeiras já eram versionadas e cada base normalizada registra as
+versões que usou (`mapping_revision_number`, `amount_basis_revision_number`,
+`reconciliation_decision_number`). Faltava ler isso.
+
+Decisão: três read models sem migração: (1) `records[]` nas linhas de bloqueio — registros
+de origem (documento, datas, conta, unidade, valores, aba/linha) para conciliação e
+unidade/conta sem vínculo; (2) `GET /normalizations/{id}/readiness/changes` — prontidão da
+base contra a base anterior com os mesmos insumos importados e "decisões registradas ainda
+não aplicadas" (versões mais novas que as da base); (3) `GET /decisions` — log unificado
+(quem, quando, por quê, versão, aplicada ou não), filtrado pela ACL de fonte. Comparações
+são duas avaliações determinísticas de prontidão; nada é estimado.
+
+## D-025 — Recalcular logo após confirmar, quando o usuário pode
+
+Data: 2026-10-02
+Status: Accepted
+
+Decisão: ao confirmar uma decisão, quem tem `IMPORT_TON_SOURCES` dispara o recálculo da
+mesma base (idempotente por digest) e vê antes → agora por categoria. A confirmação avisa
+isso antes. Sem a permissão, a decisão fica "aguardando recálculo" e aparece no banner da
+fila. Classificação DRE muda a versão da estrutura e vale sem recálculo da base. O botão
+solto "Recalcular prontidão" saiu: recálculo só aparece quando há decisões pendentes.
+
+## D-026 — Resolução em lote adiada
+
+Data: 2026-10-02
+Status: Accepted
+
+Decisão: lote só faria sentido para candidatos determinísticos (`EXACT_CODE` /
+`APPROVED_MAPPING`). A base local não tem nenhum; conciliação nunca vai em lote. Fica P1
+condicionado a dados reais com candidatos repetidos.
+
+## D-027 — Explicação leiga sem decisão sugerida por IA
+
+Data: 2026-10-02
+Status: Accepted
+
+Contexto: pedido de uma área onde o TON explique e já sugira a resolução ("pronta para
+avançar") para usuários leigos.
+
+Decisão: (1) cada pendência mostra "Entenda": a pergunta em linguagem simples e se a decisão
+muda ou não números da DRE (verificado no motor: a DRE lê só realizado NG e dotação, então
+conciliação não altera valores); (2) opções de conciliação viram cartões com o significado
+de cada uma; (3) a fila classifica cada item em "Sugestão com evidência", "Precisa da sua
+decisão" ou "Depende de dados"; (4) "Pronta para avançar" aparece só quando há evidência
+determinística (código idêntico, aprovação anterior ou referência legada); (5) "Perguntar
+ao TON sobre este item" abre o assistente com o contexto (sem valores nem IDs) e pede
+explicação, não decisão. Não há resultado sugerido por LLM para conciliação ou vínculo:
+induziria aprovação automática e viola D-0 (humano decide mapping/conciliação ambígua).
+Os textos que explicam cada opção de conciliação precisam de validação da Controladoria.
+
+## D-028 — Realizado ausente é importação, não decisão
+
+Data: 2026-10-02
+Status: Accepted
+
+Contexto: `NO_ACTUAL` conta 1 por mês sem realizado entre janeiro e o mês do fechamento (a
+DRE é acumulada no ano). A UI mostrava só "6". Além disso, a importação do NG substitui a
+anterior (`_refresh_readiness` usa a última importação).
+
+Decisão: `list_blockers(NO_ACTUAL)` devolve um item por mês faltante e
+`covered_periods`. A fila mostra meses presentes/faltantes, passos e o link
+`/ton/fontes?importar=financial_launches&ate=AAAA-MM`, que abre o upload do NG com o aviso
+de cobrir janeiro→mês do fechamento num único arquivo. Nenhum lançamento é gerado.

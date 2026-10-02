@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button, Text } from "@opal/components";
 import {
   SvgAlertTriangle,
@@ -14,7 +15,12 @@ import {
 } from "@opal/icons";
 import { cn } from "@opal/utils";
 import { useTonClosing, useTonDataSources } from "@/lib/ton/api";
-import { COPY, formatNumber, formatRelativeDateTime } from "@/lib/ton/copy";
+import {
+  COPY,
+  formatNumber,
+  formatPeriod,
+  formatRelativeDateTime,
+} from "@/lib/ton/copy";
 import { getBusinessLabel } from "@/lib/ton/labels";
 import type { ClientImport, ClientSource } from "@/lib/ton/types";
 import { ImportDetail, SourceUpload } from "@/views/ton/DataSourcesPage";
@@ -323,6 +329,28 @@ export default function SourcesPage() {
     key: string;
     result: ClientImport;
   } | null>(null);
+  const searchParams = useSearchParams();
+  const requested = searchParams.get("importar");
+  const until = searchParams.get("ate");
+  const opened = useRef(false);
+  // Workflows such as missing actuals link straight to the right upload.
+  useEffect(() => {
+    if (opened.current || !requested || !sources.data) return;
+    const match = sources.data.find((item) => item.key === requested);
+    if (match) {
+      opened.current = true;
+      setUploadSource(match);
+    }
+  }, [requested, sources.data]);
+  function guidanceFor(source: ClientSource): string | undefined {
+    if (source.key !== NG_SOURCE) return undefined;
+    if (until && /^\d{4}-\d{2}$/.test(until)) {
+      const from = formatPeriod(`${until.slice(0, 4)}-01-01`).toLowerCase();
+      const to = formatPeriod(`${until}-01`).toLowerCase();
+      return COPY.decisionLoop.uploadGuidance.ngRange(`de ${from} a ${to}`);
+    }
+    return COPY.decisionLoop.uploadGuidance.ng;
+  }
   const directFor = (key: string) =>
     closing.data?.sources.find((item) => item.key === key)?.direct_integration;
 
@@ -368,6 +396,7 @@ export default function SourcesPage() {
       {uploadSource && (
         <SourceUpload
           source={uploadSource}
+          guidance={guidanceFor(uploadSource)}
           onClose={() => setUploadSource(null)}
           onComplete={(result) => {
             setImported({ key: uploadSource.key, result });

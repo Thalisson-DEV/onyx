@@ -1,5 +1,6 @@
 """Paged, tenant-scoped financial readiness evidence."""
 
+from datetime import date
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -35,6 +36,7 @@ from onyx.ton.financial_domain.readiness_models import (
     BlockerRow,
     CandidateRejection,
     CandidateView,
+    EvidenceRecordView,
     LegacyCandidateImport,
     LegacyEvidenceView,
     ReadinessOverview,
@@ -71,6 +73,111 @@ BLOCKER_GUIDANCE = {
     "DRE_STRUCTURE_INVALID": "Create a corrected DRE structure version",
     "UNCLASSIFIED_ACCOUNT": "Review canonical account classification",
 }
+
+
+EVIDENCE_SAMPLE = 5
+
+
+def _account_text(code: str | None, label: str | None) -> str | None:
+    if not code:
+        return label
+    return f"{code} — {label}" if label else code
+
+
+def ng_evidence(record: ParsedSourceRecord, period: date | None) -> EvidenceRecordView:
+    return EvidenceRecordView(
+        origin="NG",
+        document=record.document_number,
+        emission_date=record.emission_date,
+        period=period,
+        account=_account_text(record.account_code, record.account_label),
+        unit=record.administrative_unit,
+        description=record.history,
+        movement_amount=record.movement_amount,
+        final_amount=record.final_amount,
+        sheet=record.sheet_name,
+        row=record.source_row_number,
+    )
+
+
+def billing_evidence(
+    fact: FinancialBillingFact, record: OperationalSourceRecord | None
+) -> EvidenceRecordView:
+    return EvidenceRecordView(
+        origin="BILLING",
+        document=fact.invoice_number,
+        emission_date=fact.emission_date,
+        period=fact.competence_period,
+        counterparty=fact.payer_text,
+        description=record.description if record else None,
+        service_amount=fact.service_amount,
+        net_amount=fact.invoice_net_amount,
+        sheet=record.sheet_name if record else None,
+        row=record.source_row_number if record else None,
+    )
+
+
+def _unmapped_samples(
+    session: Session,
+    run_id: UUID,
+    is_unit: bool,
+    keys: list[tuple[UUID, str]],
+    unit_id: UUID | None,
+) -> dict[tuple[UUID, str], list[EvidenceRecordView]]:
+    """The first source records behind each unmapped key, in source order."""
+    if not keys:
+        return {}
+    key = (
+        ParsedSourceRecord.administrative_unit
+        if is_unit
+        else ParsedSourceRecord.account_code
+    )
+    condition = (
+        FinancialActualFact.unit_id.is_(None)
+        if is_unit
+        else FinancialActualFact.account_id.is_(None)
+    )
+    ranked = (
+        sa.select(
+            ParsedSourceRecord.id.label("record_id"),
+            FinancialActualFact.calendar_period.label("period"),
+            sa.func.row_number()
+            .over(
+                partition_by=(ParsedSourceRecord.source_id, key),
+                order_by=(
+                    ParsedSourceRecord.sheet_name,
+                    ParsedSourceRecord.source_row_number,
+                ),
+            )
+            .label("position"),
+        )
+        .join(
+            FinancialActualFact,
+            FinancialActualFact.parsed_record_id == ParsedSourceRecord.id,
+        )
+        .where(
+            FinancialActualFact.run_id == run_id,
+            condition,
+            sa.tuple_(ParsedSourceRecord.source_id, key).in_(keys),
+        )
+    )
+    if unit_id is not None:
+        ranked = ranked.where(FinancialActualFact.unit_id == unit_id)
+    sample = ranked.subquery()
+    result: dict[tuple[UUID, str], list[EvidenceRecordView]] = {}
+    for record, period in session.execute(
+        sa.select(ParsedSourceRecord, sample.c.period)
+        .join(sample, sample.c.record_id == ParsedSourceRecord.id)
+        .where(sample.c.position <= EVIDENCE_SAMPLE)
+        .order_by(ParsedSourceRecord.sheet_name, ParsedSourceRecord.source_row_number)
+    ):
+        value = record.administrative_unit if is_unit else record.account_code
+        if value is None:
+            continue
+        result.setdefault((record.source_id, value), []).append(
+            ng_evidence(record, period)
+        )
+    return result
 
 
 def overview(
@@ -496,6 +603,13 @@ def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query
             if (item.source_id, item.source_key, item.reference_digest)
             not in rejected_legacy
         }
+        samples = _unmapped_samples(
+            session,
+            run_id,
+            is_unit,
+            [(source_id, source_key) for source_id, source_key, _count, _p in page],
+            unit_id,
+        )
         for source_id, source_key, count, periods in page:
             candidate = candidates.get((source_id, source_key))
             evidence = legacy.get((source_id, source_key))
@@ -515,6 +629,7 @@ def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query
                     candidate=candidate,
                     legacy_evidence=evidence,
                     evidence="Exact source field from reviewed NG records",
+                    records=samples.get((source_id, source_key), []),
                 )
             )
     elif blocker == "ACTUAL_AMOUNT_SEMANTICS_UNRESOLVED":
@@ -810,7 +925,8 @@ def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query
                 FinancialReconciliationItem,
                 FinancialActualFact,
                 FinancialBillingFact,
-                ParsedSourceRecord.document_number,
+                ParsedSourceRecord,
+                OperationalSourceRecord,
             )
             .outerjoin(
                 FinancialActualFact,
@@ -823,6 +939,10 @@ def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query
             .outerjoin(
                 ParsedSourceRecord,
                 ParsedSourceRecord.id == FinancialActualFact.parsed_record_id,
+            )
+            .outerjoin(
+                OperationalSourceRecord,
+                OperationalSourceRecord.id == FinancialBillingFact.source_record_id,
             )
             .where(
                 FinancialReconciliationItem.run_id == run_id,
@@ -859,12 +979,61 @@ def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query
                     f"billing {'yes' if billing else 'no'}; "
                     f"account mapped {'yes' if (actual or billing) and (actual or billing).account_id else 'no'}; "
                     f"unit mapped {'yes' if (actual or billing) and (actual or billing).unit_id else 'no'}; "
-                    f"document match {'yes' if document and billing and document.strip() == billing.invoice_number.strip() else 'unknown'}; "
+                    f"document match {'yes' if record and record.document_number and billing and record.document_number.strip() == billing.invoice_number.strip() else 'unknown'}; "
                     "amount relation unverified"
                 ),
+                records=[
+                    *(
+                        [ng_evidence(record, actual.calendar_period)]
+                        if record is not None and actual is not None
+                        else []
+                    ),
+                    *(
+                        [billing_evidence(billing, billing_record)]
+                        if billing is not None
+                        else []
+                    ),
+                ],
             )
-            for item, actual, billing, document in page
+            for item, actual, billing, record, billing_record in page
         ]
+    elif blocker == "NO_ACTUAL":
+        covered_query = (
+            sa.select(FinancialActualFact.calendar_period)
+            .where(FinancialActualFact.run_id == run_id)
+            .distinct()
+        )
+        if unit_id is not None:
+            covered_query = covered_query.where(FinancialActualFact.unit_id == unit_id)
+        covered = sorted(set(session.scalars(covered_query)))
+        # A period's DRE is year to date: every earlier month of the year needs actuals.
+        missing = sorted(
+            {
+                date(period.year, month, 1)
+                for period in covered
+                for month in range(1, period.month + 1)
+            }
+            - set(covered)
+        )
+        total = len(missing)
+        rows = [
+            BlockerRow(
+                source_key=blocker,
+                record_count=0,
+                periods=[month],
+                status="UNRESOLVED",
+                evidence=BLOCKER_GUIDANCE[blocker],
+            )
+            for month in missing[offset : offset + limit]
+        ]
+        return BlockerPage(
+            blocker=blocker,
+            total=total,
+            limit=limit,
+            offset=offset,
+            rows=rows,
+            covered_periods=covered,
+        )
     elif blocker in SUMMARY_BLOCKERS:
         periods = overview(session, user, run_id, version_id, unit_id).periods
         matching = [item for item in periods if item.blockers.get(blocker, 0)]

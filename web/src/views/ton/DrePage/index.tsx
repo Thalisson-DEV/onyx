@@ -630,13 +630,12 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
             value={formatCurrency(line.variance)}
           />
         </div>
-        <div className="flex gap-1 px-5 pt-4" role="tablist">
+        <div className="flex gap-1 px-5 pt-4" role="group">
           {(["ACTUAL", "BUDGET"] as const).map((type) => (
             <Button
               key={type}
               size="sm"
-              role="tab"
-              aria-selected={dre.factType === type}
+              aria-pressed={dre.factType === type}
               prominence={dre.factType === type ? "primary" : "secondary"}
               onClick={() => dre.select.factType(type)}
             >

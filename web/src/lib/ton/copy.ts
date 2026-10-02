@@ -561,6 +561,10 @@ export const COPY = {
     history: "Histórico de execuções",
     historyEmpty: "Nenhuma execução publicada ainda.",
     historyAll: "Ver no catálogo de relatórios",
+    historyCount: (count: number) =>
+      `${plural(count, "execução recente", "execuções recentes")} da rotina R3`,
+    today: "Hoje",
+    yesterday: "Ontem",
     code: (code: string) => `Rotina ${code}`,
     guardrail:
       "As rotinas publicam relatórios internos. Decisões e aprovações continuam exigindo uma pessoa.",

@@ -113,7 +113,7 @@ it("separates the scheduled flagship from routines waiting on capabilities", () 
   render(<AutomationsPage />);
   expect(screen.getByText("Aguardando capacidade (1)")).toBeInTheDocument();
   expect(
-    screen.getByText("Frota e abastecimento integrados")
+    screen.getByText("Depende de: Frota e abastecimento integrados")
   ).toBeInTheDocument();
   expect(screen.queryByText("Ativas")).not.toBeInTheDocument();
   expect(

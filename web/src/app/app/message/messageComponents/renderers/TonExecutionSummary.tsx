@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Text } from "@opal/components";
+import { Button, Text } from "@opal/components";
 import {
   SvgAlertCircle,
   SvgCheckCircle,
@@ -136,7 +136,20 @@ export function TonExecutionSummary({
 
   if (part === "artifacts") {
     const cards = [...families].filter(([key]) => CARD_TOOLS.includes(key));
-    if (!stopped || !cards.length) return null;
+    if (!stopped || stopReason === StopReason.USER_CANCELLED) return null;
+    const ran = new Set([...families.keys()].map(phaseOf));
+    // Follow-ups only navigate to the product surfaces the analysis touched;
+    // nothing is executed or approved from here.
+    const labels = COPY.analysis.followUps;
+    const followUps: { href: string; label: string }[] = [];
+    if (ran.has("dre") || ran.has("evidence"))
+      followUps.push({ href: "/ton/pendencias", label: labels.pending });
+    if (ran.has("dre")) followUps.push({ href: "/ton/dre", label: labels.dre });
+    if (ran.has("sources"))
+      followUps.push({ href: "/ton/fontes", label: labels.sources });
+    if (ran.has("report"))
+      followUps.push({ href: "/ton/relatorios", label: labels.reports });
+    if (!cards.length && !followUps.length) return null;
     return (
       <div className="flex flex-col gap-2">
         {cards.map(([key, calls]) => (
@@ -146,6 +159,26 @@ export function TonExecutionSummary({
             data={stepData(calls[calls.length - 1])?.data}
           />
         ))}
+        {followUps.length > 0 && (
+          <nav
+            aria-label={COPY.analysis.followUps.label}
+            className="flex flex-wrap items-center gap-2 pt-1"
+          >
+            <Text font="secondary-body" color="text-03">
+              {COPY.analysis.followUps.label}
+            </Text>
+            {followUps.map((item) => (
+              <Button
+                key={item.href}
+                href={item.href}
+                size="sm"
+                prominence="secondary"
+              >
+                {item.label}
+              </Button>
+            ))}
+          </nav>
+        )}
       </div>
     );
   }

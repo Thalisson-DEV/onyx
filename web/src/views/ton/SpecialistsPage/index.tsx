@@ -24,6 +24,7 @@ function askHref(specialist: SpecialistView): Route {
       specialist.objective
     ),
     [SEARCH_PARAM_NAMES.SUBMIT_ON_LOAD]: "true",
+    foco: specialist.key,
   });
   return `/ton/chat?${query.toString()}` as Route;
 }

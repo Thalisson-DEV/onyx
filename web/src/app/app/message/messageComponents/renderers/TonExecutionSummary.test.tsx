@@ -137,3 +137,35 @@ it("renders grouped technical payload only after an administrator opens it", asy
   await user.click(screen.getByText("Dados técnicos (JSON)"));
   expect(container.querySelector("pre")).toHaveTextContent("row_number");
 });
+
+it("offers navigation follow-ups only for the areas the analysis touched", () => {
+  render(
+    <TonExecutionSummary
+      part="artifacts"
+      turnGroups={groups}
+      tools={[]}
+      stopped={true}
+    />
+  );
+  expect(screen.getByRole("link", { name: "Ver pendências" })).toHaveAttribute(
+    "href",
+    "/ton/pendencias"
+  );
+  expect(
+    screen.queryByRole("link", { name: "Abrir DRE" })
+  ).not.toBeInTheDocument();
+});
+
+it("shows no follow-ups while the analysis is still running", () => {
+  render(
+    <TonExecutionSummary
+      part="artifacts"
+      turnGroups={groups}
+      tools={[]}
+      stopped={false}
+    />
+  );
+  expect(
+    screen.queryByRole("link", { name: "Ver pendências" })
+  ).not.toBeInTheDocument();
+});

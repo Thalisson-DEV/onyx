@@ -17,8 +17,13 @@ import { cn } from "@opal/utils";
 import AppPage, { type AppPagePresentation } from "@/views/AppPage";
 import { SearchFiltersProvider } from "@/lib/searchFilters/providers";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
-import { useTonAccess, useTonPersona } from "@/lib/ton/api";
-import { COPY } from "@/lib/ton/copy";
+import {
+  useTonAccess,
+  useTonClosing,
+  useTonPersona,
+  useTonSpecialists,
+} from "@/lib/ton/api";
+import { COPY, formatPeriod } from "@/lib/ton/copy";
 import { IconTile, LoadingBlock } from "@/views/ton/components/ui";
 import { HomeRail } from "@/views/ton/HomePage";
 
@@ -95,6 +100,35 @@ function Suggestions({ submit }: { submit: (message: string) => void }) {
   );
 }
 
+/** What the TON is analyzing: the closing period/scope the backend reports. */
+function ContextBar({ focus }: { focus: string | null }) {
+  const closing = useTonClosing();
+  const specialists = useTonSpecialists();
+  const specialist = focus
+    ? specialists.data?.find((item) => item.key === focus)
+    : undefined;
+  return (
+    <div className="ton-context-bar flex flex-wrap items-center gap-x-4 gap-y-1 px-4 sm:px-6 py-2">
+      <span className="flex items-center gap-2">
+        <SvgSparkle size={14} className="ton-gold-text" aria-hidden />
+        <Text font="secondary-action" color="text-05">
+          {specialist ? specialist.name : COPY.assistant.context.coordinator}
+        </Text>
+      </span>
+      {closing.data && (
+        <Text font="secondary-body" color="text-03">
+          {`${COPY.assistant.context.label}: ${COPY.nav.closing} · ${formatPeriod(closing.data.period)} · ${closing.data.scope}`}
+        </Text>
+      )}
+      {specialist && (
+        <Text font="secondary-body" color="text-03">
+          {`${COPY.assistant.context.focus}: ${specialist.domain}`}
+        </Text>
+      )}
+    </div>
+  );
+}
+
 const PRESENTATION: AppPagePresentation = {
   welcome: <Welcome />,
   renderSuggestions: (submit) => <Suggestions submit={submit} />,
@@ -147,6 +181,7 @@ export default function TonChatPage() {
           !hasSession && "ton-hero-art"
         )}
       >
+        <ContextBar focus={params.get("foco")} />
         <SearchFiltersProvider>
           <AppPage
             firstMessage={params.get("firstMessage") ?? undefined}

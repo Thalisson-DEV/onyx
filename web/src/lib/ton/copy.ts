@@ -588,6 +588,13 @@ export const COPY = {
     executiveTitle: "Resumo executivo",
     openReport: "Abrir relatório",
     download: "Baixar",
+    followUps: {
+      label: "Continuar em",
+      pending: "Ver pendências",
+      dre: "Abrir DRE",
+      sources: "Ver fontes",
+      reports: "Ver relatórios",
+    },
   },
   assistant: {
     heroPrefix: "Olá, sou o",
@@ -598,6 +605,11 @@ export const COPY = {
       "Tudo pronto! Pergunte sobre o fechamento, a DRE, as pendências ou as fontes importadas.",
     readyAction: "Como posso ajudar?",
     placeholder: "Pergunte algo ao TON…",
+    context: {
+      coordinator: "TON · coordenador",
+      label: "Contexto",
+      focus: "Foco",
+    },
     unavailable:
       "O assistente TON está indisponível. Verifique o acesso e a configuração do TON.",
     loading: "Abrindo o assistente TON…",

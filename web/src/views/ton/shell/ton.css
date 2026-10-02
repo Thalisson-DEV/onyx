@@ -407,3 +407,10 @@ html:has(.ton-shell) body {
   color: var(--text-04);
   background: var(--background-neutral-01);
 }
+
+/* Assistant context bar */
+.ton-context-bar {
+  border-bottom: 1px solid var(--border-01);
+  background: color-mix(in srgb, var(--ton-surface) 85%, transparent);
+  flex-shrink: 0;
+}

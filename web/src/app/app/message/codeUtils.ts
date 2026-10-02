@@ -102,9 +102,16 @@ export const preprocessLaTeX = (content: string) => {
     return match.replace(/\$/g, "___DOLLAR_PLACEHOLDER___");
   });
 
+  // `R$` (Brazilian real) is always currency; two of them in one line
+  // would otherwise open and close an inline formula.
+  const realEscaped = inlineCodeProtected.replace(
+    /(^|[^\\])R\$/g,
+    (_, prefix) => `${prefix}R\\$`
+  );
+
   // Process LaTeX expressions now that code is protected
   // Valid LaTeX should have matching dollar signs with non-space chars surrounding content
-  const processedForLatex = inlineCodeProtected.replace(
+  const processedForLatex = realEscaped.replace(
     /\$([^\s$][^$]*?[^\s$])\$/g,
     (_, equation) => `$${equation}$`
   );

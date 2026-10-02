@@ -18,6 +18,16 @@ describe("preprocessLaTeX", () => {
       expect(processed).not.toContain("costs $1,200");
     });
 
+    it("should escape Brazilian real amounts so they never open math", () => {
+      const input =
+        "Locação (R$ 1,79 mi), Despesas diversas (R$ 1,49 mi) e R\\$ 0,60 mi.";
+      const processed = preprocessLaTeX(input);
+
+      expect(processed).toBe(
+        "Locação (R\\$ 1,79 mi), Despesas diversas (R\\$ 1,49 mi) e R\\$ 0,60 mi."
+      );
+    });
+
     it("should handle dollar signs with backslashes already present", () => {
       const input =
         "Maria wants to buy a new laptop that costs \\$1,200. She has saved \\$800 so far.";

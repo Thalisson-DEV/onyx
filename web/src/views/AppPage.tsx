@@ -169,6 +169,8 @@ export interface AppPagePresentation {
   renderSuggestions?: (submit: (message: string) => void) => ReactNode;
   /** Hides the model selector; the provider stays a technical setting. */
   hideModelSelector?: boolean;
+  /** Hides the composer's tool picker; the agent's configured tools still run. */
+  hideToolPicker?: boolean;
   placeholder?: string;
 }
 
@@ -1055,6 +1057,7 @@ export default function AppPage({ firstMessage, presentation }: ChatPageProps) {
                             : undefined)
                         }
                         toolConfiguration={toolConfiguration}
+                        hideToolPicker={presentation?.hideToolPicker}
                         ref={chatInputBarRef}
                         deepResearchEnabled={
                           deepResearchEnabledForCurrentWorkflow

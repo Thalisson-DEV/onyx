@@ -99,6 +99,7 @@ const PRESENTATION: AppPagePresentation = {
   welcome: <Welcome />,
   renderSuggestions: (submit) => <Suggestions submit={submit} />,
   hideModelSelector: true,
+  hideToolPicker: true,
   placeholder: COPY.assistant.placeholder,
 };
 

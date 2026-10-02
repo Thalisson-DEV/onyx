@@ -14,6 +14,7 @@ import {
   SvgClipboard,
   SvgFileText,
   SvgServer,
+  SvgRefreshCw,
   SvgShield,
   SvgSparkle,
   SvgUploadCloud,
@@ -42,6 +43,8 @@ import { getBusinessLabel } from "@/lib/ton/labels";
 import { useTonActivity, type ActivityKind } from "@/lib/ton/activity";
 import type { ClosingOutput } from "@/lib/ton/types";
 import R3Spotlight from "@/views/ton/components/R3Spotlight";
+import WorkQueue from "@/views/ton/components/WorkQueue";
+import { useWorkQueue } from "@/lib/ton/workQueue";
 import {
   CardHeader,
   ErrorState,
@@ -238,69 +241,23 @@ function ExecutiveStrip({ closing }: { closing: ClosingOutput }) {
   );
 }
 
-function AttentionQueue({ closing }: { closing: ClosingOutput }) {
-  const groups = groupBlockers(closing.blockers).sort(
-    (a, b) => b.count - a.count
-  );
+function TodayQueue({ closing }: { closing: ClosingOutput }) {
+  const queue = useWorkQueue();
   return (
-    <TonCard className="flex flex-col gap-4 p-5" labelledBy="ton-attention">
-      <CardHeader
-        id="ton-attention"
-        title={COPY.home.attention.title}
-        description={COPY.home.attention.subtitle(
-          formatPeriod(closing.period).toLowerCase()
-        )}
-        action={{
-          href: pendingHref(closing),
-          label: COPY.home.attention.openAll,
-        }}
-      />
-      {groups.length === 0 ? (
-        <div className="flex items-center gap-2 py-2">
-          <SvgCheckCircle size={16} className="ton-brand-text" />
-          <Text font="main-ui-body" color="text-04">
-            {COPY.home.attention.empty}
-          </Text>
-        </div>
-      ) : (
-        <ul className="flex flex-col divide-y divide-border-01">
-          {groups.map((group) => {
-            const category = COPY.blockers.categories[group.category];
-            return (
-              <li key={group.category}>
-                <Link
-                  href={pendingHref(closing, group.category)}
-                  className="ton-row-link ton-focusable flex items-center gap-3 px-2 py-3 -mx-2"
-                >
-                  <IconTile icon={SvgAlertTriangle} tone="warning" />
-                  <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Text font="main-ui-action" color="text-05">
-                        {group.labels.length === 1
-                          ? (group.labels[0] ?? category.title)
-                          : category.title}
-                      </Text>
-                      <StatusPill tone="warning">
-                        {COPY.blockers.records(group.count)}
-                      </StatusPill>
-                    </div>
-                    <Text font="secondary-body" color="text-03">
-                      {category.description}
-                    </Text>
-                    <span className="ton-eyebrow">{COPY.blockers.origin}</span>
-                  </div>
-                  <span className="ton-brand-text hidden sm:block">
-                    <Text font="secondary-action" color="inherit">
-                      {COPY.blockers.resolve}
-                    </Text>
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+    <WorkQueue
+      id="ton-attention"
+      title={COPY.workQueue.title}
+      description={COPY.workQueue.subtitle(
+        formatPeriod(closing.period).toLowerCase()
       )}
-    </TonCard>
+      items={queue.items}
+      isLoading={queue.isLoading}
+      limit={5}
+      action={{
+        href: pendingHref(closing),
+        label: COPY.home.attention.openAll,
+      }}
+    />
   );
 }
 
@@ -309,6 +266,8 @@ const ACTIVITY_ICONS: Record<ActivityKind, IconFunctionComponent> = {
   import: SvgUploadCloud,
   importFailed: SvgAlertTriangle,
   specialists: SvgUsers,
+  decision: SvgShield,
+  readiness: SvgRefreshCw,
 };
 
 function ActivityFeed() {
@@ -709,7 +668,7 @@ export default function HomePage() {
             <>
               <ExecutiveStrip closing={closing.data} />
               <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-5 items-start">
-                <AttentionQueue closing={closing.data} />
+                <TodayQueue closing={closing.data} />
                 <R3Spotlight />
               </div>
             </>

@@ -8,9 +8,6 @@ import {
   SvgBubbleText,
   SvgCheckCircle,
   SvgFileText,
-  SvgRefreshCw,
-  SvgServer,
-  SvgShield,
 } from "@opal/icons";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { useTonClosing, useTonReportGroups } from "@/lib/ton/api";
@@ -24,17 +21,21 @@ import {
   type DecisionLog,
   type PeriodChange,
   appliedDecisionCount,
-  blockerLabel,
-  isDecisionBlocker,
   pendingQueueHref,
   sumBlockers,
   useDecisionLog,
   useReadinessChanges,
 } from "@/lib/ton/decisions";
 import type { ClosingOutput, Publication } from "@/lib/ton/types";
+import {
+  decisionsAfter,
+  latestClosingReport,
+  useWorkQueue,
+} from "@/lib/ton/workQueue";
 import ClosingFrame from "@/views/ton/components/ClosingFrame";
 import DecisionLogList from "@/views/ton/components/DecisionLogList";
 import R3Spotlight from "@/views/ton/components/R3Spotlight";
+import WorkQueue from "@/views/ton/components/WorkQueue";
 import ReadinessDelta from "@/views/ton/components/ReadinessDelta";
 import {
   CardHeader,
@@ -55,68 +56,6 @@ function askHref(): Route {
   });
   // SAFETY: /ton/chat is a static route; only its query varies.
   return `/ton/chat?${query.toString()}` as Route;
-}
-
-interface NextAction {
-  key: string;
-  title: string;
-  detail: string | null;
-  href: Route;
-  tone: "warning" | "neutral";
-  icon: typeof SvgShield;
-}
-
-/** Orders what is left by who can act: apply, decide, then bring data. */
-function nextActions(
-  closing: ClosingOutput,
-  blockers: Record<string, number>,
-  pendingDecisions: number
-): NextAction[] {
-  const scope = {
-    period: closing.period,
-    normalization: null,
-    unit: closing.unit_id,
-  };
-  const actions: NextAction[] = [];
-  if (pendingDecisions > 0) {
-    actions.push({
-      key: "apply",
-      title: CONTROL.applyTitle(pendingDecisions),
-      detail: CONTROL.applyDetail,
-      href: pendingQueueHref(scope),
-      tone: "warning",
-      icon: SvgRefreshCw,
-    });
-  }
-  const entries = Object.entries(blockers).filter(([, count]) => count > 0);
-  for (const [blocker, count] of entries
-    .filter(([blocker]) => isDecisionBlocker(blocker))
-    .sort((a, b) => b[1] - a[1])) {
-    actions.push({
-      key: blocker,
-      title: CONTROL.resolve(count, blockerLabel(blocker)),
-      detail: null,
-      href: pendingQueueHref({ ...scope, blocker }),
-      tone: "warning",
-      icon: SvgShield,
-    });
-  }
-  for (const [blocker, count] of entries.filter(
-    ([blocker]) => !isDecisionBlocker(blocker)
-  )) {
-    actions.push({
-      key: blocker,
-      title:
-        blocker === "NO_ACTUAL"
-          ? CONTROL.importData(count)
-          : CONTROL.otherData(blockerLabel(blocker)),
-      detail: CONTROL.importDetail,
-      href: pendingQueueHref({ ...scope, blocker }),
-      tone: "neutral",
-      icon: SvgServer,
-    });
-  }
-  return actions;
 }
 
 function StatusHeader({
@@ -175,58 +114,6 @@ function StatusHeader({
   );
 }
 
-function NextActions({ actions }: { actions: NextAction[] }) {
-  return (
-    <TonCard className="flex flex-col gap-3 p-5" labelledBy="ton-next-actions">
-      <CardHeader id="ton-next-actions" title={CONTROL.nextTitle} />
-      {actions.length === 0 ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <Text font="main-ui-body" color="text-04">
-            {CONTROL.calculate}
-          </Text>
-          <Button href="/ton/dre" size="md" rightIcon={SvgArrowRight}>
-            {CONTROL.calculateCta}
-          </Button>
-        </div>
-      ) : (
-        <ol className="flex flex-col divide-y divide-border-01">
-          {actions.map((action, index) => (
-            <li
-              key={action.key}
-              className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
-            >
-              <span
-                className="ton-step"
-                data-state={index === 0 ? "current" : "next"}
-              >
-                {index + 1}
-              </span>
-              <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                <Text font="main-ui-action" color="text-05">
-                  {action.title}
-                </Text>
-                {action.detail && (
-                  <Text font="secondary-body" color="text-03">
-                    {action.detail}
-                  </Text>
-                )}
-              </div>
-              <Button
-                href={action.href}
-                size="md"
-                prominence={index === 0 ? "primary" : "secondary"}
-                rightIcon={SvgArrowRight}
-              >
-                {CONTROL.open}
-              </Button>
-            </li>
-          ))}
-        </ol>
-      )}
-    </TonCard>
-  );
-}
-
 function WhatChanged({
   change,
   since,
@@ -274,16 +161,6 @@ function WhatChanged({
   );
 }
 
-function latestClosingReport(
-  groups: { latest: Publication }[] | undefined
-): Publication | null {
-  const closing = (groups ?? [])
-    .map((group) => group.latest)
-    .filter((item) => item.report_type !== "EXECUTIVE")
-    .sort((a, b) => b.output.generated_at.localeCompare(a.output.generated_at));
-  return closing[0] ?? null;
-}
-
 function ReportFreshness({
   report,
   closing,
@@ -308,9 +185,7 @@ function ReportFreshness({
     );
   }
   const generated = report.output.generated_at;
-  const later = (log?.entries ?? []).filter(
-    (entry) => entry.decided_at > generated
-  ).length;
+  const later = decisionsAfter(log, generated);
   const current =
     report.output.normalization_run_id === closing.normalization_run_id &&
     later === 0;
@@ -403,7 +278,7 @@ export default function ClosingPage() {
   const change = changes.data?.periods.find(
     (item) => item.period === closing.data?.period
   );
-  const pendingDecisions = changes.data?.pending_decisions ?? 0;
+  const queue = useWorkQueue();
   const appliedSincePrevious = changes.data
     ? appliedDecisionCount(changes.data)
     : 0;
@@ -431,12 +306,11 @@ export default function ClosingPage() {
           <StatusHeader closing={closing.data} change={change} />
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-5 items-start">
             <div className="flex flex-col gap-5">
-              <NextActions
-                actions={nextActions(
-                  closing.data,
-                  change?.blockers_after ?? {},
-                  pendingDecisions
-                )}
+              <WorkQueue
+                id="ton-next-actions"
+                title={CONTROL.nextTitle}
+                items={queue.items}
+                isLoading={queue.isLoading}
               />
               {change && changes.data?.previous_started_at && (
                 <WhatChanged

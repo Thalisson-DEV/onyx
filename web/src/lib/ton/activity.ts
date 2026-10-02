@@ -2,14 +2,27 @@
 
 import type { Route } from "next";
 import {
+  useTonClosing,
   useTonDataSources,
   useTonReportGroups,
   useTonSpecialists,
 } from "@/lib/ton/api";
 import { COPY, formatPeriod, plural } from "@/lib/ton/copy";
+import {
+  pendingQueueHref,
+  sumBlockers,
+  useDecisionLog,
+  useReadinessChanges,
+} from "@/lib/ton/decisions";
 import { getBusinessLabel } from "@/lib/ton/labels";
 
-export type ActivityKind = "report" | "import" | "importFailed" | "specialists";
+export type ActivityKind =
+  | "report"
+  | "import"
+  | "importFailed"
+  | "specialists"
+  | "decision"
+  | "readiness";
 
 export interface ActivityEvent {
   key: string;
@@ -24,13 +37,21 @@ export interface ActivityEvent {
 
 /**
  * The TON event feed, derived only from persisted backend state: report
- * publications, source imports and specialist executions. Nothing here is
- * inferred or simulated; an event exists because a record exists.
+ * publications, source imports, specialist executions, recorded decisions and
+ * recomputed bases. Nothing here is inferred or simulated; an event exists
+ * because a record exists.
  */
 export function useTonActivity() {
   const reports = useTonReportGroups();
   const sources = useTonDataSources();
   const specialists = useTonSpecialists();
+  const decisions = useDecisionLog();
+  const closing = useTonClosing();
+  const changes = useReadinessChanges(
+    closing.data?.normalization_run_id,
+    closing.data?.structure_version_id,
+    closing.data?.unit_id
+  );
 
   const events: ActivityEvent[] = [];
   for (const group of reports.data ?? []) {
@@ -96,12 +117,58 @@ export function useTonActivity() {
       attention: false,
     });
   }
+  for (const entry of decisions.data?.entries ?? []) {
+    events.push({
+      key: `decision-${entry.kind}-${entry.version ?? entry.decided_at}-${entry.subject}`,
+      kind: "decision",
+      at: entry.decided_at,
+      title: COPY.activity.decision(
+        COPY.decisionLoop.log.kinds[entry.kind],
+        getBusinessLabel(entry.subject)
+      ),
+      detail: [
+        entry.decided_by,
+        entry.applied === false ? COPY.decisionLoop.log.pending : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      href: pendingQueueHref({ period: closing.data?.period }),
+      attention: entry.applied === false,
+    });
+  }
+  const change = changes.data?.periods.find(
+    (item) => item.period === closing.data?.period
+  );
+  if (changes.data?.previous_run_id && change) {
+    const before = sumBlockers(change.blockers_before);
+    const after = sumBlockers(change.blockers_after);
+    const nowReady =
+      change.status_before !== "READY" && change.status_after === "READY";
+    if (before !== after || nowReady) {
+      events.push({
+        key: `readiness-${changes.data.run_id}`,
+        kind: "readiness",
+        at: changes.data.run_started_at,
+        title: nowReady
+          ? COPY.activity.dreReady(formatPeriod(change.period).toLowerCase())
+          : COPY.activity.readinessChanged(before, after),
+        detail: formatPeriod(change.period),
+        href: nowReady ? "/ton/dre" : "/ton/fechamento",
+        attention: nowReady,
+      });
+    }
+  }
   events.sort((a, b) => b.at.localeCompare(a.at));
 
   return {
     events,
-    isLoading: reports.isLoading || sources.isLoading || specialists.isLoading,
-    error: reports.error ?? sources.error ?? specialists.error,
+    isLoading:
+      reports.isLoading ||
+      sources.isLoading ||
+      specialists.isLoading ||
+      decisions.isLoading,
+    error:
+      reports.error ?? sources.error ?? specialists.error ?? decisions.error,
   };
 }
 

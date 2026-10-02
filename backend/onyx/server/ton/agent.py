@@ -11,6 +11,7 @@ from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.db.ton.agent import configured_agent_id, provision_agent
+from onyx.db.ton.agent_occurrences import query_occurrences
 from onyx.db.ton.capabilities import capability_registry
 from onyx.db.ton.closing import (
     execute_closing,
@@ -32,6 +33,7 @@ from onyx.ton.agent.closing_models import (
     ReportGroup,
     SpecialistView,
 )
+from onyx.ton.agent.models import OccurrencePage, ToolQuery
 from onyx.ton.agent.registry import ROUTINES
 from onyx.ton.agent.rendering import render_markdown
 from onyx.ton.agent.scheduling import R3ScheduleRequest, R3ScheduleView
@@ -238,4 +240,16 @@ def report_download(
             "Cache-Control": "private, no-store",
             "X-Content-Type-Options": "nosniff",
         },
+    )
+
+
+@router.get("/actions/overdue")
+def list_overdue_actions(
+    limit: int = Query(10, ge=1, le=25),
+    user: User = Depends(require_permission(Permission.READ_TON_OCCURRENCES)),
+    session: Session = Depends(get_session),
+) -> OccurrencePage:
+    """Open assigned actions past their recorded deadline; owner and date come from the assignment."""
+    return query_occurrences(
+        session, user, "ton_list_overdue_actions", ToolQuery(limit=limit)
     )

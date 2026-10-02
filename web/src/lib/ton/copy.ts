@@ -555,6 +555,38 @@ export const COPY = {
       confirmTitle: "Confirme antes de registrar",
     },
   },
+  workQueue: {
+    title: "O que precisa de você hoje",
+    subtitle: (period: string) =>
+      `Fechamento de ${period}, fontes, relatórios e ações atribuídas`,
+    empty:
+      "Nada aguarda uma pessoa agora. O TON avisa quando algo novo precisar de decisão.",
+    impact: {
+      blocks: "Bloqueia a DRE",
+      follow: "Acompanhar",
+    },
+    origins: {
+      closing: "Fechamento",
+      sources: "Fontes",
+      reports: "Relatórios",
+      actions: "Ações atribuídas",
+    },
+    owner: (owner: string) => `Responsável: ${owner}`,
+    deadline: (date: string) => `Prazo: ${date}`,
+    sourceFailed: (name: string) => `Importação falhou — ${name}`,
+    sourceAttention: (name: string) => `Importação com avisos — ${name}`,
+    overdue: (reference: string) => `Ocorrência ${reference} com prazo vencido`,
+    overduePrompt: (reference: string) =>
+      `Mostre a ocorrência ${reference}: o que foi detectado, o responsável, o prazo e o critério de verificação.`,
+    calculate: "A DRE está sem bloqueios. Calcule o resultado do período.",
+    reportStale: "Relatório de fechamento desatualizado",
+    review: "Revisar",
+    apply: "Aplicar",
+    decide: "Decidir",
+    open: "Abrir",
+    askTon: "Ver com o TON",
+    more: (count: number) => `+ ${plural(count, "item", "itens")}`,
+  },
   decisionLoop: {
     evidenceTitle: "Registros de origem",
     evidenceSample: (shown: number, total: number) =>
@@ -1088,6 +1120,10 @@ export const COPY = {
   },
   activity: {
     importFailed: (source: string) => `Importação falhou — ${source}`,
+    decision: (kind: string, subject: string) => `${kind} — ${subject}`,
+    readinessChanged: (before: number, after: number) =>
+      `Prontidão recalculada: ${formatNumber(before)} → ${plural(after, "pendência", "pendências")}`,
+    dreReady: (period: string) => `A DRE de ${period} ficou sem bloqueios`,
   },
   notifications: {
     label: "Notificações",

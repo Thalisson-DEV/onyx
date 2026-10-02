@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useDecisionLog } from "@/lib/ton/decisions";
+import DecisionLogList from "@/views/ton/components/DecisionLogList";
 import type { Route } from "next";
 import useSWR from "swr";
 import { Text } from "@opal/components";
@@ -30,11 +32,14 @@ import {
 } from "@/lib/ton/api";
 import { COPY, formatRelativeDateTime } from "@/lib/ton/copy";
 import {
+  CardHeader,
   EmptyState,
   IconTile,
+  LoadingBlock,
   PageContainer,
   PageHeader,
   StatusDot,
+  TonCard,
   specialistTone,
   type TonTone,
 } from "@/views/ton/components/ui";
@@ -127,6 +132,7 @@ export default function TonAdminPage() {
     "/admin/language-models") as Route;
   const configured = sources.data?.filter((source) => source.source_id) ?? [];
   const current = configured.filter((source) => source.status === "CURRENT");
+  const decisions = useDecisionLog();
   const operational = (specialists.data ?? []).filter(
     (item) => specialistTone(item.status) !== "neutral"
   );
@@ -266,6 +272,21 @@ export default function TonAdminPage() {
           />
         </div>
       </section>
+
+      <TonCard className="flex flex-col gap-3 p-5" labelledBy="ton-admin-audit">
+        <CardHeader
+          id="ton-admin-audit"
+          icon={SvgShield}
+          title={COPY.admin.audit.title}
+          description={
+            decisions.data
+              ? COPY.admin.audit.description(decisions.data.pending_decisions)
+              : undefined
+          }
+        />
+        {decisions.isLoading && <LoadingBlock label={COPY.common.loading} />}
+        {decisions.data && <DecisionLogList entries={decisions.data.entries} />}
+      </TonCard>
 
       <section
         aria-labelledby="ton-admin-technical"

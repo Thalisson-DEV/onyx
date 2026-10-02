@@ -1211,6 +1211,13 @@ export const COPY = {
     },
   },
   admin: {
+    audit: {
+      title: "Trilha de decisões financeiras",
+      description: (pending: number) =>
+        pending > 0
+          ? `Quem decidiu, quando, por quê e em qual versão. ${plural(pending, "decisão aguarda", "decisões aguardam")} recálculo.`
+          : "Quem decidiu, quando, por quê e em qual versão. Todas as decisões estão aplicadas.",
+    },
     eyebrow: "Configuração",
     title: "Administração do TON",
     description:

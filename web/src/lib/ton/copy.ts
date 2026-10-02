@@ -598,6 +598,9 @@ export const COPY = {
   report: {
     back: "Relatórios",
     download: "Baixar relatório",
+    print: "Imprimir",
+    previousVersions: (count: number) =>
+      `${plural(count, "versão anterior preservada", "versões anteriores preservadas")} para auditoria`,
     period: "Período",
     scope: "Escopo",
     generated: "Gerado em",

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import type { Route } from "next";
 import useSWR from "swr";
 import { Button, Text } from "@opal/components";
 import {
@@ -11,12 +12,19 @@ import {
   SvgArrowRight,
   SvgChevronDown,
   SvgDownload,
+  SvgFileText,
 } from "@opal/icons";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { groupBlockers, totalBlockers } from "@/lib/ton/blockers";
-import { COPY, formatPeriod, formatRelativeDateTime } from "@/lib/ton/copy";
+import {
+  COPY,
+  formatDateTime,
+  formatPeriod,
+  formatRelativeDateTime,
+} from "@/lib/ton/copy";
 import { getBusinessLabel } from "@/lib/ton/labels";
 import type { Publication } from "@/lib/ton/types";
+import { useTonAccess } from "@/lib/ton/api";
 import { pendingHref } from "@/views/ton/HomePage";
 import { reportTitle } from "@/views/ton/ReportsPage";
 import {
@@ -60,6 +68,7 @@ function Meta({ label, value }: { label: string; value: string }) {
 
 function Document({ report }: { report: Publication }) {
   const { output } = report;
+  const { isAdmin } = useTonAccess();
   const blockers = groupBlockers(output.blockers);
   const total = totalBlockers(output.blockers);
   const actions = Array.from(
@@ -303,12 +312,53 @@ function Document({ report }: { report: Publication }) {
               </li>
             ))}
           </ul>
-          <Text font="secondary-mono" color="text-03">
-            {`Execução ${report.run_id.slice(0, 8)} · Revisão ${report.revision_id.slice(0, 8)}`}
-          </Text>
+          {isAdmin && (
+            <Text font="secondary-mono" color="text-03">
+              {`Execução ${report.run_id.slice(0, 8)} · Revisão ${report.revision_id.slice(0, 8)}`}
+            </Text>
+          )}
         </div>
       </details>
     </article>
+  );
+}
+
+function Versions({ revisionId }: { revisionId: string }) {
+  const history = useSWR<Publication[]>(
+    `/api/ton/agent/reports/${encodeURIComponent(revisionId)}/history?limit=25`,
+    errorHandlingFetcher
+  );
+  const previous = history.data ?? [];
+  if (!previous.length) return null;
+  return (
+    <details className="ton-card group" data-print-hide>
+      <summary className="ton-focusable flex items-center justify-between gap-3 px-5 py-3 cursor-pointer list-none rounded-12">
+        <Text font="secondary-action" color="text-04">
+          {COPY.report.previousVersions(previous.length)}
+        </Text>
+        <SvgChevronDown
+          size={14}
+          className="transition-transform group-open:rotate-180"
+        />
+      </summary>
+      <ul className="flex flex-col divide-y divide-border-01 px-5 pb-3">
+        {previous.map((item) => (
+          <li key={item.revision_id}>
+            <Link
+              href={item.report_url as Route}
+              className="ton-row-link ton-focusable flex items-center justify-between gap-3 py-2"
+            >
+              <Text font="secondary-body" color="text-04">
+                {formatDateTime(item.output.generated_at)}
+              </Text>
+              <StatusPill tone="neutral">
+                {getBusinessLabel(item.status)}
+              </StatusPill>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -319,7 +369,10 @@ export default function ReportViewer({ revisionId }: { revisionId: string }) {
   );
   return (
     <PageContainer className="max-w-[960px]">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div
+        className="flex flex-wrap items-center justify-between gap-3"
+        data-print-hide
+      >
         <Link
           href="/ton/relatorios"
           className="ton-focusable ton-brand-text flex items-center gap-1 rounded-08"
@@ -330,9 +383,18 @@ export default function ReportViewer({ revisionId }: { revisionId: string }) {
           </Text>
         </Link>
         {report.data && (
-          <Button href={report.data.download_url} icon={SvgDownload}>
-            {COPY.report.download}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              prominence="secondary"
+              icon={SvgFileText}
+              onClick={() => window.print()}
+            >
+              {COPY.report.print}
+            </Button>
+            <Button href={report.data.download_url} icon={SvgDownload}>
+              {COPY.report.download}
+            </Button>
+          </div>
         )}
       </div>
       {report.isLoading && (
@@ -348,6 +410,7 @@ export default function ReportViewer({ revisionId }: { revisionId: string }) {
         </TonCard>
       )}
       {report.data && <Document report={report.data} />}
+      {report.data && <Versions revisionId={revisionId} />}
     </PageContainer>
   );
 }

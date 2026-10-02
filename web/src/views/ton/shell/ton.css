@@ -527,3 +527,25 @@ html:has(.ton-shell) body {
   background: var(--ton-brand);
   color: var(--ton-surface);
 }
+
+/* Print: the document only, without the product chrome. */
+@media print {
+  html:has(.ton-shell),
+  html:has(.ton-shell) body,
+  .ton-shell,
+  .ton-shell main {
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+  .ton-header,
+  .ton-sidebar,
+  .ton-scrim,
+  [data-print-hide] {
+    display: none !important;
+  }
+  .ton-card {
+    box-shadow: none !important;
+    border: none !important;
+  }
+}

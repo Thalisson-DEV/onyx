@@ -942,6 +942,8 @@ export const COPY = {
     next: "Próxima dependência",
   },
   auth: {
+    brand: "Vale Norte",
+    product: "TON",
     points: [
       "Fechamento e DRE com evidência de origem",
       "Rotinas automáticas no calendário da Vale Norte",

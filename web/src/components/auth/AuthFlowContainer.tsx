@@ -21,14 +21,14 @@ function BrandPanel() {
       <div className="flex items-center gap-4">
         <Image
           src="/ton/vale-norte-logo-reversed.png"
-          alt="Vale Norte"
+          alt={COPY.auth.brand}
           width={1057}
           height={412}
           priority
           className="h-11 w-auto"
         />
         <span aria-hidden className="ton-auth-divider h-9 border-s" />
-        <span className="ton-auth-badge">TON</span>
+        <span className="ton-auth-badge">{COPY.auth.product}</span>
       </div>
       <div className="flex flex-col gap-6 max-w-lg">
         <h2 className="ton-auth-headline">
@@ -70,13 +70,15 @@ export default function AuthFlowContainer({
         <div className="ton-auth-mobile-bar lg:hidden flex items-center gap-3 px-5 py-4">
           <Image
             src="/ton/vale-norte-logo-reversed.png"
-            alt="Vale Norte"
+            alt={COPY.auth.brand}
             width={1057}
             height={412}
             priority
             className="h-8 w-auto"
           />
-          <span className="ton-auth-badge ton-auth-badge-sm">TON</span>
+          <span className="ton-auth-badge ton-auth-badge-sm">
+            {COPY.auth.product}
+          </span>
         </div>
         <div className="flex flex-1 flex-col items-center justify-center p-5 sm:p-10">
           <div className="w-full max-w-md flex flex-col gap-6">

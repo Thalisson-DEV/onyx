@@ -10,6 +10,7 @@ from typing import Any, cast
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from onyx.db.enums import Permission
@@ -1333,6 +1334,20 @@ def list_facts(
     if run.status != "SUCCEEDED":
         raise OnyxError(OnyxErrorCode.CONFLICT, "Normalization did not succeed")
     check_page(limit, offset)
+    return _fact_views(session, run, fact_type, period, unit_id, limit, offset)
+
+
+def _fact_views(
+    session: Session,
+    run: FinancialNormalizationRun,
+    fact_type: str,
+    period: datetime.date | None,
+    unit_id: UUID | None,
+    limit: int | None,
+    offset: int,
+) -> list[FactView]:
+    """Facts of an authorized, succeeded run; no limit loads the whole scope."""
+    run_id = run.id
     model_by_type: dict[str, type[Any]] = {
         "ACTUAL": FinancialActualFact,
         "BILLING": FinancialBillingFact,
@@ -1651,6 +1666,16 @@ def readiness(
     )
 
 
+_DATASET_CACHE = "ton_dre_input_datasets"
+
+
+@event.listens_for(Session, "after_flush")
+@event.listens_for(Session, "after_commit")
+@event.listens_for(Session, "after_rollback")
+def _forget_datasets(session: Session, *_: object) -> None:
+    session.info.pop(_DATASET_CACHE, None)
+
+
 def load_dre_input_dataset(
     session: Session,
     user: User,
@@ -1658,20 +1683,25 @@ def load_dre_input_dataset(
     period: datetime.date,
     unit_id: UUID | None,
 ) -> DreInputDataset:
-    """Read one canonical period through the existing fact and readiness services."""
+    """Read one canonical period through the existing fact and readiness services.
 
-    def load(fact_type: str) -> list[FactView]:
-        result: list[FactView] = []
-        while True:
-            page = list_facts(
-                session, user, run_id, fact_type, 100, len(result), period, unit_id
-            )
-            result.extend(page)
-            if len(page) < 100:
-                return result
-
-    return DreInputDataset(
-        readiness=readiness(session, user, run_id, period, unit_id),
-        actuals=load("ACTUAL"),
-        budgets=load("BUDGET"),
+    A year-to-date DRE reads every earlier month, and readiness overviews do
+    that for each month of the year, so datasets are cached until the session
+    writes or ends its transaction (accounts and mappings can change then).
+    """
+    cache: dict[tuple[UUID, UUID, datetime.date, UUID | None], DreInputDataset] = (
+        session.info.setdefault(_DATASET_CACHE, {})
     )
+    key = (user.id, run_id, period, unit_id)
+    cached = cache.get(key)
+    if cached is not None:
+        return cached
+    view = readiness(session, user, run_id, period, unit_id)
+    run = get_run(session, user, run_id)
+    dataset = DreInputDataset(
+        readiness=view,
+        actuals=_fact_views(session, run, "ACTUAL", period, unit_id, None, 0),
+        budgets=_fact_views(session, run, "BUDGET", period, unit_id, None, 0),
+    )
+    cache[key] = dataset
+    return dataset

@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import ReportViewer from "@/views/ton/ReportViewer";
 
 export default async function ReportRoute({
@@ -8,3 +10,5 @@ export default async function ReportRoute({
   const { revisionId } = await params;
   return <ReportViewer revisionId={revisionId} />;
 }
+
+export const metadata: Metadata = { title: "Relatório" };

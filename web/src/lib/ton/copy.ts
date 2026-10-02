@@ -957,4 +957,10 @@ export const COPY = {
     forgotPasswordHelp:
       "Fale com o administrador do TON para redefinir o acesso.",
   },
+  notFound: {
+    eyebrow: "Página não encontrada",
+    title: "Este endereço não existe no TON",
+    body: "O link pode estar incompleto ou a página mudou de lugar. Volte para a Visão Geral ou use Ctrl + K para buscar.",
+    back: "Ir para a Visão Geral",
+  },
 } as const;

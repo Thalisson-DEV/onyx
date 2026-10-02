@@ -6,7 +6,7 @@ import { ProjectsProvider } from "@/lib/projects/providers";
 import { VoiceModeProvider } from "@/providers/VoiceModeProvider";
 
 export const metadata: Metadata = {
-  title: "TON — Vale Norte",
+  title: { default: "TON — Vale Norte", template: "%s · TON — Vale Norte" },
   description: "Inteligência Operacional e Controladoria com IA",
 };
 

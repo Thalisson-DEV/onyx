@@ -469,3 +469,16 @@ Record only real external dependencies:
 ```text
 TBD
 ```
+
+### 2026-10-01 22:30
+Milestone: M1–M3 parcial — shell/admin, login, assistente (parte 1).
+Commits: 67dd9a755c (auditoria), 36441395a3 (shell, busca Ctrl+K, notificações,
+Administração do TON), 020d3a7b3d (login controlado Vale Norte), commit atual
+(assistente sem seletor de ferramentas técnicas e sem timeline duplicada).
+Validation: Chrome real (:3005) — header, notificações, Ctrl+K, admin, login com
+erro inline; tsc limpo; jest TON + mensagens 430/430; jest auth 9/9.
+Known issues: limite de uso atingido — interrompido aqui.
+Next: barra de contexto e ações de continuidade no Assistente; workspace DRE
+nativo (substituir views/admin/DrePage embutida); Pendências como fila de
+trabalho; Fontes (resumo de saúde); Automações (histórico por dia); Relatórios;
+Especialistas; Home sem duplicação; responsivo 1024/768/390; títulos por página.

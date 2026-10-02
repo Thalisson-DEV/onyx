@@ -230,7 +230,7 @@ function SearchTrigger() {
             </span>
             <kbd className="ton-kbd">Ctrl K</kbd>
           </button>
-          <span className="md:hidden">
+          <span className="hidden sm:block md:hidden">
             <HeaderIconButton label={COPY.command.trigger} onClick={open}>
               <SvgSearch size={18} />
             </HeaderIconButton>
@@ -446,7 +446,9 @@ export default function TonHeader({ menuOpen, onToggleMenu }: TonHeaderProps) {
         {canRead && <DemoIndicator />}
         {canRead && <SourcesStatus />}
         {canRead && <Notifications />}
-        <Help />
+        <span className="hidden sm:block">
+          <Help />
+        </span>
         <AccountMenu />
       </div>
     </header>

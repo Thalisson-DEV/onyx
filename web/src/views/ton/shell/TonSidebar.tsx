@@ -6,7 +6,6 @@ import type { Route } from "next";
 import { Text } from "@opal/components";
 import {
   SvgBarChart,
-  SvgBookOpen,
   SvgBubbleText,
   SvgChevronRight,
   SvgClipboard,
@@ -22,7 +21,6 @@ import type { IconFunctionComponent } from "@opal/types";
 import { cn } from "@opal/utils";
 import useChatSessions from "@/hooks/useChatSessions";
 import { useUser } from "@/providers/UserProvider";
-import { getFirstPermittedAdminRoute } from "@/lib/permissions";
 import { useTonAccess, useTonPersona } from "@/lib/ton/api";
 import { COPY } from "@/lib/ton/copy";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
@@ -84,12 +82,6 @@ const NAV: NavItem[] = [
     label: COPY.nav.sources,
     icon: SvgServer,
     match: ["/ton/fontes", "/ton/data-sources"],
-  },
-  {
-    href: "/ton/especialistas",
-    label: COPY.nav.specialists,
-    icon: SvgUsers,
-    match: ["/ton/especialistas"],
   },
 ];
 
@@ -196,11 +188,8 @@ interface TonSidebarProps {
 export default function TonSidebar({ open, onClose }: TonSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { hasAdminAccess, adminCapabilities } = useUser();
+  const { hasAdminAccess } = useUser();
   const { canRead } = useTonAccess();
-  const adminRoute = hasAdminAccess
-    ? getFirstPermittedAdminRoute(adminCapabilities) || "/admin/language-models"
-    : null;
   const inSession =
     pathname.startsWith("/ton/chat") &&
     searchParams.has(SEARCH_PARAM_NAMES.CHAT_ID);
@@ -284,26 +273,34 @@ export default function TonSidebar({ open, onClose }: TonSidebarProps) {
 
           {canRead && (
             <>
+              <section className="flex flex-col gap-0.5">
+                <span className="ton-sidebar-section-label px-3 pb-1">
+                  {COPY.shell.team}
+                </span>
+                <SidebarLink
+                  href="/ton/especialistas"
+                  icon={SvgUsers}
+                  label={COPY.nav.specialists}
+                  active={pathname.startsWith("/ton/especialistas")}
+                  onNavigate={onClose}
+                />
+              </section>
               <hr className="ton-chrome-divider" />
               <ConversationHistory onNavigate={onClose} />
             </>
           )}
         </div>
 
-        {adminRoute && (
+        {hasAdminAccess && (
           <div className="flex flex-col gap-0.5 p-3 border-t ton-chrome-divider">
             <SidebarLink
-              href="/ton/cobertura"
-              icon={SvgBookOpen}
-              label={COPY.shell.diagnostics}
-              active={pathname.startsWith("/ton/cobertura")}
-              onNavigate={onClose}
-            />
-            <SidebarLink
-              href={adminRoute as Route}
+              href="/ton/administracao"
               icon={SvgSettings}
-              label={COPY.shell.admin}
-              active={false}
+              label={COPY.shell.tonAdmin}
+              active={
+                pathname.startsWith("/ton/administracao") ||
+                pathname.startsWith("/ton/cobertura")
+              }
               onNavigate={onClose}
             />
           </div>

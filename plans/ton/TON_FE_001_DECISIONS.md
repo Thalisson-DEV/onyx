@@ -367,3 +367,62 @@ existindo para administração e compatibilidade, mas nenhum caminho do cliente 
 até ele: login, "/", retorno do admin e menu de conta apontam para o TON. Rotas
 admin continuam protegidas por permissão no backend; esconder links não é controle
 de segurança.
+
+---
+
+# TON-FE-002 — decisões de maturidade de produto
+
+## D-015 — Administração do TON separada da administração técnica
+
+Data: 2026-10-01
+Status: Accepted
+
+Contexto: o rodapé da sidebar levava o administrador direto ao admin genérico do Onyx
+e mostrava "Diagnóstico de cobertura" ao lado da navegação do produto.
+
+Decisão: nova rota `/ton/administracao` dentro do shell TON, com as configurações de
+produto (acesso, fontes, automações, especialistas, prontidão financeira, estrutura da
+DRE, relatórios, cobertura do Prompt Mestre, assistente) e um bloco separado
+"Administração técnica" que leva ao `/admin/*` do Onyx. Itens que ainda vivem no admin
+técnico (usuários, prontidão, estrutura da DRE) aparecem marcados como "Técnica".
+A cobertura do Prompt Mestre só é alcançada por essa página e é negada a não-admins
+também na própria rota. O menu da conta mostra as duas entradas para admins.
+
+Alternativas: reconstruir todas as telas admin dentro do TON (custo alto, risco de
+regressão em RBAC) — rejeitada; o roadmap pede separação, não reescrita.
+
+Consequências: cliente comum não vê nenhuma entrada de administração. Esconder links
+continua não sendo controle de segurança; as rotas `/admin/*` e as APIs seguem
+protegidas no backend.
+
+## D-016 — Eventos e notificações derivados de estado persistido
+
+Data: 2026-10-01
+Status: Accepted
+
+Decisão: `lib/ton/activity.ts` monta o feed só a partir de registros existentes —
+publicações de relatório, importações (concluídas e falhas) e execuções de
+especialistas. A Visão Geral e o sino do header usam o mesmo feed. "Novo" é marcado
+por usuário via `localStorage` (conveniência local; sem storage o feed continua
+funcionando). Nenhum evento é simulado e não há backend de notificações novo.
+
+## D-017 — Busca e comandos
+
+Data: 2026-10-01
+Status: Accepted
+
+Decisão: `Ctrl+K` abre `TonCommandMenu`, construído sobre o `CommandMenu` já usado
+pelo Onyx (teclado, foco, highlight). Comandos: páginas do produto, "Analisar
+fechamento", "Mostrar último relatório", conversas do coordenador TON e "Perguntar ao
+TON: …" com o texto digitado, que abre o Assistente com a pergunta.
+
+## D-018 — Tokens TON em :root
+
+Data: 2026-10-01
+Status: Accepted
+
+Contexto: popovers e diálogos são portados para fora de `.ton-shell`, onde as
+variáveis `--ton-*` não existiam (links verdes saíam pretos dentro do popover).
+
+Decisão: as variáveis ficam em `:root` (e o ajuste escuro em `.dark`). Só nomes
+`--ton-*` são definidos; telas não-TON não os usam.

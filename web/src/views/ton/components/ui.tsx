@@ -3,8 +3,13 @@
 import Link from "next/link";
 import type { Route } from "next";
 import type { ReactNode } from "react";
-import { Text } from "@opal/components";
-import { SvgChevronRight } from "@opal/icons";
+import { Button, Text } from "@opal/components";
+import {
+  SvgAlertCircle,
+  SvgChevronLeft,
+  SvgChevronRight,
+  SvgRefreshCw,
+} from "@opal/icons";
 import type { IconFunctionComponent } from "@opal/types";
 import { cn } from "@opal/utils";
 
@@ -220,6 +225,122 @@ export function LoadingBlock({
           style={{ width: `${90 - index * 15}%` }}
         />
       ))}
+    </div>
+  );
+}
+
+interface EmptyStateProps {
+  icon: IconFunctionComponent;
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  tone?: "brand" | "neutral" | "gold" | "warning";
+}
+
+/** A deliberate, centered empty or healthy state; never a blank card. */
+export function EmptyState({
+  icon,
+  title,
+  description,
+  action,
+  tone = "neutral",
+}: EmptyStateProps) {
+  return (
+    <div className="flex flex-col items-center text-center gap-3 px-4 py-8">
+      <IconTile icon={icon} tone={tone} size="lg" />
+      <div className="flex flex-col gap-1 max-w-md">
+        <Text as="p" font="main-ui-action" color="text-05">
+          {title}
+        </Text>
+        {description && (
+          <Text as="p" font="secondary-body" color="text-03">
+            {description}
+          </Text>
+        )}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+interface ErrorStateProps {
+  message?: string;
+  onRetry?: () => void;
+  compact?: boolean;
+}
+
+/** Explicit failure with a way forward. */
+export function ErrorState({ message, onRetry, compact }: ErrorStateProps) {
+  return (
+    <div
+      role="alert"
+      className={cn(
+        "flex items-start gap-3 rounded-12 border border-01 bg-background-neutral-01",
+        compact ? "p-3" : "p-4"
+      )}
+    >
+      <SvgAlertCircle size={18} className="text-status-error-05 shrink-0" />
+      <div className="flex flex-col gap-2 min-w-0 flex-1">
+        <Text as="p" font="main-ui-body" color="text-04">
+          {message ??
+            "Não foi possível carregar esta informação. Tente novamente em instantes."}
+        </Text>
+        {onRetry && (
+          <span>
+            <Button
+              size="sm"
+              prominence="secondary"
+              icon={SvgRefreshCw}
+              onClick={onRetry}
+            >
+              Tentar novamente
+            </Button>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function BackLink({ href, label }: { href: Route; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="ton-focusable flex items-center gap-1 w-fit rounded-08 text-text-03 hover:text-text-05"
+    >
+      <SvgChevronLeft size={14} />
+      <Text font="secondary-action" color="inherit">
+        {label}
+      </Text>
+    </Link>
+  );
+}
+
+interface MetricProps {
+  label: string;
+  value: string;
+  detail?: string;
+  tone?: TonTone;
+}
+
+/** A labelled figure inside a card; tabular numerals, no decoration. */
+export function Metric({ label, value, detail, tone }: MetricProps) {
+  return (
+    <div className="flex flex-col gap-1 min-w-0">
+      <span className="ton-eyebrow">{label}</span>
+      <span className="ton-metric">
+        <Text font="heading-h3" color="inherit" maxLines={2}>
+          {value}
+        </Text>
+      </span>
+      {detail && (
+        <span className="flex items-center gap-1.5 min-w-0">
+          {tone && <StatusDot tone={tone} />}
+          <Text font="secondary-body" color="text-03" maxLines={2}>
+            {detail}
+          </Text>
+        </span>
+      )}
     </div>
   );
 }

@@ -86,10 +86,13 @@ export const COPY = {
     closeMenu: "Fechar menu",
     newConversation: "Nova conversa",
     history: "Histórico",
+    team: "Equipe do TON",
     allConversations: "Ver todas as conversas",
     noConversations: "Suas conversas com o TON aparecem aqui.",
     untitledConversation: "Análise sem título",
     admin: "Administração",
+    tonAdmin: "Administração do TON",
+    technicalAdmin: "Administração técnica",
     diagnostics: "Diagnóstico de cobertura",
     demo: "Ambiente de demonstração — dados sintéticos",
     demoShort: "Demonstração",
@@ -624,5 +627,150 @@ export const COPY = {
           "Quais fontes estão disponíveis, quando foram atualizadas e o que ainda falta integrar?",
       },
     ],
+  },
+  activity: {
+    importFailed: (source: string) => `Importação falhou — ${source}`,
+  },
+  notifications: {
+    label: "Notificações",
+    title: "Notificações",
+    subtitle: "O que aconteceu no TON recentemente.",
+    empty: "Nenhum evento registrado ainda.",
+    newCount: (count: number) =>
+      count === 1 ? "1 novidade" : `${formatNumber(count)} novidades`,
+    markSeen: "Marcar como vistas",
+    seeActivity: "Ver visão geral",
+    isNew: "Novo",
+  },
+  help: {
+    label: "Ajuda",
+    title: "Como o TON trabalha",
+    items: [
+      {
+        title: "Dados com origem",
+        body: "Toda análise usa as fontes importadas. O TON não estima valores ausentes.",
+      },
+      {
+        title: "Decisão humana",
+        body: "Pendências e aprovações sempre exigem uma pessoa. Nada é aprovado automaticamente.",
+      },
+      {
+        title: "Ambiente de demonstração",
+        body: "Quando o selo de demonstração aparece no topo, os dados são sintéticos e não representam resultados reais.",
+      },
+    ],
+    shortcut: "Busca e comandos",
+    shortcutKeys: "Ctrl + K",
+    contact:
+      "Dúvidas de acesso ou de dados: fale com o administrador do TON na Vale Norte.",
+  },
+  command: {
+    trigger: "Buscar ou ir para…",
+    placeholder: "Buscar páginas, ações ou conversas…",
+    empty: "Nada encontrado. Pressione Enter para perguntar ao TON.",
+    pages: "Ir para",
+    actions: "Ações",
+    conversations: "Conversas",
+    ask: (text: string) => `Perguntar ao TON: “${text}”`,
+    select: "Selecionar",
+    open: "Abrir",
+    items: {
+      overview: "Visão Geral",
+      assistant: "Nova conversa com o TON",
+      closing: "Fechamento do período",
+      dre: "Abrir DRE",
+      pending: "Ver pendências",
+      automations: "Automações",
+      reports: "Relatórios",
+      latestReport: "Mostrar último relatório",
+      sources: "Abrir fontes",
+      specialists: "Especialistas",
+      analyze: "Analisar fechamento",
+      conversations: "Todas as conversas",
+      admin: "Administração do TON",
+    },
+  },
+  admin: {
+    eyebrow: "Configuração",
+    title: "Administração do TON",
+    description:
+      "Acesso, fontes, automações e controles do produto para a Vale Norte. Configurações de infraestrutura ficam na administração técnica.",
+    productSection: "Produto",
+    technicalBadge: "Técnica",
+    technicalHint: "Abre na administração técnica",
+    noAccessTitle: "Área restrita a administradores",
+    noAccessDescription:
+      "A configuração do TON é feita por administradores autorizados da Vale Norte.",
+    access: {
+      title: "Acesso de usuários",
+      description:
+        "Quem usa o TON, grupos e permissões de leitura, importação e relatórios.",
+    },
+    sources: {
+      title: "Fontes de dados",
+      description:
+        "Importações, modo de aquisição e estado da integração direta com o NG/Keevo.",
+      status: (current: number, total: number) =>
+        `${formatNumber(current)} de ${formatNumber(total)} fontes atualizadas`,
+    },
+    automations: {
+      title: "Automações",
+      description:
+        "Agenda da rotina de fechamento preliminar (R3) e rotinas aguardando capacidade.",
+      enabled: (next: string) => `R3 agendada · próxima execução ${next}`,
+      disabled: "R3 sem agenda ativa",
+    },
+    specialists: {
+      title: "Especialistas",
+      description:
+        "Disponibilidade dos nove especialistas e as fontes de que cada um depende.",
+      status: (active: number, total: number) =>
+        `${formatNumber(active)} de ${formatNumber(total)} atuando`,
+    },
+    readiness: {
+      title: "Controles de prontidão financeira",
+      description:
+        "Vínculos de contas e unidades, semântica de valores e recálculo da prontidão.",
+    },
+    dre: {
+      title: "Estrutura da DRE",
+      description: "Versões da estrutura de linhas e cálculos da DRE.",
+    },
+    reports: {
+      title: "Relatórios e publicação",
+      description:
+        "Relatórios publicados pelo TON e versões preservadas para auditoria.",
+      status: (types: number, versions: number) =>
+        `${plural(types, "tipo de relatório", "tipos de relatório")} · ${plural(versions, "versão", "versões")}`,
+    },
+    coverage: {
+      title: "Cobertura do Prompt Mestre",
+      description:
+        "Diagnóstico das capacidades do TON: operacionais, parciais, bloqueadas e não implementadas.",
+    },
+    assistant: {
+      title: "Assistente TON",
+      description:
+        "Coordenador único que conversa com os usuários e aciona os especialistas.",
+      ready: "Configurado",
+      missing: "Não provisionado",
+    },
+    technical: {
+      title: "Administração técnica",
+      description:
+        "Modelos e provedores, agentes nativos, MCP/OpenAPI, conectores genéricos e diagnóstico de infraestrutura. Restrita a administradores técnicos.",
+      open: "Abrir administração técnica",
+    },
+    back: "Administração do TON",
+  },
+  coverage: {
+    eyebrow: "Diagnóstico",
+    title: "Cobertura do Prompt Mestre",
+    description:
+      "Estado de cada capacidade prevista para o TON. Uso interno de administração; não aparece para clientes.",
+    count: (count: number) => plural(count, "capacidade", "capacidades"),
+    needs: (sources: string, owner: string) =>
+      `Fontes: ${sources} · Responsável: ${owner}`,
+    next: "Próxima dependência",
   },
 } as const;

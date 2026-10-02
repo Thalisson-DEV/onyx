@@ -1,9 +1,10 @@
 /*
   TON product tokens. A thin semantic layer over the Vale Norte primitives
   (--vale-norte-*). The chrome (header, sidebar) is the brand green in both
-  themes; the workspace follows the app's neutral tokens.
+  themes; the workspace follows the app's neutral tokens. Tokens live on :root
+  so portaled content (popovers, dialogs, menus) resolves them too.
 */
-.ton-shell {
+:root {
   --ton-chrome: var(--vale-norte-green-90);
   --ton-chrome-deep: var(--vale-norte-green-95);
   --ton-chrome-raised: var(--vale-norte-green-85);
@@ -47,12 +48,20 @@
 }
 
 /* Dark workspace: lift brand greens so text and tiles stay legible. */
-.dark .ton-shell {
+.dark {
   --ton-brand: var(--vale-norte-green-40);
-  --ton-brand-soft: color-mix(in srgb, var(--vale-norte-green-60) 22%, transparent);
+  --ton-brand-soft: color-mix(
+    in srgb,
+    var(--vale-norte-green-60) 22%,
+    transparent
+  );
   --ton-brand-line: var(--vale-norte-green-60);
   --ton-heading: var(--vale-norte-green-05);
-  --ton-gold-soft: color-mix(in srgb, var(--vale-norte-gold-50) 20%, transparent);
+  --ton-gold-soft: color-mix(
+    in srgb,
+    var(--vale-norte-gold-50) 20%,
+    transparent
+  );
 }
 
 html:has(.ton-shell),
@@ -340,4 +349,61 @@ html:has(.ton-shell) body {
 .ton-metric span {
   font: inherit;
   letter-spacing: inherit;
+}
+
+/* Header controls */
+.ton-header-icon {
+  color: var(--ton-on-chrome);
+  transition: background-color 120ms ease;
+}
+.ton-header-icon:hover {
+  background: var(--ton-chrome-hover);
+}
+.ton-header-icon svg {
+  stroke: currentColor;
+}
+.ton-header-badge {
+  position: absolute;
+  top: 0.125rem;
+  inset-inline-end: 0.125rem;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--ton-gold);
+  color: var(--vale-norte-green-95);
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1rem;
+  text-align: center;
+}
+.ton-header-search {
+  color: var(--ton-on-chrome-muted);
+  background: color-mix(in srgb, var(--vale-norte-green-01) 8%, transparent);
+  border: 1px solid var(--ton-chrome-line);
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
+}
+.ton-header-search:hover {
+  color: var(--ton-on-chrome);
+  background: var(--ton-chrome-hover);
+}
+.ton-header-search svg {
+  stroke: currentColor;
+}
+.ton-kbd {
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1rem;
+  padding: 0 0.375rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--ton-chrome-line);
+  color: var(--ton-on-chrome-muted);
+}
+.ton-kbd-light {
+  border-color: var(--border-02);
+  color: var(--text-04);
+  background: var(--background-neutral-01);
 }

@@ -259,6 +259,16 @@ export const COPY = {
           : plural(count, "versão anterior", "versões anteriores"),
       empty: "Nenhum relatório publicado ainda.",
     },
+    sourceHealth: {
+      title: "Saúde das fontes",
+    },
+    involved: {
+      title: "Especialistas no fechamento",
+      waiting: (count: number) =>
+        count === 1
+          ? "1 especialista aguarda fonte de dados."
+          : `${formatNumber(count)} especialistas aguardam fonte de dados.`,
+    },
     rail: {
       sources: "Fontes",
       allSources: "Ver todas as fontes",

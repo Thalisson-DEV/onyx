@@ -39,10 +39,12 @@ import {
   plural,
 } from "@/lib/ton/copy";
 import { getBusinessLabel } from "@/lib/ton/labels";
+import { useTonActivity, type ActivityKind } from "@/lib/ton/activity";
 import type { ClosingOutput } from "@/lib/ton/types";
 import R3Spotlight from "@/views/ton/components/R3Spotlight";
 import {
   CardHeader,
+  ErrorState,
   IconTile,
   LoadingBlock,
   StatusDot,
@@ -302,71 +304,21 @@ function AttentionQueue({ closing }: { closing: ClosingOutput }) {
   );
 }
 
-interface ActivityEvent {
-  key: string;
-  at: string;
-  icon: IconFunctionComponent;
-  title: string;
-  detail: string;
-  href?: Route;
-}
+const ACTIVITY_ICONS: Record<ActivityKind, IconFunctionComponent> = {
+  report: SvgFileText,
+  import: SvgUploadCloud,
+  importFailed: SvgAlertTriangle,
+  specialists: SvgUsers,
+};
 
 function ActivityFeed() {
-  const reports = useTonReportGroups();
-  const sources = useTonDataSources();
-  const specialists = useTonSpecialists();
-
-  const events: ActivityEvent[] = [];
-  for (const group of reports.data ?? []) {
-    const { latest } = group;
-    events.push({
-      key: `report-${latest.revision_id}`,
-      at: latest.output.generated_at,
-      icon: SvgFileText,
-      title: COPY.home.activity.reportPublished(
-        getBusinessLabel(latest.report_type ?? "MONTHLY_CLOSE")
-      ),
-      detail: `${getBusinessLabel(latest.status)} · ${formatPeriod(latest.output.period)}`,
-      href: latest.report_url as Route,
-    });
-  }
-  for (const source of sources.data ?? []) {
-    const latest = source.latest;
-    if (!latest?.finished_at || latest.status !== "SUCCEEDED") continue;
-    events.push({
-      key: `import-${latest.id}`,
-      at: latest.finished_at,
-      icon: SvgUploadCloud,
-      title: COPY.home.activity.sourceImported(source.name),
-      detail: `${plural(latest.imported, "registro", "registros")} · ${latest.filename}`,
-      href: "/ton/fontes",
-    });
-  }
-  const ran = (specialists.data ?? []).filter((item) => item.last_execution);
-  const byTime = new Map<string, string[]>();
-  for (const item of ran) {
-    const at = item.last_execution as string;
-    byTime.set(at, [...(byTime.get(at) ?? []), item.name]);
-  }
-  for (const [at, names] of byTime) {
-    events.push({
-      key: `specialists-${at}`,
-      at,
-      icon: SvgUsers,
-      title: COPY.home.activity.specialistRan(names),
-      detail: COPY.nav.closing,
-      href: "/ton/especialistas",
-    });
-  }
-  events.sort((a, b) => b.at.localeCompare(a.at));
-  const loading =
-    reports.isLoading || sources.isLoading || specialists.isLoading;
-
+  const { events, isLoading, error } = useTonActivity();
   return (
     <TonCard className="flex flex-col gap-4 p-5" labelledBy="ton-activity">
       <CardHeader id="ton-activity" title={COPY.home.activity.title} />
-      {loading && <LoadingBlock label={COPY.common.loading} />}
-      {!loading && events.length === 0 && (
+      {isLoading && <LoadingBlock label={COPY.common.loading} />}
+      {error && <ErrorState compact />}
+      {!isLoading && !error && events.length === 0 && (
         <Text as="p" font="main-ui-body" color="text-03">
           {COPY.home.activity.empty}
         </Text>
@@ -375,7 +327,11 @@ function ActivityFeed() {
         {events.slice(0, 6).map((event, index, list) => (
           <li key={event.key} className="flex gap-3">
             <div className="flex flex-col items-center">
-              <IconTile icon={event.icon} size="sm" tone="neutral" />
+              <IconTile
+                icon={ACTIVITY_ICONS[event.kind]}
+                size="sm"
+                tone={event.attention ? "warning" : "neutral"}
+              />
               {index < list.length - 1 && (
                 <span aria-hidden className="w-px flex-1 bg-border-01 my-1" />
               )}
@@ -402,6 +358,103 @@ function ActivityFeed() {
           </li>
         ))}
       </ol>
+    </TonCard>
+  );
+}
+
+function SourceHealth({ closing }: { closing: ClosingOutput | undefined }) {
+  const sources = useTonDataSources();
+  const configured = sources.data?.filter((source) => source.source_id) ?? [];
+  const direct = closing?.sources.find(
+    (source) => source.key === "financial_launches"
+  );
+  return (
+    <TonCard className="flex flex-col gap-3 p-5" labelledBy="ton-source-health">
+      <CardHeader
+        id="ton-source-health"
+        title={COPY.home.sourceHealth.title}
+        action={{ href: "/ton/fontes", label: COPY.home.rail.allSources }}
+      />
+      {sources.isLoading && <LoadingBlock label={COPY.common.loading} />}
+      {sources.error && <ErrorState compact onRetry={() => sources.mutate()} />}
+      <ul className="flex flex-col divide-y divide-border-01">
+        {configured.map((source) => (
+          <li key={source.key} className="flex items-center gap-3 py-2">
+            <StatusDot tone={sourceTone(source.status)} />
+            <span className="flex-1 min-w-0">
+              <Text font="secondary-action" color="text-05" maxLines={1}>
+                {source.name}
+              </Text>
+            </span>
+            <Text font="secondary-body" color="text-03">
+              {source.last_success_at
+                ? formatRelativeDateTime(source.last_success_at)
+                : getBusinessLabel(source.status)}
+            </Text>
+          </li>
+        ))}
+        {direct && (
+          <li className="flex items-center gap-3 py-2">
+            <StatusDot tone="neutral" />
+            <span className="flex-1 min-w-0">
+              <Text font="secondary-action" color="text-05" maxLines={1}>
+                {`${COPY.home.rail.directIntegration} NG/Keevo`}
+              </Text>
+            </span>
+            <Text font="secondary-body" color="text-03">
+              {direct.direct_integration}
+            </Text>
+          </li>
+        )}
+      </ul>
+    </TonCard>
+  );
+}
+
+/** Only the specialists the latest closing analysis actually involved. */
+function InvolvedSpecialists({
+  closing,
+}: {
+  closing: ClosingOutput | undefined;
+}) {
+  const involved = (closing?.specialists ?? []).filter(
+    (item) => specialistTone(item.status) !== "neutral"
+  );
+  const waiting = (closing?.specialists ?? []).length - involved.length;
+  return (
+    <TonCard className="flex flex-col gap-3 p-5" labelledBy="ton-involved">
+      <CardHeader
+        id="ton-involved"
+        title={COPY.home.involved.title}
+        action={{
+          href: "/ton/especialistas",
+          label: COPY.home.rail.allSpecialists,
+        }}
+      />
+      {!closing && <LoadingBlock label={COPY.common.loading} />}
+      <ul className="flex flex-col divide-y divide-border-01">
+        {involved.map((item) => (
+          <li key={item.key} className="flex items-start gap-3 py-2">
+            <IconTile icon={SvgSparkle} size="sm" />
+            <span className="flex flex-col min-w-0 flex-1">
+              <Text font="secondary-action" color="text-05">
+                {item.name}
+              </Text>
+              <Text font="secondary-body" color="text-03" maxLines={2}>
+                {item.reason}
+              </Text>
+            </span>
+            <StatusPill tone={specialistTone(item.status)}>
+              {item.status}
+            </StatusPill>
+          </li>
+        ))}
+      </ul>
+      {waiting > 0 && (
+        <Text as="p" font="secondary-body" color="text-03">
+          {COPY.home.involved.waiting(waiting)}
+        </Text>
+      )}
     </TonCard>
   );
 }
@@ -651,13 +704,7 @@ export default function HomePage() {
               <LoadingBlock label={COPY.common.loading} />
             </TonCard>
           )}
-          {closing.error && (
-            <TonCard className="p-5">
-              <Text as="p" font="main-ui-body" color="text-03">
-                {COPY.common.error}
-              </Text>
-            </TonCard>
-          )}
+          {closing.error && <ErrorState onRetry={() => closing.mutate()} />}
           {closing.data && (
             <>
               <ExecutiveStrip closing={closing.data} />
@@ -671,17 +718,12 @@ export default function HomePage() {
             <ActivityFeed />
             <LatestReports />
           </div>
-          <div className="xl:hidden">
-            <HomeRail />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
+            <SourceHealth closing={closing.data} />
+            <InvolvedSpecialists closing={closing.data} />
           </div>
         </div>
       </div>
-      <aside
-        aria-label={COPY.nav.overview}
-        className="ton-rail hidden xl:block w-[320px] shrink-0 sticky top-0 self-start h-[calc(100dvh-var(--ton-header-height))] overflow-y-auto p-5"
-      >
-        <HomeRail />
-      </aside>
     </div>
   );
 }

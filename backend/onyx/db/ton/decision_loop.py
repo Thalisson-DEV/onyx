@@ -37,7 +37,35 @@ from onyx.ton.financial_domain.readiness_models import (
     DecisionVersions,
     PeriodChange,
     ReadinessChanges,
+    RequiredActionKind,
 )
+
+# Blockers a person settles with a decision in the pending queue; the rest
+# need data (import) or a source/structure correction.
+DECISION_BLOCKERS = frozenset(
+    {
+        "UNMAPPED_UNIT",
+        "UNMAPPED_ACCOUNT",
+        "BUDGET_UNMAPPED_ACCOUNT",
+        "BUDGET_UNMAPPED_UNIT",
+        "ACTUAL_AMOUNT_SEMANTICS_UNRESOLVED",
+        "DRE_ACCOUNT_UNMAPPED",
+        "DRE_MAPPING_PENDING_APPROVAL",
+        "BUDGET_PERIOD_UNRESOLVED",
+        "SOURCE_RECONCILIATION_UNRESOLVED",
+        "SOURCE_RECONCILIATION_AMBIGUOUS",
+    }
+)
+IMPORT_BLOCKERS = frozenset({"NO_ACTUAL", "MISSING_BUDGET"})
+
+
+def required_action(blocker: str) -> RequiredActionKind:
+    if blocker in DECISION_BLOCKERS:
+        return "DECISION_IN_PENDING"
+    if blocker in IMPORT_BLOCKERS:
+        return "IMPORT_IN_SOURCES"
+    return "DATA_OR_CONFIGURATION_FIX"
+
 
 MAPPING_KINDS: dict[str, DecisionKind] = {
     "UNIT": "UNIT_MAPPING",
@@ -428,7 +456,8 @@ def decision_log(session: Session, user: User, limit: int) -> DecisionLog:  # no
                 decided_by=None,
                 decided_at=rejection.created_at,
                 version=None,
-                applied=None,
+                # Effective at once: the candidate stops being proposed.
+                applied=True,
             )
         )
         authors.append(rejection.created_by)
@@ -450,7 +479,8 @@ def decision_log(session: Session, user: User, limit: int) -> DecisionLog:  # no
                     decided_by=None,
                     decided_at=version.created_at,
                     version=version.number,
-                    applied=None,
+                    # Readiness reads the latest structure version directly.
+                    applied=True,
                 )
             )
             authors.append(version.created_by)

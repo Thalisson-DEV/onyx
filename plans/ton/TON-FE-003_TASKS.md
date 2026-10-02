@@ -43,27 +43,27 @@ na rede `onyx_default` (a porta 5432 do host é de um Postgres local do Windows)
 - [x] explicação leiga e triagem (D-027)
 
 ## 3. Closing Control Center
-- [ ] status
-- [ ] blockers
-- [ ] recently resolved
-- [ ] activity
-- [ ] next actions
-- [ ] DRE state
-- [ ] latest report
-- [ ] next automation
-- [ ] change summary
+- [x] status
+- [x] blockers (fila ordenada por quem pode agir)
+- [x] recently resolved (o que mudou desde a base anterior)
+- [x] activity (decisões recentes com autor e versão)
+- [x] next actions
+- [x] DRE state
+- [x] latest report (com aviso de relatório anterior à base atual)
+- [x] next automation (R3)
+- [x] change summary
 
 ## 4. Finance Work Queue
-- [ ] blockers
-- [ ] decisions
-- [ ] findings
-- [ ] overdue actions
-- [ ] source problems
-- [ ] priority
-- [ ] owner when supported
-- [ ] deadline when supported
-- [ ] impact
-- [ ] action
+- [x] blockers
+- [x] decisions (registradas e não aplicadas)
+- [~] findings (aparecem no Fechamento; achados de revisão vazios na base local)
+- [x] overdue actions (`GET /api/ton/agent/actions/overdue`; 0 na base local)
+- [x] source problems (importação com falha/avisos)
+- [x] priority (ordem determinística: fonte quebrada → aplicar → decidir → dados → acompanhar)
+- [x] owner when supported (só da atribuição da ocorrência)
+- [x] deadline when supported (idem)
+- [x] impact ("Bloqueia a DRE" / "Acompanhar")
+- [x] action
 
 ## 5. Assistant ↔ actions
 - [ ] deep-link from answers
@@ -78,7 +78,7 @@ na rede `onyx_default` (a porta 5432 do host é de um Postgres local do Windows)
 - [x] post-decision recompute
 - [x] detect blocker removal
 - [x] detect new blocker
-- [ ] notify meaningful state changes
+- [x] notify meaningful state changes (sino: decisões, prontidão recalculada, DRE sem bloqueios)
 - [ ] report regeneration where justified
 - [x] bounded/idempotent execution (digest de entrada)
 

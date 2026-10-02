@@ -42,6 +42,7 @@ TON_TOOL_DISPLAY_NAMES = {
     "ton_get_occurrence": "Detalhe da ocorrência",
     "ton_list_overdue_actions": "Ações vencidas",
     "ton_get_readiness_evidence": "Evidência da prontidão",
+    "ton_get_recent_changes": "Mudanças após decisões",
 }
 
 
@@ -271,6 +272,12 @@ class TonReadinessEvidenceTool(TonDomainTool):
     REQUIRED = ("normalization_run_id", "structure_version_id", "blocker")
 
 
+class TonRecentChangesTool(TonDomainTool):
+    NAME = "ton_get_recent_changes"
+    DESCRIPTION = "Consultar o que mudou na prontidão da DRE desde a base anterior e as decisões humanas registradas (quem, quando, justificativa, versão e se já foram aplicadas). Sem parâmetros, usa a base mais recente. Não aprovar nem recalcular."
+    FIELDS = ("normalization_run_id", "structure_version_id", "unit_id", "limit")
+
+
 TON_TOOL_CLASSES = (
     TonListSourcesTool,
     TonGetSourceStatusTool,
@@ -290,4 +297,5 @@ TON_TOOL_CLASSES = (
     TonGetOccurrenceTool,
     TonOverdueActionsTool,
     TonReadinessEvidenceTool,
+    TonRecentChangesTool,
 )

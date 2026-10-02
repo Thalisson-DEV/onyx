@@ -88,6 +88,9 @@ LABELS = {
     "AWAITING_HUMAN_DECISION": "Aguardando decisão humana",
     "PREREQUISITE_FAILED": "Etapa anterior pendente",
     "NOT_REQUIRED": "Não necessário",
+    "DECISION_IN_PENDING": "Decisão humana em Pendências",
+    "IMPORT_IN_SOURCES": "Importação de dados em Fontes",
+    "DATA_OR_CONFIGURATION_FIX": "Correção de dados ou configuração",
 }
 
 

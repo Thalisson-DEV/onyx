@@ -276,7 +276,7 @@ def test_dre_classification_is_logged_by_account_and_line(
     assert entry.subject == "SYN-LOOP — Synthetic revenue"
     assert entry.outcome == "Service"
     assert entry.version == 2
-    assert entry.applied is None
+    assert entry.applied is True
 
 
 def test_missing_actual_months_are_listed_for_year_to_date(
@@ -298,3 +298,23 @@ def test_missing_actual_months_are_listed_for_year_to_date(
         [datetime.date(2026, 2, 1)],
     ]
     assert page.covered_periods == [datetime.date(2026, 3, 1)]
+
+
+def test_assistant_tool_reports_changes_and_decisions(
+    ton_session: Session, admin: User, store: FileStore
+) -> None:
+    from onyx.ton.agent.models import ToolQuery
+    from onyx.ton.agent.service import query_domain
+    from onyx.ton.financial_domain.readiness_models import RecentChanges
+
+    _run_id, _version_id, source_id, unit_id = _unresolved_scope(
+        ton_session, admin, store
+    )
+    _map(ton_session, admin, source_id, MappingKind.UNIT, UNIT_KEY, unit_id=unit_id)
+    result = query_domain(ton_session, admin, "ton_get_recent_changes", ToolQuery())
+    assert isinstance(result, RecentChanges)
+    assert result.changes.pending_decisions == 1
+    assert result.decisions.entries[0].kind == "UNIT_MAPPING"
+    assert result.decisions.entries[0].applied is False
+    actions = {item.blocker: item.action for item in result.required_actions}
+    assert actions["SOURCE_RECONCILIATION_UNRESOLVED"] == "DECISION_IN_PENDING"

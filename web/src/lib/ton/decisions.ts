@@ -223,3 +223,22 @@ export async function postTonJson<T>(
   // SAFETY: TON endpoints return the declared Pydantic view on 2xx.
   return (await response.json()) as T;
 }
+
+/** Business labels the assistant tools return, mapped back to readiness codes. */
+const AGENT_BLOCKER_LABELS: Record<string, string> = {
+  "Unidade não vinculada": "UNMAPPED_UNIT",
+  "Conta não vinculada": "UNMAPPED_ACCOUNT",
+  "Conta do orçamento não vinculada": "BUDGET_UNMAPPED_ACCOUNT",
+  "Unidade do orçamento não vinculada": "BUDGET_UNMAPPED_UNIT",
+  "Base de valor realizado não definida": "ACTUAL_AMOUNT_SEMANTICS_UNRESOLVED",
+  "Conta sem classificação na DRE": "DRE_ACCOUNT_UNMAPPED",
+  "Classificação DRE aguarda aprovação": "DRE_MAPPING_PENDING_APPROVAL",
+  "Período do orçamento não definido": "BUDGET_PERIOD_UNRESOLVED",
+  "Conciliação sem decisão": "SOURCE_RECONCILIATION_UNRESOLVED",
+  "Conciliação ambígua": "SOURCE_RECONCILIATION_AMBIGUOUS",
+  "Períodos sem realizado no escopo": "NO_ACTUAL",
+};
+
+export function blockerCode(labelOrCode: string): string {
+  return AGENT_BLOCKER_LABELS[labelOrCode] ?? labelOrCode;
+}

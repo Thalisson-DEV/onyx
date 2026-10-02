@@ -8,12 +8,19 @@ import {
   SvgClipboard,
   SvgDownload,
   SvgFileText,
+  SvgRefreshCw,
   SvgServer,
 } from "@opal/icons";
 import type { IconFunctionComponent } from "@opal/types";
 import { getBusinessLabel, getStatusTone } from "@/lib/ton/labels";
 import { COPY, formatPeriod } from "@/lib/ton/copy";
-import { groupBlockers, totalBlockers } from "@/lib/ton/blockers";
+import { totalBlockers } from "@/lib/ton/blockers";
+import {
+  blockerCode,
+  blockerLabel,
+  isDecisionBlocker,
+  pendingQueueHref,
+} from "@/lib/ton/decisions";
 
 interface TonToolCardProps {
   toolName: string;
@@ -218,11 +225,23 @@ function ReportCard({ publication }: { publication: JsonObject }) {
 function DreCard({
   status,
   blockers,
+  period,
 }: {
   status?: string;
   blockers: Record<string, number>;
+  period: string | null;
 }) {
   const total = totalBlockers(blockers);
+  // One action per blocker: decisions open the queue on that category, data
+  // gaps open the import guide. Nothing is resolved from the conversation.
+  const actions = Object.entries(blockers)
+    .filter(([, count]) => count > 0)
+    .map(([label, count]) => ({ code: blockerCode(label), count }))
+    .sort(
+      (a, b) =>
+        Number(isDecisionBlocker(b.code)) - Number(isDecisionBlocker(a.code)) ||
+        b.count - a.count
+    );
   return (
     <CardFrame
       icon={SvgClipboard}
@@ -235,30 +254,93 @@ function DreCard({
           <Text font="main-ui-body" color="text-04">
             {COPY.analysis.dreBlocked(total)}
           </Text>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {groupBlockers(blockers).map((group) => (
-              <div
-                key={group.category}
-                className="flex flex-col rounded-08 bg-background-neutral-01 px-3 py-2"
+          <ul className="flex flex-col divide-y divide-border-01">
+            {actions.map((action) => (
+              <li
+                key={action.code}
+                className="flex flex-wrap items-center gap-2 py-2 first:pt-0 last:pb-0"
               >
-                <span className="ton-eyebrow">
-                  {COPY.blockers.categories[group.category].short}
-                </span>
-                <span className="ton-metric">
-                  <Text font="heading-h3" color="inherit">
-                    {String(group.count)}
+                <span className="flex-1 min-w-0">
+                  <Text font="secondary-action" color="text-05">
+                    {`${blockerLabel(action.code)} · ${action.count}`}
                   </Text>
                 </span>
-              </div>
+                <Button
+                  href={pendingQueueHref({ blocker: action.code, period })}
+                  prominence="secondary"
+                  size="sm"
+                  rightIcon={SvgArrowRight}
+                >
+                  {isDecisionBlocker(action.code)
+                    ? COPY.analysis.resolveAction
+                    : COPY.analysis.importAction}
+                </Button>
+              </li>
             ))}
-          </div>
-          <div>
-            <Button href="/ton/pendencias" prominence="secondary" size="md">
-              {COPY.analysis.openPending}
-            </Button>
-          </div>
+          </ul>
         </>
       )}
+    </CardFrame>
+  );
+}
+
+function ChangesCard({ body }: { body: JsonObject }) {
+  const changes = record(body.changes) ? body.changes : null;
+  const decisions = record(body.decisions) ? body.decisions : null;
+  const periods =
+    changes && Array.isArray(changes.periods)
+      ? changes.periods.filter(record)
+      : [];
+  const latest = periods.at(-1);
+  const sum = (value: JsonValue | undefined) =>
+    record(value)
+      ? Object.values(value).reduce<number>(
+          (total, item) => total + (typeof item === "number" ? item : 0),
+          0
+        )
+      : 0;
+  const hasPrevious =
+    changes && typeof changes.previous_started_at === "string";
+  const pending =
+    changes && typeof changes.pending_decisions === "number"
+      ? changes.pending_decisions
+      : 0;
+  const recorded =
+    decisions && Array.isArray(decisions.entries)
+      ? decisions.entries.length
+      : 0;
+  return (
+    <CardFrame icon={SvgRefreshCw} title={COPY.analysis.changesTitle}>
+      {latest && hasPrevious ? (
+        <Text font="main-ui-body" color="text-04">
+          {COPY.analysis.changesTotals(
+            sum(latest.blockers_before),
+            sum(latest.blockers_after)
+          )}
+        </Text>
+      ) : (
+        <Text font="main-ui-body" color="text-04">
+          {COPY.decisionLoop.changes.first}
+        </Text>
+      )}
+      <Text font="secondary-body" color="text-03">
+        {COPY.analysis.changesDecisions(recorded, pending)}
+      </Text>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          href="/ton/fechamento"
+          prominence="secondary"
+          size="md"
+          rightIcon={SvgArrowRight}
+        >
+          {COPY.analysis.openChanges}
+        </Button>
+        {pending > 0 && (
+          <Button href="/ton/pendencias" size="md" rightIcon={SvgArrowRight}>
+            {COPY.decisionLoop.applyNow}
+          </Button>
+        )}
+      </div>
     </CardFrame>
   );
 }
@@ -354,6 +436,8 @@ export function TonToolCard({ data }: TonToolCardProps) {
       ? payload
       : null;
   if (publication) return <ReportCard publication={publication} />;
+  if (record(payload) && record(payload.changes) && record(payload.decisions))
+    return <ChangesCard body={payload} />;
 
   const rows = record(body) || Array.isArray(body) ? evidenceRows(body) : [];
   const blockers: Record<string, number> =
@@ -383,8 +467,10 @@ export function TonToolCard({ data }: TonToolCardProps) {
       : undefined;
 
   if (rows.length) return <EvidenceCard rows={rows} />;
+  const period =
+    record(body) && typeof body.period === "string" ? body.period : null;
   if (Object.keys(blockers).length || dreStatus)
-    return <DreCard status={dreStatus} blockers={blockers} />;
+    return <DreCard status={dreStatus} blockers={blockers} period={period} />;
   if (sourceRows.length) return <SourcesCard sources={sourceRows} />;
   return null;
 }

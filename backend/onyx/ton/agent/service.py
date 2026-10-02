@@ -18,7 +18,7 @@ from onyx.ton.financial_review import service as review_service
 from onyx.ton.sources.models import SourceView
 
 
-def query_domain(
+def query_domain(  # noqa: C901 - one flat dispatch per TON tool
     session: Session, user: User, operation: str, query: ToolQuery
 ) -> BaseModel | list[BaseModel]:
     permission = (
@@ -180,7 +180,44 @@ def query_domain(
         from onyx.db.ton.agent import financial_context
 
         return financial_context(session, user, query.limit, query.offset)
+    if operation == "ton_get_recent_changes":
+        return _recent_changes(session, user, query)
     raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Ferramenta TON desconhecida")
+
+
+def _recent_changes(session: Session, user: User, query: ToolQuery) -> BaseModel:
+    from onyx.db.ton.agent import financial_context
+    from onyx.db.ton.decision_loop import (
+        decision_log,
+        readiness_changes,
+        required_action,
+    )
+    from onyx.ton.financial_domain.readiness_models import (
+        RecentChanges,
+        RequiredAction,
+    )
+
+    run_id = query.normalization_run_id
+    version_id = query.structure_version_id
+    if run_id is None or version_id is None:
+        context = financial_context(session, user, 1, 0)
+        if not context.bases or not context.structure_version_ids:
+            raise OnyxError(
+                OnyxErrorCode.INVALID_INPUT,
+                "Não há base normalizada ou estrutura de DRE autorizada.",
+            )
+        run_id = run_id or context.bases[0].normalization_run_id
+        version_id = version_id or context.structure_version_ids[0]
+    changes = readiness_changes(session, user, run_id, version_id, query.unit_id)
+    latest = changes.periods[-1] if changes.periods else None
+    return RecentChanges(
+        changes=changes,
+        decisions=decision_log(session, user, query.limit),
+        required_actions=[
+            RequiredAction(blocker=code, count=count, action=required_action(code))
+            for code, count in (latest.blockers_after if latest else {}).items()
+        ],
+    )
 
 
 def _supporting_evidence(

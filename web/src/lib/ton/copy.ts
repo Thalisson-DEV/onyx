@@ -1055,6 +1055,16 @@ export const COPY = {
     location: (sheet: string, row: string) =>
       `Planilha ${sheet} · linha ${row}`,
     openPending: "Abrir pendências",
+    resolveAction: "Resolver",
+    importAction: "Importar",
+    changesTitle: "O que mudou",
+    changesTotals: (before: number, after: number) =>
+      `Pendências da DRE: ${formatNumber(before)} antes → ${formatNumber(after)} agora`,
+    changesDecisions: (recorded: number, pending: number) =>
+      pending > 0
+        ? `${plural(recorded, "decisão recente", "decisões recentes")}; ${plural(pending, "aguarda", "aguardam")} recálculo`
+        : `${plural(recorded, "decisão recente", "decisões recentes")}, todas aplicadas`,
+    openChanges: "Ver no Fechamento",
     dreTitle: "Situação da DRE",
     dreBlocked: (count: number) =>
       count === 1

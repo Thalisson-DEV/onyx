@@ -155,9 +155,30 @@ class DecisionEntry(BaseModel):
     decided_by: str | None
     decided_at: datetime
     version: int | None
+    # False only for decisions a base recompute still has to fold in.
     applied: bool | None
 
 
 class DecisionLog(BaseModel):
     pending_decisions: int
     entries: list[DecisionEntry]
+
+
+RequiredActionKind = Literal[
+    "DECISION_IN_PENDING", "IMPORT_IN_SOURCES", "DATA_OR_CONFIGURATION_FIX"
+]
+
+
+class RequiredAction(BaseModel):
+    blocker: str
+    count: int
+    action: RequiredActionKind
+
+
+class RecentChanges(BaseModel):
+    """What the assistant reports for "what changed after the decisions"."""
+
+    changes: ReadinessChanges
+    decisions: DecisionLog
+    # What each remaining blocker of the latest period needs, by rule.
+    required_actions: list[RequiredAction]

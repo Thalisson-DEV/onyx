@@ -46,7 +46,11 @@ const PHASES: Record<Phase, string[]> = {
     "ton_get_reconciliation_summary",
     "ton_analyze_closing",
   ],
-  dre: ["ton_get_dre_readiness", "ton_get_dre_result"],
+  dre: [
+    "ton_get_dre_readiness",
+    "ton_get_dre_result",
+    "ton_get_recent_changes",
+  ],
   evidence: [
     "ton_list_findings",
     "ton_get_finding",
@@ -60,6 +64,9 @@ const PHASES: Record<Phase, string[]> = {
 
 /** Tools whose last result is shown as a rich card in the answer. */
 const CARD_TOOLS = [
+  "ton_analyze_closing",
+  "ton_get_dre_readiness",
+  "ton_get_recent_changes",
   "ton_get_finding",
   "ton_get_readiness_evidence",
   "ton_generate_closing_report",

@@ -78,6 +78,33 @@ export function formatNumber(value: number): string {
   return value.toLocaleString("pt-BR");
 }
 
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  maximumFractionDigits: 2,
+});
+const percentFormatter = new Intl.NumberFormat("pt-BR", {
+  maximumFractionDigits: 1,
+});
+const shortMonthFormatter = new Intl.DateTimeFormat("pt-BR", {
+  month: "short",
+  timeZone: "UTC",
+});
+
+/** Decimal strings from the API; null stays "—", never zero. */
+export function formatCurrency(value: string | null | undefined): string {
+  return value == null ? "—" : currencyFormatter.format(Number(value));
+}
+
+export function formatPercent(value: string | null | undefined): string {
+  return value == null ? "—" : `${percentFormatter.format(Number(value))}%`;
+}
+
+/** "jul." for an ISO period such as "2026-07-01". */
+export function formatShortMonth(period: string): string {
+  return shortMonthFormatter.format(new Date(`${period}T12:00:00Z`));
+}
+
 export const COPY = {
   shell: {
     tagline: "Inteligência Operacional e Controladoria com IA",
@@ -287,6 +314,83 @@ export const COPY = {
     title: "DRE",
     description:
       "Demonstrativo de resultado versionado por período e escopo. Valores só aparecem quando a base está pronta.",
+    period: "Período",
+    scope: "Escopo",
+    consolidated: "Consolidado",
+    advanced: "Base e estrutura",
+    normalization: "Base normalizada",
+    structure: "Estrutura da DRE",
+    months: "Meses do exercício",
+    monthReady: "Pronta",
+    monthBlocked: "Bloqueada",
+    blockedTitle: (period: string) =>
+      `DRE de ${period} ainda não pode ser publicada`,
+    blockedCount: (count: number) =>
+      count === 1
+        ? "1 item exige atenção"
+        : `${formatNumber(count)} itens exigem atenção`,
+    blockedBody:
+      "A base foi importada, mas decisões humanas ou dados faltantes impedem um resultado oficial. Nenhum valor é estimado enquanto houver bloqueio.",
+    resolve: "Resolver",
+    resolveAll: "Resolver pendências",
+    recalculate: "Recalcular DRE",
+    recalculating: "Recalculando…",
+    recalcBlocked:
+      "Recálculo concluído: a DRE continua bloqueada pelos itens abaixo.",
+    recalcReady: "Recálculo concluído: a DRE está pronta.",
+    recalcFailed: "Não foi possível recalcular. Tente novamente.",
+    ask: "Perguntar ao TON",
+    askPrompt: (period: string) =>
+      `O que impede a publicação da DRE de ${period} e qual a evidência de cada bloqueio?`,
+    readyNoResult:
+      "A base está pronta, mas ainda não há cálculo oficial para este período.",
+    official: "Resultado oficial",
+    calculatedAt: (date: string) => `Calculado em ${date}`,
+    export: "Exportar CSV",
+    exportFailed: "Não foi possível exportar. Tente novamente.",
+    kpi: {
+      actual: "Realizado",
+      budget: "Orçado",
+      variance: "Variação",
+      variancePercent: "Variação %",
+      ytd: "Acumulado no ano",
+    },
+    table: {
+      line: "Linha",
+      month: "Mês",
+      ytd: "Acumulado",
+      actual: "Realizado",
+      budget: "Orçado",
+      variance: "Var.",
+      variancePercent: "Var. %",
+      expand: (line: string) => `Expandir ${line}`,
+      collapse: (line: string) => `Recolher ${line}`,
+      drill: (line: string) => `Ver composição de ${line}`,
+    },
+    trend: "Evolução no ano",
+    trendEmpty: "Sem outros meses calculados neste ano.",
+    drawer: {
+      title: "Composição da linha",
+      close: "Fechar",
+      actual: "Realizado",
+      budget: "Orçado",
+      facts: (count: number) => plural(count, "lançamento", "lançamentos"),
+      empty: "Nenhum lançamento compõe esta linha no período.",
+      source: (source: string, file: string) => `${source} · ${file}`,
+      location: (sheet: string, row: number) =>
+        `Planilha ${sheet} · linha ${formatNumber(row)}`,
+      review: "Revisão",
+      previous: "Anterior",
+      next: "Próxima",
+      page: (start: number, end: number, total: number) =>
+        `${formatNumber(start)}–${formatNumber(end)} de ${formatNumber(total)}`,
+    },
+    version: "Versão do cálculo",
+    versionStructure: (number: number) => `Estrutura v${number}`,
+    noConfiguration:
+      "A DRE ainda não tem base normalizada ou estrutura configurada.",
+    noPeriods: "Nenhum período disponível para este escopo.",
+    noAccess: "Sua conta não tem acesso à DRE.",
   },
   pending: {
     title: "Pendências do fechamento",

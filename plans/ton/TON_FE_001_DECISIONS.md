@@ -449,3 +449,28 @@ Decisão:
 Dívida: o backend basic auth ainda aceita cadastro direto em `/auth/signup`. Fechar
 isso é decisão de autenticação (ex.: domínio permitido ou convite obrigatório) e
 fica para o responsável pelo deploy.
+
+## D-020 — Workspace DRE nativo do TON
+
+Data: 2026-10-01
+Status: Accepted
+
+Contexto: `/ton/dre` embutia `views/admin/DrePage` (selects administrativos, revisões com
+prefixo de UUID, cartões genéricos).
+
+Decisão: `views/ton/DrePage` passa a ter workspace próprio. `useDreWorkspace` usa os
+mesmos endpoints e a mesma regra de seleção da view admin (última normalização e
+estrutura; só um cálculo READY que casa com ambas é oficial). A UI:
+- bloqueada: título "DRE de <mês> ainda não pode ser publicada", total, cartões por
+  categoria (Unidades, Dotação, Conciliação, Realizado) com contagem, explicação e
+  "Resolver" que abre a fila já filtrada pelo código do bloqueio (ou categoria);
+  "Recalcular DRE" com retorno explícito do resultado; "Perguntar ao TON".
+- pronta: KPIs do mês com acumulado, tabela hierárquica com grupos Mês/Acumulado,
+  variação e %, colapso de níveis, drill-down em painel lateral (lançamentos com
+  conta, unidade, data, arquivo, planilha/linha e revisão), evolução no ano e
+  exportação CSV. Versão mostrada por número da estrutura e data — sem IDs.
+- base/estrutura só aparecem para admin, recolhidas.
+A view admin continua em `/admin/dre`. Nenhum valor é calculado no React.
+
+Validação: Chrome (estado bloqueado real, 13 itens); jest cobre o estado pronto com
+fixture (D-013: a base local não tem período pronto).

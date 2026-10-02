@@ -414,3 +414,93 @@ html:has(.ton-shell) body {
   background: color-mix(in srgb, var(--ton-surface) 85%, transparent);
   flex-shrink: 0;
 }
+
+/* DRE workspace */
+.ton-month {
+  border: 1px solid var(--border-01);
+  background: var(--ton-surface);
+  color: var(--text-04);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+.ton-month:hover {
+  border-color: var(--ton-brand-line);
+}
+.ton-month-selected {
+  border-color: var(--ton-brand);
+  background: var(--ton-brand-soft);
+  color: var(--ton-brand);
+}
+
+.ton-statement {
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+.ton-statement th,
+.ton-statement td {
+  padding: 0.5rem 0.75rem;
+  white-space: nowrap;
+  text-align: end;
+  color: var(--text-05);
+  font-weight: 400;
+}
+.ton-statement thead th {
+  position: sticky;
+  top: 0;
+  background: var(--background-neutral-01);
+  color: var(--text-03);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-01);
+}
+.ton-statement thead .ton-statement-group {
+  text-align: center;
+  color: var(--text-04);
+  border-bottom: 1px solid var(--border-02);
+}
+.ton-statement tbody th {
+  text-align: start;
+  position: sticky;
+  inset-inline-start: 0;
+  background: var(--ton-surface);
+  min-width: 16rem;
+}
+.ton-statement tbody tr {
+  border-top: 1px solid var(--border-01);
+}
+.ton-statement tbody tr:hover th,
+.ton-statement tbody tr:hover td {
+  background: var(--background-neutral-01);
+}
+.ton-statement tbody tr[aria-selected="true"] th,
+.ton-statement tbody tr[aria-selected="true"] td {
+  background: var(--ton-brand-soft);
+}
+.ton-statement tr[data-type="SUBTOTAL"] th,
+.ton-statement tr[data-type="SUBTOTAL"] td {
+  font-weight: 600;
+  border-top: 1px solid var(--border-02);
+}
+.ton-statement tr[data-type="RESULT"] th,
+.ton-statement tr[data-type="RESULT"] td {
+  font-weight: 700;
+  background: var(--background-neutral-01);
+  border-top: 2px solid var(--border-03);
+}
+.ton-statement .ton-statement-ytd {
+  border-inline-start: 1px solid var(--border-01);
+}
+.ton-statement-drill {
+  color: var(--ton-brand);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ton-brand) 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+.ton-drawer {
+  background: var(--ton-surface);
+  border-inline-start: 1px solid var(--border-01);
+  box-shadow: -12px 0 32px -16px
+    color-mix(in srgb, var(--vale-norte-green-95) 35%, transparent);
+}

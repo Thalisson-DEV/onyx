@@ -390,7 +390,8 @@ const AgentMessage = React.memo(function AgentMessage({
         part="artifacts"
         turnGroups={pacedTurnGroups}
         tools={effectiveChatState.agent.tools}
-        stopped={stopPacketSeen}
+        // Cards follow the answer: wait until its paced text has rendered.
+        stopped={stopPacketSeen && isComplete}
         stopReason={stopReason}
       />
 

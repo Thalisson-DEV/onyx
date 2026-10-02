@@ -799,6 +799,39 @@ export const COPY = {
       ngRange: (range: string) =>
         `Para o fechamento, o arquivo deve cobrir ${range}. A importação do NG substitui a anterior.`,
     },
+    control: {
+      nextTitle: "Próximas ações",
+      nextEmpty:
+        "Nenhuma ação pendente para este período. A DRE pode ser calculada.",
+      applyTitle: (count: number) =>
+        count === 1
+          ? "Aplicar 1 decisão registrada"
+          : `Aplicar ${formatNumber(count)} decisões registradas`,
+      applyDetail:
+        "Decisões já registradas que ainda não entraram na base do fechamento.",
+      resolve: (count: number, label: string) =>
+        `${label}: ${plural(count, "item", "itens")} para decidir`,
+      importData: (count: number) =>
+        `Importar realizado de ${plural(count, "mês", "meses")}`,
+      importDetail: "Depende de dados do NG, não de decisão.",
+      otherData: (label: string) => label,
+      open: "Abrir",
+      calculate: "A DRE não tem bloqueios. Calcule para publicar o resultado.",
+      calculateCta: "Abrir DRE",
+      decisionsTitle: "Decisões recentes",
+      seeQueue: "Ver fila",
+      reportTitle: "Relatório do fechamento",
+      reportNone: "Nenhum relatório de fechamento publicado ainda.",
+      reportCurrent: "Gerado sobre a base atual.",
+      reportStale: (count: number) =>
+        count > 0
+          ? `Gerado antes de ${plural(count, "decisão registrada", "decisões registradas")}. Gere novamente para refletir a base atual.`
+          : "Gerado sobre uma base anterior. Gere novamente para refletir a base atual.",
+      reportOpen: "Abrir relatório",
+      changesTitle: "O que mudou desde a análise anterior",
+      findingBlocking: "Bloqueia",
+      findingInfo: "Informativo",
+    },
     changes: {
       title: "O que mudou na última atualização",
       since: (when: string) => `Comparado com a base anterior, de ${when}`,

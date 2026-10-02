@@ -107,7 +107,9 @@ it("opens the requested category with business titles and no identifiers", () =>
   expect(
     screen.getByRole("heading", { name: "Conciliação" })
   ).toBeInTheDocument();
-  expect(screen.getByText("Item de conciliação")).toBeInTheDocument();
+  expect(
+    screen.getAllByText("Somente faturamento disponível").length
+  ).toBeGreaterThan(0);
   expect(screen.getByText("Realizado ausente")).toBeInTheDocument();
   expect(container).not.toHaveTextContent("23bb59a2");
   expect(container).not.toHaveTextContent("BILLING_ONLY");
@@ -116,14 +118,16 @@ it("opens the requested category with business titles and no identifiers", () =>
 it("titles budget rows by meaning instead of the source identifier", () => {
   mockParams.value = "blocker=BUDGET_PERIOD_UNRESOLVED";
   const { container } = render(<PendingPage />);
-  expect(screen.getByText("Linha de orçamento")).toBeInTheDocument();
+  expect(
+    screen.getByText("O orçamento mensal não tem data inicial aprovada")
+  ).toBeInTheDocument();
   expect(container).not.toHaveTextContent("408e7060");
 });
 
 it("requires an explicit decision, a justification and a second confirmation", async () => {
   const user = setupUser();
   render(<PendingPage />);
-  await user.click(screen.getByRole("button", { name: "Analisar" }));
+  await user.click(screen.getByRole("button", { name: "Revisar e decidir" }));
   const review = screen.getByRole("button", { name: "Revisar decisão" });
   expect(review).toBeDisabled();
   await user.click(screen.getByRole("button", { name: "Diferença esperada" }));
@@ -136,6 +140,12 @@ it("requires an explicit decision, a justification and a second confirmation", a
   await user.click(review);
   expect(global.fetch).not.toHaveBeenCalled();
   expect(screen.getByText("Confirme antes de registrar")).toBeInTheDocument();
+  // The step indicator shows the confirmation step as current.
+  expect(
+    screen
+      .getByRole("list", { name: "Etapas da decisão" })
+      .querySelector('[aria-current="step"]')
+  ).toHaveTextContent("3");
   await user.click(screen.getByRole("button", { name: "Confirmar decisão" }));
   expect(global.fetch).toHaveBeenCalledTimes(1);
   const [path, init] = (global.fetch as jest.Mock).mock.calls[0];

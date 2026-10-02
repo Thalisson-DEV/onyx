@@ -412,7 +412,15 @@ export const COPY = {
     candidate: (code: string) => `Sugestão do TON: ${code}`,
     approvedCandidate: (code: string) => `Decisão registrada: ${code}`,
     noCandidate: "Sem sugestão determinística",
-    analyze: "Analisar",
+    analyze: "Ver evidência",
+    decide: "Revisar e decidir",
+    steps: {
+      label: "Etapas da decisão",
+      review: "Revisar",
+      decide: "Decidir e justificar",
+      confirm: "Confirmar",
+      done: "Registrada",
+    },
     previous: "Anterior",
     next: "Próxima",
     pageRange: (start: number, end: number, total: number) =>
@@ -507,9 +515,11 @@ export const COPY = {
     },
     dialog: {
       title: "Decisão necessária",
-      found: "O que o TON encontrou",
-      scope: "Escopo afetado",
-      decision: "Sua decisão",
+      found: "O que aconteceu",
+      suggestion: "Sugestão do TON",
+      scope: "Quantos registros são afetados",
+      decision: "O que precisa ser decidido",
+      impact: "O que muda se você confirmar",
       reason: "Justificativa",
       reasonPlaceholder: "Motivo ou referência do documento",
       consequence: (count: number) =>

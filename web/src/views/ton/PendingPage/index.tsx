@@ -150,6 +150,46 @@ async function postJson(
   if (!response.ok) throw new Error(String(response.status));
 }
 
+type DecisionStep = "review" | "decide" | "confirm" | "done";
+
+function DecisionSteps({ current }: { current: DecisionStep }) {
+  const steps: DecisionStep[] = ["review", "decide", "confirm", "done"];
+  const index = steps.indexOf(current);
+  return (
+    <ol
+      aria-label={COPY.pending.steps.label}
+      className="flex flex-wrap items-center gap-x-2 gap-y-1"
+    >
+      {steps.map((step, position) => (
+        <li key={step} className="flex items-center gap-2">
+          <span
+            aria-current={position === index ? "step" : undefined}
+            className="ton-step"
+            data-state={
+              position < index
+                ? "done"
+                : position === index
+                  ? "current"
+                  : "next"
+            }
+          >
+            {position + 1}
+          </span>
+          <Text
+            font={position === index ? "secondary-action" : "secondary-body"}
+            color={position <= index ? "text-05" : "text-03"}
+          >
+            {COPY.pending.steps[step]}
+          </Text>
+          {position < steps.length - 1 && (
+            <span aria-hidden className="w-4 border-t border-02" />
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 interface QueueCategory {
   key: CategoryKey;
   blocker: string;
@@ -195,7 +235,20 @@ function rowTitle(row: BlockerRow, category: QueueCategory): string {
   if (category.noActual) return category.rowTitle;
   if (row.source_key && !UUID.test(row.source_key))
     return getBusinessLabel(row.source_key);
-  return category.rowTitle;
+  // Reconciliation items carry no readable key; the first sentence of the
+  // evidence says what happened (for example "Somente faturamento disponível").
+  const evidence = row.evidence ? getBusinessLabel(row.evidence) : "";
+  const headline = evidence.split(".")[0]?.trim();
+  return headline && evidence !== row.evidence ? headline : category.rowTitle;
+}
+
+/** Evidence text without the sentence already used as the row title. */
+function rowDetail(row: BlockerRow, category: QueueCategory): string {
+  const evidence = row.evidence ? getBusinessLabel(row.evidence) : "";
+  const title = rowTitle(row, category);
+  return evidence.startsWith(title)
+    ? evidence.slice(title.length).replace(/^\.\s*/, "")
+    : evidence;
 }
 
 function rowPeriods(row: BlockerRow): string | null {
@@ -712,16 +765,19 @@ export default function PendingPage() {
                     </Text>
                     <Text font="secondary-body" color="text-03">
                       {row.evidence && !row.candidate && !row.legacy_evidence
-                        ? getBusinessLabel(row.evidence)
+                        ? rowDetail(row, category)
                         : rowSuggestion(row)}
                     </Text>
                   </div>
                   <Button
                     size="md"
                     prominence="secondary"
+                    rightIcon={SvgArrowRight}
                     onClick={() => openRow(row)}
                   >
-                    {COPY.pending.analyze}
+                    {category.noActual
+                      ? COPY.pending.analyze
+                      : COPY.pending.decide}
                   </Button>
                 </li>
               ))}
@@ -856,6 +912,19 @@ export default function PendingPage() {
             <Modal.Header title={COPY.pending.dialog.title} />
             <Modal.Body>
               <div className="flex flex-col gap-5">
+                {selectedCanEdit && (
+                  <DecisionSteps
+                    current={
+                      saved
+                        ? "done"
+                        : confirming
+                          ? "confirm"
+                          : reason.trim() && hasDecisionTarget
+                            ? "decide"
+                            : "review"
+                    }
+                  />
+                )}
                 <section className="flex flex-col gap-1.5">
                   <span className="ton-eyebrow">
                     {COPY.pending.dialog.found}
@@ -868,19 +937,25 @@ export default function PendingPage() {
                       {getBusinessLabel(selected.status)}
                     </StatusPill>
                   </div>
-                  {selected.evidence && (
+                  {selected.evidence && rowDetail(selected, category) && (
                     <Text font="main-ui-body" color="text-04">
-                      {getBusinessLabel(selected.evidence)}
+                      {rowDetail(selected, category)}
                     </Text>
                   )}
-                  <Text font="secondary-body" color="text-03">
-                    {rowSuggestion(selected)}
-                  </Text>
                   {selected.legacy_evidence && (
                     <Text font="secondary-body" color="text-03">
                       {`${selected.legacy_evidence.reference_label}: ${selected.legacy_evidence.suggested_code}${selected.legacy_evidence.suggested_label ? ` — ${selected.legacy_evidence.suggested_label}` : ""}`}
                     </Text>
                   )}
+                </section>
+
+                <section className="flex flex-col gap-1.5">
+                  <span className="ton-eyebrow">
+                    {COPY.pending.dialog.suggestion}
+                  </span>
+                  <Text font="main-ui-body" color="text-04">
+                    {rowSuggestion(selected)}
+                  </Text>
                 </section>
 
                 <section className="flex flex-col gap-1.5">
@@ -1110,11 +1185,11 @@ export default function PendingPage() {
                         : "bg-background-neutral-01"
                     )}
                   >
-                    {confirming && (
-                      <Text font="main-ui-action" color="text-05">
-                        {COPY.pending.dialog.confirmTitle}
-                      </Text>
-                    )}
+                    <Text font="main-ui-action" color="text-05">
+                      {confirming
+                        ? COPY.pending.dialog.confirmTitle
+                        : COPY.pending.dialog.impact}
+                    </Text>
                     <Text font="secondary-body" color="text-04">
                       {COPY.pending.dialog.consequence(selected.record_count)}
                     </Text>

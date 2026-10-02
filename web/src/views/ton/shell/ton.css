@@ -504,3 +504,26 @@ html:has(.ton-shell) body {
   box-shadow: -12px 0 32px -16px
     color-mix(in srgb, var(--vale-norte-green-95) 35%, transparent);
 }
+
+/* Decision steps */
+.ton-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1.5px solid var(--border-02);
+  color: var(--text-03);
+}
+.ton-step[data-state="current"] {
+  border-color: var(--ton-brand);
+  color: var(--ton-brand);
+}
+.ton-step[data-state="done"] {
+  border-color: var(--ton-brand);
+  background: var(--ton-brand);
+  color: var(--ton-surface);
+}

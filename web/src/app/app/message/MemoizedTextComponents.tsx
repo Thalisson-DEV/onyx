@@ -1,4 +1,5 @@
 import React, { memo, JSX, useMemo, useCallback } from "react";
+import { extractChatImageFileId } from "@/app/app/components/files/images/utils";
 import type { ExtraProps } from "react-markdown";
 import { SourceIcon } from "@/components/SourceIcon";
 import { WebResultIcon } from "@/components/WebResultIcon";
@@ -234,13 +235,50 @@ interface MemoizedParagraphProps {
   // container's direction.
   dir?: React.HTMLAttributes<HTMLElement>["dir"];
   children?: React.ReactNode;
+  /** The markdown node; a paragraph holding an image renders as a block. */
+  node?: MarkdownNode;
+}
+
+interface MarkdownNode {
+  type: string;
+  tagName?: string;
+  value?: string;
+  properties?: { href?: unknown };
+  children?: MarkdownNode[];
+}
+
+function nodeText(node: MarkdownNode): string {
+  return node.value ?? (node.children ?? []).map(nodeText).join("");
+}
+
+/** Images, and chat-file links to images, render as block previews. */
+function containsImage(node: MarkdownNode | undefined): boolean {
+  return !!node?.children?.some(
+    (child) =>
+      (child.type === "element" && child.tagName === "img") ||
+      (child.type === "element" &&
+        child.tagName === "a" &&
+        typeof child.properties?.href === "string" &&
+        extractChatImageFileId(child.properties.href, nodeText(child)) !==
+          null) ||
+      containsImage(child)
+  );
 }
 
 export const MemoizedParagraph = memo(function MemoizedParagraph({
   className,
   dir,
   children,
+  node,
 }: MemoizedParagraphProps) {
+  // Images render as block previews, which a <p> may not contain.
+  if (containsImage(node)) {
+    return (
+      <div dir={dir} className={className}>
+        {children}
+      </div>
+    );
+  }
   return (
     <Text as="p" dir={dir} mainContentBody text04 className={className}>
       {children}

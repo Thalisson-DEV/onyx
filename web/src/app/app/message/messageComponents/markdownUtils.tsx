@@ -146,7 +146,11 @@ export const useMarkdownComponents = (
 ) => {
   const paragraphCallback = useCallback(
     (props: React.ComponentProps<"p"> & ExtraProps) => (
-      <MemoizedParagraph dir={props.dir} className={className}>
+      <MemoizedParagraph
+        dir={props.dir}
+        className={className}
+        node={props.node}
+      >
         {props.children}
       </MemoizedParagraph>
     ),

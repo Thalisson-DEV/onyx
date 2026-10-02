@@ -380,8 +380,12 @@ export const MessageTextRenderer: MessageRenderer<
           </MemoizedAnchor>
         );
       },
-      p: ({ children, dir }) => (
-        <MemoizedParagraph dir={dir} className="font-main-content-body">
+      p: ({ children, dir, node }) => (
+        <MemoizedParagraph
+          dir={dir}
+          node={node}
+          className="font-main-content-body"
+        >
           {children}
         </MemoizedParagraph>
       ),

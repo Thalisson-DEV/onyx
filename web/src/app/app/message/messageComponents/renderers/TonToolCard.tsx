@@ -171,9 +171,16 @@ function CardFrame({
   );
 }
 
-function ReportCard({ publication }: { publication: JsonObject }) {
+function ReportCard({
+  publication,
+  executiveTool,
+}: {
+  publication: JsonObject;
+  executiveTool: boolean;
+}) {
   const output = record(publication.output) ? publication.output : null;
-  const executive = publication.report_type === "EXECUTIVE";
+  // The publication link omits the report type; the tool that made it says.
+  const executive = executiveTool || publication.report_type === "EXECUTIVE";
   const period =
     output && typeof output.period === "string" ? output.period : null;
   const scope =
@@ -425,7 +432,7 @@ function SourcesCard({ sources }: { sources: JsonObject[] }) {
   );
 }
 
-export function TonToolCard({ data }: TonToolCardProps) {
+export function TonToolCard({ toolName, data }: TonToolCardProps) {
   const payload = record(data) && "data" in data ? data.data : data;
   const body =
     record(payload) && record(payload.output) ? payload.output : payload;
@@ -435,7 +442,13 @@ export function TonToolCard({ data }: TonToolCardProps) {
     payload.report_url.startsWith("/ton/controladoria/reports/")
       ? payload
       : null;
-  if (publication) return <ReportCard publication={publication} />;
+  if (publication)
+    return (
+      <ReportCard
+        publication={publication}
+        executiveTool={toolName === "ton_generate_executive_brief"}
+      />
+    );
   if (record(payload) && record(payload.changes) && record(payload.decisions))
     return <ChangesCard body={payload} />;
 

@@ -27,7 +27,9 @@ import {
   activityStateIcon,
   type ActivityState,
 } from "@/app/app/message/messageComponents/timeline/ActivityStatus";
-import { TonToolCard } from "@/app/app/message/messageComponents/renderers/TonToolCard";
+import TonStepDetail, {
+  tonToolKey,
+} from "@/app/app/message/messageComponents/renderers/TonStepDetail";
 import { useUser } from "@/providers/UserProvider";
 import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/lib/types";
@@ -212,10 +214,14 @@ export const CustomToolRenderer: MessageRenderer<CustomToolPacket, {}> = ({
             </ActivityIndicator>
           )}
 
-        {/* TON Domain Card */}
-        {!error && data !== undefined && data !== null && (
-          <TonToolCard toolName={toolName} data={data} />
-        )}
+        {/* TON step: what was checked, in business terms. The rich cards
+            render once, below the answer. */}
+        {!error &&
+          data !== undefined &&
+          data !== null &&
+          tonToolKey(toolName) && (
+            <TonStepDetail toolName={toolName} data={data} />
+          )}
 
         {/* Error display */}
         {(error || packetError?.message) && (

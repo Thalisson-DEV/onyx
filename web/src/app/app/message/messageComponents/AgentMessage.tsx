@@ -23,10 +23,6 @@ import { Message } from "@/app/app/interfaces";
 import Text from "@/refresh-components/texts/Text";
 import { AgentTimeline } from "@/app/app/message/messageComponents/timeline/AgentTimeline";
 import { TonExecutionSummary } from "@/app/app/message/messageComponents/renderers/TonExecutionSummary";
-import {
-  getTonToolKey,
-  onlyReasoningBesidesTon,
-} from "@/lib/ton/chat-execution";
 import { useVoiceMode } from "@/providers/VoiceModeProvider";
 import { getTextContent } from "@/app/app/services/packetUtils";
 import { removeThinkingTokens } from "@/app/app/services/thinkingTokens";
@@ -292,36 +288,19 @@ const AgentMessage = React.memo(function AgentMessage({
     >
       {/* Row 1: Two-column layout for tool steps */}
 
-      {!onlyReasoningBesidesTon(
-        pacedTurnGroups.flatMap((group) => group.steps),
-        effectiveChatState.agent.tools
-      ) && (
-        <AgentTimeline
-          turnGroups={pacedTurnGroups
-            .map((group) => ({
-              ...group,
-              steps: group.steps.filter(
-                (step) => !getTonToolKey(step, effectiveChatState.agent.tools)
-              ),
-            }))
-            .filter((group) => group.steps.length > 0)}
-          chatState={effectiveChatState}
-          stopPacketSeen={stopPacketSeen}
-          stopReason={stopReason}
-          hasDisplayContent={pacedDisplayGroups.length > 0}
-          processingDurationSeconds={processingDurationSeconds}
-          isGeneratingImage={isGeneratingImage}
-          generatedImageCount={generatedImageCount}
-          finalAnswerComing={pacedFinalAnswerComing}
-          toolProcessingDuration={toolProcessingDuration}
-        />
-      )}
-
-      <TonExecutionSummary
+      {/* TON answers use the same reasoning timeline: model reasoning, each
+          TON query and specialist, Python runs and file reads, in order. */}
+      <AgentTimeline
         turnGroups={pacedTurnGroups}
-        tools={effectiveChatState.agent.tools}
-        stopped={stopPacketSeen}
+        chatState={effectiveChatState}
+        stopPacketSeen={stopPacketSeen}
         stopReason={stopReason}
+        hasDisplayContent={pacedDisplayGroups.length > 0}
+        processingDurationSeconds={processingDurationSeconds}
+        isGeneratingImage={isGeneratingImage}
+        generatedImageCount={generatedImageCount}
+        finalAnswerComing={pacedFinalAnswerComing}
+        toolProcessingDuration={toolProcessingDuration}
       />
 
       {/* Row 2: Display content + MessageToolbar */}
@@ -387,7 +366,6 @@ const AgentMessage = React.memo(function AgentMessage({
       </div>
 
       <TonExecutionSummary
-        part="artifacts"
         turnGroups={pacedTurnGroups}
         tools={effectiveChatState.agent.tools}
         // Cards follow the answer: wait until its paced text has rendered.

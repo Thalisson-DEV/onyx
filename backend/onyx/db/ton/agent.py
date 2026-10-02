@@ -28,6 +28,7 @@ from onyx.ton.agent.models import (
     ToolQuery,
 )
 from onyx.ton.agent.policy import SYNTHETIC_DATA_NOTICE, uses_synthetic_demo_data
+from onyx.tools.tool_implementations.python.python_tool import PythonTool
 from onyx.tools.tool_implementations.ton.ton_tool import (
     TON_TOOL_CLASSES,
     TON_TOOL_DISPLAY_NAMES,
@@ -142,6 +143,15 @@ def provision_agent(session: Session, user: User) -> Persona:
         else:
             tool.display_name = TON_TOOL_DISPLAY_NAMES[tool_class.NAME]
         tools.append(tool)
+    # Code Interpreter for exploratory analysis, only when this deployment can
+    # run it; the prompt bounds what its results may claim.
+    python = session.scalar(
+        sa.select(Tool).where(
+            Tool.in_code_tool_id == PythonTool.__name__, Tool.enabled.is_(True)
+        )
+    )
+    if python is not None and PythonTool.is_available(session):
+        tools.append(python)
     session.flush()
     existing = session.scalar(
         sa.select(Persona).where(

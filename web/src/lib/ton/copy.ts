@@ -1055,6 +1055,22 @@ export const COPY = {
     location: (sheet: string, row: string) =>
       `Planilha ${sheet} · linha ${row}`,
     openPending: "Abrir pendências",
+    trace: {
+      sources: (count: number) =>
+        plural(count, "fonte consultada", "fontes consultadas"),
+      records: (count: number) =>
+        plural(count, "registro retornado", "registros retornados"),
+      items: (count: number) =>
+        plural(count, "item encontrado", "itens encontrados"),
+      context: (bases: number, structures: number) =>
+        `${plural(bases, "base normalizada", "bases normalizadas")} e ${plural(structures, "estrutura de DRE", "estruturas de DRE")} disponíveis`,
+      blockers: (count: number, status: string | null) =>
+        count > 0
+          ? `${plural(count, "pendência impede", "pendências impedem")} a DRE${status ? ` · ${status}` : ""}`
+          : `DRE sem pendências${status ? ` · ${status}` : ""}`,
+      changes: (before: number, after: number) =>
+        `Pendências: ${formatNumber(before)} na base anterior → ${formatNumber(after)} agora`,
+    },
     resolveAction: "Resolver",
     importAction: "Importar",
     changesTitle: "O que mudou",

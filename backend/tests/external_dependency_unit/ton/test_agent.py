@@ -14,6 +14,7 @@ from onyx.file_store.file_store import FileStore
 from onyx.ton.agent.models import SourceToolStatus, ToolQuery
 from onyx.ton.agent.service import query_domain
 from onyx.ton.dre.models import DreScope, DreStructureCreate
+from onyx.tools.tool_implementations.python.python_tool import PythonTool
 from onyx.tools.tool_implementations.ton.ton_tool import TON_TOOL_CLASSES
 from tests.external_dependency_unit.ton import factories
 from tests.external_dependency_unit.ton.test_dre import _lines
@@ -28,9 +29,11 @@ def test_provision_idempotent_and_denied(ton_session: Session, admin: User) -> N
     first = provision_agent(ton_session, admin)
     second = provision_agent(ton_session, admin)
     assert first.id == second.id
+    python_enabled = PythonTool.is_available(ton_session)
+    # TON tools plus the Code Interpreter whenever the deployment has it.
     assert {tool.in_code_tool_id for tool in second.tools} == {
         tool.__name__ for tool in TON_TOOL_CLASSES
-    }
+    } | ({"PythonTool"} if python_enabled else set())
     assert (
         ton_session.scalar(
             select(func.count()).select_from(Persona).where(Persona.name == "TON")

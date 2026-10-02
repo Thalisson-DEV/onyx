@@ -25,29 +25,3 @@ export function getTonToolKey(
   }
   return null;
 }
-
-const QUIET_PACKETS = new Set<string>([
-  PacketType.REASONING_START,
-  PacketType.REASONING_DELTA,
-  PacketType.REASONING_DONE,
-  PacketType.SECTION_END,
-]);
-
-/**
- * True when the steps that TON does not summarize are only model reasoning.
- * The TON progress card already covers that turn, so the generic timeline
- * header would just repeat it. Steps from other tools (files, Code
- * Interpreter, search) keep the timeline visible.
- */
-export function onlyReasoningBesidesTon(
-  steps: TransformedStep[],
-  tools: ToolSnapshot[]
-): boolean {
-  const ton = steps.some((step) => getTonToolKey(step, tools));
-  if (!ton) return false;
-  return steps
-    .filter((step) => !getTonToolKey(step, tools))
-    .every((step) =>
-      step.packets.every((packet) => QUIET_PACKETS.has(packet.obj.type))
-    );
-}

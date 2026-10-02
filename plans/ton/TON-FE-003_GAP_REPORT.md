@@ -194,3 +194,43 @@ conciliação (BlackLine/FloQast — "itens abertos com evidência lado a lado")
 auditoria por decisão (Workiva), checklist de fechamento com dependências (FloQast close
 checklist). Aproveitado: evidência lado a lado na conciliação; "antes/agora" após ação;
 estado "aguardando recálculo" explícito.
+
+---
+
+## 12. Status ao fim do sprint (2026-10-02)
+
+| Gap | Status | Onde |
+|---|---|---|
+| W1 decisão → recálculo → antes/agora | Resolvido | Pendências (diálogo), D-024/D-025 |
+| W2 decisões não aplicadas visíveis | Resolvido | banner, fila, Fechamento, sino |
+| W3 histórico de decisões | Resolvido | log em Pendências, Fechamento e Administração |
+| W4 fila "o que preciso resolver hoje" | Resolvido | Visão Geral e Fechamento (D-029) |
+| W5 DRE pronta → calcular | Parcial | item "Calcular" na fila quando a base fica sem bloqueios; cálculo segue explícito |
+| W6 lote | Adiado | D-026 (sem candidatos determinísticos na base) |
+| T1/T2 evidência de registros | Resolvido | `records[]`, EvidenceRecords |
+| T3 prévia de consequência | Resolvido | prévia + "muda/não muda números da DRE" |
+| T4 leitura repetitiva | Resolvido | removida do Fechamento |
+| A2 notificações | Resolvido | decisões e prontidão no sino |
+| A3 relatório desatualizado | Resolvido (sinalização) | Fechamento e fila |
+| C1/C2 assistente ↔ ações | Resolvido | D-030 |
+| Novo: raciocínio do TON invisível | Resolvido | D-031 |
+| Novo: TON sem Python | Resolvido | D-032 |
+| Novo: publicação sem pedido | Resolvido (prompt) | D-030 |
+| Novo: realizado ausente sem meses nem caminho | Resolvido | D-028 |
+| Novo: importação do NG substitui a anterior | Comunicado | guia de meses faltantes e upload |
+
+### Restante
+
+**P0 — nenhum aberto no escopo de produto.** Dependências externas não mudaram (NG/Keevo
+direto, dados reais aprovados, responsáveis/prazos definidos pela Controladoria).
+
+**P1**
+- Lote seguro para candidatos `EXACT_CODE` quando houver dados reais com repetição (D-026).
+- Frescor de fonte com periodicidade oficial por fonte (hoje só data e falha).
+- Correções repetidas e anomalias: dependem de ocorrências e histórico 2025+.
+- Validar com a Controladoria os textos que explicam cada opção de conciliação (D-027).
+- Reconstruir a imagem `onyx-backend` (as mudanças estão aplicadas por `docker cp`).
+- Validação com papel cliente sem admin (pendente desde o FE-002).
+
+**P2**
+- Lembretes por prazo (sem prazos reais), configuração de automações no admin, personalização.

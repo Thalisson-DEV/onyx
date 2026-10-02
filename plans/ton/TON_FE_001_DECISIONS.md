@@ -577,3 +577,58 @@ Decisão: `list_blockers(NO_ACTUAL)` devolve um item por mês faltante e
 `covered_periods`. A fila mostra meses presentes/faltantes, passos e o link
 `/ton/fontes?importar=financial_launches&ate=AAAA-MM`, que abre o upload do NG com o aviso
 de cobrir janeiro→mês do fechamento num único arquivo. Nenhum lançamento é gerado.
+
+## D-029 — Fila de trabalho única, só com estado persistido
+
+Data: 2026-10-02
+Status: Accepted
+
+Decisão: Visão Geral ("O que precisa de você hoje") e Fechamento ("Próximas ações") usam o
+mesmo `buildWorkQueue` (lib/ton/workQueue.ts). Ordem determinística: importação com falha →
+decisões registradas não aplicadas → decisões por categoria → dados faltantes → ações
+atribuídas vencidas → acompanhamento (DRE sem bloqueios para calcular, relatório anterior à
+base atual). Responsável e prazo aparecem só quando a atribuição da ocorrência os registra
+(`GET /api/ton/agent/actions/overdue`); nada é inferido. Não há prioridade numérica
+inventada: o impacto é "Bloqueia a DRE" ou "Acompanhar".
+
+## D-030 — Assistente aponta a ação exata
+
+Data: 2026-10-02
+Status: Accepted
+
+Decisão: nova ferramenta `ton_get_recent_changes` (antes/agora, log de decisões e a ação que
+cada bloqueio exige: decisão em Pendências, importação em Fontes ou correção de dados). O
+cartão da DRE no chat lista uma ação por bloqueio, abrindo a fila na categoria. Decisões de
+efeito imediato (classificação DRE, rejeição de sugestão) passam a constar como aplicadas —
+o modelo interpretava `null` como "aguarda recálculo". Relatório e resumo executivo só são
+publicados com pedido explícito (o modelo publicava sem pedido; cada publicação é permanente).
+
+## D-031 — Linha de raciocínio do TON visível (substitui parte do FE-002)
+
+Data: 2026-10-02
+Status: Accepted (pedido do usuário durante o FE-003)
+
+Contexto: o FE-002 escondia a timeline do Onyx nas respostas TON e mostrava só chips de fase
+("Fontes consultadas"). O usuário pediu ver raciocínio, ações, especialistas e uso de Python.
+
+Decisão: respostas TON voltam a usar a timeline compartilhada (raciocínio do modelo, cada
+consulta TON, Python, leitura de arquivo), ao vivo. Cada etapa TON diz o que verificou em
+linguagem de negócio; a análise de fechamento mostra o que cada especialista fez nas sete
+etapas do protocolo (dados já gravados em `ton_analysis_step`), com o motivo quando a etapa
+foi bloqueada ou não executada. Cada etapa nomeia o período consultado. JSON bruto só para
+administrador. Os chips de fase foram removidos; os cartões continuam abaixo da resposta.
+
+## D-032 — Code Interpreter no TON, com limites
+
+Data: 2026-10-02
+Status: Accepted
+
+Contexto: a persona TON tinha só as 19 ferramentas TON; Python nunca era usado.
+
+Decisão: `provision_agent` anexa `PythonTool` quando o interpretador está disponível (o
+`upsert_persona` recusa ferramenta indisponível). O prompt limita: Python é cálculo
+exploratório (arquivos anexados, tabelas, gráficos, conferência de somas sobre números
+retornados pelas ferramentas TON), deve citar a origem dos números e nunca virar DRE,
+resultado oficial, valor aprovado, estimativa de valor ausente, mapeamento ou conciliação.
+Validado no Chrome: tabela e gráfico com as contagens das ferramentas, rotulados como
+exploratórios. Se o interpretador estiver fora no momento do provisionamento, reprovisionar.

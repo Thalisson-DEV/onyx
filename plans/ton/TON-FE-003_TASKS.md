@@ -6,7 +6,7 @@ Status: `[x]` feito · `[~]` parcial · `[!]` bloqueado · `[ ]` não iniciado �
 HEAD: `a7dc9b9bc2`
 Branch: `main` (local, sem push)
 Working tree: limpo, exceto os planos TON-FE-003 e `plans/ton/context/` (entrada desta tarefa)
-Current milestone: `M2 — Fechamento como centro de controle`
+Current milestone: `Encerrado — M0 a M6 entregues`
 
 Ambiente de validação: `next dev :3005` contra a API local (sessão do usuário autorizado no
 Chrome). Backend alterado é copiado para `onyx-api_server-1` (`docker cp` + restart); a imagem
@@ -66,12 +66,14 @@ na rede `onyx_default` (a porta 5432 do host é de um Postgres local do Windows)
 - [x] action
 
 ## 5. Assistant ↔ actions
-- [ ] deep-link from answers
-- [ ] open filtered pending queue
-- [ ] open DRE context
-- [ ] open report
-- [ ] resolve supported action
-- [ ] show changes after decision
+- [x] deep-link from answers
+- [x] open filtered pending queue (cartão DRE: uma ação por bloqueio)
+- [x] open DRE context
+- [x] open report (cartões de publicação; resumo executivo rotulado corretamente)
+- [x] resolve supported action (leva à fila; nada é decidido no chat)
+- [x] show changes after decision (`ton_get_recent_changes`)
+- [x] linha de raciocínio visível: raciocínio, consultas, especialistas, Python (D-031)
+- [x] Code Interpreter disponível ao TON com limites (D-032)
 - [x] item → assistente ("Perguntar ao TON sobre este item")
 
 ## 6. Closed-loop automation
@@ -79,35 +81,35 @@ na rede `onyx_default` (a porta 5432 do host é de um Postgres local do Windows)
 - [x] detect blocker removal
 - [x] detect new blocker
 - [x] notify meaningful state changes (sino: decisões, prontidão recalculada, DRE sem bloqueios)
-- [ ] report regeneration where justified
+- [x] report regeneration where justified (sinalizada quando o relatório é anterior à base; gerar continua explícito)
 - [x] bounded/idempotent execution (digest de entrada)
 
 ## 7. Proactive intelligence
-- [ ] identify supported proactive signals
-- [ ] anomaly candidates
-- [ ] repeated corrections
-- [ ] source freshness
-- [ ] closing changes
-- [ ] decision follow-up
-- [ ] no invented thresholds
+- [x] identify supported proactive signals (GAP_REPORT §9)
+- [!] anomaly candidates (sem histórico; não ativado)
+- [!] repeated corrections (0 ocorrências na base local)
+- [~] source freshness (data da última importação e falhas; sem SLA oficial não há "desatualizada")
+- [x] closing changes (antes/agora no Fechamento, sino e chat)
+- [x] decision follow-up (decisões aguardando recálculo na fila, banner e sino)
+- [x] no invented thresholds
 
 ## 8. Daily Finance utility
-- [ ] identify repetitive external work
-- [ ] prioritize high-value flows
-- [ ] implement selected flow(s)
-- [ ] measure reduced manual steps
+- [x] identify repetitive external work (abrir planilha para conferir nota/valor; anotar números antes/depois; perguntar "o que mudou")
+- [x] prioritize high-value flows
+- [x] implement selected flow(s) (evidência no diálogo, antes/agora, fila diária)
+- [~] measure reduced manual steps (qualitativo: decidir uma conciliação não exige abrir a planilha nem recalcular à parte)
 
 ## 9. UX evidence pass
-- [ ] hierarchy
-- [ ] actionability
-- [ ] feedback
-- [ ] continuity
-- [ ] density
-- [ ] consistency
-- [ ] trust
-- [ ] identity
-- [ ] AI quality
-- [ ] systemic component fixes
+- [x] hierarchy (Fechamento: estado → próximas ações → o que mudou → decisões)
+- [x] actionability
+- [x] feedback (resultado da decisão com antes/agora)
+- [x] continuity (item → próxima pendência; chat → fila na categoria)
+- [x] density ("Sem decisão" repetido trocado por triagem)
+- [x] consistency (uma fila, um log, um componente de antes/agora)
+- [x] trust (evidência de origem; "muda / não muda números da DRE")
+- [x] identity
+- [x] AI quality ("Leitura do TON" repetitiva removida; nenhuma decisão sugerida por IA)
+- [x] systemic component fixes (EvidenceRecords, ReadinessDelta, DecisionLogList, WorkQueue, MemoizedParagraph)
 
 ## 10. External UX references
 - [x] finance/B2B references if useful (registradas no GAP_REPORT §11)
@@ -124,7 +126,7 @@ na rede `onyx_default` (a porta 5432 do host é de um Postgres local do Windows)
 - [ ] automations
 - [ ] specialists
 - [ ] financial controls
-- [ ] audit
+- [x] audit (Trilha de decisões financeiras na Administração do TON)
 
 ## 12. Truth / backend
 - [x] important UI states mapped to APIs
@@ -138,8 +140,8 @@ na rede `onyx_default` (a porta 5432 do host é de um Postgres local do Windows)
 - [x] resolve
 - [x] recompute
 - [x] see consequence
-- [ ] ask TON what changed
-- [ ] generate report
+- [x] ask TON what changed
+- [~] generate report (fluxo existente; agora só sob pedido explícito)
 - [x] return to queue
 
 ## 14. Quality
@@ -172,3 +174,25 @@ New gaps discovered: importação do NG substitui a anterior (armadilha para imp
 parcial); conciliação não muda valores da DRE (só libera o item) — antes não dito.
 Known issues: imagem do backend não reconstruída (alterações aplicadas por docker cp).
 Next: Fechamento como centro de controle; fila de trabalho; CTAs do assistente; notificações.
+
+### 2026-10-02 12:30
+Milestone: M2 a M6 — Fechamento como centro de controle, fila de trabalho, assistente ↔
+ações, linha de raciocínio + Python, trilha de auditoria.
+Commits: 35294a9f9a, c250f45ded, 591c70a7d5, 0b77ca20c6, 3e1f32b2da (+ este registro).
+What changed: Fechamento com próximas ações, o que mudou, decisões e relatório
+desatualizado; `buildWorkQueue` compartilhado; `GET /api/ton/agent/actions/overdue`; eventos
+de decisão e prontidão no sino; `ton_get_recent_changes`; cartões do chat com ação por
+bloqueio; timeline com especialistas e Python; Python anexado ao TON; publicação só sob
+pedido; hidratação corrigida para imagens em parágrafos; trilha de decisões no admin.
+What is demonstrable: Visão Geral → "O que precisa de você hoje" → Decidir → diálogo com
+evidência → antes/agora → Fechamento mostra a mudança → chat "o que mudou?" responde com a
+comparação persistida e aponta Pendências/Fontes → timeline mostra CFO/AUDITOR/CEO e Python.
+Validation: pytest (contêiner) decision_loop 5/5, agent 2/2, readiness/domain/dre/closing
+14/14; jest 256/256 (app/message, lib/ton, views/ton, components/chat); tsc limpo; Chrome
+:3005, incluindo três perguntas reais ao modelo; 390/768 px sem rolagem horizontal (iframes).
+New gaps discovered: o modelo publicava relatórios sem pedido; consultou setembro antes de
+julho (agora cada etapa nomeia o período); a decisão semeada de período orçamentário não
+corresponde à execução de dotação usada (dado sintético; o próprio TON sinalizou).
+Known issues: imagem `onyx-backend` não reconstruída (alterações aplicadas por docker cp em
+api_server/background); build de produção web não refeito.
+Next: ver "Restante" no GAP_REPORT.

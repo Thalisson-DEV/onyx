@@ -876,7 +876,7 @@ export const COPY = {
       changesTitle: "O que mudou desde a análise anterior",
       findingBlocking: "Bloqueia",
       findingInfo: "Informativo",
-      findingWhere: (sheet: string, row: number | null) =>
+      findingWhere: (sheet: string, row?: number | null) =>
         row ? `Planilha ${sheet} · linha ${formatNumber(row)}` : `Planilha ${sheet}`,
     },
     changes: {

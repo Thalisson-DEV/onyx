@@ -36,38 +36,17 @@ const SUGGESTION_ICONS: Record<string, IconFunctionComponent> = {
 
 function Welcome() {
   return (
-    <div className="flex flex-col items-center gap-5 w-full pb-2 text-center">
-      <SvgSparkle size={36} className="ton-gold-text" aria-hidden />
-      <h1 className="ton-display flex flex-wrap justify-center gap-x-3">
+    <div className="flex flex-col items-center gap-2 w-full pb-2 text-center">
+      <h1 className="ton-title">
         <Text font="heading-h1" color="inherit">
-          {COPY.assistant.heroPrefix}
+          {COPY.assistant.heroTitle}
         </Text>
-        <span className="ton-display-accent">
-          <Text font="heading-h1" color="inherit">
-            {COPY.assistant.heroName}
-          </Text>
-        </span>
       </h1>
       <span className="max-w-xl">
         <Text as="p" font="main-content-body" color="text-03">
           {COPY.assistant.heroBody}
         </Text>
       </span>
-      <div className="ton-card flex items-start gap-3 p-4 text-start w-full max-w-2xl">
-        <span className="flex items-center justify-center w-10 h-10 rounded-full shrink-0 bg-(--vale-norte-green-90) ton-gold-text">
-          <SvgSparkle size={18} />
-        </span>
-        <div className="flex flex-col gap-1 min-w-0">
-          <Text as="p" font="main-ui-body" color="text-04">
-            {COPY.assistant.readyTitle}
-          </Text>
-          <span className="ton-brand-text">
-            <Text font="main-ui-action" color="inherit">
-              {COPY.assistant.readyAction}
-            </Text>
-          </span>
-        </div>
-      </div>
     </div>
   );
 }
@@ -110,7 +89,7 @@ function ContextBar({ focus }: { focus: string | null }) {
   return (
     <div className="ton-context-bar flex flex-wrap items-center gap-x-4 gap-y-1 px-4 sm:px-6 py-2">
       <span className="flex items-center gap-2">
-        <SvgSparkle size={14} className="ton-gold-text" aria-hidden />
+        <span aria-hidden className="ton-dot" data-tone="success" />
         <Text font="secondary-action" color="text-05">
           {specialist ? specialist.name : COPY.assistant.context.coordinator}
         </Text>

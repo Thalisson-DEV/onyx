@@ -99,6 +99,10 @@ export interface Contributor {
   source_row_number: number;
   reference: string | null;
   review_status: string | null;
+  unit_name?: string | null;
+  source_account_code?: string | null;
+  source_account_label?: string | null;
+  description?: string | null;
 }
 
 export interface ContributorPage {

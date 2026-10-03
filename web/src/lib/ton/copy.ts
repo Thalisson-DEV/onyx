@@ -331,7 +331,7 @@ export const COPY = {
     description:
       "Demonstrativo de resultado versionado por período e escopo. Valores só aparecem quando a base está pronta.",
     period: "Período",
-    scope: "Escopo",
+    scope: "Unidade/filial",
     consolidated: "Consolidado",
     advanced: "Base e estrutura",
     normalization: "Base normalizada",
@@ -396,6 +396,19 @@ export const COPY = {
       location: (sheet: string, row: number) =>
         `Planilha ${sheet} · linha ${formatNumber(row)}`,
       review: "Revisão",
+      sourceOnce: (source: string, file: string) => `Origem: ${source} · ${file}`,
+      columns: {
+        date: "Data",
+        unit: "Unidade",
+        account: "Conta NG",
+        document: "Documento",
+        history: "Histórico",
+        amount: "Valor",
+        origin: "Planilha · linha",
+      },
+      row: (sheet: string, row: number) => `${sheet} · ${formatNumber(row)}`,
+      entries: "Lançamentos",
+      sorted: "Ordenados por data",
       previous: "Anterior",
       next: "Próxima",
       page: (start: number, end: number, total: number) =>
@@ -863,6 +876,8 @@ export const COPY = {
       changesTitle: "O que mudou desde a análise anterior",
       findingBlocking: "Bloqueia",
       findingInfo: "Informativo",
+      findingWhere: (sheet: string, row: number | null) =>
+        row ? `Planilha ${sheet} · linha ${formatNumber(row)}` : `Planilha ${sheet}`,
     },
     changes: {
       title: "O que mudou na última atualização",
@@ -1101,6 +1116,7 @@ export const COPY = {
     },
   },
   assistant: {
+    heroTitle: "O que você quer analisar?",
     heroPrefix: "Olá, sou o",
     heroName: "TON.",
     heroBody:

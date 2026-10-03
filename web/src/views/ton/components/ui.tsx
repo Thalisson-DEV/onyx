@@ -149,6 +149,23 @@ export function routineTone(status: string): TonTone {
   return "neutral";
 }
 
+/** Outcome of a routine run or report publication. */
+export function runTone(status: string | null | undefined): TonTone {
+  // The API returns either codes or already translated labels.
+  const value = (status ?? "").toUpperCase();
+  if (value.includes("BLOQUEIO") || value.includes("BLOCKED")) return "warning";
+  if (value === "PARTIAL" || value.startsWith("PARCIAL")) return "warning";
+  if (value.includes("FAIL") || value.startsWith("FALH") || value === "ERROR")
+    return "danger";
+  if (
+    ["COMPLETED", "PASSED", "SUCCEEDED", "PUBLISHED"].includes(value) ||
+    value.startsWith("CONCLU") ||
+    value.startsWith("PUBLICAD")
+  )
+    return "success";
+  return "neutral";
+}
+
 export function sourceTone(status: string): TonTone {
   if (status === "CURRENT") return "success";
   if (status === "PROCESSING") return "brand";
@@ -323,13 +340,18 @@ interface MetricProps {
   tone?: TonTone;
 }
 
+/** Amounts and counts never wrap; text values may. */
+const NUMERIC = /^[-−+]?\s?(R\$|\d)/;
+
 /** A labelled figure inside a card; tabular numerals, no decoration. */
 export function Metric({ label, value, detail, tone }: MetricProps) {
   return (
     <div className="flex flex-col gap-1 min-w-0">
       <span className="ton-eyebrow">{label}</span>
-      <span className="ton-metric">
-        <Text font="heading-h3" color="inherit" maxLines={2}>
+      <span
+        className={cn("ton-metric", NUMERIC.test(value) && "ton-metric-num")}
+      >
+        <Text font="heading-h3" color="inherit">
           {value}
         </Text>
       </span>

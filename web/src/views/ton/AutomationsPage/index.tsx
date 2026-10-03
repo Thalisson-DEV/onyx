@@ -25,6 +25,7 @@ import {
   StatusPill,
   TonCard,
   routineTone,
+  runTone,
 } from "@/views/ton/components/ui";
 
 function dependency(routine: Routine): string {
@@ -112,7 +113,7 @@ function R3History() {
                         {`${formatPeriod(run.output.period)} · ${run.output.scope}`}
                       </Text>
                     </span>
-                    <StatusPill tone="warning">
+                    <StatusPill tone={runTone(run.status)}>
                       {getBusinessLabel(run.status)}
                     </StatusPill>
                   </Link>

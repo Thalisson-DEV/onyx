@@ -27,7 +27,7 @@ def test_specialists_use_canonical_identity_and_runtime_status(
         "TON FROTA",
         "TON CONTRATOS",
         "TON COMPLIANCE",
-        "TON PROCUREMENT",
+        "TON COMPRAS/SUPRIMENTOS",
         "TON RH",
         "TON AUDITOR",
         "TON CEO",

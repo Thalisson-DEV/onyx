@@ -57,6 +57,7 @@ import {
   sourceTone,
   specialistTone,
   type TonTone,
+  runTone,
 } from "@/views/ton/components/ui";
 
 function firstName(name: string | undefined): string | null {
@@ -110,7 +111,7 @@ function Hero({ closing }: { closing: ClosingOutput | undefined }) {
   const { user } = useUser();
   const name = firstName(user?.personalization?.name);
   return (
-    <TonCard className="ton-hero-art flex flex-col gap-5 p-5 sm:p-7">
+    <TonCard className="flex flex-col gap-5 p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1.5">
           <h1 className="ton-title">
@@ -146,23 +147,26 @@ interface StatTileProps {
   tone: TonTone;
 }
 
-function StatTile({ href, icon, label, value, detail, tone }: StatTileProps) {
+function StatTile({
+  href,
+  icon: Icon,
+  label,
+  value,
+  detail,
+  tone,
+}: StatTileProps) {
   return (
     <Link
       href={href}
       className="ton-card ton-card-interactive ton-focusable flex flex-col gap-3 p-4 min-w-0"
     >
-      <div className="flex items-center justify-between gap-2">
+      <span className="flex items-center gap-1.5 text-text-03">
+        <Icon size={14} />
         <span className="ton-eyebrow">{label}</span>
-        <IconTile
-          icon={icon}
-          size="sm"
-          tone={tone === "warning" ? "warning" : "brand"}
-        />
-      </div>
+      </span>
       <div className="flex flex-col gap-1 min-w-0">
         <span className="ton-metric">
-          <Text font="heading-h2" color="inherit" maxLines={2}>
+          <Text font="heading-h2" color="inherit">
             {value}
           </Text>
         </span>
@@ -394,7 +398,6 @@ function InvolvedSpecialists({
       <ul className="flex flex-col divide-y divide-border-01">
         {involved.map((item) => (
           <li key={item.key} className="flex items-start gap-3 py-2">
-            <IconTile icon={SvgSparkle} size="sm" />
             <span className="flex flex-col min-w-0 flex-1">
               <Text font="secondary-action" color="text-05">
                 {item.name}
@@ -438,15 +441,14 @@ function LatestReports() {
           <Link
             key={latest.revision_id}
             href={latest.report_url as Route}
-            className="ton-row-link ton-focusable flex items-center gap-3 border border-01 rounded-12 p-3"
+            className="ton-row-link ton-focusable flex items-center gap-3 border border-01 p-3"
           >
-            <IconTile icon={SvgFileText} />
             <div className="flex flex-col gap-1 min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Text font="main-ui-action" color="text-05">
                   {getBusinessLabel(latest.report_type ?? "MONTHLY_CLOSE")}
                 </Text>
-                <StatusPill tone="warning">
+                <StatusPill tone={runTone(latest.status)}>
                   {getBusinessLabel(latest.status)}
                 </StatusPill>
               </div>
@@ -496,7 +498,7 @@ function RailSection({
 }
 
 function RailRow({
-  icon,
+  icon: Icon,
   title,
   detail,
   status,
@@ -509,27 +511,34 @@ function RailRow({
   tone: TonTone;
 }) {
   return (
-    <div className="flex items-center gap-3 px-2 py-2 min-w-0">
-      <IconTile
-        icon={icon}
-        size="sm"
-        tone={tone === "neutral" ? "neutral" : "brand"}
-      />
-      <div className="flex flex-col min-w-0 flex-1">
-        <Text font="secondary-action" color="text-05" maxLines={1}>
-          {title}
-        </Text>
+    <div className="flex items-start gap-2.5 px-2 py-2 min-w-0">
+      <span className="shrink-0 pt-0.5 text-text-03">
+        <Icon size={14} />
+      </span>
+      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+        <span className="flex items-start justify-between gap-2">
+          <span className="min-w-0 flex-1">
+            <Text font="secondary-action" color="text-05" maxLines={2}>
+              {title}
+            </Text>
+          </span>
+          {!status && (
+            <span className="shrink-0 pt-1.5">
+              <StatusDot tone={tone} />
+            </span>
+          )}
+        </span>
         {detail && (
           <Text font="secondary-body" color="text-03" maxLines={2}>
             {detail}
           </Text>
         )}
+        {status && (
+          <span className="pt-0.5">
+            <StatusPill tone={tone}>{status}</StatusPill>
+          </span>
+        )}
       </div>
-      {status ? (
-        <StatusPill tone={tone}>{status}</StatusPill>
-      ) : (
-        <StatusDot tone={tone} />
-      )}
     </div>
   );
 }

@@ -244,10 +244,13 @@ def _emails(session: Session, user_ids: set[UUID]) -> dict[UUID, str]:
 
     if not user_ids:
         return {}
+    # Display name for the decision log; the e-mail only when no name is set.
     return {
-        row.id: row.email
+        row.id: (row.personal_name or "").strip() or row.email
         for row in session.execute(
-            sa.select(UserModel.id, UserModel.email).where(UserModel.id.in_(user_ids))
+            sa.select(UserModel.id, UserModel.email, UserModel.personal_name).where(
+                UserModel.id.in_(user_ids)
+            )
         )
     }
 

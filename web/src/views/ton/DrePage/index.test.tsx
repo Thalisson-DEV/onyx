@@ -1,6 +1,12 @@
 /** @jest-environment jsdom */
 
-import { render, screen, setupUser, waitFor } from "@tests/setup/test-utils";
+import {
+  render,
+  screen,
+  setupUser,
+  waitFor,
+  within,
+} from "@tests/setup/test-utils";
 import useSWR from "swr";
 import { DreWorkspaceView } from "@/views/ton/DrePage";
 
@@ -227,9 +233,11 @@ it("renders the official statement with month, YTD, variance and drill-down", as
     screen.getByRole("button", { name: "Ver composição de Synthetic service" })
   );
   const drawer = screen.getByRole("dialog");
-  expect(drawer).toHaveTextContent("SYN-1 · Synthetic account");
-  expect(drawer).toHaveTextContent("Planilha Jan · linha 4");
-  expect(drawer).toHaveTextContent("Synthetic NG · synthetic.xlsx");
+  // Entries read as a table; the source file is stated once in the header.
+  expect(within(drawer).getByRole("table")).toBeInTheDocument();
+  expect(drawer).toHaveTextContent("SYN-1");
+  expect(drawer).toHaveTextContent("Jan · 4");
+  expect(drawer).toHaveTextContent("Origem: Synthetic NG · synthetic.xlsx");
   await user.keyboard("{Escape}");
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 

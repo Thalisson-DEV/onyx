@@ -49,6 +49,18 @@ import {
 
 const CONTROL = COPY.decisionLoop.control;
 
+/** A finding with a recorded human decision no longer blocks anything new. */
+function findingDecided(status: string): boolean {
+  const value = status.toLowerCase();
+  return !(
+    value === "" ||
+    value.startsWith("novo") ||
+    value.startsWith("aberto") ||
+    value.startsWith("new") ||
+    value.startsWith("open")
+  );
+}
+
 function askHref(): Route {
   const query = new URLSearchParams({
     firstMessage: COPY.closing.askPrompt,
@@ -354,20 +366,49 @@ export default function ClosingPage() {
                     id="ton-findings"
                     title={COPY.closing.findingsTitle}
                   />
-                  {closing.data.findings.slice(0, 5).map((finding) => (
-                    <div key={finding.id} className="flex items-center gap-2">
-                      <StatusPill
-                        tone={finding.blocking ? "warning" : "neutral"}
-                      >
-                        {finding.blocking
-                          ? CONTROL.findingBlocking
-                          : CONTROL.findingInfo}
-                      </StatusPill>
-                      <Text font="secondary-body" color="text-04">
-                        {finding.title}
-                      </Text>
-                    </div>
-                  ))}
+                  <ul className="flex flex-col divide-y divide-border-01">
+                    {closing.data.findings.slice(0, 5).map((finding) => {
+                      const decided = findingDecided(finding.status);
+                      const where = finding.evidence?.[0];
+                      return (
+                        <li
+                          key={finding.id}
+                          className="flex items-start gap-3 py-2.5"
+                        >
+                          <span className="shrink-0 pt-0.5">
+                            <StatusPill
+                              tone={
+                                decided
+                                  ? "neutral"
+                                  : finding.blocking
+                                    ? "warning"
+                                    : "neutral"
+                              }
+                            >
+                              {decided
+                                ? finding.status
+                                : finding.blocking
+                                  ? CONTROL.findingBlocking
+                                  : CONTROL.findingInfo}
+                            </StatusPill>
+                          </span>
+                          <span className="flex flex-col gap-0.5 min-w-0">
+                            <Text font="secondary-body" color="text-04">
+                              {finding.title}
+                            </Text>
+                            {where?.sheet_name && (
+                              <Text font="secondary-body" color="text-03">
+                                {CONTROL.findingWhere(
+                                  where.sheet_name,
+                                  where.row_number
+                                )}
+                              </Text>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </TonCard>
               )}
             </div>

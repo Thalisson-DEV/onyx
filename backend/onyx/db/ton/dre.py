@@ -779,8 +779,13 @@ def list_contributors(
     total = (
         session.scalar(sa.select(sa.func.count()).select_from(joined.subquery())) or 0
     )
+    date_column = (
+        fact_model.emission_date if fact_type == "ACTUAL" else source_model.record_date
+    )
     rows = session.execute(
-        joined.order_by(fact_model.id).limit(limit).offset(offset)
+        joined.order_by(date_column.asc().nulls_last(), fact_model.id)
+        .limit(limit)
+        .offset(offset)
     ).all()
     normalization = session.get(
         FinancialNormalizationRun, run.scope.normalization_run_id
@@ -801,12 +806,18 @@ def list_contributors(
             reference = source.document_number
             review_status = fact.disposition
             record_date = fact.emission_date
+            source_account_code = source.account_code
+            source_account_label = source.account_label
+            description = source.history
         else:
             basis = fact.period_basis
             amount = fact.amount
             reference = source.identifier
             review_status = None
             record_date = source.record_date
+            source_account_code = source.identifier
+            source_account_label = None
+            description = source.description
         assert amount is not None and basis is not None
         contributors.append(
             DreContributorView(
@@ -828,6 +839,10 @@ def list_contributors(
                 source_row_number=source.source_row_number,
                 reference=reference,
                 review_status=review_status,
+                unit_name=unit.name,
+                source_account_code=source_account_code,
+                source_account_label=source_account_label,
+                description=description,
             )
         )
     return DreContributorPage(total=total, rows=contributors)

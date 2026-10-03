@@ -561,6 +561,13 @@ function Trend({ dre }: { dre: DreWorkspace }) {
   );
 }
 
+function scopeLabel(dre: DreWorkspace): string {
+  if (!dre.unitId || dre.unitId === CONSOLIDATED) return COPY.dre.consolidated;
+  const unit = dre.units.find((item) => item.id === dre.unitId);
+  if (!unit) return "";
+  return getBusinessLabel(unit.name ?? unit.code);
+}
+
 function DrillDrawer({ dre }: { dre: DreWorkspace }) {
   const line = dre.selectedLine;
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -578,6 +585,8 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
 
   if (!open || !line) return null;
   const page = dre.contributors.data;
+  const first = page?.rows[0];
+  const columns = COPY.dre.drawer.columns;
   return (
     <>
       <div
@@ -589,24 +598,27 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="ton-drill-title"
-        className="ton-drawer fixed inset-y-0 end-0 z-50 flex flex-col w-full sm:w-[440px]"
+        className="ton-drawer fixed inset-y-0 end-0 z-50 flex flex-col w-full lg:w-[min(1040px,calc(100vw-6rem))]"
       >
-        <div className="flex items-start justify-between gap-3 p-5 border-b border-01">
-          <div className="flex flex-col gap-0.5 min-w-0">
+        <header className="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-01">
+          <div className="flex flex-col gap-1 min-w-0">
             <span className="ton-eyebrow">{COPY.dre.drawer.title}</span>
             <Text
               as="h2"
               id="ton-drill-title"
-              font="heading-h3"
+              font="heading-h2"
               color="text-05"
             >
               {getBusinessLabel(line.label)}
             </Text>
-            {dre.periodValue && (
-              <Text font="secondary-body" color="text-03">
-                {formatPeriod(dre.periodValue)}
-              </Text>
-            )}
+            <Text font="secondary-body" color="text-03">
+              {[
+                dre.periodValue ? formatPeriod(dre.periodValue) : null,
+                scopeLabel(dre),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </Text>
           </div>
           <Button
             ref={closeRef}
@@ -615,8 +627,8 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
             aria-label={COPY.dre.drawer.close}
             onClick={() => dre.select.line(null)}
           />
-        </div>
-        <div className="grid grid-cols-3 gap-3 p-5 border-b border-01">
+        </header>
+        <div className="flex flex-wrap items-end gap-x-10 gap-y-3 px-6 py-4 border-b border-01">
           <Metric
             label={COPY.dre.kpi.actual}
             value={formatCurrency(line.realizado)}
@@ -629,114 +641,145 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
             label={COPY.dre.kpi.variance}
             value={formatCurrency(line.variance)}
           />
+          {page && (
+            <Metric
+              label={COPY.dre.drawer.entries}
+              value={formatNumber(page.total)}
+            />
+          )}
         </div>
-        <div className="flex gap-1 px-5 pt-4" role="group">
-          {(["ACTUAL", "BUDGET"] as const).map((type) => (
-            <Button
-              key={type}
-              size="sm"
-              aria-pressed={dre.factType === type}
-              prominence={dre.factType === type ? "primary" : "secondary"}
-              onClick={() => dre.select.factType(type)}
-            >
-              {type === "ACTUAL"
-                ? COPY.dre.drawer.actual
-                : COPY.dre.drawer.budget}
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3">
+          <div className="ton-segmented" role="group">
+            {(["ACTUAL", "BUDGET"] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                aria-pressed={dre.factType === type}
+                className="ton-focusable ton-segment"
+                onClick={() => dre.select.factType(type)}
+              >
+                {type === "ACTUAL"
+                  ? COPY.dre.drawer.actual
+                  : COPY.dre.drawer.budget}
+              </button>
+            ))}
+          </div>
+          {first && (
+            <Text font="secondary-body" color="text-03">
+              {COPY.dre.drawer.sourceOnce(
+                first.source_name,
+                first.original_filename
+              )}
+            </Text>
+          )}
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-3">
+        <div className="flex-1 overflow-auto px-6 pb-4">
           {dre.contributors.isLoading && (
-            <LoadingBlock label={COPY.common.loading} />
+            <LoadingBlock label={COPY.common.loading} lines={6} />
           )}
           {dre.contributors.error && (
             <ErrorState compact onRetry={() => dre.contributors.mutate()} />
           )}
-          {page && (
-            <>
-              <Text as="p" font="secondary-body" color="text-03">
-                {COPY.dre.drawer.facts(page.total)}
-              </Text>
-              {page.rows.length === 0 && (
-                <Text as="p" font="secondary-body" color="text-03">
-                  {COPY.dre.drawer.empty}
-                </Text>
-              )}
-              <ul className="flex flex-col divide-y divide-border-01">
-                {page.rows.map((fact) => (
-                  <li key={fact.id} className="flex flex-col gap-0.5 py-3">
-                    <span className="flex items-baseline justify-between gap-3">
-                      <Text font="main-ui-action" color="text-05">
-                        {`${fact.account_code} · ${getBusinessLabel(fact.account_label)}`}
-                      </Text>
-                      <span className="tabular-nums shrink-0">
-                        <Text font="main-ui-action" color="text-05">
-                          {formatCurrency(fact.amount)}
-                        </Text>
-                      </span>
-                    </span>
-                    <Text font="secondary-body" color="text-03">
-                      {[
-                        getBusinessLabel(fact.unit_code),
-                        fact.record_date ? formatDate(fact.record_date) : null,
-                        fact.reference,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </Text>
-                    <Text font="secondary-body" color="text-03">
-                      {COPY.dre.drawer.source(
-                        fact.source_name,
-                        fact.original_filename
-                      )}
-                    </Text>
-                    <Text font="secondary-body" color="text-03">
-                      {COPY.dre.drawer.location(
-                        fact.sheet_name,
-                        fact.source_row_number
-                      )}
-                    </Text>
-                    {fact.review_status && (
-                      <span className="pt-1">
-                        <StatusPill tone="neutral">
-                          {`${COPY.dre.drawer.review}: ${getBusinessLabel(fact.review_status)}`}
-                        </StatusPill>
-                      </span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </>
+          {page && page.rows.length === 0 && (
+            <Text as="p" font="secondary-body" color="text-03">
+              {COPY.dre.drawer.empty}
+            </Text>
+          )}
+          {page && page.rows.length > 0 && (
+            <table className="ton-ledger w-full border-collapse">
+              <thead>
+                <tr>
+                  <th scope="col">{columns.date}</th>
+                  <th scope="col">{columns.unit}</th>
+                  <th scope="col">{columns.account}</th>
+                  <th scope="col">{columns.document}</th>
+                  <th scope="col" className="w-full">
+                    {columns.history}
+                  </th>
+                  <th scope="col" className="ton-ledger-end">
+                    {columns.amount}
+                  </th>
+                  <th scope="col">{columns.origin}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {page.rows.map((fact) => {
+                  const flagged =
+                    !!fact.review_status && fact.review_status !== "ACCEPTED";
+                  return (
+                    <tr key={fact.id}>
+                      <td>
+                        {fact.record_date ? formatDate(fact.record_date) : "—"}
+                      </td>
+                      <td>
+                        {getBusinessLabel(fact.unit_name ?? fact.unit_code)}
+                      </td>
+                      <td title={fact.source_account_label ?? undefined}>
+                        {fact.source_account_code ?? fact.account_code}
+                      </td>
+                      <td>{fact.reference ?? "—"}</td>
+                      <td className="ton-ledger-history">
+                        <span>{fact.description || "—"}</span>
+                        {flagged && (
+                          <span className="block pt-1">
+                            <StatusPill tone="warning">
+                              {`${COPY.dre.drawer.review}: ${getBusinessLabel(fact.review_status ?? "")}`}
+                            </StatusPill>
+                          </span>
+                        )}
+                      </td>
+                      <td className="ton-ledger-end ton-ledger-amount">
+                        {formatCurrency(fact.amount)}
+                      </td>
+                      <td className="ton-ledger-muted">
+                        {COPY.dre.drawer.row(
+                          fact.sheet_name,
+                          fact.source_row_number
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
-        {page && page.total > CONTRIBUTOR_PAGE && (
-          <div className="flex items-center justify-between gap-2 p-4 border-t border-01">
-            <Button
-              size="sm"
-              prominence="tertiary"
-              disabled={dre.offset === 0}
-              onClick={() =>
-                dre.select.offset(Math.max(0, dre.offset - CONTRIBUTOR_PAGE))
-              }
-            >
-              {COPY.dre.drawer.previous}
-            </Button>
+        {page && (
+          <footer className="flex flex-wrap items-center justify-between gap-2 px-6 py-3 border-t border-01">
             <Text font="secondary-body" color="text-03">
-              {COPY.dre.drawer.page(
-                dre.offset + 1,
+              {`${COPY.dre.drawer.sorted} · ${COPY.dre.drawer.page(
+                page.total === 0 ? 0 : dre.offset + 1,
                 Math.min(dre.offset + CONTRIBUTOR_PAGE, page.total),
                 page.total
-              )}
+              )}`}
             </Text>
-            <Button
-              size="sm"
-              prominence="tertiary"
-              disabled={dre.offset + CONTRIBUTOR_PAGE >= page.total}
-              onClick={() => dre.select.offset(dre.offset + CONTRIBUTOR_PAGE)}
-            >
-              {COPY.dre.drawer.next}
-            </Button>
-          </div>
+            {page.total > CONTRIBUTOR_PAGE && (
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  prominence="secondary"
+                  disabled={dre.offset === 0}
+                  onClick={() =>
+                    dre.select.offset(
+                      Math.max(0, dre.offset - CONTRIBUTOR_PAGE)
+                    )
+                  }
+                >
+                  {COPY.dre.drawer.previous}
+                </Button>
+                <Button
+                  size="sm"
+                  prominence="secondary"
+                  disabled={dre.offset + CONTRIBUTOR_PAGE >= page.total}
+                  onClick={() =>
+                    dre.select.offset(dre.offset + CONTRIBUTOR_PAGE)
+                  }
+                >
+                  {COPY.dre.drawer.next}
+                </Button>
+              </div>
+            )}
+          </footer>
         )}
       </aside>
     </>

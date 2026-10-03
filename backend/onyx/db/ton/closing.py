@@ -257,8 +257,8 @@ def inspect_closing(
                     )
                 ),
                 limitations=[
-                    "Esta análise não recalcula a DRE nem estima margem ou previsão.",
-                    "Os valores da DRE estão no resultado persistido indicado; consulte-o pelo run_id antes de apresentá-los.",
+                    "Lê a DRE já calculada; não recalcula nem estima margem ou previsão.",
+                    "Os valores apresentados são os da DRE calculada do período, conferíveis na tela DRE.",
                 ]
                 if stored_ready
                 else [

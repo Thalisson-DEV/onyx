@@ -148,6 +148,10 @@ class DreContributorView(BaseModel):
     source_row_number: int
     reference: str | None
     review_status: str | None
+    unit_name: str | None = None
+    source_account_code: str | None = None
+    source_account_label: str | None = None
+    description: str | None = None
 
 
 class DreContributorPage(BaseModel):

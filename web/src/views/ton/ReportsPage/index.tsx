@@ -23,6 +23,7 @@ import {
   PageHeader,
   StatusPill,
   TonCard,
+  runTone,
 } from "@/views/ton/components/ui";
 
 export function reportTitle(publication: Publication): string {
@@ -91,7 +92,7 @@ function ReportCard({ group }: { group: ReportGroup }) {
             {`${COPY.reports.generatedAt(formatRelativeDateTime(latest.output.generated_at))} · ${origin(latest)}`}
           </Text>
         </div>
-        <StatusPill tone="warning">
+        <StatusPill tone={runTone(latest.status)}>
           {getBusinessLabel(latest.status)}
         </StatusPill>
       </div>

@@ -74,7 +74,7 @@ SPECIALISTS = (
     ),
     SpecialistDefinition(
         key="PROCUREMENT",
-        name="TON PROCUREMENT",
+        name="TON COMPRAS/SUPRIMENTOS",
         objective="Analisar compras e fornecedores.",
         domain="PROCUREMENT",
         required_capabilities=["compras integradas e regras aprovadas"],

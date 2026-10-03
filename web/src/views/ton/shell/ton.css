@@ -1,8 +1,9 @@
 /*
   TON product tokens. A thin semantic layer over the Vale Norte primitives
-  (--vale-norte-*). The chrome (header, sidebar) is the brand green in both
-  themes; the workspace follows the app's neutral tokens. Tokens live on :root
-  so portaled content (popovers, dialogs, menus) resolves them too.
+  (--vale-norte-*). The chrome (header and sidebar) is one brand-green surface
+  in both themes and frames the workspace, which follows the app's neutral
+  tokens. Tokens live on :root so portaled content (popovers, dialogs, menus)
+  resolves them too.
 */
 :root {
   --ton-chrome: var(--vale-norte-green-90);
@@ -10,23 +11,28 @@
   --ton-chrome-raised: var(--vale-norte-green-85);
   --ton-chrome-hover: color-mix(
     in srgb,
-    var(--vale-norte-green-60) 35%,
+    var(--vale-norte-green-01) 7%,
     transparent
   );
   --ton-chrome-selected: color-mix(
     in srgb,
-    var(--vale-norte-green-60) 55%,
+    var(--vale-norte-green-01) 11%,
     transparent
   );
   --ton-chrome-line: color-mix(
     in srgb,
-    var(--vale-norte-green-20) 18%,
+    var(--vale-norte-green-01) 10%,
     transparent
   );
   --ton-on-chrome: var(--vale-norte-green-01);
   --ton-on-chrome-muted: color-mix(
     in srgb,
-    var(--vale-norte-green-05) 68%,
+    var(--vale-norte-green-05) 72%,
+    transparent
+  );
+  --ton-on-chrome-subtle: color-mix(
+    in srgb,
+    var(--vale-norte-green-05) 48%,
     transparent
   );
   --ton-gold: var(--vale-norte-gold-40);
@@ -40,9 +46,11 @@
   --ton-surface: var(--background-neutral-00);
   --ton-radius-card: 0.5rem;
   --ton-radius-control: 0.375rem;
+  --ton-radius-chrome: 0.5rem;
   --ton-shadow-card: none;
-  --ton-header-height: 4rem;
-  --ton-sidebar-width: 16rem;
+  --ton-header-height: 3.5rem;
+  --ton-sidebar-width: 15rem;
+  --ton-rail-width: 3.5rem;
 }
 
 /* Dark workspace: lift brand greens so text and tiles stay legible. */
@@ -74,7 +82,19 @@ html:has(.ton-shell) body {
   height: 100dvh;
   width: 100%;
   overflow: hidden;
+  background: var(--ton-chrome);
+}
+
+/* The workspace sits inside the chrome frame. */
+.ton-workspace {
   background: var(--ton-workspace);
+  overflow: hidden;
+}
+@media (min-width: 64rem) {
+  .ton-workspace {
+    border-start-start-radius: 0.75rem;
+    box-shadow: inset 1px 1px 0 var(--ton-chrome-line);
+  }
 }
 
 /* Header */
@@ -83,9 +103,21 @@ html:has(.ton-shell) body {
   flex-shrink: 0;
   background: var(--ton-chrome);
   color: var(--ton-on-chrome);
-  border-bottom: 1px solid var(--ton-chrome-line);
 }
 
+.ton-product-name {
+  color: var(--ton-on-chrome);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.25rem;
+}
+
+.ton-tagline {
+  color: var(--ton-on-chrome-subtle);
+}
+
+/* Brand mark used outside the chrome (report viewer). */
 .ton-product-badge {
   border: 1.5px solid var(--ton-on-chrome);
   color: var(--ton-on-chrome);
@@ -98,49 +130,92 @@ html:has(.ton-shell) body {
 }
 
 .ton-header-chip {
-  background: color-mix(in srgb, var(--vale-norte-green-01) 8%, transparent);
+  color: var(--ton-on-chrome-muted);
   border: 1px solid var(--ton-chrome-line);
-  border-radius: 0.625rem;
+  border-radius: var(--ton-radius-chrome);
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
+}
+.ton-header-chip:hover {
+  color: var(--ton-on-chrome);
+  background: var(--ton-chrome-hover);
 }
 
 .ton-demo-chip {
-  background: color-mix(in srgb, var(--vale-norte-gold-40) 16%, transparent);
+  background: color-mix(in srgb, var(--vale-norte-gold-40) 12%, transparent);
   border: 1px solid
-    color-mix(in srgb, var(--vale-norte-gold-40) 45%, transparent);
+    color-mix(in srgb, var(--vale-norte-gold-40) 30%, transparent);
   color: var(--vale-norte-gold-20);
-  border-radius: 999px;
+  border-radius: var(--ton-radius-chrome);
 }
 
 .ton-avatar {
-  background: var(--ton-chrome-deep);
+  background: var(--ton-chrome-selected);
   color: var(--ton-on-chrome);
-  border: 1.5px solid var(--ton-chrome-line);
+  transition: background-color 120ms ease;
+}
+.ton-avatar:hover,
+.ton-avatar[data-state="open"] {
+  background: color-mix(in srgb, var(--vale-norte-green-01) 18%, transparent);
 }
 
 /* Sidebar */
 .ton-sidebar {
-  width: var(--ton-sidebar-width);
-  background: var(--ton-chrome-raised);
+  width: min(var(--ton-sidebar-width), 85vw);
+  background: var(--ton-chrome);
   color: var(--ton-on-chrome);
+  transition:
+    width 160ms ease,
+    transform 200ms ease;
+}
+.ton-sidebar[data-rail] {
+  width: var(--ton-rail-width);
+}
+@media (max-width: 63.99rem) {
+  .ton-sidebar {
+    width: min(17rem, 85vw);
+  }
+  .ton-sidebar[data-open] {
+    box-shadow: 16px 0 40px -24px
+      color-mix(in srgb, var(--vale-norte-green-95) 80%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ton-sidebar {
+    transition: none;
+  }
+}
+
+.ton-sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ton-chrome-line) transparent;
 }
 
 .ton-sidebar-section-label {
-  color: var(--ton-on-chrome-muted);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: var(--ton-on-chrome-subtle);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1rem;
+}
+
+.ton-sidebar-hint {
+  color: var(--ton-on-chrome-subtle);
 }
 
 .ton-nav-link {
-  color: var(--ton-on-chrome);
-  border-radius: 0.625rem;
-  transition: background-color 120ms ease;
+  color: var(--ton-on-chrome-muted);
+  border-radius: var(--ton-radius-chrome);
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
 }
 .ton-nav-link:hover {
+  color: var(--ton-on-chrome);
   background: var(--ton-chrome-hover);
 }
 .ton-nav-link[aria-current="page"] {
+  color: var(--ton-on-chrome);
   background: var(--ton-chrome-selected);
 }
 .ton-nav-link:focus-visible,
@@ -152,24 +227,75 @@ html:has(.ton-shell) body {
   stroke: currentColor;
 }
 
-.ton-nav-sublink {
-  color: var(--ton-on-chrome-muted);
+.ton-nav-children {
+  border-inline-start: 1px solid var(--ton-chrome-line);
 }
-.ton-nav-sublink[aria-current="page"],
-.ton-nav-sublink:hover {
+
+.ton-nav-sublink[aria-current="page"] {
+  background: var(--ton-chrome-hover);
+}
+
+.ton-nav-more {
+  color: var(--ton-on-chrome-subtle);
+}
+
+.ton-nav-disclosure,
+.ton-row-action {
+  color: var(--ton-on-chrome-subtle);
+  border-radius: var(--ton-radius-control);
+  transition:
+    color 120ms ease,
+    background-color 120ms ease,
+    opacity 120ms ease;
+}
+.ton-nav-disclosure:hover,
+.ton-row-action:hover,
+.ton-row-action[data-state="open"] {
   color: var(--ton-on-chrome);
+  background: var(--ton-chrome-hover);
+}
+.ton-nav-disclosure svg,
+.ton-row-action svg {
+  stroke: currentColor;
+}
+
+/* Row actions appear on hover or focus; touch screens always show them. */
+.ton-row-action {
+  opacity: 0;
+}
+.ton-history-row:hover .ton-row-action,
+.ton-history-row:focus-within .ton-row-action,
+.ton-history-row[data-menu-open] .ton-row-action {
+  opacity: 1;
+}
+@media (hover: none) {
+  .ton-row-action {
+    opacity: 1;
+  }
+}
+
+.ton-history-rename {
+  color: var(--ton-on-chrome);
+  background: var(--ton-chrome-selected);
+  border-radius: var(--ton-radius-chrome);
+  box-shadow: inset 0 0 0 1px var(--ton-gold);
 }
 
 .ton-new-conversation {
-  /* Always the light brand surface: it sits on the green chrome in both themes. */
-  background: var(--vale-norte-green-01);
-  color: var(--vale-norte-green-90);
-  border-radius: 0.75rem;
-  box-shadow: 0 1px 2px color-mix(in srgb, black 20%, transparent);
-  transition: background-color 120ms ease;
+  color: var(--ton-on-chrome);
+  background: var(--ton-chrome-hover);
+  border: 1px solid var(--ton-chrome-line);
+  border-radius: var(--ton-radius-chrome);
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
 }
 .ton-new-conversation:hover {
-  background: var(--vale-norte-green-05);
+  background: var(--ton-chrome-selected);
+  border-color: color-mix(in srgb, var(--vale-norte-green-01) 18%, transparent);
+}
+.ton-new-conversation[aria-current="page"] {
+  background: var(--ton-chrome-selected);
 }
 .ton-new-conversation svg {
   stroke: currentColor;
@@ -327,7 +453,7 @@ html:has(.ton-shell) body {
 
 /* Mobile drawer */
 .ton-scrim {
-  background: color-mix(in srgb, var(--vale-norte-green-95) 55%, transparent);
+  background: color-mix(in srgb, var(--vale-norte-green-95) 45%, transparent);
 }
 
 /* Display styles wrap an Opal Text; the wrapper owns the type scale. */
@@ -340,10 +466,15 @@ html:has(.ton-shell) body {
 
 /* Header controls */
 .ton-header-icon {
-  color: var(--ton-on-chrome);
-  transition: background-color 120ms ease;
+  color: var(--ton-on-chrome-muted);
+  border-radius: var(--ton-radius-chrome);
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
 }
-.ton-header-icon:hover {
+.ton-header-icon:hover,
+[data-state="open"] > .ton-header-icon {
+  color: var(--ton-on-chrome);
   background: var(--ton-chrome-hover);
 }
 .ton-header-icon svg {
@@ -351,30 +482,32 @@ html:has(.ton-shell) body {
 }
 .ton-header-badge {
   position: absolute;
-  top: 0.125rem;
-  inset-inline-end: 0.125rem;
-  min-width: 1rem;
-  height: 1rem;
-  padding: 0 0.25rem;
+  top: 0.0625rem;
+  inset-inline-end: 0.0625rem;
+  min-width: 0.875rem;
+  height: 0.875rem;
+  padding: 0 0.1875rem;
   border-radius: 999px;
   background: var(--ton-gold);
   color: var(--vale-norte-green-95);
-  font-size: 0.625rem;
+  font-size: 0.5625rem;
   font-weight: 700;
-  line-height: 1rem;
+  line-height: 0.875rem;
   text-align: center;
+  box-shadow: 0 0 0 2px var(--ton-chrome);
 }
 .ton-header-search {
-  color: var(--ton-on-chrome-muted);
-  background: color-mix(in srgb, var(--vale-norte-green-01) 8%, transparent);
+  color: var(--ton-on-chrome-subtle);
+  background: var(--ton-chrome-hover);
   border: 1px solid var(--ton-chrome-line);
+  border-radius: var(--ton-radius-chrome);
   transition:
     color 120ms ease,
     background-color 120ms ease;
 }
 .ton-header-search:hover {
-  color: var(--ton-on-chrome);
-  background: var(--ton-chrome-hover);
+  color: var(--ton-on-chrome-muted);
+  background: var(--ton-chrome-selected);
 }
 .ton-header-search svg {
   stroke: currentColor;
@@ -382,12 +515,13 @@ html:has(.ton-shell) body {
 .ton-kbd {
   font-family: inherit;
   font-size: 0.6875rem;
-  font-weight: 600;
-  line-height: 1rem;
-  padding: 0 0.375rem;
-  border-radius: 0.375rem;
+  font-weight: 500;
+  line-height: 1.125rem;
+  padding: 0 0.3125rem;
+  border-radius: 0.25rem;
   border: 1px solid var(--ton-chrome-line);
-  color: var(--ton-on-chrome-muted);
+  color: var(--ton-on-chrome-subtle);
+  white-space: nowrap;
 }
 .ton-kbd-light {
   border-color: var(--border-02);
@@ -593,7 +727,8 @@ html:has(.ton-shell) body {
   html:has(.ton-shell),
   html:has(.ton-shell) body,
   .ton-shell,
-  .ton-shell main {
+  .ton-shell main,
+  .ton-workspace {
     height: auto !important;
     overflow: visible !important;
     background: white !important;
@@ -603,6 +738,10 @@ html:has(.ton-shell) body {
   .ton-scrim,
   [data-print-hide] {
     display: none !important;
+  }
+  .ton-workspace {
+    border-radius: 0 !important;
+    box-shadow: none !important;
   }
   .ton-card {
     box-shadow: none !important;

@@ -5,7 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import { useState, type ReactNode } from "react";
-import { LineItemButton, Popover, PopoverMenu, Text } from "@opal/components";
+import {
+  LineItemButton,
+  Popover,
+  PopoverMenu,
+  Text,
+  Tooltip,
+} from "@opal/components";
 import {
   SvgBell,
   SvgHelpCircle,
@@ -14,9 +20,9 @@ import {
   SvgSearch,
   SvgServer,
   SvgSettings,
+  SvgSidebar,
 } from "@opal/icons";
 import { Content, toast } from "@opal/layouts";
-import { cn } from "@opal/utils";
 import { useUser } from "@/providers/UserProvider";
 import { getUserDisplayName, getUserEmail, logout } from "@/lib/users/svc";
 import {
@@ -51,22 +57,24 @@ function SourcesStatus() {
     .sort()
     .at(-1);
   return (
-    <Link
-      href="/ton/fontes"
-      className="ton-header-chip ton-focusable hidden md:flex items-center gap-2.5 px-3 py-1.5"
+    <Tooltip
+      tooltip={
+        latest
+          ? COPY.shell.sourcesLastImport(formatRelativeDateTime(latest))
+          : undefined
+      }
+      side="bottom"
     >
-      <span className="ton-dot" data-tone={healthy ? "success" : "warning"} />
-      <span className="flex flex-col leading-tight">
-        <Text font="secondary-action" color="text-light-05">
+      <Link
+        href="/ton/fontes"
+        className="ton-header-chip ton-focusable hidden md:flex items-center gap-2 px-2.5 h-8"
+      >
+        <span className="ton-dot" data-tone={healthy ? "success" : "warning"} />
+        <Text font="secondary-action" color="inherit" maxLines={1}>
           {healthy ? COPY.shell.sourcesCurrent : COPY.shell.sourcesAttention}
         </Text>
-        {latest && (
-          <Text font="secondary-body" color="text-light-03">
-            {COPY.shell.sourcesLastImport(formatRelativeDateTime(latest))}
-          </Text>
-        )}
-      </span>
-    </Link>
+      </Link>
+    </Tooltip>
   );
 }
 
@@ -77,7 +85,7 @@ function DemoIndicator() {
     <span
       role="note"
       title={COPY.shell.demo}
-      className="ton-demo-chip inline-flex items-center gap-2 px-2.5 sm:px-3 py-1"
+      className="ton-demo-chip inline-flex items-center gap-2 px-2.5 h-8"
     >
       <span className="ton-dot" data-tone="warning" />
       <span className="hidden xl:inline">
@@ -126,7 +134,7 @@ function AccountMenu() {
         <button
           type="button"
           aria-label={COPY.shell.account}
-          className="ton-avatar ton-focusable flex items-center justify-center rounded-full w-9 h-9 shrink-0"
+          className="ton-avatar ton-focusable flex items-center justify-center rounded-full w-8 h-8 shrink-0"
         >
           <Text font="secondary-action" color="inherit">
             {initials(name)}
@@ -183,24 +191,32 @@ function AccountMenu() {
   );
 }
 
+interface HeaderIconButtonProps {
+  label: string;
+  onClick?: () => void;
+  children: ReactNode;
+  badge?: number;
+  expanded?: boolean;
+  controls?: string;
+}
+
 function HeaderIconButton({
   label,
   onClick,
   children,
   badge,
-}: {
-  label: string;
-  onClick?: () => void;
-  children: ReactNode;
-  badge?: number;
-}) {
+  expanded,
+  controls,
+}: HeaderIconButtonProps) {
   return (
     // Brand chrome needs an icon trigger that no Opal button provides.
     <button
       type="button"
       aria-label={badge ? `${label} (${badge})` : label}
+      aria-expanded={expanded}
+      aria-controls={controls}
       onClick={onClick}
-      className="ton-header-icon ton-focusable relative flex items-center justify-center w-9 h-9 rounded-full shrink-0"
+      className="ton-header-icon ton-focusable relative flex items-center justify-center w-8 h-8 shrink-0"
     >
       {children}
       {!!badge && (
@@ -220,19 +236,19 @@ function SearchTrigger() {
           <button
             type="button"
             onClick={open}
-            className="ton-header-search ton-focusable hidden md:flex items-center gap-2 ps-3 pe-2 h-9 rounded-full"
+            className="ton-header-search ton-focusable hidden md:flex items-center gap-2 ps-2.5 pe-1.5 h-8 lg:w-56 xl:w-64"
           >
-            <SvgSearch size={16} />
-            <span className="hidden 2xl:inline">
-              <Text font="secondary-body" color="inherit">
+            <SvgSearch size={14} className="shrink-0" />
+            <span className="hidden lg:inline flex-1 min-w-0 text-start">
+              <Text font="secondary-body" color="inherit" maxLines={1}>
                 {COPY.command.trigger}
               </Text>
             </span>
-            <kbd className="ton-kbd">Ctrl K</kbd>
+            <kbd className="ton-kbd ms-auto">Ctrl K</kbd>
           </button>
           <span className="hidden sm:block md:hidden">
             <HeaderIconButton label={COPY.command.trigger} onClick={open}>
-              <SvgSearch size={18} />
+              <SvgSearch size={16} />
             </HeaderIconButton>
           </span>
         </>
@@ -265,7 +281,7 @@ function Notifications() {
             label={COPY.notifications.label}
             badge={fresh.length}
           >
-            <SvgBell size={18} />
+            <SvgBell size={16} />
           </HeaderIconButton>
         </span>
       </Popover.Trigger>
@@ -359,7 +375,7 @@ function Help() {
       <Popover.Trigger asChild>
         <span>
           <HeaderIconButton label={COPY.help.label}>
-            <SvgHelpCircle size={18} />
+            <SvgHelpCircle size={16} />
           </HeaderIconButton>
         </span>
       </Popover.Trigger>
@@ -380,13 +396,23 @@ function Help() {
               </li>
             ))}
           </ul>
-          <div className="flex items-center justify-between gap-2 border-t border-01 pt-3">
-            <Text font="secondary-body" color="text-04">
-              {COPY.help.shortcut}
-            </Text>
-            <kbd className="ton-kbd ton-kbd-light">
-              {COPY.help.shortcutKeys}
-            </kbd>
+          <div className="flex flex-col gap-2 border-t border-01 pt-3">
+            <div className="flex items-center justify-between gap-2">
+              <Text font="secondary-body" color="text-04">
+                {COPY.help.shortcut}
+              </Text>
+              <kbd className="ton-kbd ton-kbd-light">
+                {COPY.help.shortcutKeys}
+              </kbd>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <Text font="secondary-body" color="text-04">
+                {COPY.shell.collapseSidebar}
+              </Text>
+              <kbd className="ton-kbd ton-kbd-light">
+                {COPY.shell.sidebarShortcut}
+              </kbd>
+            </div>
           </div>
           <Text font="secondary-body" color="text-03">
             {COPY.help.contact}
@@ -398,29 +424,50 @@ function Help() {
 }
 
 interface TonHeaderProps {
+  /** Sidebar is docked (desktop): the toggle switches the icon rail. */
+  docked: boolean;
   menuOpen: boolean;
-  onToggleMenu: () => void;
+  rail: boolean;
+  onToggleNavigation: () => void;
 }
 
-export default function TonHeader({ menuOpen, onToggleMenu }: TonHeaderProps) {
+export default function TonHeader({
+  docked,
+  menuOpen,
+  rail,
+  onToggleNavigation,
+}: TonHeaderProps) {
   const { canRead } = useTonAccess();
+  const toggleLabel = docked
+    ? rail
+      ? COPY.shell.expandSidebar
+      : COPY.shell.collapseSidebar
+    : menuOpen
+      ? COPY.shell.closeMenu
+      : COPY.shell.openMenu;
+
   return (
-    <header className="ton-header flex items-center gap-3 px-3 sm:px-5">
-      <button
-        type="button"
-        onClick={onToggleMenu}
-        aria-label={menuOpen ? COPY.shell.closeMenu : COPY.shell.openMenu}
-        aria-expanded={menuOpen}
-        aria-controls="ton-sidebar"
-        className={cn(
-          "ton-focusable lg:hidden flex items-center justify-center w-9 h-9 rounded-08"
-        )}
+    <header className="ton-header flex items-center gap-2 ps-3 pe-3 sm:pe-4">
+      <Tooltip
+        tooltip={`${toggleLabel} · ${COPY.shell.sidebarShortcut}`}
+        side="bottom"
+        align="start"
+        suppressed={!docked}
       >
-        <SvgMenu size={20} />
-      </button>
+        <span className="flex">
+          <HeaderIconButton
+            label={toggleLabel}
+            onClick={onToggleNavigation}
+            expanded={docked ? !rail : menuOpen}
+            controls="ton-sidebar"
+          >
+            {docked ? <SvgSidebar size={16} /> : <SvgMenu size={18} />}
+          </HeaderIconButton>
+        </span>
+      </Tooltip>
       <Link
         href="/ton"
-        className="ton-focusable flex items-center gap-3 sm:gap-4 min-w-0 rounded-08"
+        className="ton-focusable flex items-center gap-3 min-w-0 ps-1 pe-2 rounded-08"
       >
         <Image
           src="/ton/vale-norte-logo-reversed.png"
@@ -428,28 +475,33 @@ export default function TonHeader({ menuOpen, onToggleMenu }: TonHeaderProps) {
           width={1057}
           height={412}
           priority
-          className="h-8 sm:h-9 w-auto"
+          className="h-7 w-auto"
         />
-        <span
-          aria-hidden
-          className="ton-chrome-divider hidden sm:block h-8 border-s"
-        />
-        <span className="ton-product-badge">TON</span>
-        <span className="hidden lg:block min-w-0">
-          <Text font="main-ui-body" color="text-light-03" maxLines={1}>
+        <span aria-hidden className="ton-chrome-divider h-5 border-s" />
+        <span className="ton-product-name">TON</span>
+        <span className="ton-tagline hidden xl:block min-w-0">
+          <Text font="secondary-body" color="inherit" maxLines={1}>
             {COPY.shell.tagline}
           </Text>
         </span>
       </Link>
-      <div className="ms-auto flex items-center gap-1.5 sm:gap-2.5">
+      <div className="ms-auto flex items-center gap-1 sm:gap-1.5">
         {canRead && <SearchTrigger />}
         {canRead && <DemoIndicator />}
         {canRead && <SourcesStatus />}
+        {canRead && (
+          <span
+            aria-hidden
+            className="ton-chrome-divider hidden md:block h-5 border-s mx-1"
+          />
+        )}
         {canRead && <Notifications />}
         <span className="hidden sm:block">
           <Help />
         </span>
-        <AccountMenu />
+        <span className="ps-1">
+          <AccountMenu />
+        </span>
       </div>
     </header>
   );

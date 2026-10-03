@@ -287,3 +287,24 @@ Nunca:
 - contornar tenant isolation;
 - contornar human approvals.
 
+---
+
+# 14. Atualização 2026-10-02 (verificada no código)
+
+- Ferramentas registradas do assistente (19): `ton_list_sources`, `ton_get_source_status`,
+  `ton_get_financial_context`, `ton_get_financial_review_summary`, `ton_list_findings`,
+  `ton_get_finding`, `ton_get_dre_readiness`, `ton_get_dre_result`, `ton_get_readiness_evidence`,
+  `ton_analyze_closing`, `ton_get_billing_summary`, `ton_get_budget_summary`,
+  `ton_get_reconciliation_summary`, `ton_list_occurrences`, `ton_get_occurrence`,
+  `ton_list_overdue_actions`, `ton_get_recent_changes`, `ton_generate_closing_report`,
+  `ton_generate_executive_brief`. Code Interpreter (`run_python`) disponível com limites (D-032).
+- Especialistas: definidos em `backend/onyx/ton/agent/registry.py`; CFO, AUDITOR e CEO com
+  ferramentas; os outros seis sem ferramentas ("aguardando fonte").
+- Cobertura do Prompt Mestre: `backend/onyx/ton/agent/capabilities.py` — S10 operacional, T4 parcial,
+  demais S/T não implementados. Rotinas R1–R9 em `registry.ROUTINES`; só R3 executa.
+- Ledger: modelo completo em `backend/onyx/db/ton/models.py` (`Occurrence`, `OccurrenceImpact`,
+  `OccurrenceAssignment`…); só a revisão NG grava ocorrências.
+- Zeev: `backend/onyx/ton/zeev/` — cliente somente leitura com firewall de mutação e catálogo
+  (BE-004A/B). Sem sincronização para `SourceSnapshot`.
+- Arquitetura-alvo das próximas camadas (protocolo de 7 passos, baterias S/T, cadastro mestre,
+  framework de rotinas, subagentes, Zeev): `openspec/changes/*/design.md`.

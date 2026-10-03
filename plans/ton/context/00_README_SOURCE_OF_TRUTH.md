@@ -41,11 +41,26 @@ Leia nesta ordem:
 
 Depois compare tudo com o estado atual do repositório.
 
+## Execução: OpenSpec (desde 2026-10-02)
+
+O trabalho pendente do TON está especificado em **`openspec/`** na raiz do repositório:
+
+- `openspec/config.yaml` — contexto do projeto e regras para todo artefato;
+- `openspec/roadmap.md` — **roadmap completo**: estado × Prompt Mestre, fases 0–5 + produção,
+  dependências, insumos externos, rastreabilidade S/T/R → change;
+- `openspec/specs/` — linha de base **verificada no código** do que existe hoje;
+- `openspec/changes/` — uma change por item pendente (proposta, specs, design quando necessário,
+  tarefas).
+
+Planos antigos em `plans/ton/` (FE-001..003, UX, overnight, backend/data) são histórico. O que
+estiver pendente neles e ainda for válido foi incorporado às changes.
+
 ## Fontes originais relevantes
 
 ### Prompt Mestre
 `TON VALE — PROMPT MESTRE v2.0`
-Arquivo original conhecido no acervo: `Markdown(1).md colado.md`
+No repositório: `plans/ton/masterprompt.md` (arquivo enviado pela Luyla; leitura integral obrigatória —
+o digesto 02 resume, mas não substitui).
 
 ### Problemas financeiros/operacionais da Luyla
 `Relatorio_Inconsistencias_Jan_Abr_2026_ValeNorte.txt`
@@ -72,6 +87,15 @@ Os planos executáveis DATA-001 a DATA-006 estão em `plans/ton/data/` quando pr
 
 ## Estado atual resumido
 
+> Atualizado em 2026-10-02. Tabela detalhada por camada do Prompt Mestre: `openspec/roadmap.md` §1.
+>
+> **Leitura correta do projeto:** o TON pedido no Prompt Mestre é uma controladoria **por contrato**
+> (cadastro mestre, cadeia contratado→recebido, T1–T30, ledger com dono/prazo/verificação, ROI,
+> rotinas R1–R9, nove subagentes). O que está construído é a **fundação financeira** (fontes →
+> revisão → prontidão → DRE) mais o shell do produto. Desde 2026-10-02 a base local tem **dados
+> reais** jan–jun/2026 e DRE READY real (consolidado + unidades, só Realizado). Do Prompt Mestre,
+> apenas S10 está operacional, T4 parcial e R3 ativa.
+
 O TON já tem:
 
 - backend financeiro versionado;
@@ -91,12 +115,18 @@ O TON já tem:
 
 Ainda NÃO tem:
 
-- integração direta NG/Keevo via VPN/API/read-only DB;
-- cobertura real validada de todos os domínios operacionais;
-- fechamento financeiro real com 2025/2026 vivo;
-- todos os especialistas alimentados por fontes reais;
-- loop completo de resolução de pendência → recalcular → verificar correção com dados reais;
-- produto final em produção.
+- integração direta NG/Keevo (TI liberando VPN + usuário read-only);
+- DRE em Excel com memória de cálculo (pedido da Luyla em 2026-10-02; hoje só CSV);
+- regras da DRE validadas pela Controladoria (parcelamentos, 392, receita, orçado, PIS/COFINS);
+- reaproveitamento de decisões ao reimportar o NG;
+- contrato de dados, protocolo de 7 passos com bloqueio, S1–S9, T1–T30, quantificação, régua
+  PAD-CTRL-001, pontos cegos;
+- operação do ledger (dono, prazo, verificação no ciclo seguinte, R9) e ROI;
+- cadastro mestre de contratos, margem prevista × real, cadeia de medição/faturamento/recebimento;
+- domínios frota, produção, RH, compras, compliance, banco; 6 dos 9 especialistas;
+- rotinas R1, R2, R4–R9; ISC; Dinheiro Escondido; previsão;
+- histórico 2025;
+- produto em produção para a equipe da Luyla.
 
 O próximo grande desafio do produto é transformar a fundação em uma **controladoria operacional realmente usada no dia a dia**, e não apenas uma demonstração bonita.
 

@@ -219,3 +219,17 @@ TON
 ```
 
 O agente deve preservar esta direção em toda decisão de implementação.
+
+---
+
+# 14. OpenSpec é o tracker de execução (desde 2026-10-02)
+
+- Antes de codar: `openspec list`, `openspec/roadmap.md`, `openspec/config.yaml`.
+- Escolha uma change desbloqueada; leia `proposal.md`, `design.md` e `specs/`; confira com o código.
+- Marque `tasks.md` à medida que entrega; ao concluir, `openspec validate <change> --strict` e
+  `openspec archive <change>` (atualiza `openspec/specs/`).
+- Mantenha atualizados: a tabela de estado e as fases do roadmap, a cobertura do Prompt Mestre no
+  código (`capabilities.py`/`registry.py`) e este pacote de contexto.
+- O protocolo de progresso do §9 continua valendo, agora dentro da change.
+- Nova necessidade descoberta: crie uma change nova (pasta com proposal/specs/tasks) e inclua-a no
+  roadmap — não deixe gaps só em relatório.

@@ -224,3 +224,15 @@ Não fazer:
 Cada elemento precisa responder:
 > que decisão ou ação isso ajuda o usuário a tomar?
 
+---
+
+# 10. Estado após FE-003 (2026-10-02)
+
+FE-003 entregou o loop decisão → recálculo → antes/agora, decisões não aplicadas visíveis, trilha de
+decisões, fila "O que precisa de você hoje", Fechamento como centro de controle, CTAs específicos no
+assistente, timeline de raciocínio e Python (D-024..D-032). Detalhe: `plans/ton/TON-FE-003_GAP_REPORT.md` §12.
+
+Pendências de produto/UX seguem como changes OpenSpec: tela do ledger (`occurrence-ledger-workflow`),
+DRE em Excel (`dre-excel-export`), fichas de exceção/modo executivo (`exception-card-and-executive-mode`),
+Contratos (`contract-master-registry`), Dinheiro Escondido (`hidden-money-and-roi`), Automações com
+rotinas declarativas (`routine-framework`). Ver `openspec/roadmap.md`.

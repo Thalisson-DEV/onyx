@@ -190,3 +190,21 @@ NG → atualização automática
 
 Isso é melhor do que simular conectividade.
 
+---
+
+# 11. Atualização 2026-10-02
+
+- **A base local agora é real**: dados sintéticos removidos; NG jan–jun/2026 ("ok"), resumo de NFs e
+  três dotações importados; `TON_DEMO_SYNTHETIC_DATA=false`; DRE READY **real** jan–jun/2026 para o
+  consolidado e unidades com lançamento (só Realizado, Orçado = 0). Backups em
+  `Documents/onyx_backups/`. Arquivos do cliente em `plans/ton/DRE Jun-26/` (fora do Git).
+- O "0/6 READY" do smoke anterior está superado: a configuração veio do "Banco de Dados (Vale
+  Norte).xlsm" da Controladoria, ainda **em validação** com a Luyla (parcelamentos, 392, receita
+  líquida, PIS/COFINS ausente).
+- **NG direto:** TI externa (Celso Passos Soluções Tecnológicas) liberando VPN + usuário read-only;
+  em produção a rota é do host do TON. Change `ng-direct-integration`.
+- **Zeev:** adaptador somente leitura e catálogo validados ao vivo em 2026-09-23 (35 fluxos, 916
+  campos, zero mutações); sincronização ainda não existe. Change `zeev-integration`.
+- **Direção do cliente:** DRE em Excel com memória de cálculo, não Power BI (`dre-excel-export`).
+- Insumos ainda a pedir (PAD-CTRL-001, backlog, contratos, PIS/COFINS estruturado, NG 2025, fontes
+  operacionais, escopo Zeev): tabela completa em `openspec/roadmap.md` §5.

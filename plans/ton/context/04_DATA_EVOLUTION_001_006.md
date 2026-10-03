@@ -408,3 +408,28 @@ source
 ```
 
 Não atalhar esse caminho no frontend ou no agente.
+
+---
+
+# CARGA REAL — 2026-10-02 (pós DATA-006)
+
+Os dados sintéticos foram removidos da base local e os arquivos reais da Vale Norte foram importados:
+NG jan–jun/2026 (cópia revisada "ok"), resumo de NFs (1.258 notas) e três dotações (Mossoró-RN,
+Juazeiro-BA, Itabirito-MG).
+
+Configuração usada como evidência: o "Banco de Dados (Vale Norte).xlsm" da Controladoria (aba BANCO DE
+DADOS: código NG → natureza; aba AUXILIARES: natureza → grupo da DRE). Resultado: 26 contas canônicas,
+estrutura `vale-norte-gerencial`, política só Realizado (Orçado = 0), DRE READY jan–jun/2026 para o
+consolidado e para as unidades com lançamento; unidades sem lançamento no mês ficam "sem realizado".
+
+Mudanças de código dessa etapa (já commitadas): prontidão por escopo (MISSING_BUDGET só com orçamento
+como entrada; conciliação por mês de emissão; chaves de derivação de faturamento não bloqueiam a DRE),
+NG sem unidade → "(sem unidade)", chave de NF com prefixo de ano, regra `NGF-DUP-DOC.v2` (caso da NF
+392 de Toledo em dois formatos).
+
+Achados reais em validação com a Controladoria: PARCELAMENTOS ≈ R$ 128,9 mi no acumulado (abril e
+maio), NF 392 duplicada, 19 lançamentos sem unidade, 4 linhas rejeitadas em janeiro, 2.325 linhas
+repetidas no Banco de Dados (levantamento fora do TON), PIS/COFINS ausente da DRE.
+
+Limitações conhecidas: uma reimportação do NG reabre decisões; qualquer importação recalcula a base
+com as dotações. Ver `openspec/changes/carry-over-decisions-on-reimport` e `controller-validated-treatments`.

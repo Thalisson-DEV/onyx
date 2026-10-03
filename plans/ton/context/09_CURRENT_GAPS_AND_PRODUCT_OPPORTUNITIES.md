@@ -207,3 +207,20 @@ A arquitetura já foi desenhada para crescer por domínio.
 
 Primeiro valor operacional.
 
+---
+
+# 14. Atualização 2026-10-02 — o gap principal mudou
+
+Gaps 1–4 e 7 deste documento foram resolvidos no FE-003 (loop de decisão, fila diária, "o que
+mudou", especialistas na timeline). Os gaps que importam agora são os do **Prompt Mestre**, não de UX:
+
+1. Contrato de dados e níveis de confiança (§3).
+2. Protocolo de 7 passos com bloqueio e pontos cegos (§5, §11).
+3. Sanidade S1–S9 e testes T1–T30 (§6–§8) — hoje só S10 e T4 parcial.
+4. Quantificação em R$, régua PAD-CTRL-001 e escalonamento (§9, §10).
+5. Ledger operado com dono, prazo e verificação no ciclo seguinte; ROI (§13).
+6. Cadastro mestre do contrato e margem prevista × real (§4) — o "cérebro" inexistente.
+7. Domínios operacionais e 6 especialistas sem fonte (§15); integração Zeev a concluir.
+8. Rotinas autônomas R1–R9 (§12) — só R3.
+
+Cada um virou change em `openspec/changes/`, ordenada em `openspec/roadmap.md`.

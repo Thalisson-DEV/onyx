@@ -389,6 +389,10 @@ Criou experiência para:
 
 Depois foi incorporado à reconstrução do frontend TON.
 
+Em 2026-10-03 (`dre-excel-export`) a tela ganhou "Baixar Excel": jan até o mês escolhido,
+consolidado e por unidade/filial, com fórmulas (SUMIFS) sobre a aba Base de lançamentos e a aba
+Premissas. O servidor recusa o arquivo se algum valor diferir da DRE persistida.
+
 ---
 
 # Regra de arquitetura DATA

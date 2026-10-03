@@ -22,7 +22,7 @@ fração do Prompt Mestre:
 | Fontes rastreáveis, imutáveis (DATA-001/002/004ab) | ✅ NG, faturamento, dotação (só aba DOTAÇÃO), por arquivo |
 | Revisão determinística NG (DATA-003) | ✅ 6 regras NGF ativas |
 | Domínio canônico, prontidão, decisões versionadas, loop de decisão | ✅ |
-| DRE gerencial (DATA-005/006) | ✅ READY real jan–jun/2026, consolidado + unidades, só Realizado, export CSV |
+| DRE gerencial (DATA-005/006) | ✅ READY real jan–jun/2026, consolidado + unidades, só Realizado, export CSV e Excel com fórmulas |
 | Assistente com 19 ferramentas, Python, timeline | ⚠️ funciona, lento (1,5–3 min) |
 | Rotina R3 (fechamento preliminar mensal) | ✅ agendada e manual |
 | Shell de produto TON (FE-001..003) | ✅ |
@@ -102,7 +102,7 @@ Ordem dentro da fase, conforme a reunião: (1) `ng-direct-integration`, (2) `wee
 
 | Change | O quê | Tam. | Depende de |
 |---|---|---|---|
-| `dre-excel-export` | DRE em Excel com fórmulas e aba Base (pedido da Luyla) | M | Fase 0 |
+| `dre-excel-export` | ✅ 2026-10-03: DRE em Excel (jan até o mês, consolidado + unidades) com fórmulas sobre a aba Base e aba Premissas; falta revisar o layout com a Luyla/contador | M | Fase 0 |
 | `unit-classification-and-consolidation` | Operacional × não operacional; resultado operacional; ressalva no consolidado | P | C3 da Luyla |
 | `pis-cofins-source` | Apuração da Contabilidade na linha de impostos | M | Arquivo estruturado, R3 da Luyla |
 | `budget-vs-actual` | Orçado × realizado das dotações aprovadas | M | O1–O3 da Luyla, carry-over |

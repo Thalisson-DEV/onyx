@@ -465,9 +465,15 @@ class ReviewDecisionView(BaseModel):
     reason: str
     comment: str | None
     authorization_reference: str | None
-    actor_user_id: UUID
+    # None on a carried-over decision; its author is carried_from_actor_user_id.
+    actor_user_id: UUID | None
     occurrence_event_id: UUID | None
     created_at: datetime
+    # HUMAN, or CARRIED_OVER when a new import kept an earlier human decision.
+    basis: str = "HUMAN"
+    carried_from_decision_id: UUID | None = None
+    carried_from_actor_user_id: UUID | None = None
+    carried_from_at: datetime | None = None
 
 
 class MonthDatasetView(BaseModel):

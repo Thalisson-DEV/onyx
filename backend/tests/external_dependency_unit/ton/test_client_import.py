@@ -14,7 +14,7 @@ from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.db.ton import sources
-from onyx.db.ton.models import TonAuditEvent
+from onyx.db.ton.models import FinancialNormalizationRun, TonAuditEvent
 from onyx.error_handling.exceptions import OnyxError, register_onyx_exception_handlers
 from onyx.file_store.file_store import FileStore
 from onyx.server.ton.client_import import router
@@ -170,7 +170,7 @@ def test_partial_and_both_budget_profiles(
     assert second.imported > 0
 
 
-def test_partial_budget_does_not_use_stale_readiness(
+def test_budget_import_does_not_change_the_actual_base(
     ton_session: Session, importer: User, store: FileStore
 ) -> None:
     upload(
@@ -181,7 +181,7 @@ def test_partial_budget_does_not_use_stale_readiness(
         synthetic_workbook(),
         SourceFormat.XLSX,
     )
-    upload(
+    actual = upload(
         ton_session,
         importer,
         store,
@@ -189,26 +189,24 @@ def test_partial_budget_does_not_use_stale_readiness(
         billing_book([invoice()]),
         SourceFormat.XLS,
     )
-    complete = upload(
-        ton_session,
-        importer,
-        store,
-        "budget",
+    # Budgets are not needed for an actual-only base.
+    assert actual.readiness_status == "UPDATED"
+    assert actual.readiness_run_id is not None
+    for workbook in (
         budget_book(BUDGET_ANNUAL_KEY),
-        SourceFormat.XLSX,
-    )
-    assert complete.readiness_status == "UPDATED"
-    partial = upload(
-        ton_session,
-        importer,
-        store,
-        "budget",
         budget_book(BUDGET_ANNUAL_KEY, malformed=True),
-        SourceFormat.XLSX,
-    )
-    assert partial.status == "PARTIAL"
-    assert partial.readiness_status == "PENDING_INPUTS"
-    assert partial.readiness_run_id is None
+    ):
+        budget = upload(
+            ton_session, importer, store, "budget", workbook, SourceFormat.XLSX
+        )
+        # Same inputs, same run: the dotação never reaches the DRE input
+        # until the Controladoria approves budgets for it.
+        assert budget.readiness_status == "UPDATED"
+        assert budget.readiness_run_id == actual.readiness_run_id
+    run = ton_session.get(FinancialNormalizationRun, actual.readiness_run_id)
+    assert run is not None
+    assert run.input_policy == "ACTUAL_ONLY"
+    assert run.budget_execution_ids == []
 
 
 def test_wrong_source_unsupported_file_and_isolation(

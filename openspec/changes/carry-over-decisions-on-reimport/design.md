@@ -39,3 +39,42 @@ continuam válidas. Rollback: desligar a política de reaproveitamento (volta ao
 ## Open Questions
 
 - A Luyla aceita reaproveitamento automático ou quer confirmar em lote na prévia?
+
+## Implementation notes (2026-10-03)
+
+What the code already did, verified on the real database before changing anything:
+
+- Occurrence identity was already content-based for record rules (`ngf-rk-1`: month, account,
+  date, unit, document, history, amounts; correctable fields excluded) and did not include the
+  row number. The second real review on 2026-10-02 kept all 23 decisions
+  (`occurrences_repeated_human_decision_kept: 23`). The presentation guide's claim that "decisions
+  are not reused" was wrong for review decisions.
+- The real gaps were: (1) every import refreshed readiness with **all** budget workbooks;
+  (2) reconciliation decisions pointed at `parsed_source_record.id`, which is new on every import;
+  (3) a kept decision did not check whether the evidence changed (label drift, duplicate group size);
+  (4) no "not detected" record for decided cases, no preview, no trail of kept decisions.
+
+Decisions taken while implementing:
+
+- **A decision is never copied to a different occurrence.** `ACCEPT_RISK` and `DISMISS` are
+  human-only transitions enforced by a database CHECK (readiness §9, meeting decision D4). Carry-over
+  therefore only happens on the same occurrence (same identity). A changed evidence on the same
+  identity appends a system `REOPENED` event with `context.carry_over = EVIDENCE_CHANGED`.
+- **Evidence fingerprint** (`ngf-ev-1`) is stored in the finding payload: full content of the member
+  records (no position), duplicate group size, candidate labels. Label findings use the labels only,
+  because their representative rows grow every month. Diagnostic and execution findings have no
+  fingerprint: the parser keeps no cell values of rejected rows, so they stay location-only. A
+  cleaned export that shifts rows makes a rejected row a new case (the preview says so).
+- Findings recorded before fingerprints existed keep their decision (legacy = match).
+- The carried decision is a `ton_review_decision` row with `basis = CARRIED_OVER`,
+  `actor_user_id = NULL` and `carried_from_decision_id`; the API returns the original author and date.
+  The decision log groups carried decisions per import ("N decisões mantidas").
+- "Not detected" reuses the verification event (`VERIFICATION_PASSED/FAILED`, never a status change)
+  with `context.not_detected_in_snapshot_id`, for decided cases as well as open ones.
+- **Input policy**: `ACTUAL_ONLY` is the policy of the automatic refresh after any import. Explicit
+  budget inputs are `ACTUAL_AND_APPROVED_BUDGET`; runs made before the policy are backfilled as
+  `LEGACY_ALL_AVAILABLE`.
+- **Reconciliation decisions** are matched by record content (source, fingerprint, duplicate
+  ordinal) instead of record id; the run statistics count `reconciliation_decisions_carried_over`.
+- The Open Question (automatic vs. batch confirmation) is answered for now by the preview: the user
+  sees the counts and confirms the import; nothing is carried without that confirmation.

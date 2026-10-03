@@ -91,6 +91,13 @@ class BudgetInput(BaseModel):
     execution_id: UUID
 
 
+class InputPolicy(StrEnum):
+    """What a normalization run may read besides the reviewed NG actuals."""
+
+    ACTUAL_ONLY = "ACTUAL_ONLY"
+    ACTUAL_AND_APPROVED_BUDGET = "ACTUAL_AND_APPROVED_BUDGET"
+
+
 class NormalizationRequest(BaseModel):
     ng_source_id: UUID
     review_run_id: UUID
@@ -99,6 +106,19 @@ class NormalizationRequest(BaseModel):
     # Empty means an Actual-only run: Orçado stays zero and budget coverage
     # is not evaluated.
     budgets: list[BudgetInput] = Field(default_factory=list)
+    # Which inputs the run may read. None derives it from ``budgets``: budget
+    # workbooks named explicitly are budgets someone approved for this run.
+    input_policy: InputPolicy | None = None
+
+    @property
+    def effective_input_policy(self) -> InputPolicy:
+        if self.input_policy is not None:
+            return self.input_policy
+        return (
+            InputPolicy.ACTUAL_AND_APPROVED_BUDGET
+            if self.budgets
+            else InputPolicy.ACTUAL_ONLY
+        )
 
 
 class NormalizationView(BaseModel):
@@ -112,6 +132,7 @@ class NormalizationView(BaseModel):
     dataset_as_of: datetime
     billing_execution_id: UUID
     budget_execution_ids: list[str]
+    input_policy: str = "ACTUAL_ONLY"
     mapping_revision_number: int
     amount_basis_revision_number: int
     reconciliation_decision_number: int

@@ -25,8 +25,12 @@ from onyx.db.ton.models import (
     FinancialMappingRevision,
     FinancialNormalizationRun,
     FinancialReconciliationDecision,
+    Finding,
+    Occurrence,
     OperationalSourceRecord,
     ParsedSourceRecord,
+    ReviewDecision,
+    ReviewRun,
 )
 from onyx.db.ton.sources import get_source
 from onyx.error_handling.exceptions import OnyxError
@@ -316,6 +320,67 @@ def _dre_assignment_changes(
     ]
 
 
+def _review_entries(
+    session: Session, gate: _SourceGate, limit: int, authors: list[UUID | None]
+) -> list[DecisionEntry]:
+    """Human review decisions one by one; carried-over ones once per import.
+
+    A re-import keeps every unchanged decision, so listing each would bury the
+    human ones. Decisions carried in one review share one transaction instant.
+    """
+    source = (
+        sa.select(ReviewRun.source_id)
+        .join(Finding, Finding.analysis_run_id == ReviewRun.analysis_run_id)
+        .where(Finding.occurrence_id == Occurrence.id)
+        .limit(1)
+        .scalar_subquery()
+    )
+    entries: list[DecisionEntry] = []
+    carried: dict[object, int] = {}
+    for decision, title, source_id in session.execute(
+        sa.select(ReviewDecision, Occurrence.title, source)
+        .join(Occurrence, Occurrence.id == ReviewDecision.occurrence_id)
+        .order_by(ReviewDecision.created_at.desc())
+        .limit(limit * 25)
+    ):
+        if not gate.visible(source_id):
+            continue
+        if decision.basis == "CARRIED_OVER":
+            carried[decision.created_at] = carried.get(decision.created_at, 0) + 1
+            continue
+        entries.append(
+            DecisionEntry(
+                kind="REVIEW_DECISION",
+                subject=title,
+                outcome=decision.kind.value,
+                reason=decision.reason,
+                decided_by=None,
+                decided_at=decision.created_at,
+                version=None,
+                # Read live by the reviewed dataset of the next normalization.
+                applied=None,
+            )
+        )
+        authors.append(decision.actor_user_id)
+    for decided_at, count in carried.items():
+        entries.append(
+            DecisionEntry(
+                kind="REVIEW_CARRIED_OVER",
+                subject="Importação do NG",
+                outcome=f"{count} decisões mantidas"
+                if count != 1
+                else "1 decisão mantida",
+                reason=None,
+                decided_by=None,
+                decided_at=decided_at,
+                version=None,
+                applied=True,
+            )
+        )
+        authors.append(None)
+    return entries
+
+
 def decision_log(session: Session, user: User, limit: int) -> DecisionLog:  # noqa: C901
     gate = _SourceGate(session, user)
     latest = session.scalar(
@@ -487,6 +552,8 @@ def decision_log(session: Session, user: User, limit: int) -> DecisionLog:  # no
                 )
             )
             authors.append(version.created_by)
+
+    entries.extend(_review_entries(session, gate, limit, authors))
 
     emails = _emails(session, {author for author in authors if author})
     for entry, author in zip(entries, authors, strict=True):

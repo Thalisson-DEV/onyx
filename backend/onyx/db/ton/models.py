@@ -1143,6 +1143,11 @@ class FinancialNormalizationRun(Base):
         nullable=False,
     )
     budget_execution_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    # Which inputs the run may read: ACTUAL_ONLY, ACTUAL_AND_APPROVED_BUDGET, or
+    # LEGACY_ALL_AVAILABLE for runs made before the policy existed.
+    input_policy: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="ACTUAL_ONLY", server_default="ACTUAL_ONLY"
+    )
     mapping_revision_number: Mapped[int] = mapped_column(Integer, nullable=False)
     amount_basis_revision_number: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
@@ -3939,14 +3944,23 @@ class ReviewDecision(Base):
     comment: Mapped[str | None] = mapped_column(Text)
     authorization_reference: Mapped[str | None] = mapped_column(String(200))
     # RESTRICT, as on OccurrenceEvent: an account that decided stays referenceable.
-    actor_user_id: Mapped[UUID] = mapped_column(
+    # NULL only on a carried-over decision, whose author is the original's.
+    actor_user_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("user.id", ondelete="RESTRICT"),
-        nullable=False,
     )
     occurrence_event_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("ton_occurrence_event.id", ondelete="CASCADE"),
+    )
+    # HUMAN, or CARRIED_OVER: the system recording that a human decision still
+    # applies to a new import of the same evidence.
+    basis: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="HUMAN", server_default="HUMAN"
+    )
+    carried_from_decision_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_review_decision.id", ondelete="RESTRICT"),
     )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -3961,6 +3975,17 @@ class ReviewDecision(Base):
             "(kind IN ('ACCEPT_RECOMMENDATION', 'REJECT_RECOMMENDATION')) "
             "= (recommendation_id IS NOT NULL)",
             name="ck_ton_review_decision_recommendation",
+        ),
+        CheckConstraint(
+            "basis IN ('HUMAN', 'CARRIED_OVER')", name="ck_ton_review_decision_basis"
+        ),
+        CheckConstraint(
+            "(basis = 'HUMAN') = (actor_user_id IS NOT NULL)",
+            name="ck_ton_review_decision_basis_actor",
+        ),
+        CheckConstraint(
+            "(basis = 'CARRIED_OVER') = (carried_from_decision_id IS NOT NULL)",
+            name="ck_ton_review_decision_basis_origin",
         ),
         Index("ix_ton_review_decision_occurrence", "occurrence_id", "created_at"),
     )

@@ -87,6 +87,12 @@ from onyx.db.ton.sources import check_page, get_source
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.ton.financial_review.adapters import review_record
+from onyx.ton.financial_review.carry_over import (
+    CARRIED_STATUSES,
+    CarryOutcome,
+    classify,
+    evidence_fingerprint,
+)
 from onyx.ton.financial_review.catalog import (
     ENGINE_VERSION,
     IDENTITY_COMPONENTS,
@@ -119,10 +125,6 @@ REVIEWABLE_EXECUTION_STATUSES = frozenset(
 )
 # A RUNNING review older than this is treated as abandoned by a crashed process.
 STALE_RUNNING_AFTER = datetime.timedelta(minutes=15)
-# Human closures that a repeated detection under the same rule version keeps.
-STICKY_HUMAN_STATUSES = frozenset(
-    {OccurrenceStatus.RISK_ACCEPTED, OccurrenceStatus.DISMISSED}
-)
 
 
 class RuleCatalogConflict(Exception):
@@ -518,7 +520,63 @@ def _latest_occurrences(
     return {row.logical_identity_key: row for row in rows}
 
 
-def _sticky_repeat(
+def _latest_fingerprints(
+    session: Session, occurrence_ids: Sequence[UUID]
+) -> dict[UUID, str | None]:
+    """Evidence fingerprint of each case's most recent finding."""
+    if not occurrence_ids:
+        return {}
+    rows = session.execute(
+        sa.select(Finding.occurrence_id, _payload_text("evidence_fingerprint"))
+        .where(Finding.occurrence_id.in_(occurrence_ids))
+        .order_by(Finding.occurrence_id, Finding.detected_at.desc(), Finding.id.desc())
+        .distinct(Finding.occurrence_id)
+    ).all()
+    return {row[0]: row[1] for row in rows}
+
+
+def _latest_human_decisions(
+    session: Session, occurrence_ids: Sequence[UUID]
+) -> dict[UUID, ReviewDecision]:
+    if not occurrence_ids:
+        return {}
+    rows = session.scalars(
+        sa.select(ReviewDecision)
+        .where(
+            ReviewDecision.occurrence_id.in_(occurrence_ids),
+            ReviewDecision.basis == "HUMAN",
+        )
+        .order_by(
+            ReviewDecision.occurrence_id,
+            ReviewDecision.created_at.desc(),
+            ReviewDecision.id.desc(),
+        )
+        .distinct(ReviewDecision.occurrence_id)
+    ).all()
+    return {row.occurrence_id: row for row in rows}
+
+
+def _carry_decision(
+    session: Session, origin: ReviewDecision, event: OccurrenceEvent
+) -> ReviewDecision:
+    """A system record that the human decision still applies to this import."""
+    decision = ReviewDecision(
+        occurrence_id=origin.occurrence_id,
+        kind=origin.kind,
+        justification_category=origin.justification_category,
+        reason=origin.reason,
+        comment=None,
+        authorization_reference=origin.authorization_reference,
+        actor_user_id=None,
+        basis="CARRIED_OVER",
+        carried_from_decision_id=origin.id,
+        occurrence_event_id=event.id,
+    )
+    session.add(decision)
+    return decision
+
+
+def _evidence_changed(
     session: Session,
     *,
     occurrence: Occurrence,
@@ -528,7 +586,7 @@ def _sticky_repeat(
     detected_at: datetime.datetime,
     payload: dict[str, Any],
 ) -> Finding:
-    """Record a repeat without reopening a justified or dismissed case."""
+    """Same case, different evidence: the earlier decision no longer covers it."""
     finding = create_finding__no_commit(
         session,
         analysis_run_id=analysis_run_id,
@@ -544,14 +602,52 @@ def _sticky_repeat(
     apply_transition__no_commit(
         session,
         occurrence=occurrence,
-        transition=OccurrenceTransition.REPEAT_DETECTED,
+        transition=OccurrenceTransition.REOPENED,
         actor_kind=OccurrenceActorKind.SYSTEM,
-        reason="Detected again; the human decision under this rule version stands.",
+        reason="The source evidence changed since the human decision; decide again.",
+        context={"carry_over": CarryOutcome.EVIDENCE_CHANGED.value},
         finding_id=finding.id,
         rule_version_id=rule_version.id,
         occurred_at=detected_at,
     )
     return finding
+
+
+def _sticky_repeat(
+    session: Session,
+    *,
+    occurrence: Occurrence,
+    analysis_run_id: UUID,
+    rule_version: RuleVersion,
+    finding_kind: FindingKind,
+    detected_at: datetime.datetime,
+    payload: dict[str, Any],
+) -> tuple[Finding, OccurrenceEvent]:
+    """Record a repeat without reopening a justified or dismissed case."""
+    finding = create_finding__no_commit(
+        session,
+        analysis_run_id=analysis_run_id,
+        rule_version=rule_version,
+        occurrence=occurrence,
+        identity_key=occurrence.identity_key,
+        finding_kind=finding_kind,
+        domain=RuleDomain.FINANCIAL,
+        detected_at=detected_at,
+        deterministic_payload=payload,
+        nc_code=rule_version.nc_code,
+    )
+    event = apply_transition__no_commit(
+        session,
+        occurrence=occurrence,
+        transition=OccurrenceTransition.REPEAT_DETECTED,
+        actor_kind=OccurrenceActorKind.SYSTEM,
+        reason="Detected again; the human decision under this rule version stands.",
+        context={"carry_over": CarryOutcome.CARRIED_OVER.value},
+        finding_id=finding.id,
+        rule_version_id=rule_version.id,
+        occurred_at=detected_at,
+    )
+    return finding, event
 
 
 @dataclass
@@ -583,6 +679,12 @@ def persist_review_result__no_commit(
         for item in result.detections
     }
     existing = _latest_occurrences(session, sorted(set(logical_keys.values())))
+    decided = sorted(
+        (item.id for item in existing.values() if item.status in CARRIED_STATUSES),
+        key=str,
+    )
+    prior_fingerprints = _latest_fingerprints(session, decided)
+    human_decisions = _latest_human_decisions(session, decided)
     outcomes: Counter[str] = Counter()
     new_occurrence_ids: set[UUID] = set()
     detected: set[UUID] = set()
@@ -596,14 +698,37 @@ def persist_review_result__no_commit(
         entry = registered[detection.rule_key]
         definition = entry.definition
         payload = _payload(item, definition, run)
+        fingerprint = evidence_fingerprint(detection, records)
+        payload["evidence_fingerprint"] = fingerprint
         kind = _finding_kind(definition, detection.scope)
         prior = existing.get(logical_keys[id(item)])
-        if (
-            prior is not None
-            and prior.status in STICKY_HUMAN_STATUSES
-            and prior.current_rule_version_id == entry.rule_version.id
-        ):
-            finding = _sticky_repeat(
+        carry = classify(
+            prior_status=prior.status if prior is not None else None,
+            same_rule_version=prior is not None
+            and prior.current_rule_version_id == entry.rule_version.id,
+            prior_fingerprint=(
+                prior_fingerprints.get(prior.id) if prior is not None else None
+            ),
+            fingerprint=fingerprint,
+        )
+        if prior is not None and carry is CarryOutcome.CARRIED_OVER:
+            finding, event = _sticky_repeat(
+                session,
+                occurrence=prior,
+                analysis_run_id=analysis_run.id,
+                rule_version=entry.rule_version,
+                finding_kind=kind,
+                detected_at=now,
+                payload=payload,
+            )
+            origin = human_decisions.get(prior.id)
+            if origin is not None:
+                _carry_decision(session, origin, event)
+                outcomes["DECISIONS_CARRIED_OVER"] += 1
+            occurrence_id = prior.id
+            outcomes["REPEATED_HUMAN_DECISION_KEPT"] += 1
+        elif prior is not None and carry is CarryOutcome.EVIDENCE_CHANGED:
+            finding = _evidence_changed(
                 session,
                 occurrence=prior,
                 analysis_run_id=analysis_run.id,
@@ -613,7 +738,7 @@ def persist_review_result__no_commit(
                 payload=payload,
             )
             occurrence_id = prior.id
-            outcomes["REPEATED_HUMAN_DECISION_KEPT"] += 1
+            outcomes["REOPENED_EVIDENCE_CHANGED"] += 1
         else:
             outcome = record_detection__no_commit(
                 session,
@@ -827,6 +952,104 @@ def _record_outcomes(
 
 
 # ---------------------------------------------------------------------------
+# Re-import preview (read-only)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class CarryPreviewItem:
+    rule_key: str
+    outcome: CarryOutcome
+    sheet_month: int | None
+    facts: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class CarryPreview:
+    counts: dict[str, int]
+    items: list[CarryPreviewItem]
+
+
+def preview_carry_over(
+    session: Session,
+    *,
+    source_id: UUID,
+    result: ReviewEvaluationResult,
+    records: Mapping[UUID, ReviewRecord],
+) -> CarryPreview:
+    """What a review of this evaluation would do to the existing cases.
+
+    Reads only. Uses the same identity, fingerprint and classification as
+    ``persist_review_result__no_commit``, so the preview and the import agree.
+    """
+    versions = {
+        (row[0], row[1]): row[2]
+        for row in session.execute(
+            sa.select(Rule.code, RuleVersion.version, RuleVersion.id).join(
+                Rule, Rule.id == RuleVersion.rule_id
+            )
+        )
+    }
+    logical_keys = {
+        id(item): compute_identity_key(
+            rule_code=item.detection.rule_key,
+            components=IDENTITY_COMPONENTS,
+            values=_identity_values(
+                source_id, item.detection.sheet_month, item.detection.review_key
+            ),
+        )
+        for item in result.detections
+    }
+    existing = _latest_occurrences(session, sorted(set(logical_keys.values())))
+    decided = sorted(
+        (item.id for item in existing.values() if item.status in CARRIED_STATUSES),
+        key=str,
+    )
+    prior_fingerprints = _latest_fingerprints(session, decided)
+    counts: Counter[str] = Counter()
+    items: list[CarryPreviewItem] = []
+    detected: set[UUID] = set()
+    for item in result.detections:
+        detection = item.detection
+        prior = existing.get(logical_keys[id(item)])
+        if prior is not None:
+            detected.add(prior.id)
+        version_id = versions.get((detection.rule_key, detection.rule_version))
+        outcome = classify(
+            prior_status=prior.status if prior is not None else None,
+            same_rule_version=prior is not None
+            and prior.current_rule_version_id == version_id,
+            prior_fingerprint=(
+                prior_fingerprints.get(prior.id) if prior is not None else None
+            ),
+            fingerprint=evidence_fingerprint(detection, records),
+        )
+        counts[outcome.value] += 1
+        items.append(
+            CarryPreviewItem(
+                rule_key=detection.rule_key,
+                outcome=outcome,
+                sheet_month=detection.sheet_month,
+                facts=dict(detection.facts),
+            )
+        )
+    # Cases of this source, open or decided, that this file no longer shows.
+    absent = session.execute(
+        sa.select(Occurrence.id, Occurrence.status)
+        .join(Finding, Finding.occurrence_id == Occurrence.id)
+        .join(ReviewRun, ReviewRun.analysis_run_id == Finding.analysis_run_id)
+        .where(
+            ReviewRun.source_id == source_id,
+            Occurrence.status.in_(list(OPEN_STATUSES | CARRIED_STATUSES)),
+        )
+        .distinct()
+    ).all()
+    counts["NOT_DETECTED"] = sum(row[0] not in detected for row in absent)
+    counts["PREVIOUS_CASES"] = len(absent)
+    return CarryPreview(dict(counts), items)
+
+
+# ---------------------------------------------------------------------------
 # Cross-import correction verification
 # ---------------------------------------------------------------------------
 
@@ -841,10 +1064,13 @@ def verify_prior_occurrences__no_commit(
     detected: set[UUID],
     now: datetime.datetime,
 ) -> dict[str, int]:
-    """Check open cases from earlier snapshots that this import did not re-detect.
+    """Check cases from earlier snapshots that this import did not re-detect.
 
-    PASSED only when the correspondence is unique on both sides. Location-only
-    and ambiguous cases are INCONCLUSIVE and stay with a human.
+    Open cases and cases a human already decided both get a verification event,
+    so a decided case records "not detected in this import" against the new
+    snapshot. PASSED only when the correspondence is unique on both sides.
+    Location-only and ambiguous cases are INCONCLUSIVE and stay with a human.
+    Verification never changes a status.
     """
     active = {
         item.rule.id: key
@@ -868,7 +1094,7 @@ def verify_prior_occurrences__no_commit(
         .where(
             ReviewRun.source_id == run.source_id,
             Occurrence.rule_id.in_(active),
-            Occurrence.status.in_(list(OPEN_STATUSES)),
+            Occurrence.status.in_(list(OPEN_STATUSES | CARRIED_STATUSES)),
         )
         .order_by(Finding.occurrence_id, Finding.detected_at.desc(), Finding.id.desc())
         .distinct(Finding.occurrence_id)
@@ -908,8 +1134,14 @@ def verify_prior_occurrences__no_commit(
             result=verdict,
             checked_at=now,
             reason=reason.value,
+            context={
+                "not_detected_in_snapshot_id": str(run.snapshot_id),
+                "review_run_id": str(run.id),
+            },
         )
         counts[f"verification_{verdict.value.lower()}"] += 1
+        if occurrence.status in CARRIED_STATUSES:
+            counts["decided_not_detected"] += 1
         if verdict is OccurrenceVerificationResult.PASSED:
             emit_ton_audit_event(
                 session,
@@ -1185,6 +1417,21 @@ def list_decisions_for_user(
             .offset(offset)
         )
     )
+
+
+def decision_origins(
+    session: Session, decision_ids: Sequence[UUID | None]
+) -> dict[UUID | None, ReviewDecision]:
+    """The human decisions that carried-over decisions point back to."""
+    ids = sorted({item for item in decision_ids if item is not None}, key=str)
+    if not ids:
+        return {}
+    return {
+        row.id: row
+        for row in session.scalars(
+            sa.select(ReviewDecision).where(ReviewDecision.id.in_(ids))
+        )
+    }
 
 
 # ---------------------------------------------------------------------------

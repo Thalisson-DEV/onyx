@@ -428,12 +428,26 @@ def record_decision(
 def list_decisions(
     session: Session, user: User, occurrence_id: UUID, limit: int, offset: int
 ) -> list[ReviewDecisionView]:
-    return [
-        ReviewDecisionView.model_validate(item)
-        for item in repository.list_decisions_for_user(
-            session, user, occurrence_id, limit, offset
-        )
-    ]
+    decisions = repository.list_decisions_for_user(
+        session, user, occurrence_id, limit, offset
+    )
+    origins = repository.decision_origins(
+        session,
+        [item.carried_from_decision_id for item in decisions],
+    )
+    views: list[ReviewDecisionView] = []
+    for item in decisions:
+        view = ReviewDecisionView.model_validate(item)
+        origin = origins.get(item.carried_from_decision_id)
+        if origin is not None:
+            view = view.model_copy(
+                update={
+                    "carried_from_actor_user_id": origin.actor_user_id,
+                    "carried_from_at": origin.created_at,
+                }
+            )
+        views.append(view)
+    return views
 
 
 # ---------------------------------------------------------------------------

@@ -10,10 +10,15 @@ from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.file_store.file_store import get_default_file_store
-from onyx.ton.client_import.models import ClientImportView, ClientSourceView
+from onyx.ton.client_import.models import (
+    ClientImportView,
+    ClientSourceView,
+    ReimportPreviewView,
+)
 from onyx.ton.client_import.service import (
     get_client_import,
     list_client_sources,
+    preview_client_import,
     upload_client_source,
 )
 
@@ -43,6 +48,23 @@ def upload_financial_source(
         file.filename or "",
         file.content_type or "",
         get_default_file_store(),
+    )
+
+
+@router.post("/{key}/imports/preview")
+def preview_financial_source(
+    key: str,
+    file: UploadFile,
+    user: User = Depends(require_permission(Permission.IMPORT_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> ReimportPreviewView:
+    return preview_client_import(
+        session,
+        user,
+        key,
+        file.file,
+        file.filename or "",
+        file.content_type or "",
     )
 
 

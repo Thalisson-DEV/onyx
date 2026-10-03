@@ -708,6 +708,8 @@ export const COPY = {
         RECONCILIATION: "Conciliação classificada",
         CANDIDATE_REJECTION: "Sugestão rejeitada",
         DRE_ASSIGNMENT: "Classificação da DRE",
+        REVIEW_DECISION: "Pendência decidida",
+        REVIEW_CARRIED_OVER: "Decisões reaproveitadas na reimportação",
       },
       outcomes: {
         MOVEMENT: "Movimento",
@@ -718,6 +720,13 @@ export const COPY = {
         NG_AUTHORITATIVE: "Prevalece o NG/Keevo",
         EXACT_CODE: "Código idêntico rejeitado",
         LEGACY_REFERENCE: "Referência anterior rejeitada",
+        JUSTIFY_EXCEPTION: "Exceção justificada",
+        MARK_FALSE_POSITIVE: "Falso positivo",
+        REQUEST_SOURCE_CORRECTION: "Correção pedida na origem",
+        CONFIRM_SOURCE_CORRECTION: "Correção confirmada",
+        ACKNOWLEDGE: "Ciente",
+        ACCEPT_RECOMMENDATION: "Sugestão aceita",
+        REJECT_RECOMMENDATION: "Sugestão rejeitada",
       } as Record<string, string>,
     },
     triage: {
@@ -968,6 +977,26 @@ export const COPY = {
     warnings: "Avisos",
     never: "Nunca importado",
     update: "Atualizar dados",
+    preview: {
+      check: "Ver o que muda",
+      confirm: "Confirmar importação",
+      title: "O que muda com este arquivo",
+      records: (imported: number, rejected: number) =>
+        `${formatNumber(imported)} lançamentos lidos · ${formatNumber(rejected)} rejeitados`,
+      carriedOver: "Decisões mantidas (mesma evidência)",
+      evidenceChanged: "Voltam para decisão (evidência mudou)",
+      reopened: "Reaparecem depois de corrigidas",
+      newFindings: "Pendências novas",
+      stillOpen: "Continuam pendentes",
+      notDetected: "Não aparecem mais neste arquivo",
+      firstImport: (count: number) =>
+        `Primeira importação desta fonte: ${formatNumber(count)} pendências para revisar.`,
+      toDecide: (count: number) =>
+        count === 1
+          ? "1 item vai precisar de decisão depois da importação."
+          : `${formatNumber(count)} itens vão precisar de decisão depois da importação.`,
+      nothingToDecide: "Nenhuma decisão nova será necessária.",
+    },
     history: "Histórico de importações",
     hideHistory: "Ocultar histórico",
     directTitle: "Integração direta",

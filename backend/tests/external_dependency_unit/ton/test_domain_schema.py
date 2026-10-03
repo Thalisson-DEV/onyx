@@ -95,6 +95,13 @@ EXPECTED_FOREIGN_KEYS: tuple[tuple[str, str, str, str], ...] = (
         "CASCADE",
     ),
     ("ton_review_decision", "actor_user_id", "user", "RESTRICT"),
+    # A carried-over decision keeps the human decision it repeats.
+    (
+        "ton_review_decision",
+        "carried_from_decision_id",
+        "ton_review_decision",
+        "RESTRICT",
+    ),
     (
         "ton_review_decision",
         "occurrence_event_id",

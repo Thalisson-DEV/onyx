@@ -577,6 +577,7 @@ def record_verification__no_commit(
     checked_at: datetime.datetime | None = None,
     reason: str | None = None,
     actor_user_id: UUID | None = None,
+    context: Mapping[str, Any] | None = None,
 ) -> OccurrenceEvent:
     """Record the §5 Passo 7 verification outcome.
 
@@ -604,7 +605,7 @@ def record_verification__no_commit(
         ),
         actor_user_id=actor_user_id,
         reason=reason,
-        context={"verification_result": result.value},
+        context={**(context or {}), "verification_result": result.value},
         occurred_at=now,
     )
 

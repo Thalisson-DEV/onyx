@@ -11,6 +11,7 @@ import { cn } from "@opal/utils";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/lib/types";
+import { COPY, formatNumber } from "@/lib/ton/copy";
 import { IMPORT_DIAGNOSTIC_KEYS } from "@/lib/ton/import-diagnostics";
 import { useUser } from "@/providers/UserProvider";
 import { TonStatusTag } from "@/views/ton/components/TonStatusTag";
@@ -57,6 +58,83 @@ interface ClientSource {
 }
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
+/** Only the NG export changes the actual base, so only it gets a preview. */
+const PREVIEWED_SOURCE = "financial_launches";
+
+interface ReimportPreview {
+  imported: number;
+  rejected: number;
+  has_previous_review: boolean;
+  carried_over: number;
+  evidence_changed: number;
+  still_open: number;
+  reopened: number;
+  new: number;
+  not_detected: number;
+}
+
+function isReimportPreview(value: unknown): value is ReimportPreview {
+  if (typeof value !== "object" || value === null) return false;
+  return (
+    "carried_over" in value &&
+    typeof value.carried_over === "number" &&
+    "new" in value &&
+    typeof value.new === "number" &&
+    "not_detected" in value &&
+    typeof value.not_detected === "number"
+  );
+}
+
+function PreviewSummary({ preview }: { preview: ReimportPreview }) {
+  const copy = COPY.sources.preview;
+  const toDecide = preview.new + preview.evidence_changed + preview.reopened;
+  const rows: [string, number][] = [
+    [copy.carriedOver, preview.carried_over],
+    [copy.evidenceChanged, preview.evidence_changed],
+    [copy.reopened, preview.reopened],
+    [copy.newFindings, preview.new],
+    [copy.stillOpen, preview.still_open],
+    [copy.notDetected, preview.not_detected],
+  ];
+  return (
+    <section aria-label={copy.title} className="flex flex-col gap-3 pt-4">
+      <Text as="h3" font="main-ui-action" color="text-05">
+        {copy.title}
+      </Text>
+      <Text as="p" font="secondary-body" color="text-03">
+        {copy.records(preview.imported, preview.rejected)}
+      </Text>
+      {preview.has_previous_review ? (
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+          {rows.map(([label, count]) => (
+            <div
+              key={label}
+              className="flex items-baseline justify-between gap-3"
+            >
+              <dt>
+                <Text font="secondary-body" color="text-04">
+                  {label}
+                </Text>
+              </dt>
+              <dd>
+                <Text font="main-ui-action" color="text-05">
+                  {formatNumber(count)}
+                </Text>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <Text as="p" font="secondary-body" color="text-04">
+          {copy.firstImport(preview.new)}
+        </Text>
+      )}
+      <Text as="p" font="secondary-body" color="text-03">
+        {toDecide > 0 ? copy.toDecide(toDecide) : copy.nothingToDecide}
+      </Text>
+    </section>
+  );
+}
 
 function isClientImport(value: unknown): value is ClientImport {
   if (typeof value !== "object" || value === null) return false;
@@ -90,7 +168,9 @@ export function SourceUpload({
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [preview, setPreview] = useState<ReimportPreview | null>(null);
   const extension = source.format.toLowerCase();
+  const needsPreview = source.key === PREVIEWED_SOURCE;
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     multiple: false,
     noClick: true,
@@ -110,6 +190,7 @@ export function SourceUpload({
         return;
       }
       setFile(chosen);
+      setPreview(null);
       setError("");
     },
     onDropRejected: () => setError(t("invalidFile")),
@@ -134,6 +215,23 @@ export function SourceUpload({
           ? "application/vnd.ms-excel"
           : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
       body.append("file", new File([file], file.name, { type: mediaType }));
+      if (needsPreview && !preview) {
+        // Nothing is stored yet: the server parses and compares in memory.
+        const response = await fetch(
+          `/api/ton/data-sources/${source.key}/imports/preview`,
+          { method: "POST", body }
+        );
+        if (!response.ok) {
+          setError(
+            response.status === 400 ? t("unrecognized") : t("uploadError")
+          );
+          return;
+        }
+        const result: unknown = await response.json();
+        if (!isReimportPreview(result)) throw new Error("Invalid preview");
+        setPreview(result);
+        return;
+      }
       const response = await fetch(
         `/api/ton/data-sources/${source.key}/imports`,
         { method: "POST", body }
@@ -198,6 +296,7 @@ export function SourceUpload({
               </Text>
             )}
           </div>
+          {preview && <PreviewSummary preview={preview} />}
           {busy && (
             <div role="status" className="flex items-center gap-2 pt-4">
               <SvgSimpleLoader />
@@ -223,7 +322,13 @@ export function SourceUpload({
             }
             submit={
               <Button onClick={submit} disabled={!file || busy}>
-                {busy ? t("processing") : t("startImport")}
+                {busy
+                  ? t("processing")
+                  : needsPreview && !preview
+                    ? COPY.sources.preview.check
+                    : needsPreview
+                      ? COPY.sources.preview.confirm
+                      : t("startImport")}
               </Button>
             }
           />

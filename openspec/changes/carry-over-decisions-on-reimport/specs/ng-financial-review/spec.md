@@ -24,3 +24,10 @@ Before confirming an NG import of periods that already have a review, the system
 #### Scenario: Preview before confirm
 - **WHEN** a user uploads a new NG file for jan–jun/2026
 - **THEN** the preview lists carried-over, reopened and new counts before anything is persisted as current
+
+### Requirement: Decisions are never copied to another case
+The system SHALL carry a decision only within the same occurrence, because accepting a risk or dismissing a finding is a human-only transition. A finding identified only by its position (a rejected row) SHALL be treated as a new case when the export shifts rows, and the preview SHALL show it as new.
+
+#### Scenario: Rejected row moves two rows down
+- **WHEN** a cleaned export inserts two rows above a row the parser rejects
+- **THEN** the rejected row becomes a new pending case and the earlier one receives a not-detected event

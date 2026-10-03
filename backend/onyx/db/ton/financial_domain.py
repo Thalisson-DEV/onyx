@@ -48,6 +48,7 @@ from onyx.ton.financial_domain.models import (
     BudgetInput,
     DreInputDataset,
     FactView,
+    InputPolicy,
     MappingCreate,
     MappingKind,
     MappingView,
@@ -460,6 +461,11 @@ def _validate_inputs(
         )
     ):
         raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Invalid billing execution")
+    if request.effective_input_policy is InputPolicy.ACTUAL_ONLY and request.budgets:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            "An actual-only normalization cannot read budget workbooks",
+        )
     budgets: list[ImportProfileExecution] = []
     seen: set[UUID] = set()
     for item in request.budgets:
@@ -621,36 +627,109 @@ def _reconcile(
     return items
 
 
+ContentKey = tuple[UUID, str, int]
+
+
+def _content_keys(
+    session: Session,
+    model: type[ParsedSourceRecord] | type[OperationalSourceRecord],
+    record_ids: set[UUID],
+) -> dict[UUID, ContentKey]:
+    """Source, content fingerprint and duplicate ordinal of each record.
+
+    The same row re-imported in a new execution gets a new id but the same key,
+    so a decision taken on the earlier import still finds it.
+    """
+    keys: dict[UUID, ContentKey] = {}
+    ordered = sorted(record_ids, key=str)
+    for start in range(0, len(ordered), 1000):
+        for row in session.execute(
+            sa.select(
+                model.id, model.source_id, model.fingerprint, model.duplicate_ordinal
+            ).where(model.id.in_(ordered[start : start + 1000]))
+        ):
+            keys[row[0]] = (row[1], row[2], row[3])
+    return keys
+
+
 def _apply_reconciliation_decisions(
     session: Session,
     run: FinancialNormalizationRun,
     items: list[dict[str, Any]],
     actuals: list[dict[str, Any]],
     billings: list[dict[str, Any]],
-) -> None:
+) -> int:
+    """Apply recorded decisions by record content. Returns how many carried over."""
     actual_sources = {item["id"]: item["parsed_record_id"] for item in actuals}
     billing_sources = {item["id"]: item["source_record_id"] for item in billings}
-    decisions = session.scalars(
-        sa.select(FinancialReconciliationDecision)
-        .where(
-            FinancialReconciliationDecision.number <= run.reconciliation_decision_number
+    decisions = list(
+        session.scalars(
+            sa.select(FinancialReconciliationDecision)
+            .where(
+                FinancialReconciliationDecision.number
+                <= run.reconciliation_decision_number
+            )
+            .order_by(FinancialReconciliationDecision.number.desc())
         )
-        .order_by(FinancialReconciliationDecision.number.desc())
     )
-    by_source: dict[tuple[UUID | None, UUID | None], str] = {}
+    if not decisions:
+        return 0
+    used_actuals = {
+        actual_sources[item["actual_fact_id"]]
+        for item in items
+        if item["actual_fact_id"] is not None
+    }
+    used_billings = {
+        billing_sources[item["billing_fact_id"]]
+        for item in items
+        if item["billing_fact_id"] is not None
+    }
+    actual_keys = _content_keys(
+        session,
+        ParsedSourceRecord,
+        used_actuals
+        | {d.actual_source_record_id for d in decisions if d.actual_source_record_id},
+    )
+    billing_keys = _content_keys(
+        session,
+        OperationalSourceRecord,
+        used_billings
+        | {d.billing_source_record_id for d in decisions if d.billing_source_record_id},
+    )
+    by_content: dict[
+        tuple[ContentKey | None, ContentKey | None], tuple[str, set[UUID | None]]
+    ] = {}
     for decision in decisions:
-        by_source.setdefault(
-            (decision.actual_source_record_id, decision.billing_source_record_id),
-            decision.decision,
+        by_content.setdefault(
+            (
+                actual_keys.get(decision.actual_source_record_id)
+                if decision.actual_source_record_id
+                else None,
+                billing_keys.get(decision.billing_source_record_id)
+                if decision.billing_source_record_id
+                else None,
+            ),
+            (
+                decision.decision,
+                {decision.actual_source_record_id, decision.billing_source_record_id},
+            ),
         )
+    carried = 0
     for item in items:
-        key = (
-            actual_sources.get(item["actual_fact_id"]),
-            billing_sources.get(item["billing_fact_id"]),
+        actual_id = actual_sources.get(item["actual_fact_id"])
+        billing_id = billing_sources.get(item["billing_fact_id"])
+        decided = by_content.get(
+            (
+                actual_keys.get(actual_id) if actual_id else None,
+                billing_keys.get(billing_id) if billing_id else None,
+            )
         )
-        decided = by_source.get(key)
-        if decided is not None:
-            item["status"] = decided
+        if decided is None:
+            continue
+        item["status"] = decided[0]
+        if not ({actual_id, billing_id} - {None}) <= decided[1]:
+            carried += 1
+    return carried
 
 
 def _persist_projection(
@@ -919,7 +998,9 @@ def _persist_projection(
     reconciliation = _reconcile(
         actuals, billings, actual_documents, billing_documents, revenue_accounts, run.id
     )
-    _apply_reconciliation_decisions(session, run, reconciliation, actuals, billings)
+    counts["reconciliation_decisions_carried_over"] = _apply_reconciliation_decisions(
+        session, run, reconciliation, actuals, billings
+    )
     _insert_batches(session, FinancialActualFact, actuals)
     _insert_batches(session, FinancialBillingFact, billings)
     _insert_batches(session, FinancialDerivedFact, derived)
@@ -1014,6 +1095,7 @@ def normalize(
         dataset_as_of=dataset_as_of,
         billing_execution_id=request.billing_execution_id,
         budget_execution_ids=[str(item) for item in budget_ids],
+        input_policy=request.effective_input_policy.value,
         mapping_revision_number=mapping_number,
         amount_basis_revision_number=basis_number,
         reconciliation_decision_number=reconciliation_number,
@@ -1174,6 +1256,11 @@ def normalization_request_for_run(
         billing_source_id=billing.source_id,
         billing_execution_id=billing.id,
         budgets=budgets,
+        input_policy=(
+            InputPolicy(run.input_policy)
+            if run.input_policy in InputPolicy.__members__
+            else None
+        ),
     )
 
 

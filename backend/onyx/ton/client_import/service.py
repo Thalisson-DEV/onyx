@@ -12,8 +12,11 @@ from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.db.ton import client_import as repository
 from onyx.db.ton import financial_domain as financial_repository
+from onyx.db.ton import financial_review as review_repository
 from onyx.db.ton import import_profiles, operational_import, sources
 from onyx.db.ton.acl import is_ton_administrator
+from onyx.db.ton.import_profiles import MAX_STORED_DIAGNOSTICS
+from onyx.db.ton.import_profiles import statistics as parse_statistics
 from onyx.db.ton.models import ImportProfileExecution, ImportRun, SourceSnapshot
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
@@ -22,8 +25,20 @@ from onyx.ton.client_import.models import (
     ClientImportView,
     ClientSourceView,
     DiagnosticSummary,
+    ReimportPreviewItem,
+    ReimportPreviewView,
 )
-from onyx.ton.financial_domain.models import BudgetInput, NormalizationRequest
+from onyx.ton.financial_domain.models import (
+    BudgetInput,
+    InputPolicy,
+    NormalizationRequest,
+)
+from onyx.ton.financial_review.adapters import review_records_from_parse
+from onyx.ton.financial_review.carry_over import CarryOutcome
+from onyx.ton.financial_review.catalog import DEFAULT_CATALOG
+from onyx.ton.financial_review.engine import FinancialReviewEngine
+from onyx.ton.financial_review.models import RuleContext
+from onyx.ton.financial_review.rules import DEFAULT_EXECUTORS
 from onyx.ton.financial_review.service import dataset_summary, execute_review
 from onyx.ton.ng_financial.models import ProfileExecutionStatus
 from onyx.ton.ng_financial.parser import NgFinancialExportParser
@@ -42,6 +57,11 @@ from onyx.ton.sources.validation import MAX_UPLOAD_BYTES, validate_upload
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
+
+# Budget workbooks reach the DRE only once the Controladoria approves the
+# dotação-to-account compatibility (change budget-vs-actual). Until then an
+# import of any source refreshes the actual-only base.
+READINESS_INPUT_POLICY = InputPolicy.ACTUAL_ONLY
 
 CATALOG = {
     "financial_launches": (
@@ -238,13 +258,11 @@ def _source_for_upload(session: Session, user: User, key: str) -> UUID:
 def _refresh_readiness(session: Session, user: User) -> tuple[str, UUID | None]:
     ng = repository.source_by_key_for_import(session, user, "financial_launches")
     billing = repository.source_by_key_for_import(session, user, "billing_invoices")
-    budget = repository.source_by_key_for_import(session, user, "budget")
-    if ng is None or billing is None or budget is None:
+    if ng is None or billing is None:
         return "PENDING_INPUTS", None
     ng_history = repository.import_history(session, user, ng.id, 1)
     billing_history = repository.import_history(session, user, billing.id, 1)
-    budget_history = repository.import_history(session, user, budget.id, 100)
-    if not ng_history or not billing_history or not budget_history:
+    if not ng_history or not billing_history:
         return "PENDING_INPUTS", None
     ng_execution = ng_history[0][0]
     billing_execution = billing_history[0][0]
@@ -256,23 +274,32 @@ def _refresh_readiness(session: Session, user: User) -> tuple[str, UUID | None]:
     review = repository.successful_review(session, user, ng.id, ng_execution.id)
     if review is None:
         return "PENDING_INPUTS", None
-    latest_budgets: dict[str, ImportProfileExecution] = {}
-    for execution, snapshot in budget_history:
-        latest_budgets.setdefault(snapshot.original_filename, execution)
-    if not latest_budgets or any(
-        execution.status != ProfileExecutionStatus.SUCCEEDED
-        for execution in latest_budgets.values()
-    ):
-        return "PENDING_INPUTS", None
+    budgets: list[BudgetInput] = []
+    if READINESS_INPUT_POLICY is InputPolicy.ACTUAL_AND_APPROVED_BUDGET:
+        budget = repository.source_by_key_for_import(session, user, "budget")
+        if budget is None:
+            return "PENDING_INPUTS", None
+        latest_budgets: dict[str, ImportProfileExecution] = {}
+        for execution, snapshot in repository.import_history(
+            session, user, budget.id, 100
+        ):
+            latest_budgets.setdefault(snapshot.original_filename, execution)
+        if not latest_budgets or any(
+            execution.status != ProfileExecutionStatus.SUCCEEDED
+            for execution in latest_budgets.values()
+        ):
+            return "PENDING_INPUTS", None
+        budgets = [
+            BudgetInput(source_id=budget.id, execution_id=execution.id)
+            for execution in latest_budgets.values()
+        ]
     request = NormalizationRequest(
         ng_source_id=ng.id,
         review_run_id=review.id,
         billing_source_id=billing.id,
         billing_execution_id=billing_execution.id,
-        budgets=[
-            BudgetInput(source_id=budget.id, execution_id=execution.id)
-            for execution in latest_budgets.values()
-        ],
+        budgets=budgets,
+        input_policy=READINESS_INPUT_POLICY,
     )
     try:
         summary = dataset_summary(session, user, ng.id, review.id)
@@ -364,3 +391,122 @@ def upload_client_source(
         view.available_for_analysis = summary.downstream_safe_records
     view.readiness_status, view.readiness_run_id = _refresh_readiness(session, user)
     return view
+
+
+# Outcomes a person has to look at after the import.
+_ATTENTION = frozenset(
+    {CarryOutcome.EVIDENCE_CHANGED, CarryOutcome.REOPENED, CarryOutcome.NEW}
+)
+_PREVIEW_ITEMS = 50
+
+
+def _empty_preview(key: str, filename: str) -> ReimportPreviewView:
+    return ReimportPreviewView(
+        key=key,
+        filename=filename,
+        imported=0,
+        rejected=0,
+        has_previous_review=False,
+        carried_over=0,
+        evidence_changed=0,
+        still_open=0,
+        reopened=0,
+        new=0,
+        not_detected=0,
+        attention=[],
+        changes_actuals=False,
+    )
+
+
+def _preview_item(item: review_repository.CarryPreviewItem) -> ReimportPreviewItem:
+    sheet = item.facts.get("sheet_name")
+    row = item.facts.get("row_number")
+    return ReimportPreviewItem(
+        rule_key=item.rule_key,
+        outcome=item.outcome.value,
+        sheet_month=item.sheet_month,
+        sheet_name=sheet if isinstance(sheet, str) else None,
+        row_number=row if isinstance(row, int) else None,
+    )
+
+
+def preview_client_import(
+    session: Session,
+    user: User,
+    key: str,
+    stream: BinaryIO,
+    filename: str,
+    media_type: str,
+) -> ReimportPreviewView:
+    """Parse and review the file in memory and compare it with the stored cases.
+
+    Nothing is stored: no snapshot, no execution, no finding, no event. Billing
+    and budget files do not touch the actual base, so they only say so.
+    """
+    _, _, expected_format = _contract(key)
+    accessible = repository.source_by_key_for_import(session, user, key)
+    if accessible is None and not is_ton_administrator(user):
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Financial source not available")
+    validated = validate_upload(stream, filename, media_type)
+    if validated.format != expected_format:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT, "Unsupported format for this source"
+        )
+    if len(validated.content) > MAX_UPLOAD_BYTES:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Financial file is too large")
+    try:
+        if key != "financial_launches":
+            identify_profile(validated.content, validated.format)
+            return _empty_preview(key, filename)
+        parsed = NgFinancialExportParser().parse(validated.content, UUID(int=0))
+    except OnyxError:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            "This file does not match a recognized format for this source",
+        ) from None
+    stats = parse_statistics(parsed)
+    records = review_records_from_parse(parsed.records)
+    context = RuleContext(
+        source_id=UUID(int=0),
+        snapshot_id=UUID(int=0),
+        execution_id=UUID(int=0),
+        execution_status=(
+            ProfileExecutionStatus.PARTIAL
+            if parsed.error_count
+            else ProfileExecutionStatus.SUCCEEDED
+        ).value,
+        execution_statistics=stats,
+    )
+    result = FinancialReviewEngine(DEFAULT_CATALOG, DEFAULT_EXECUTORS).evaluate(
+        records, parsed.diagnostics[:MAX_STORED_DIAGNOSTICS], context
+    )
+    counts: dict[str, int] = {CarryOutcome.NEW.value: len(result.detections)}
+    attention: list[ReimportPreviewItem] = []
+    if accessible is not None:
+        preview = review_repository.preview_carry_over(
+            session,
+            source_id=accessible.id,
+            result=result,
+            records={record.id: record for record in records},
+        )
+        counts = preview.counts
+        attention = [
+            _preview_item(item) for item in preview.items if item.outcome in _ATTENTION
+        ][:_PREVIEW_ITEMS]
+    session.rollback()
+    view = _empty_preview(key, filename)
+    return view.model_copy(
+        update={
+            "imported": len(parsed.records),
+            "rejected": int(stats.get("records_rejected", 0)),
+            "has_previous_review": counts.get("PREVIOUS_CASES", 0) > 0,
+            "carried_over": counts.get(CarryOutcome.CARRIED_OVER.value, 0),
+            "evidence_changed": counts.get(CarryOutcome.EVIDENCE_CHANGED.value, 0),
+            "still_open": counts.get(CarryOutcome.STILL_OPEN.value, 0),
+            "reopened": counts.get(CarryOutcome.REOPENED.value, 0),
+            "new": counts.get(CarryOutcome.NEW.value, 0),
+            "not_detected": counts.get("NOT_DETECTED", 0),
+            "attention": attention,
+            "changes_actuals": True,
+        }
+    )

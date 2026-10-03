@@ -144,6 +144,8 @@ DecisionKind = Literal[
     "RECONCILIATION",
     "CANDIDATE_REJECTION",
     "DRE_ASSIGNMENT",
+    "REVIEW_DECISION",
+    "REVIEW_CARRIED_OVER",
 ]
 
 

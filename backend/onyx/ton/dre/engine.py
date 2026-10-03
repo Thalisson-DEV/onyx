@@ -69,11 +69,21 @@ def calculation_order(lines: list[DreLineDefinition]) -> list[DreLineDefinition]
 def _evaluate(
     ordered: list[DreLineDefinition], source: dict[str, Decimal]
 ) -> dict[str, Decimal]:
+    result = _evaluate_lenient(ordered, source)
+    if any(value is None for value in result.values()):
+        raise ValueError("DRE ratio denominator is zero")
+    return {code: value for code, value in result.items() if value is not None}
+
+
+def _evaluate_lenient(
+    ordered: list[DreLineDefinition], source: dict[str, Decimal]
+) -> dict[str, Decimal | None]:
+    """Evaluate every line; a ratio over zero, and lines using it, give None."""
     children: dict[str, list[str]] = defaultdict(list)
     for line in ordered:
         if line.parent_code is not None:
             children[line.parent_code].append(line.code)
-    result: dict[str, Decimal] = {}
+    result: dict[str, Decimal | None] = {}
     for line in ordered:
         if line.operation is None:
             result[line.code] = source.get(line.code, ZERO)
@@ -84,15 +94,28 @@ def _evaluate(
             else line.operands
         )
         values = [result[code] for code in operands]
+        if any(value is None for value in values):
+            result[line.code] = None
+            continue
+        present = [value for value in values if value is not None]
         if line.operation in (DreOperation.SUM_CHILDREN, DreOperation.SUM_LINES):
-            result[line.code] = sum(values, ZERO)
+            result[line.code] = sum(present, ZERO)
         elif line.operation == DreOperation.SUBTRACT:
-            result[line.code] = values[0] - values[1]
+            result[line.code] = present[0] - present[1]
+        elif not present[1]:
+            result[line.code] = None
         else:
-            if not values[1]:
-                raise ValueError("DRE ratio denominator is zero")
-            result[line.code] = values[0] / values[1] * 100
+            result[line.code] = present[0] / present[1] * 100
     return result
+
+
+def evaluate_lines(
+    lines: list[DreLineDefinition], source: dict[str, Decimal]
+) -> dict[str, Decimal | None]:
+    """Line values for one set of source sums, without the readiness checks."""
+    with localcontext() as context:
+        context.prec = 100
+        return _evaluate_lenient(calculation_order(lines), source)
 
 
 def _percentage(numerator: Decimal, denominator: Decimal) -> Decimal | None:

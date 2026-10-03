@@ -1,9 +1,11 @@
 """Synthetic DRE persistence, readiness, ACL, and immutable revisions."""
 
 import datetime
+import io
 import time
 from decimal import Decimal
 
+import openpyxl
 import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
@@ -15,7 +17,7 @@ from onyx.db.ton.models import DreCalculationRun, DreResultLine, TonAuditEvent
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import FileStore
 from onyx.server.ton.dre import calculate as calculate_route
-from onyx.server.ton.dre import export_calculation
+from onyx.server.ton.dre import export_calculation, export_calculation_xlsx
 from onyx.ton.dre.models import (
     DreAccountAssignment,
     DreLineDefinition,
@@ -409,3 +411,119 @@ def test_invalid_structure_dependencies_rejected(
                 ],
             ),
         )
+
+
+def test_synthetic_excel_export_matches_persisted_dre(
+    ton_session: Session, admin: User, store: FileStore
+) -> None:
+    normalization_id, account_id, unit_id = build_complete_synthetic_scope(
+        ton_session, admin, store, include_february=True
+    )
+    version = repository.create_structure(
+        ton_session,
+        admin,
+        DreStructureCreate(
+            key="synthetic-excel-dre",
+            label="Synthetic Excel DRE",
+            lines=_lines(),
+            assignments=[
+                DreAccountAssignment(
+                    account_id=account_id, line_code="service", status="APPROVED"
+                )
+            ],
+        ),
+    )
+    ton_session.commit()
+    runs = {
+        (unit, month): repository.execute(
+            ton_session,
+            admin,
+            DreScope(
+                normalization_run_id=normalization_id,
+                structure_version_id=version.id,
+                period=datetime.date(2026, month, 1),
+                unit_id=unit,
+            ),
+        )
+        for unit in (None, unit_id)
+        for month in (1, 2)
+    }
+    assert all(run.status == "READY" for run in runs.values())
+
+    response = export_calculation_xlsx(runs[(None, 2)].id, admin, ton_session)
+    assert response.headers["content-disposition"].endswith(
+        'filename="dre-2026-01-a-02.xlsx"'
+    )
+    workbook = openpyxl.load_workbook(io.BytesIO(response.body), data_only=True)
+    formulas = openpyxl.load_workbook(io.BytesIO(response.body))
+    assert workbook.sheetnames == ["DRE", "Base", "Premissas"]
+    base = list(workbook["Base"].iter_rows(min_row=2, values_only=True))
+    assert sorted(float(str(row[3])) for row in base) == [40.75, 100.25]
+    assert {row[2] for row in base} == {"service"}
+    assert all(row[15] for row in base)
+
+    sheet = workbook["DRE"]
+    blocks = [
+        row
+        for row in range(1, sheet.max_row + 1)
+        if sheet.cell(row + 2, 1).value == "Código"
+    ]
+    # Consolidated block first, then the one synthetic unit.
+    assert len(blocks) == 2
+    for block, unit in zip(blocks, (None, unit_id), strict=True):
+        rows = {
+            str(sheet.cell(row, 1).value): row
+            for row in range(block + 3, block + 3 + len(_lines()))
+        }
+        for month, column in ((1, 3), (2, 4)):
+            persisted = {
+                line.code: line
+                for line in repository.list_result_lines(
+                    ton_session, admin, runs[(unit, month)].id, 10, 0
+                )
+            }
+            for code, row in rows.items():
+                assert Decimal(str(sheet.cell(row, column).value)) == (
+                    persisted[code].realizado
+                )
+                if month == 2:
+                    assert Decimal(str(sheet.cell(row, 5).value)) == (
+                        persisted[code].realizado_ytd
+                    )
+        assert str(formulas["DRE"].cell(rows["service"], 3).value).startswith(
+            "=SUMIFS(Base[Valor],"
+        )
+        assert formulas["DRE"].cell(rows["result"], 4).value == (
+            f"=D{rows['gross']}-D{rows['cost']}"
+        )
+    topics = [
+        row[0] for row in workbook["Premissas"].iter_rows(values_only=True) if row
+    ]
+    assert "Parcelamentos" in topics and "PIS/COFINS" in topics
+    assert any(
+        item.action == "ton_dre.export" and item.resource_id == runs[(None, 2)].id
+        for item in ton_session.scalars(select(TonAuditEvent))
+    )
+
+    outsider = factories.make_user(ton_session)
+    ton_session.commit()
+    with pytest.raises(OnyxError):
+        export_calculation_xlsx(runs[(None, 2)].id, outsider, ton_session)
+    blocked = repository.execute(
+        ton_session,
+        admin,
+        DreScope(
+            normalization_run_id=normalization_id,
+            structure_version_id=repository.create_version(
+                ton_session,
+                admin,
+                version.structure_id,
+                DreVersionCreate(lines=_lines()),
+            ).id,
+            period=datetime.date(2026, 2, 1),
+        ),
+    )
+    ton_session.commit()
+    assert blocked.status == "NOT_READY"
+    with pytest.raises(OnyxError):
+        export_calculation_xlsx(blocked.id, admin, ton_session)

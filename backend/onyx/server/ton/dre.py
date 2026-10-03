@@ -293,3 +293,22 @@ def export_calculation(
             "Content-Disposition": f'attachment; filename="dre-{run.scope.period.isoformat()}-{run.id}.csv"'
         },
     )
+
+
+@router.get("/calculations/{run_id}/export.xlsx")
+def export_calculation_xlsx(
+    run_id: UUID,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> Response:
+    run, content = repository.export_workbook(session, user, run_id)
+    repository.audit_export(session, user, run_id)
+    session.commit()
+    period = run.scope.period
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="dre-{period.year}-01-a-{period.month:02d}.xlsx"'
+        },
+    )

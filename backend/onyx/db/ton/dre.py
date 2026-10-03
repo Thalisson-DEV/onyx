@@ -1,11 +1,13 @@
 """Persistence and authorization for DATA-005 DRE versions and results."""
 
+import dataclasses
 import datetime
 import hashlib
 import json
 from collections import Counter, defaultdict
 from decimal import ROUND_HALF_EVEN, Decimal, localcontext
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
@@ -45,6 +47,7 @@ from onyx.ton.dre.models import (
     DreContributorView,
     DreLineDefinition,
     DreLineType,
+    DreOperation,
     DrePeriodPoint,
     DreReadinessView,
     DreResultLineView,
@@ -56,10 +59,20 @@ from onyx.ton.dre.models import (
     DreVersionCreate,
     DreVersionView,
 )
+from onyx.ton.dre.xlsx_export import (
+    BaseEntry,
+    DreWorkbookInput,
+    Premise,
+    ScopeBlock,
+    build_workbook,
+    expected_values,
+    month_label,
+)
 from onyx.ton.financial_domain.models import DreInputDataset
 from onyx.utils.audit import AuditAction, AuditOutcome
 
 RESULT_SCALE = Decimal("1e-25")
+SAO_PAULO = ZoneInfo("America/Sao_Paulo")
 
 
 def _require_admin(user: User) -> None:
@@ -846,6 +859,289 @@ def list_contributors(
             )
         )
     return DreContributorPage(total=total, rows=contributors)
+
+
+def _export_entries(
+    session: Session,
+    user: User,
+    run: DreRunView,
+    lines: dict[str, DreLineDefinition],
+) -> list[BaseEntry]:
+    """Every ACTUAL fact of the year to date that a source line sums."""
+    normalization = session.get(
+        FinancialNormalizationRun, run.scope.normalization_run_id
+    )
+    assert normalization is not None
+    conditions = [
+        FinancialActualFact.run_id == run.scope.normalization_run_id,
+        FinancialActualFact.calendar_period >= run.scope.period.replace(month=1),
+        FinancialActualFact.calendar_period <= run.scope.period,
+        DreAccountMapping.version_id == run.scope.structure_version_id,
+        DreAccountMapping.status == "APPROVED",
+    ]
+    if not is_ton_administrator(user):
+        conditions.append(business_unit_visible_clause(user))
+    rows = session.execute(
+        sa.select(
+            FinancialActualFact,
+            ParsedSourceRecord,
+            FinancialAccount,
+            BusinessUnit,
+            DreAccountMapping.line_code,
+            SourceSnapshot.original_filename,
+        )
+        .join(
+            DreAccountMapping,
+            DreAccountMapping.account_id == FinancialActualFact.account_id,
+        )
+        .join(
+            ParsedSourceRecord,
+            ParsedSourceRecord.id == FinancialActualFact.parsed_record_id,
+        )
+        .join(FinancialAccount, FinancialAccount.id == FinancialActualFact.account_id)
+        .outerjoin(BusinessUnit, BusinessUnit.id == FinancialActualFact.unit_id)
+        .join(SourceSnapshot, SourceSnapshot.id == ParsedSourceRecord.snapshot_id)
+        .where(*conditions)
+    ).all()
+    basis_index = financial_domain._basis_index(
+        session, normalization.amount_basis_revision_number
+    )
+    entries: list[BaseEntry] = []
+    for fact, source, account, unit, line_code, filename in rows:
+        if lines[line_code].line_type != DreLineType.SOURCE_SUM:
+            continue
+        basis = basis_index.get(account.id, account.actual_amount_basis)
+        amount = fact.movement_amount if basis == "MOVEMENT" else fact.final_amount
+        assert amount is not None
+        entries.append(
+            BaseEntry(
+                competence=fact.calendar_period,
+                unit_code=unit.code if unit else None,
+                unit_name=unit.name if unit else None,
+                line_code=line_code,
+                amount=amount,
+                record_date=fact.emission_date,
+                nature=account.label,
+                ng_account_code=source.account_code,
+                ng_account_label=source.account_label,
+                document=source.document_number,
+                history=source.history,
+                amount_basis=basis,
+                review_status=fact.disposition,
+                source_file=filename or "",
+                sheet_name=source.sheet_name,
+                row_number=source.source_row_number,
+            )
+        )
+    return entries
+
+
+def _months_text(months: list[int]) -> str:
+    return ", ".join(month_label(month) for month in months)
+
+
+def _export_premises(
+    data_scopes: list[ScopeBlock],
+    last_month: int,
+    entries: list[BaseEntry],
+    budget_present: bool,
+) -> list[Premise]:
+    premises = [
+        Premise(
+            topic="Parcelamentos",
+            status="Decidido em 03/10/2026: entra só a parcela paga, no mês do "
+            "pagamento. Ainda não aplicado: o TON usa o valor lançado no NG.",
+            effect="As naturezas com parcelamentos mostram o valor integral do NG "
+            "até a limpeza no NG ou a aprovação do tratamento.",
+        ),
+        Premise(
+            topic="PIS/COFINS",
+            status="O TON ainda não calcula PIS/COFINS. Os valores vêm como "
+            "lançados no NG.",
+            effect="Aguarda a planilha de apuração da Controladoria.",
+        ),
+        Premise(
+            topic="Receita",
+            status="A base da receita (valor do NG ou faturamento bruto com "
+            "impostos como dedução) está em definição com a Controladoria.",
+            effect="A receita aparece como lançada no NG.",
+        ),
+        Premise(
+            topic="Orçado",
+            status="Há orçado aprovado nesta base."
+            if budget_present
+            else "Nenhuma dotação aprovada está carregada: o orçado está zerado.",
+            effect="Esta planilha mostra só o Realizado; o orçado fica na tela da DRE."
+            if budget_present
+            else "Esta planilha mostra só o Realizado.",
+        ),
+    ]
+    pending = [
+        f"{scope.unit_code or 'Consolidado'} {scope.label}: "
+        + _months_text(
+            [
+                month
+                for month in range(1, last_month + 1)
+                if month not in scope.ready_months
+            ]
+        )
+        for scope in data_scopes
+        if len(scope.ready_months) < last_month
+    ]
+    premises.append(
+        Premise(
+            topic="Unidades/filiais sem DRE pronta",
+            status="\n".join(pending)
+            if pending
+            else "Todas as unidades estão prontas em todos os meses.",
+            effect="Os valores desses meses aparecem em cinza: vêm da Base, mas o "
+            "TON não publicou a DRE da unidade no mês (por exemplo, mês sem "
+            "lançamento)."
+            if pending
+            else "Nenhum.",
+        )
+    )
+    without_unit = [entry for entry in entries if entry.unit_code is None]
+    if without_unit:
+        premises.append(
+            Premise(
+                topic="Lançamentos sem unidade",
+                status=f"{len(without_unit)} lançamentos não têm unidade/filial.",
+                effect="Entram no consolidado e em nenhuma unidade.",
+            )
+        )
+    return premises
+
+
+def export_workbook(
+    session: Session, user: User, run_id: UUID
+) -> tuple[DreRunView, bytes]:
+    """Excel of the year to date for the run's base: consolidated and units."""
+    anchor = get_calculation(session, user, run_id)
+    if anchor.status != "READY":
+        raise OnyxError(
+            OnyxErrorCode.CONFLICT, "Only ready DRE results can be exported"
+        )
+    version = get_version(session, user, anchor.scope.structure_version_id)
+    structure = session.get(DreStructure, version.structure_id)
+    normalization = session.get(
+        FinancialNormalizationRun, anchor.scope.normalization_run_id
+    )
+    assert structure is not None and normalization is not None
+    period = anchor.scope.period
+    lines = {line.code: line for line in version.lines}
+    runs = list(
+        session.scalars(
+            sa.select(DreCalculationRun)
+            .where(
+                DreCalculationRun.normalization_run_id
+                == anchor.scope.normalization_run_id,
+                DreCalculationRun.structure_version_id
+                == anchor.scope.structure_version_id,
+                DreCalculationRun.status == "READY",
+                DreCalculationRun.period >= period.replace(month=1),
+                DreCalculationRun.period <= period,
+            )
+            .order_by(DreCalculationRun.finished_at.desc())
+        )
+    )
+    entries = _export_entries(session, user, anchor, lines)
+    unit_rows = session.execute(
+        sa.select(BusinessUnit.id, BusinessUnit.code, BusinessUnit.name)
+        .where(
+            BusinessUnit.code.in_(
+                {entry.unit_code for entry in entries if entry.unit_code}
+            ),
+            business_unit_visible_clause(user),
+        )
+        .order_by(BusinessUnit.code)
+    ).all()
+    run_by_scope: dict[tuple[UUID | None, int], DreCalculationRun] = {}
+    for run in runs:
+        run_by_scope.setdefault((run.unit_id, run.period.month), run)
+    scopes: list[ScopeBlock] = []
+    scope_units: list[UUID | None] = []
+    if is_ton_administrator(user):
+        scopes.append(
+            ScopeBlock(
+                unit_code=None,
+                label="Consolidado — todas as unidades/filiais",
+                ready_months=frozenset(
+                    month for unit_id, month in run_by_scope if unit_id is None
+                ),
+            )
+        )
+        scope_units.append(None)
+    for unit_id, code, name in unit_rows:
+        scopes.append(
+            ScopeBlock(
+                unit_code=code,
+                label=name,
+                ready_months=frozenset(
+                    month for scope_unit, month in run_by_scope if scope_unit == unit_id
+                ),
+            )
+        )
+        scope_units.append(unit_id)
+    budget_present = False
+    data = DreWorkbookInput(
+        structure_label=structure.label,
+        structure_version=version.number,
+        lines=version.lines,
+        year=period.year,
+        last_month=period.month,
+        scopes=scopes,
+        entries=entries,
+        header=[],
+    )
+    expected = expected_values(data)
+    cent = Decimal("0.01")
+    for scope, unit_id in zip(scopes, scope_units, strict=True):
+        for month in scope.ready_months:
+            run = run_by_scope[(unit_id, month)]
+            for stored in session.scalars(
+                sa.select(DreResultLine).where(DreResultLine.run_id == run.id)
+            ):
+                budget_present = budget_present or bool(
+                    stored.orcado or stored.orcado_ytd
+                )
+                checks = [(month, stored.realizado)]
+                if month == period.month:
+                    checks.append((None, stored.realizado_ytd))
+                for column, persisted in checks:
+                    value = expected[scope.unit_code][(column, stored.code)]
+                    if (
+                        lines[stored.code].operation == DreOperation.RATIO
+                        and value is None
+                    ):
+                        continue
+                    if value is None or value.quantize(cent) != persisted.quantize(
+                        cent
+                    ):
+                        raise OnyxError(
+                            OnyxErrorCode.CONFLICT,
+                            "DRE export does not match the persisted calculation",
+                        )
+    local_now = datetime.datetime.now(SAO_PAULO)
+    as_of = normalization.dataset_as_of.astimezone(SAO_PAULO)
+    header = [
+        (
+            "Período",
+            f"{month_label(1)} a {month_label(period.month)}/{period.year}"
+            if period.month > 1
+            else f"{month_label(1)}/{period.year}",
+        ),
+        ("Importação NG", as_of.strftime("%d/%m/%Y %H:%M")),
+        ("Estrutura", f"{structure.label} · versão {version.number}"),
+        ("Lançamentos na Base", f"{len(entries)}"),
+        ("Gerado em", local_now.strftime("%d/%m/%Y %H:%M")),
+    ]
+    data = dataclasses.replace(
+        data,
+        header=header,
+        premises=_export_premises(scopes, period.month, entries, budget_present),
+    )
+    return anchor, build_workbook(data)
 
 
 def audit_export(session: Session, user: User, run_id: UUID) -> None:

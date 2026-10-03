@@ -78,6 +78,7 @@ backend = [
     # NOTE: This is frozen to avoid https://foss.heptapod.net/openpyxl/openpyxl/-/issues/2147
     "openpyxl==3.0.10",
     "xlrd==2.0.2",  # Read legacy BIFF/XLS invoice exports without Office.
+    "xlsxwriter==3.2.9",  # DRE Excel export: formulas with cached values.
     "opensearch-py==3.2.0",
     # libpass is the maintained drop-in fork of passlib (same `passlib.*`
     # import namespace). passlib 1.7.4 is unmaintained and imports the stdlib

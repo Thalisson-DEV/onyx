@@ -364,6 +364,12 @@ export const COPY = {
     calculatedAt: (date: string) => `Calculado em ${date}`,
     export: "Exportar CSV",
     exportFailed: "Não foi possível exportar. Tente novamente.",
+    excel: "Baixar Excel",
+    excelLoading: "Gerando Excel…",
+    excelHint:
+      "Planilha de janeiro até o mês escolhido, consolidada e por unidade/filial, com os lançamentos de cada linha.",
+    excelFailed:
+      "Não foi possível gerar o Excel. Tente novamente em instantes.",
     kpi: {
       actual: "Realizado",
       budget: "Orçado",

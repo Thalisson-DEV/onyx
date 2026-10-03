@@ -214,6 +214,9 @@ it("explains the blocked DRE by business category and links each to the queue", 
   expect(
     screen.queryByRole("button", { name: "Exportar CSV" })
   ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Baixar Excel" })
+  ).not.toBeInTheDocument();
 });
 
 it("renders the official statement with month, YTD, variance and drill-down", async () => {
@@ -289,4 +292,41 @@ it("recalculates only on explicit action and reports the outcome", async () => {
       "Recálculo concluído: a DRE continua bloqueada pelos itens abaixo."
     )
   ).toBeInTheDocument();
+});
+
+it("downloads the Excel workbook of the official result", async () => {
+  scenario = "ready";
+  const user = setupUser();
+  const createObjectURL = jest.fn(() => "blob:dre");
+  URL.createObjectURL = createObjectURL;
+  URL.revokeObjectURL = jest.fn();
+  const click = jest
+    .spyOn(HTMLAnchorElement.prototype, "click")
+    .mockImplementation(() => undefined);
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({ ok: true, blob: async () => new Blob(["xlsx"]) })
+    .mockResolvedValueOnce({ ok: false });
+  render(<DreWorkspaceView />);
+  const button = screen.getByRole("button", { name: "Baixar Excel" });
+  await user.click(button);
+  await waitFor(() =>
+    expect(global.fetch).toHaveBeenCalledWith(
+      `/api/ton/dre/calculations/${result.id}/export.xlsx`
+    )
+  );
+  await waitFor(() => expect(click).toHaveBeenCalled());
+  expect(
+    screen.queryByText(
+      "Não foi possível gerar o Excel. Tente novamente em instantes."
+    )
+  ).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Baixar Excel" }));
+  expect(
+    await screen.findByText(
+      "Não foi possível gerar o Excel. Tente novamente em instantes."
+    )
+  ).toBeInTheDocument();
+  click.mockRestore();
 });

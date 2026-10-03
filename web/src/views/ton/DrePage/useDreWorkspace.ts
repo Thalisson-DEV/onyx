@@ -176,20 +176,33 @@ export function useDreWorkspace() {
     }
   }
 
-  async function exportCsv(): Promise<boolean> {
+  async function download(path: string, filename: string): Promise<boolean> {
     if (!officialRun || !ready) return false;
     const response = await fetch(
-      `/api/ton/dre/calculations/${officialRun.id}/export.csv`
+      `/api/ton/dre/calculations/${officialRun.id}/${path}`
     );
     if (!response.ok) return false;
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `dre-${officialRun.scope.period}.csv`;
+    anchor.download = filename;
     anchor.click();
     URL.revokeObjectURL(url);
     return true;
+  }
+
+  function exportCsv(): Promise<boolean> {
+    return download("export.csv", `dre-${officialRun?.scope.period}.csv`);
+  }
+
+  /** Year to date workbook built by the backend from the persisted DRE. */
+  function exportExcel(): Promise<boolean> {
+    const month = periodValue?.slice(5, 7);
+    return download(
+      "export.xlsx",
+      `dre-${periodValue?.slice(0, 4)}-01-a-${month}.xlsx`
+    );
   }
 
   function retry() {
@@ -232,6 +245,7 @@ export function useDreWorkspace() {
     calculation,
     recalculate,
     exportCsv,
+    exportExcel,
     select: {
       normalization(value: string) {
         setNormalizationChoice(value);

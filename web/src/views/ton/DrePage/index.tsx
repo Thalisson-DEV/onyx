@@ -788,6 +788,9 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
 
 function ReadyState({ dre }: { dre: DreWorkspace }) {
   const [exportFailed, setExportFailed] = useState(false);
+  const [excelState, setExcelState] = useState<"idle" | "loading" | "failed">(
+    "idle"
+  );
   const run = dre.officialRun;
   if (!run) {
     return (
@@ -823,6 +826,22 @@ function ReadyState({ dre }: { dre: DreWorkspace }) {
           </div>
           <div className="flex flex-wrap gap-2">
             <RecalculateButton dre={dre} />
+            <Button
+              icon={SvgDownload}
+              disabled={excelState === "loading"}
+              tooltip={COPY.dre.excelHint}
+              onClick={() => {
+                setExcelState("loading");
+                void dre
+                  .exportExcel()
+                  .catch(() => false)
+                  .then((ok) => setExcelState(ok ? "idle" : "failed"));
+              }}
+            >
+              {excelState === "loading"
+                ? COPY.dre.excelLoading
+                : COPY.dre.excel}
+            </Button>
             <Button
               prominence="secondary"
               icon={SvgDownload}
@@ -860,6 +879,9 @@ function ReadyState({ dre }: { dre: DreWorkspace }) {
         )}
         <CalculationFeedback dre={dre} />
         {exportFailed && <ErrorState compact message={COPY.dre.exportFailed} />}
+        {excelState === "failed" && (
+          <ErrorState compact message={COPY.dre.excelFailed} />
+        )}
       </TonCard>
       {dre.statement.isLoading && (
         <TonCard className="p-5">

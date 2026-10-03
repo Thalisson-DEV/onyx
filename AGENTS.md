@@ -33,6 +33,12 @@ This file provides guidance to AI agents when working with code in this reposito
   Normalize the scripts to LF before building, or set `core.autocrlf=input`.
 - The local Docker runbook — lite versus full topology, measured RAM footprint per container, the
   required `.env` variables, and exit-code triage — is in `plans/ton/local-runtime.md`.
+- **TON work is spec-driven with OpenSpec.** Before any TON task, read `openspec/config.yaml`,
+  `openspec/roadmap.md` (state versus the Prompt Mestre, phases, external inputs), the business intent
+  in `plans/ton/masterprompt.md` and the context pack `plans/ton/context/`. Current behaviour is in
+  `openspec/specs/`; pending work is one change per folder in `openspec/changes/`. TON is a
+  per-contract digital controllership (contract master, S1–S10, T1–T30, ledger with owner, deadline and
+  verification, routines R1–R9), not only a DRE with a chat.
 
 ## Project Overview
 

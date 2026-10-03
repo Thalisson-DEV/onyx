@@ -1,0 +1,77 @@
+schema: spec-driven
+
+# Contexto mostrado a todo agente que cria artefatos OpenSpec neste repositório.
+context: |
+  PROJETO: TON — Controladoria Digital 24/7 da Vale Norte Construtora (contratos públicos de
+  limpeza urbana: coleta, varrição, capina, roçada, poda, canais, aterro). Cliente: Luyla
+  (Controladoria Vale Norte). Este repositório é um fork do Onyx.
+  Onyx = infraestrutura (auth, RBAC, chat/streaming, providers, tools, Code Interpreter, Celery,
+  file store). TON = produto (backend em backend/onyx/{ton,db/ton,server/ton}, migrations
+  alembic "ton_*", frontend em web/src/{app/ton,views/ton,lib/ton}).
+
+  A INTENÇÃO DE NEGÓCIO está em plans/ton/masterprompt.md (Prompt Mestre v2.0, AGT-TON-001).
+  O TON NÃO é "DRE + chat". O Prompt Mestre define: contrato de dados (§3), cadastro mestre do
+  contrato como cérebro (§4), protocolo fixo de 7 passos (§5), aritmética de sanidade S1–S10 (§6),
+  testes T1–T12 do PAD-CTRL-001 (§7) e T13–T30 operacionais (§8), quantificação em R$ (§9),
+  régua única de criticidade PAD-CTRL-001 (§10), pontos cegos (§11), rotinas autônomas R1–R9 (§12),
+  ledgers de ocorrências/oportunidades + ROI (§13), formatos fixos: ficha de exceção, modo
+  executivo, ISC, Dinheiro Escondido (§14), subagentes CFO/COO/FROTA/CONTRATOS/COMPLIANCE/
+  PROCUREMENT/RH/AUDITOR/CEO (§15), regulação (§16), previsão e simulação de licitação (§17),
+  as 7 perguntas da diretoria (§19). Indicador-mãe: margem contratual prevista × margem real.
+
+  ESTADO REAL (2026-10-02): existe a fundação financeira — fontes imutáveis, parser NG, revisão
+  determinística (6 regras NGF ativas), domínio canônico, prontidão com decisões humanas
+  versionadas, motor de DRE (READY real jan–jun/2026, consolidado + unidades, só Realizado),
+  ledger de ocorrências (modelo pronto, pouco alimentado), rotina R3, assistente com 19 tools,
+  adaptador Zeev somente leitura + catálogo (sem sincronização),
+  shell TON próprio. Do Prompt Mestre, apenas S10 está operacional e T4 parcial; R1–R2 e R4–R9,
+  6 dos 9 especialistas, cadastro mestre, ISC, Dinheiro Escondido, ROI, previsão: não existem.
+  Linha de base detalhada: openspec/specs/. Plano: openspec/roadmap.md.
+
+  CONTEXTO OBRIGATÓRIO antes de propor ou implementar: plans/ton/context/00..10 (origem, processo
+  da Luyla, evolução DATA-001..006, arquitetura, decisões), plans/ton/masterprompt.md,
+  plans/ton/TON_FE_001_DECISIONS.md (D-010..D-032), plans/ton/backend/decision-log.md.
+  Hierarquia de verdade: código/API atual > decisões aprovadas vigentes > Prompt Mestre >
+  documentos de processo da Luyla > planos históricos > relatórios antigos de agentes.
+
+  NÃO NEGOCIÁVEIS:
+  - Determinístico decide (parsing, regras, conciliação, prontidão, DRE, testes). IA interpreta,
+    explica, resume, prioriza. IA nunca detecta erro primário, nunca calcula número oficial,
+    nunca mapeia conta/unidade, nunca decide.
+  - Nada de fuzzy/LLM mapping, annual/12, data inferida do nome do arquivo, "não-zero = final".
+  - Imutabilidade: snapshots, revisões, decisões, versões de DRE e relatórios são append-only.
+  - Decisão humana para: mapeamentos, autoridade, conciliação ambígua, correções, comunicação
+    externa, interpretação jurídica, encerramento de ocorrência crítica.
+  - TON nunca escreve em NG/Keevo, ERP, faturamento ou documento fiscal.
+  - Ausência de dado é achado com responsável, não lacuna preenchida por estimativa.
+  - Registrar capability ≠ capability operacional. Sintético sempre rotulado; nunca vira claim.
+  - Arquivos reais da Vale Norte nunca entram no Git, fixtures, logs, migrations ou docs
+    (plans/ton/DRE Jun-26/ está em .git/info/exclude).
+  - Régua de criticidade e códigos T/NC idênticos ao PAD-CTRL-001; TON não cria régua própria.
+
+  DIREÇÃO DO CLIENTE (2026-10-02): DRE entregue em Excel com memória de cálculo (não Power BI);
+  TI externa (Celso) está liberando VPN + usuário read-only no banco do NG; até lá, importação
+  manual de arquivo. Em produção quem precisa de rota ao NG é o host do TON.
+
+  AMBIENTE: Windows + Docker em WSL com 6 GB — construir imagens com a stack parada e subir
+  contêineres um a um (plans/ton/local-runtime.md). Nunca `docker compose pull` de
+  onyx-backend/onyx-web-server. Trabalho em `main` local; sem push, rebase ou stash sem pedido.
+  Python tipado, `uv`/.venv; padrões em backend/AGENTS.md e web/AGENTS.md.
+
+rules:
+  proposal:
+    - Escrever em português do Brasil.
+    - Citar a seção do Prompt Mestre (§n) ou o documento de processo que origina a necessidade.
+    - Declarar dependências externas (fonte, decisão da Controladoria, acesso) numa seção "Dependências".
+    - "Declarar o estado de dado esperado na entrega (real validado, real sem validação, ou sintético)."
+  specs:
+    - Escrever requisitos em inglês (o validador exige SHALL/MUST); termos de negócio em pt-BR (DRE, dotação, NG, medição).
+    - Todo limiar numérico deve vir do Prompt Mestre/PAD-CTRL-001 ou ser parâmetro versionado aprovado; nunca constante inventada.
+    - Cobrir o cenário de dado ausente/fonte ausente em toda regra.
+  design:
+    - Reutilizar os modelos existentes (Source/Snapshot, Rule/RuleVersion, AnalysisRun, Occurrence, Finding, TonReport) antes de criar tabelas novas.
+    - Regra financeira nunca no frontend; o frontend apresenta read models do backend.
+  tasks:
+    - Escrever em português do Brasil.
+    - Incluir tarefa de validação no navegador (Chrome) quando houver UI, e de teste determinístico quando houver regra.
+    - Incluir tarefa final de atualização do roadmap (openspec/roadmap.md) e do contexto (plans/ton/context) quando o estado do produto mudar.

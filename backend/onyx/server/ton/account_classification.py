@@ -131,8 +131,33 @@ def run_suggestions(
         session, user, table, result.suggestions, result.model_name, evidence
     )
     session.commit()
+    summary = (
+        _write_briefing(session, user, source_id, result.model_name)
+        if request.briefing
+        else None
+    )
+    return SuggestionRunResult(
+        requested=len(targets),
+        suggested=count,
+        skipped=sorted(set(result.skipped)),
+        model_name=result.model_name,
+        briefing=summary is not None,
+    )
 
-    # The briefing covers every open code, not only the ones just suggested.
+
+@router.post("/{source_id}/briefing")
+def refresh_briefing(
+    source_id: UUID,
+    user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    session: Session = Depends(get_session),
+) -> dict[str, bool]:
+    return {"briefing": _write_briefing(session, user, source_id, None) is not None}
+
+
+def _write_briefing(
+    session: Session, user: User, source_id: UUID, model_name: str | None
+) -> str | None:
+    """Summary over every open code, not only the ones just suggested."""
     refreshed = repository.classification_table(session, user, source_id)
     group_by_nature = {item.natureza: item.dre_group for item in refreshed.natures}
     items = [
@@ -158,17 +183,15 @@ def run_suggestions(
             user,
             source_id,
             summary,
-            result.model_name,
+            model_name
+            or next(
+                (row.suggestion.model_name for row in refreshed.rows if row.suggestion),
+                None,
+            ),
             [item.code for item in items],
         )
         session.commit()
-    return SuggestionRunResult(
-        requested=len(targets),
-        suggested=count,
-        skipped=sorted(set(result.skipped)),
-        model_name=result.model_name,
-        briefing=summary is not None,
-    )
+    return summary
 
 
 @router.get("/export.xlsx")

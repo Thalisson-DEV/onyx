@@ -136,6 +136,8 @@ class SuggestionRequest(BaseModel):
     """Empty list means every pending or awaiting code."""
 
     account_codes: list[str] = Field(default_factory=list, max_length=200)
+    # The screen sends small chunks and asks for the briefing once at the end.
+    briefing: bool = True
 
 
 class SuggestionRunResult(BaseModel):

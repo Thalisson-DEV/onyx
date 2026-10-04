@@ -181,7 +181,8 @@ export const CLASSIFICATION_COPY = {
       "O assistente ainda não analisou as contas em aberto. Ele lê os lançamentos de cada conta, compara com as contas que a Controladoria já confirmou e diz o que acha, com a pergunta que decide cada caso.",
     analyze: "Pedir análise ao assistente",
     reanalyze: "Refazer análise",
-    analyzing: "Analisando as contas… leva de 1 a 3 minutos",
+    analyzing: (done: number, total: number) =>
+      `Analisando… ${Math.min(done, total)} de ${total} contas`,
     analyzed: (when: string) => `Análise de ${when}`,
     failed:
       "O assistente não respondeu. Verifique o modelo de linguagem configurado e tente de novo.",

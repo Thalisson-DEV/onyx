@@ -40,6 +40,10 @@ import NewNatureDialog from "./NewNatureDialog";
 
 type Feedback = { tone: "success" | "error"; text: string } | null;
 
+/** Accounts per analysis request, and requests in flight at once. */
+const CHUNK = 5;
+const PARALLEL = 3;
+
 function matchesQuery(row: ClassificationRow, query: string): boolean {
   const needle = query.trim().toLocaleLowerCase("pt-BR");
   if (!needle) return true;
@@ -84,6 +88,7 @@ function AssistantCard({
   onChanged: () => Promise<unknown>;
 }) {
   const [running, setRunning] = useState(false);
+  const [analyzed, setAnalyzed] = useState(0);
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -92,15 +97,53 @@ function AssistantCard({
   const decided = table.rows.filter((row) => row.decided_by_person).length;
   const total = decided + open.length;
 
+  /** Small chunks keep every request far from the proxy timeout and let the
+   * screen show progress; the briefing is written once at the end. */
   async function analyze() {
+    const codes = open.map((row) => row.account_code);
+    const chunks: string[][] = [];
+    for (let index = 0; index < codes.length; index += CHUNK) {
+      chunks.push(codes.slice(index, index + CHUNK));
+    }
     setRunning(true);
     setFeedback(null);
+    setAnalyzed(0);
+    const results: SuggestionRunResult[] = [];
+    let failures = 0;
+    const queue = [...chunks];
+    async function worker() {
+      for (let chunk = queue.shift(); chunk; chunk = queue.shift()) {
+        try {
+          const result = await postJson<SuggestionRunResult>(
+            `${CLASSIFICATION_API}/${table.source_id}/suggestions`,
+            { account_codes: chunk, briefing: false }
+          );
+          results.push(result);
+        } catch {
+          failures += 1;
+        }
+        setAnalyzed((value) => value + chunk.length);
+      }
+    }
     try {
-      const result = await postJson<SuggestionRunResult>(
-        `${CLASSIFICATION_API}/${table.source_id}/suggestions`,
-        { account_codes: [] }
+      await Promise.all(
+        Array.from({ length: Math.min(PARALLEL, chunks.length) }, worker)
       );
-      setFeedback({ tone: "success", text: COPY.assistant.done(result) });
+      if (results.length) {
+        await postJson(`${CLASSIFICATION_API}/${table.source_id}/briefing`, {});
+      }
+      const total: SuggestionRunResult = {
+        requested: codes.length,
+        suggested: results.reduce((sum, item) => sum + item.suggested, 0),
+        skipped: results.flatMap((item) => item.skipped),
+        model_name: results[0]?.model_name ?? null,
+        briefing: true,
+      };
+      setFeedback(
+        failures === chunks.length
+          ? { tone: "error", text: COPY.assistant.failed }
+          : { tone: "success", text: COPY.assistant.done(total) }
+      );
       await onChanged();
     } catch {
       setFeedback({ tone: "error", text: COPY.assistant.failed });
@@ -207,7 +250,7 @@ function AssistantCard({
               onClick={() => void analyze()}
             >
               {running
-                ? COPY.assistant.analyzing
+                ? COPY.assistant.analyzing(analyzed, open.length)
                 : table.briefing
                   ? COPY.assistant.reanalyze
                   : COPY.assistant.analyze}

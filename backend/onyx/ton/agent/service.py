@@ -179,7 +179,18 @@ def query_domain(  # noqa: C901 - one flat dispatch per TON tool
     if operation == "ton_get_financial_context":
         from onyx.db.ton.agent import financial_context
 
-        return financial_context(session, user, query.limit, query.offset)
+        return financial_context(
+            session,
+            user,
+            query.limit,
+            query.offset,
+            period=query.period,
+            unit_id=query.unit_id,
+        )
+    if operation == "ton_get_closing_overview":
+        from onyx.db.ton.agent_overview import closing_overview
+
+        return closing_overview(session, user, query.period, query.unit_id, query.unit)
     if operation == "ton_get_recent_changes":
         return _recent_changes(session, user, query)
     raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Ferramenta TON desconhecida")

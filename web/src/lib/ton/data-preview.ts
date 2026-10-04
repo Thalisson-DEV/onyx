@@ -80,7 +80,7 @@ const LABELS: Record<string, string> = {
   budget_count: "Linhas de orçamento",
   reconciliation: "Conciliação",
   dre_status: "DRE",
-  scope: "Escopo",
+  scope: "Unidade/filial",
   as_of: "Data de referência",
   started_at: "Início",
   finished_at: "Fim",

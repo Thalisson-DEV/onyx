@@ -32,6 +32,7 @@ TON_TOOL_DISPLAY_NAMES = {
     "ton_get_dre_readiness": "Prontidão da DRE",
     "ton_get_dre_result": "Resultado da DRE",
     "ton_get_financial_context": "Contexto financeiro",
+    "ton_get_closing_overview": "Fechamento do período",
     "ton_analyze_closing": "Análise do fechamento",
     "ton_generate_closing_report": "Relatório de fechamento",
     "ton_generate_executive_brief": "Resumo executivo",
@@ -197,8 +198,14 @@ class TonDreResultTool(TonDomainTool):
 
 class TonFinancialContextTool(TonDomainTool):
     NAME = "ton_get_financial_context"
-    DESCRIPTION = "Descobrir identificadores autorizados de bases normalizadas e versões de estrutura DRE. Não inventar identificadores."
-    FIELDS = ("limit", "offset")
+    DESCRIPTION = "Descobrir identificadores autorizados de bases normalizadas, versões de estrutura DRE, unidades e DREs calculadas. Filtre por period e unit_id para ver os cálculos daquele escopo. Não inventar identificadores."
+    FIELDS = ("period", "unit_id", "limit", "offset")
+
+
+class TonClosingOverviewTool(TonDomainTool):
+    NAME = "ton_get_closing_overview"
+    DESCRIPTION = "Fechamento de um mês e unidade em uma chamada: base mais recente, situação da DRE, bloqueios e onde resolvê-los, valores da DRE calculada (os mesmos da tela DRE) e achados abertos da revisão. period é o primeiro dia do mês (sem ele, o último mês disponível); unit é o nome ou código da unidade como o usuário escreveu (sem ela, o consolidado)."
+    FIELDS = ("period", "unit")
 
 
 class TonAnalyzeClosingTool(TonDomainTool):
@@ -287,6 +294,7 @@ TON_TOOL_CLASSES = (
     TonDreReadinessTool,
     TonDreResultTool,
     TonFinancialContextTool,
+    TonClosingOverviewTool,
     TonAnalyzeClosingTool,
     TonClosingReportTool,
     TonExecutiveBriefTool,

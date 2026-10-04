@@ -86,16 +86,38 @@ def _stored_view(
 
 
 def latest_stored_results(
-    session: Session, user: User, normalization_run_id: UUID, limit: int
+    session: Session,
+    user: User,
+    normalization_run_id: UUID,
+    limit: int | None = None,
+    *,
+    period: date | None = None,
+    unit_id: UUID | None = None,
+    units_from: date | None = None,
 ) -> list[StoredDreContext]:
     """Latest visible calculation per scope, consolidated and recent periods first.
 
     Recalculating many units must not push the consolidated result out of view.
+    `period`/`unit_id` narrow the scopes; `units_from` keeps unit scopes only
+    from that period on, so an unfiltered read stays small without hiding the
+    consolidated history.
     """
+    query = sa.select(DreCalculationRun).where(
+        DreCalculationRun.normalization_run_id == normalization_run_id
+    )
+    if period is not None:
+        query = query.where(DreCalculationRun.period == period)
+    if unit_id is not None:
+        query = query.where(DreCalculationRun.unit_id == unit_id)
+    if units_from is not None:
+        query = query.where(
+            sa.or_(
+                DreCalculationRun.unit_id.is_(None),
+                DreCalculationRun.period >= units_from,
+            )
+        )
     calculations = session.scalars(
-        sa.select(DreCalculationRun)
-        .where(DreCalculationRun.normalization_run_id == normalization_run_id)
-        .order_by(
+        query.order_by(
             DreCalculationRun.unit_id.is_not(None),
             DreCalculationRun.period.desc(),
             DreCalculationRun.finished_at.desc(),
@@ -117,7 +139,7 @@ def latest_stored_results(
         if stored is None:
             continue
         results.append(stored)
-        if len(results) >= limit:
+        if limit is not None and len(results) >= limit:
             break
     return results
 
@@ -144,14 +166,29 @@ def stored_result_for_scope(
 
 
 def financial_context(
-    session: Session, user: User, limit: int, offset: int
+    session: Session,
+    user: User,
+    limit: int,
+    offset: int,
+    *,
+    period: date | None = None,
+    unit_id: UUID | None = None,
 ) -> FinancialContext:
+    """Authorized bases, DRE structures, units and persisted DRE results.
+
+    The latest base lists every persisted result of the requested period/unit;
+    unfiltered, every consolidated period plus the units of its last period.
+    Older bases list only their consolidated results unless a filter is given.
+    """
+    from onyx.db.ton.agent_overview import visible_units
+
     bases: list[FinancialBaseContext] = []
-    for run in financial_domain.list_runs(session, user, limit, offset):
+    for position, run in enumerate(
+        financial_domain.list_runs(session, user, limit, offset)
+    ):
         review = session.get(ReviewRun, run.review_run_id)
         assert review is not None
         source = sources.get_source(session, user, review.source_id)
-        stored_results = latest_stored_results(session, user, run.id, 10)
         periods = list(
             session.scalars(
                 sa.select(FinancialActualFact.calendar_period)
@@ -160,6 +197,18 @@ def financial_context(
                 .order_by(FinancialActualFact.calendar_period.desc())
                 .limit(25)
             )
+        )
+        filtered = period is not None or unit_id is not None
+        latest_base = position == 0 and offset == 0
+        stored_results = latest_stored_results(
+            session,
+            user,
+            run.id,
+            period=period,
+            unit_id=unit_id,
+            units_from=None
+            if filtered
+            else (periods[0] if latest_base and periods else date.max),
         )
         bases.append(
             FinancialBaseContext(
@@ -177,6 +226,7 @@ def financial_context(
         structure_version_ids=[
             dre.get_latest_version(session, user, item.id).id for item in structures
         ],
+        units=visible_units(session, user),
     )
 
 

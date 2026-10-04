@@ -209,3 +209,67 @@ def test_stored_results_keep_consolidated_and_exact_scope(
     assert exact is not None and exact.run_id == unit_run.id
     outsider = factories.make_user(ton_session)
     assert stored_result_for_scope(ton_session, outsider, unit_scope) is None
+
+
+def test_closing_overview_matches_persisted_statement(
+    ton_session: Session, admin: User, store: FileStore
+) -> None:
+    from decimal import Decimal
+
+    from onyx.db.ton.models import BusinessUnit
+    from onyx.ton.agent.models import ClosingOverview
+
+    normalization_id, _, unit_id = build_complete_synthetic_scope(
+        ton_session, admin, store
+    )
+    version = dre.create_structure(
+        ton_session,
+        admin,
+        DreStructureCreate(
+            key="synthetic-agent-overview", label="Synthetic overview", lines=_lines()
+        ),
+    )
+    ton_session.commit()
+    scope = DreScope(
+        normalization_run_id=normalization_id,
+        structure_version_id=version.id,
+        period=date(2026, 1, 1),
+        unit_id=unit_id,
+    )
+    run = dre.execute(ton_session, admin, scope)
+    ton_session.commit()
+    unit = ton_session.get(BusinessUnit, unit_id)
+    assert unit is not None
+
+    overview = query_domain(
+        ton_session,
+        admin,
+        "ton_get_closing_overview",
+        ToolQuery(period=date(2026, 1, 1), unit=unit.name.lower()),
+    )
+    assert isinstance(overview, ClosingOverview)
+    assert overview.escopo == unit.name
+    assert overview.normalization_run_id == normalization_id
+    if run.status == "READY":
+        statement = dre.get_statement(ton_session, admin, run.id)
+        assert overview.dre_calculada and overview.run_id == run.id
+        assert [
+            (line.linha, Decimal(line.realizado)) for line in overview.linhas_dre
+        ] == [
+            (line.label, line.realizado.quantize(Decimal("0.01")))
+            for line in statement.lines
+        ]
+    else:
+        assert not overview.dre_calculada and overview.linhas_dre == []
+        assert overview.bloqueios
+
+    unknown = query_domain(
+        ton_session, admin, "ton_get_closing_overview", ToolQuery(unit="zz-nenhuma")
+    )
+    assert isinstance(unknown, ClosingOverview)
+    assert unknown.unidade_solicitada_nao_encontrada == "zz-nenhuma"
+    assert unknown.linhas_dre == []
+
+    outsider = factories.make_user(ton_session)
+    with pytest.raises(OnyxError):
+        query_domain(ton_session, outsider, "ton_get_closing_overview", ToolQuery())

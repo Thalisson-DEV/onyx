@@ -54,6 +54,13 @@ export const TON_TOOLS: Record<string, TonToolDescriptor> = {
     icon: SvgBlocks,
     kind: "sources",
   },
+  ton_get_closing_overview: {
+    doing: "Reunindo o fechamento do período",
+    label: "Fechamento do período",
+    href: "/ton/dre",
+    icon: SvgBarChart,
+    kind: "dre",
+  },
   ton_list_findings: {
     doing: "Lendo os achados da revisão financeira",
     label: "Achados da revisão",

@@ -38,7 +38,10 @@ def test_tool_binds_tenant_and_reloads_user_before_query() -> None:
     session.get.assert_called_once_with(User, user.id)
     assert query.call_args.args[1] is user
     assert query.call_args.args[2] == "ton_get_financial_context"
-    assert result.llm_facing_response == '{"bases": [], "structure_version_ids": []}'
+    assert (
+        result.llm_facing_response
+        == '{"bases": [], "structure_version_ids": [], "units": []}'
+    )
     assert emitter.emit.call_count == 1
 
 

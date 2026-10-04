@@ -987,7 +987,7 @@ export const COPY = {
     previousVersions: (count: number) =>
       `${plural(count, "versão anterior preservada", "versões anteriores preservadas")} para auditoria`,
     period: "Período",
-    scope: "Escopo",
+    scope: "Unidade/filial",
     generated: "Gerado em",
     status: "Situação",
     summary: "Resumo executivo",

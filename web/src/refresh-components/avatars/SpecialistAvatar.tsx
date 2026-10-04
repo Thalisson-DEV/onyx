@@ -31,6 +31,8 @@ export interface SpecialistAvatarProps {
   initialScale?: number;
   /** Runtime state. Never invent this from non-existent data. Default: idle. */
   state?: SpecialistState;
+  /** Icon size as a fraction of `size`. Small-glyph icons read better near 1. */
+  iconScale?: number;
   /** Additional classes applied to the outer container. */
   className?: string;
 }
@@ -54,6 +56,7 @@ export function SpecialistAvatar({
   initial,
   initialScale = 0.5,
   state = "idle",
+  iconScale = ICON_SCALE,
   className,
 }: SpecialistAvatarProps) {
   const isSelected = state === "selected";
@@ -87,8 +90,8 @@ export function SpecialistAvatar({
         <Icon
           className={cn("shrink-0", iconClassName ?? "stroke-text-03")}
           style={{
-            width: size * ICON_SCALE,
-            height: size * ICON_SCALE,
+            width: size * iconScale,
+            height: size * iconScale,
           }}
           aria-hidden
         />

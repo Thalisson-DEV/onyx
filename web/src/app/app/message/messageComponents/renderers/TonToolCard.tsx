@@ -13,6 +13,7 @@ import {
 } from "@opal/icons";
 import type { IconFunctionComponent } from "@opal/types";
 import { getBusinessLabel, getStatusTone } from "@/lib/ton/labels";
+import type { Json } from "@/lib/ton/work-log";
 import { COPY, formatPeriod } from "@/lib/ton/copy";
 import { totalBlockers } from "@/lib/ton/blockers";
 import {
@@ -25,6 +26,8 @@ import {
 interface TonToolCardProps {
   toolName: string;
   data: unknown;
+  /** Period and scope the card is about ("Junho de 2026 · Consolidado"). */
+  subtitle?: string | null;
 }
 
 type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
@@ -139,6 +142,7 @@ interface CardFrameProps {
   icon: IconFunctionComponent;
   iconTone?: "brand" | "warning" | "gold";
   title: string;
+  subtitle?: string | null;
   aside?: ReactNode;
   children?: ReactNode;
 }
@@ -147,11 +151,12 @@ function CardFrame({
   icon: Icon,
   iconTone = "brand",
   title,
+  subtitle,
   aside,
   children,
 }: CardFrameProps) {
   return (
-    <div className="flex flex-col gap-3 rounded-12 border border-01 bg-background-neutral-00 p-3">
+    <div className="ton-result-card flex flex-col gap-3 p-3">
       <div className="flex items-center gap-3">
         <span
           className="ton-icon-tile flex items-center justify-center w-8 h-8 shrink-0"
@@ -159,10 +164,15 @@ function CardFrame({
         >
           <Icon size={16} />
         </span>
-        <span className="flex-1 min-w-0">
+        <span className="flex flex-1 min-w-0 flex-col">
           <Text font="main-ui-action" color="text-05">
             {title}
           </Text>
+          {subtitle && (
+            <Text font="secondary-body" color="text-03">
+              {subtitle}
+            </Text>
+          )}
         </span>
         {aside}
       </div>
@@ -233,10 +243,12 @@ function DreCard({
   status,
   blockers,
   period,
+  subtitle,
 }: {
   status?: string;
   blockers: Record<string, number>;
   period: string | null;
+  subtitle?: string | null;
 }) {
   const total = totalBlockers(blockers);
   // One action per blocker: decisions open the queue on that category, data
@@ -254,8 +266,14 @@ function DreCard({
       icon={SvgClipboard}
       iconTone={total ? "warning" : "brand"}
       title={COPY.analysis.dreTitle}
+      subtitle={subtitle}
       aside={status ? <Pill status={status} /> : undefined}
     >
+      {total === 0 && (
+        <Text font="main-ui-body" color="text-04">
+          {COPY.analysis.dreClear}
+        </Text>
+      )}
       {total > 0 && (
         <>
           <Text font="main-ui-body" color="text-04">
@@ -432,7 +450,7 @@ function SourcesCard({ sources }: { sources: JsonObject[] }) {
   );
 }
 
-export function TonToolCard({ toolName, data }: TonToolCardProps) {
+export function TonToolCard({ toolName, data, subtitle }: TonToolCardProps) {
   const payload = record(data) && "data" in data ? data.data : data;
   const body =
     record(payload) && record(payload.output) ? payload.output : payload;
@@ -483,7 +501,38 @@ export function TonToolCard({ toolName, data }: TonToolCardProps) {
   const period =
     record(body) && typeof body.period === "string" ? body.period : null;
   if (Object.keys(blockers).length || dreStatus)
-    return <DreCard status={dreStatus} blockers={blockers} period={period} />;
+    return (
+      <DreCard
+        status={dreStatus}
+        blockers={blockers}
+        period={period}
+        subtitle={subtitle}
+      />
+    );
   if (sourceRows.length) return <SourcesCard sources={sourceRows} />;
   return null;
+}
+
+/**
+ * Cards that ask for an action stay open below the answer: a published
+ * report, records to check, or a DRE with items that block publication. The
+ * rest wait behind the "Resultados" disclosure.
+ */
+export function cardNeedsAttention(data: Json | undefined): boolean {
+  const payload = record(data) && "data" in data ? data.data : data;
+  if (!record(payload)) return false;
+  if (
+    typeof payload.report_url === "string" &&
+    payload.report_url.startsWith("/ton/controladoria/reports/")
+  )
+    return true;
+  const body = record(payload.output) ? payload.output : payload;
+  if (evidenceRows(body).length > 0) return true;
+  if (!record(body.blockers)) return false;
+  const blockers = Object.fromEntries(
+    Object.entries(body.blockers).filter(
+      (entry): entry is [string, number] => typeof entry[1] === "number"
+    )
+  );
+  return totalBlockers(blockers) > 0;
 }

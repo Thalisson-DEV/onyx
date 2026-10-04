@@ -632,3 +632,20 @@ retornados pelas ferramentas TON), deve citar a origem dos números e nunca vira
 resultado oficial, valor aprovado, estimativa de valor ausente, mapeamento ou conciliação.
 Validado no Chrome: tabela e gráfico com as contagens das ferramentas, rotulados como
 exploratórios. Se o interpretador estiver fora no momento do provisionamento, reprovisionar.
+
+## D-033 — Painel de trabalho do TON no lugar da timeline do Onyx
+
+Data: 2026-10-03
+Status: Accepted (pedido do usuário: transparência sem nada técnico)
+
+Contexto: com D-031 a timeline do Onyx mostrava cada fase de raciocínio como "Processado",
+sem conteúdo (o texto do modelo está em inglês e cita ferramentas e `run_id`). As consultas
+apareciam em abas técnicas, a resposta não trazia fontes e os detalhes no fim ficavam longos.
+
+Decisão: nas rotas `/ton`, um painel próprio (`views/ton/chat/TonWorkPanel`) mostra ao vivo
+cada consulta em linguagem de negócio, com período e unidade pelo nome e um resumo. As fases de
+raciocínio recebem nome pela posição; o texto privado continua fora da tela (TON-VIS-006
+mantido). O painel recolhe depois da resposta. Os dados lidos aparecem em tabela legível; o
+JSON bruto só se copia, e só por administrador. Abaixo da resposta, fontes, especialistas e
+resultados ficam recolhidos sob demanda; os cartões que pedem ação continuam visíveis. Cada
+especialista tem ícone próprio no estilo de agente do Onyx. O `/app` mantém a timeline do Onyx.

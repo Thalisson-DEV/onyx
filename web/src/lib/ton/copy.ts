@@ -84,6 +84,21 @@ export function formatNumber(value: number): string {
   return value.toLocaleString("pt-BR");
 }
 
+/** "42 s", "2 min 4 s" or "3 min". */
+export function formatElapsed(seconds: number): string {
+  const total = Math.max(1, Math.round(seconds));
+  if (total < 60) return `${total} s`;
+  const minutes = Math.floor(total / 60);
+  const rest = total % 60;
+  return rest ? `${minutes} min ${rest} s` : `${minutes} min`;
+}
+
+/** Live timer: "0:42", "2:04". */
+export function formatClock(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
@@ -417,7 +432,8 @@ export const COPY = {
       location: (sheet: string, row: number) =>
         `Planilha ${sheet} · linha ${formatNumber(row)}`,
       review: "Revisão",
-      sourceOnce: (source: string, file: string) => `Origem: ${source} · ${file}`,
+      sourceOnce: (source: string, file: string) =>
+        `Origem: ${source} · ${file}`,
       columns: {
         date: "Data",
         unit: "Unidade",
@@ -907,7 +923,9 @@ export const COPY = {
       findingBlocking: "Bloqueia",
       findingInfo: "Informativo",
       findingWhere: (sheet: string, row?: number | null) =>
-        row ? `Planilha ${sheet} · linha ${formatNumber(row)}` : `Planilha ${sheet}`,
+        row
+          ? `Planilha ${sheet} · linha ${formatNumber(row)}`
+          : `Planilha ${sheet}`,
     },
     changes: {
       title: "O que mudou na última atualização",
@@ -1147,6 +1165,7 @@ export const COPY = {
         : `${plural(recorded, "decisão recente", "decisões recentes")}, todas aplicadas`,
     openChanges: "Ver no Fechamento",
     dreTitle: "Situação da DRE",
+    dreClear: "Nada impede a publicação neste período.",
     dreBlocked: (count: number) =>
       count === 1
         ? "1 item impede a publicação"
@@ -1163,6 +1182,149 @@ export const COPY = {
       dre: "Abrir DRE",
       sources: "Ver fontes",
       reports: "Ver relatórios",
+    },
+  },
+  work: {
+    genericQuery: "Consulta",
+    queryFailed: "Esta consulta não respondeu. O TON seguiu com o que tinha.",
+    subject: { consolidated: "Consolidado", unit: "Unidade" },
+    doing: {
+      start: "Lendo sua pergunta",
+      plan: "Entendendo a pergunta e planejando",
+      analyze: "Analisando o que encontrou",
+      compose: "Escrevendo a resposta",
+      python: "Fazendo um cálculo de apoio",
+      file: "Lendo o arquivo anexado",
+      parallel: (first: string, more: number) =>
+        `${first} e mais ${plural(more, "consulta", "consultas")}`,
+    },
+    phase: {
+      plan: "Entendeu a pergunta e planejou as consultas",
+      analyze: "Analisou o que encontrou",
+      compose: "Organizou a resposta",
+    },
+    summary: {
+      sources: (total: number, attention: number) =>
+        attention > 0
+          ? `${plural(total, "fonte", "fontes")} · ${plural(attention, "requer", "requerem")} atenção`
+          : plural(total, "fonte", "fontes"),
+      context: (bases: number, results: number) =>
+        `${plural(bases, "base financeira", "bases financeiras")} · ${plural(results, "DRE calculada", "DREs calculadas")}`,
+      findings: (total: number, blocking: number) =>
+        blocking > 0
+          ? `${plural(total, "achado", "achados")} · ${plural(blocking, "bloqueia", "bloqueiam")} a publicação`
+          : plural(total, "achado", "achados"),
+      dre: (lines: number, status: string | null) =>
+        status
+          ? `${plural(lines, "linha da DRE", "linhas da DRE")} · ${status}`
+          : plural(lines, "linha da DRE", "linhas da DRE"),
+      readiness: (
+        blockers: number,
+        status: string | null,
+        specialists: number
+      ) =>
+        [
+          status ? `DRE ${status.toLowerCase()}` : null,
+          blockers > 0
+            ? plural(blockers, "pendência", "pendências")
+            : "sem pendências",
+          specialists > 0
+            ? plural(specialists, "especialista atuou", "especialistas atuaram")
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      billing: (billing: number, actual: number) =>
+        `${plural(billing, "nota de faturamento", "notas de faturamento")} · ${plural(actual, "lançamento do NG", "lançamentos do NG")}`,
+      budget: (count: number) =>
+        count > 0
+          ? plural(count, "linha de orçamento", "linhas de orçamento")
+          : "Nenhum orçamento importado",
+      reconciliationLabel: (label: string) =>
+        ({
+          Conciliado: "conciliados",
+          NG_ONLY: "só no NG",
+          BILLING_ONLY: "só no faturamento",
+          UNMAPPED: "sem vínculo",
+        })[label] ?? label.toLowerCase().replaceAll("_", " "),
+      evidence: (count: number) =>
+        count > 0
+          ? plural(count, "linha de evidência", "linhas de evidência")
+          : "Nenhuma linha de evidência no período",
+      overdue: (count: number) =>
+        count > 0
+          ? plural(count, "ação vencida", "ações vencidas")
+          : "Nenhuma ação vencida",
+      published: "Publicado",
+      records: (count: number) => plural(count, "item", "itens"),
+    },
+    header: {
+      empty: "Lendo sua pergunta…",
+      worked: (duration: string) => `Trabalhou por ${duration}`,
+      workedShort: "Análise concluída",
+      stopped: "Análise interrompida",
+      queries: (count: number) => plural(count, "consulta", "consultas"),
+      specialists: (count: number) =>
+        plural(count, "especialista", "especialistas"),
+      calculations: (count: number) => plural(count, "cálculo", "cálculos"),
+      show: "Ver como chegou nisso",
+      hide: "Ocultar etapas",
+    },
+    parallel: (count: number) => `${count} consultas ao mesmo tempo`,
+    readData: "Ver o que foi lido",
+    hideData: "Ocultar",
+    copyRaw: "Copiar dados brutos",
+    copyRawTooltip: "Copia a resposta técnica da consulta (administrador)",
+    python: {
+      title: "Fez um cálculo de apoio",
+      running: "Calculando…",
+      note: "Cálculo exploratório sobre os números consultados. Não é um valor oficial.",
+      showOutput: "Ver resultado",
+      showCode: "Ver código",
+      files: (count: number) =>
+        plural(count, "arquivo gerado", "arquivos gerados"),
+    },
+    file: {
+      title: (name: string) => `Leu o arquivo ${name}`,
+      fallback: "Leu um arquivo anexado",
+    },
+    other: "Etapa de apoio",
+    failed: "Não concluída",
+    stoppedNotice:
+      "Você interrompeu a análise. O que o TON já consultou continua acima.",
+    specialists: {
+      title: "Especialistas nesta análise",
+      subtitle: "Quem atuou e o que fez em cada etapa do protocolo.",
+      waiting: (count: number) =>
+        `${plural(count, "especialista aguarda", "especialistas aguardam")} fonte de dados`,
+      protocol: (done: number, total: number) =>
+        `${formatNumber(done)} de ${formatNumber(total)} etapas concluídas`,
+      skippedTitle: "Não executado",
+      actions: "Recomenda",
+      limitations: "Limites",
+      inline: (count: number) =>
+        plural(count, "especialista atuou", "especialistas atuaram"),
+    },
+    details: {
+      label: "Detalhes desta resposta",
+      sources: "Fontes",
+      specialists: "Especialistas",
+      results: "Resultados",
+    },
+    sources: {
+      title: "Fontes desta resposta",
+      consulted: "Dados consultados",
+      origins: "De onde vêm os dados",
+      imported: (date: string) => `importado em ${date}`,
+      open: (label: string) => `Abrir ${label}`,
+      count: (count: number) => plural(count, "fonte", "fontes"),
+    },
+    data: {
+      empty: "A consulta não trouxe dados.",
+      showing: (shown: number, total: number) =>
+        `Mostrando ${formatNumber(shown)} de ${formatNumber(total)}`,
+      yes: "Sim",
+      no: "Não",
     },
   },
   assistant: {

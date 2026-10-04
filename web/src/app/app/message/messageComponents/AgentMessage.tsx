@@ -23,6 +23,8 @@ import { Message } from "@/app/app/interfaces";
 import Text from "@/refresh-components/texts/Text";
 import { AgentTimeline } from "@/app/app/message/messageComponents/timeline/AgentTimeline";
 import { TonExecutionSummary } from "@/app/app/message/messageComponents/renderers/TonExecutionSummary";
+import TonWorkPanel from "@/views/ton/chat/TonWorkPanel";
+import { usePathname } from "next/navigation";
 import { useVoiceMode } from "@/providers/VoiceModeProvider";
 import { getTextContent } from "@/app/app/services/packetUtils";
 import { removeThinkingTokens } from "@/app/app/services/thinkingTokens";
@@ -111,6 +113,8 @@ const AgentMessage = React.memo(function AgentMessage({
   fullWidthChat,
 }: AgentMessageProps) {
   const t = useTranslations("chat.messages");
+  // The TON product renders its own work panel; /app keeps the Onyx timeline.
+  const isTon = usePathname()?.startsWith("/ton") ?? false;
   const markdownRef = useRef<HTMLDivElement>(null);
   const finalAnswerRef = useRef<HTMLDivElement>(null);
 
@@ -288,27 +292,41 @@ const AgentMessage = React.memo(function AgentMessage({
     >
       {/* Row 1: Two-column layout for tool steps */}
 
-      {/* TON answers use the same reasoning timeline: model reasoning, each
-          TON query and specialist, Python runs and file reads, in order. */}
-      <AgentTimeline
-        turnGroups={pacedTurnGroups}
-        chatState={effectiveChatState}
-        stopPacketSeen={stopPacketSeen}
-        stopReason={stopReason}
-        hasDisplayContent={pacedDisplayGroups.length > 0}
-        processingDurationSeconds={processingDurationSeconds}
-        isGeneratingImage={isGeneratingImage}
-        generatedImageCount={generatedImageCount}
-        finalAnswerComing={pacedFinalAnswerComing}
-        toolProcessingDuration={toolProcessingDuration}
-      />
+      {isTon ? (
+        // TON: what it did in business terms, live, folded once it answers.
+        <div className={cn(!fullWidthChat && "px-3")}>
+          <TonWorkPanel
+            turnGroups={pacedTurnGroups}
+            tools={effectiveChatState.agent.tools}
+            stopPacketSeen={stopPacketSeen}
+            stopReason={stopReason}
+            answering={pacedDisplayGroups.length > 0}
+            processingDurationSeconds={processingDurationSeconds}
+            toolProcessingDuration={toolProcessingDuration}
+          />
+        </div>
+      ) : (
+        <AgentTimeline
+          turnGroups={pacedTurnGroups}
+          chatState={effectiveChatState}
+          stopPacketSeen={stopPacketSeen}
+          stopReason={stopReason}
+          hasDisplayContent={pacedDisplayGroups.length > 0}
+          processingDurationSeconds={processingDurationSeconds}
+          isGeneratingImage={isGeneratingImage}
+          generatedImageCount={generatedImageCount}
+          finalAnswerComing={pacedFinalAnswerComing}
+          toolProcessingDuration={toolProcessingDuration}
+        />
+      )}
 
       {/* Row 2: Display content + MessageToolbar */}
       <div
         ref={markdownRef}
         className={cn(
           "overflow-x-visible focus:outline-hidden select-text cursor-text",
-          !fullWidthChat && "px-3"
+          !fullWidthChat && "px-3",
+          isTon && "ton-answer"
         )}
         onCopy={(e) => {
           if (markdownRef.current) {

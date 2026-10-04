@@ -87,6 +87,25 @@ const STREAMING_REMARK_PLUGINS: PluggableList = [
 const STREAMING_REHYPE_PLUGINS: PluggableList = [rehypeKatex, rehypeDirection];
 const FULL_REMARK_PLUGINS: PluggableList = STREAMING_REMARK_PLUGINS;
 
+/**
+ * The backend stores a fixed English notice when a user stops a generation.
+ * Show it in the reader's language instead.
+ */
+const BACKEND_STOP_NOTICES = [
+  " ... \n\nGeneration was stopped by the user.",
+  "The generation was stopped by the user.",
+];
+
+function localizeStopNotice(content: string, notice: string): string {
+  for (const backendNotice of BACKEND_STOP_NOTICES) {
+    if (content.endsWith(backendNotice)) {
+      const answer = content.slice(0, -backendNotice.length);
+      return answer ? `${answer}\n\n_${notice}._` : notice;
+    }
+  }
+  return content;
+}
+
 export const MessageTextRenderer: MessageRenderer<
   ChatPacket,
   FullChatState
@@ -130,17 +149,20 @@ export const MessageTextRenderer: MessageRenderer<
     isAwaitingAutoPlaybackStart,
   } = useVoiceMode();
 
-  const fullContent = packets
-    .map((packet) => {
-      if (
-        packet.obj.type === PacketType.MESSAGE_DELTA ||
-        packet.obj.type === PacketType.MESSAGE_START
-      ) {
-        return packet.obj.content;
-      }
-      return "";
-    })
-    .join("");
+  const fullContent = localizeStopNotice(
+    packets
+      .map((packet) => {
+        if (
+          packet.obj.type === PacketType.MESSAGE_DELTA ||
+          packet.obj.type === PacketType.MESSAGE_START
+        ) {
+          return packet.obj.content;
+        }
+        return "";
+      })
+      .join(""),
+    t("agentMessage.stoppedGeneration.text")
+  );
 
   const shouldUseAutoPlaybackSync =
     autoPlayback &&

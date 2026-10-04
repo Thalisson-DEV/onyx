@@ -87,6 +87,7 @@ dependem de insumos externos.
 |---|---|---|---|
 | `stabilize-real-data-runtime` | Rebuild das imagens (fim do `docker cp`), assistente rápido e correto, cards honestos, identidade de dotação, papel cliente validado, renomes pedidos (Unidades/filiais, Compras/Suprimentos) | M | — |
 | `visual-polish` | Base visual sóbria (sem cara de IA), gaveta da DRE em tabela, status corretos, textos sem termos técnicos; tela a tela | M | — |
+| `assistant-transparency` | Chat do assistente: trabalho visível ao vivo em linguagem de negócio, dados lidos sem JSON, fontes e especialistas (ícones estilo Onyx) recolhidos sob demanda, cartões com período | M | — |
 | `carry-over-decisions-on-reimport` | ✅ 2026-10-03: reimportar o NG sem perder decisões; dotação não altera a DRE; prévia de reimportação | M | — |
 | `controller-validated-treatments` | Parcelamentos pela parcela paga (decidido), 392 (decidido), receita/folha/mútuos (segunda) viram tratamentos versionados | M | Reunião 2026-10-05 para o restante |
 

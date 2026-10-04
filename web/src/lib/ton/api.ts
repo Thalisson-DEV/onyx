@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { hasPermission } from "@/lib/permissions";
@@ -100,6 +101,30 @@ export function useTonDataSources() {
   return useSWR<ClientSource[]>(
     canRead ? TON_API.dataSources : null,
     errorHandlingFetcher
+  );
+}
+
+interface TonUnit {
+  id: string;
+  code: string;
+  name?: string | null;
+}
+
+/** Resolves a unit id to its name for chat subjects ("Junho de 2026 · Unidade X"). */
+export function useTonUnitNames(): (unitId: string) => string | null {
+  const { canRead } = useTonAccess();
+  const units = useSWR<TonUnit[]>(
+    canRead ? "/api/ton/financial-domain/units?limit=100" : null,
+    errorHandlingFetcher,
+    { revalidateOnFocus: false }
+  );
+  const list = units.data;
+  return useCallback(
+    (unitId: string) => {
+      const unit = list?.find((item) => item.id === unitId);
+      return unit ? (unit.name ?? unit.code) : null;
+    },
+    [list]
   );
 }
 

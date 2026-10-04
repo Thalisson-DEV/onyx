@@ -1,0 +1,619 @@
+/*
+  TON assistant: work panel, sources, specialists and answer typography.
+  Tokens come from ton.css and the app's semantic tokens, so both themes work.
+  Motion is short (≤ 240 ms), eases out, and stops under reduced motion.
+*/
+
+:root {
+  --ton-work-line: var(--border-01);
+  --ton-work-rail: 2.25rem;
+  --ton-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── TON mark ─────────────────────────────────────────────────────────── */
+
+.ton-mark {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 0.5rem;
+  background: var(--ton-chrome);
+  color: var(--ton-on-chrome);
+  box-shadow: inset 0 0 0 1px var(--ton-chrome-line);
+}
+.ton-mark svg {
+  width: 62%;
+  height: 62%;
+}
+.ton-mark-spark {
+  fill: var(--ton-gold);
+  transform-origin: 12px 4px;
+}
+.ton-mark[data-working] .ton-mark-spark {
+  animation: ton-spark 1.4s var(--ton-ease-out) infinite;
+}
+/* A thin gold ring orbits the mark while TON works. */
+.ton-mark[data-working]::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 0.6875rem;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--ton-orbit, 0deg),
+    transparent 0deg,
+    var(--ton-gold) 70deg,
+    transparent 140deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ton-orbit 1.6s linear infinite;
+}
+@property --ton-orbit {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes ton-orbit {
+  to {
+    --ton-orbit: 360deg;
+  }
+}
+@keyframes ton-spark {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.55);
+    opacity: 0.55;
+  }
+}
+
+/* ── Work panel ───────────────────────────────────────────────────────── */
+
+.ton-work {
+  display: flex;
+  flex-direction: column;
+}
+
+.ton-work-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.25rem;
+}
+
+.ton-work-live {
+  animation: ton-fade-in 240ms var(--ton-ease-out);
+}
+
+.ton-work-timer {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Indeterminate hairline under the header while TON works. */
+.ton-work-progress {
+  position: relative;
+  height: 2px;
+  margin-inline-start: var(--ton-work-rail);
+  margin-top: 0.375rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ton-work-line);
+}
+.ton-work-progress::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  width: 30%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--ton-brand),
+    transparent
+  );
+  animation: ton-progress 1.5s var(--ton-ease-out) infinite;
+}
+@keyframes ton-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+
+.ton-work-steps {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding-top: 0.5rem;
+  padding-inline-start: var(--ton-work-rail);
+}
+/* The rail that ties the steps to the mark. */
+.ton-work-steps::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: calc(var(--ton-work-rail) / 2 - 0.5px - 0.375rem);
+  top: 0.25rem;
+  bottom: 0.75rem;
+  width: 1px;
+  background: var(--ton-work-line);
+}
+
+.ton-wk-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-block: 0.3125rem;
+  animation: ton-wk-step-in 240ms var(--ton-ease-out) both;
+}
+
+.ton-wk-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* Status glyph sits on the rail. */
+.ton-wk-status {
+  position: absolute;
+  inset-inline-start: calc(-1 * var(--ton-work-rail) / 2 - 0.375rem - 0.5rem);
+  top: 0.4375rem;
+  display: flex;
+  width: 1rem;
+  height: 1rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--ton-workspace);
+}
+.ton-status-dot {
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ton-status-dot[data-status="done"] {
+  background: var(--ton-brand-soft);
+  color: var(--ton-brand);
+  animation: ton-pop 220ms var(--ton-ease-out);
+}
+.ton-status-dot[data-status="failed"] {
+  background: var(--status-warning-01);
+  color: var(--status-warning-05);
+}
+.ton-status-dot[data-status="running"] {
+  border: 1.5px solid var(--ton-work-line);
+  border-top-color: var(--ton-brand);
+  animation: ton-spin 0.8s linear infinite;
+}
+.ton-status-dot svg {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.ton-query-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-top: 0.125rem;
+}
+
+.ton-query {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--ton-radius-control);
+  animation: ton-wk-step-in 240ms var(--ton-ease-out) both;
+}
+.ton-query-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.375rem 0.25rem 0.25rem;
+  border-radius: var(--ton-radius-control);
+  transition: background-color 120ms ease;
+}
+.ton-query-row:hover {
+  background: var(--background-tint-01);
+}
+.ton-query-icon {
+  display: flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  border: 1px solid var(--ton-work-line);
+  background: var(--ton-surface);
+  color: var(--text-03);
+}
+.ton-query[data-status="running"] .ton-query-icon {
+  color: var(--ton-brand);
+  border-color: var(--ton-brand-line);
+}
+.ton-query-icon svg {
+  width: 0.8125rem;
+  height: 0.8125rem;
+}
+/* Row actions appear on hover or focus; always on touch and while open. */
+.ton-query-action {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.ton-query-row:hover .ton-query-action,
+.ton-query-row:focus-within .ton-query-action,
+.ton-query-action[data-open] {
+  opacity: 1;
+}
+@media (hover: none) {
+  .ton-query-action {
+    opacity: 1;
+  }
+}
+
+.ton-query-detail {
+  margin: 0.25rem 0 0.5rem 2.125rem;
+  animation: ton-fade-in 200ms var(--ton-ease-out);
+}
+
+.ton-code {
+  max-height: 18rem;
+  overflow: auto;
+  padding: 0.75rem;
+  border-radius: var(--ton-radius-control);
+  border: 1px solid var(--ton-work-line);
+  background: var(--background-tint-01);
+  font-family: var(--font-dm-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Data preview ─────────────────────────────────────────────────────── */
+
+.ton-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--ton-radius-card);
+  border: 1px solid var(--ton-work-line);
+  background: var(--ton-surface);
+}
+.ton-preview-fields {
+  display: grid;
+  grid-template-columns: minmax(8rem, max-content) 1fr;
+  column-gap: 1rem;
+  row-gap: 0.25rem;
+}
+.ton-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.ton-preview-table-wrap {
+  overflow-x: auto;
+}
+.ton-preview-table th {
+  text-align: start;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--ton-work-line);
+  white-space: nowrap;
+}
+.ton-preview-table td {
+  padding: 0.3125rem 0.5rem;
+  border-bottom: 1px solid var(--ton-work-line);
+  vertical-align: top;
+}
+.ton-preview-table tr:last-child td {
+  border-bottom: 0;
+}
+.ton-preview-table [data-numeric] {
+  text-align: end;
+  white-space: nowrap;
+}
+
+/* ── Specialists ──────────────────────────────────────────────────────── */
+
+.ton-specialists {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  border-radius: var(--ton-radius-card);
+  border: 1px solid var(--border-01);
+  background: var(--ton-surface);
+  animation: ton-rise 280ms var(--ton-ease-out) both;
+}
+.ton-specialist {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.75rem;
+  row-gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-01);
+}
+.ton-specialist:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+.ton-protocol {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+.ton-protocol-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.ton-protocol-bar {
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--border-01);
+  transform-origin: left center;
+  animation: ton-fill 360ms var(--ton-ease-out) both;
+}
+.ton-protocol-step[data-state="done"] .ton-protocol-bar {
+  background: var(--ton-brand);
+}
+.ton-protocol-step[data-state="blocked"] .ton-protocol-bar {
+  background: var(--ton-gold);
+}
+.ton-protocol-step[data-state="skipped"] .ton-protocol-bar {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--border-02) 0 3px,
+    transparent 3px 6px
+  );
+}
+.ton-protocol-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ton-specialist-stack {
+  display: inline-flex;
+}
+.ton-specialist-stack > * + * {
+  margin-inline-start: -0.375rem;
+}
+.ton-specialist-stack > * {
+  box-shadow: 0 0 0 2px var(--ton-workspace);
+  border-radius: 0.5rem;
+}
+
+/* ── Sources ──────────────────────────────────────────────────────────── */
+
+.ton-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  animation: ton-rise 240ms var(--ton-ease-out) both;
+}
+.ton-source-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+.ton-source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  max-width: 100%;
+  min-height: 1.875rem;
+  padding: 0.25rem 0.625rem 0.25rem 0.375rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-01);
+  background: var(--ton-surface);
+  color: var(--text-04);
+  text-decoration: none;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
+  animation: ton-wk-step-in 220ms var(--ton-ease-out) both;
+}
+.ton-source-chip:hover,
+.ton-source-chip:focus-visible {
+  border-color: var(--ton-brand-line);
+  background: var(--ton-brand-soft);
+  color: var(--text-05);
+}
+.ton-source-chip:focus-visible {
+  outline: 2px solid var(--ton-brand);
+  outline-offset: 2px;
+}
+.ton-source-chip-icon {
+  display: flex;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--background-tint-01);
+  color: var(--ton-brand);
+}
+.ton-source-chip-icon svg {
+  width: 0.6875rem;
+  height: 0.6875rem;
+}
+.ton-source-chip-go {
+  width: 0.75rem;
+  height: 0.75rem;
+  opacity: 0;
+  margin-inline-start: -0.25rem;
+  transition:
+    opacity 140ms ease,
+    margin 140ms var(--ton-ease-out);
+}
+.ton-source-chip:hover .ton-source-chip-go,
+.ton-source-chip:focus-visible .ton-source-chip-go {
+  opacity: 0.7;
+  margin-inline-start: 0;
+}
+@media (hover: none) {
+  .ton-source-chip-go {
+    opacity: 0.7;
+    margin-inline-start: 0;
+  }
+}
+.ton-origin {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--ton-radius-control);
+  background: var(--background-tint-01);
+}
+
+/* ── Answer details and result cards ──────────────────────────────────── */
+
+.ton-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.ton-details-bar {
+  margin-inline-start: -0.375rem;
+}
+.ton-details-panel {
+  animation: ton-rise 220ms var(--ton-ease-out) both;
+}
+.ton-result-card {
+  border-radius: var(--ton-radius-card);
+  border: 1px solid var(--border-01);
+  background: var(--ton-surface);
+  animation: ton-rise 240ms var(--ton-ease-out) both;
+}
+
+/* ── Answer typography ────────────────────────────────────────────────── */
+
+/* Section headings the TON prompt writes ("SITUAÇÃO", "EVIDÊNCIA") read as
+   labels, so the answer keeps one heading level and a calm rhythm. */
+.ton-answer .prose-ton h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.75em;
+  margin-bottom: 0.5em;
+  color: var(--ton-brand);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1rem;
+  text-transform: uppercase;
+}
+.ton-answer .prose-ton h2::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-01);
+}
+.ton-answer .prose-ton h1 {
+  font-size: 1.25em;
+  letter-spacing: -0.01em;
+}
+/* Section labels already separate sections. */
+.ton-answer .prose-ton hr {
+  display: none;
+}
+.ton-answer .prose-ton strong {
+  color: var(--text-05);
+}
+
+/* ── Shared motion ────────────────────────────────────────────────────── */
+
+@keyframes ton-wk-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ton-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ton-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ton-pop {
+  0% {
+    transform: scale(0.4);
+  }
+  70% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes ton-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ton-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ton-mark[data-working]::after,
+  .ton-mark[data-working] .ton-mark-spark,
+  .ton-work-progress::after,
+  .ton-status-dot[data-status="running"] {
+    animation-duration: 0s;
+    animation-iteration-count: 1;
+  }
+  .ton-wk-step,
+  .ton-query,
+  .ton-query-detail,
+  .ton-work-live,
+  .ton-specialists,
+  .ton-sources,
+  .ton-details-panel,
+  .ton-result-card,
+  .ton-source-chip,
+  .ton-protocol-bar,
+  .ton-status-dot[data-status="done"] {
+    animation: none;
+  }
+}

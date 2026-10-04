@@ -1,23 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Button, InputTypeIn, Tabs, Text } from "@opal/components";
+import { useMemo, useState } from "react";
+import {
+  Button,
+  InputSingleSelect,
+  InputTypeIn,
+  Tabs,
+  Text,
+} from "@opal/components";
 import {
   SvgAlertTriangle,
-  SvgArrowRight,
   SvgCheckCircle,
   SvgDownload,
   SvgLock,
-  SvgRefreshCw,
   SvgSparkle,
 } from "@opal/icons";
 import { useUser } from "@/providers/UserProvider";
-import { formatRelativeDateTime } from "@/lib/ton/copy";
 import {
   CLASSIFICATION_API,
   CLASSIFICATION_COPY as COPY,
+  agrees,
+  isOpen,
   postJson,
-  sectionOf,
   useClassificationTable,
   type ClassificationRow,
   type ClassificationTable,
@@ -34,13 +38,14 @@ import {
   TonCard,
 } from "@/views/ton/components/ui";
 import AccountGrid from "./AccountGrid";
-import AccountPanel from "./AccountPanel";
 import NaturesTab from "./NaturesTab";
 import NewNatureDialog from "./NewNatureDialog";
 
+type Filter = "open" | "confirmed" | "all";
 type Feedback = { tone: "success" | "error"; text: string } | null;
 
-/** Accounts per analysis request, and requests in flight at once. */
+/** Accounts per assistant request, and requests in flight at once: keeps each
+ * request far from the proxy timeout and lets the button show progress. */
 const CHUNK = 5;
 const PARALLEL = 3;
 
@@ -52,20 +57,10 @@ function matchesQuery(row: ClassificationRow, query: string): boolean {
   );
 }
 
-function FeedbackLine({ feedback }: { feedback: Feedback }) {
-  if (!feedback) return null;
-  return (
-    <div role="status" className="flex items-center gap-2">
-      {feedback.tone === "success" ? (
-        <SvgCheckCircle size={16} className="ton-brand-text shrink-0" />
-      ) : (
-        <SvgAlertTriangle size={16} className="text-status-error-05 shrink-0" />
-      )}
-      <Text font="secondary-body" color="text-04">
-        {feedback.text}
-      </Text>
-    </div>
-  );
+/** Open accounts the assistant disagrees with come first. */
+function rank(row: ClassificationRow): number {
+  if (!isOpen(row)) return 2;
+  return agrees(row) ? 1 : 0;
 }
 
 async function downloadWorkbook(): Promise<boolean> {
@@ -80,37 +75,48 @@ async function downloadWorkbook(): Promise<boolean> {
   return true;
 }
 
-function AssistantCard({
+function FeedbackLine({ feedback }: { feedback: Feedback }) {
+  if (!feedback) return <span />;
+  return (
+    <span role="status" className="flex items-center gap-1.5">
+      {feedback.tone === "success" ? (
+        <SvgCheckCircle size={14} className="ton-brand-text shrink-0" />
+      ) : (
+        <SvgAlertTriangle size={14} className="text-status-error-05 shrink-0" />
+      )}
+      <Text font="secondary-body" color="text-04">
+        {feedback.text}
+      </Text>
+    </span>
+  );
+}
+
+function Actions({
   table,
   onChanged,
+  onFeedback,
 }: {
   table: ClassificationTable;
   onChanged: () => Promise<unknown>;
+  onFeedback: (feedback: Feedback) => void;
 }) {
-  const [running, setRunning] = useState(false);
-  const [analyzed, setAnalyzed] = useState(0);
+  const [progress, setProgress] = useState<number | null>(null);
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [feedback, setFeedback] = useState<Feedback>(null);
-  const open = table.rows.filter((row) => row.status !== "CONFIRMED");
-  const agreeing = open.filter((row) => sectionOf(row) === "agrees");
-  const decided = table.rows.filter((row) => row.decided_by_person).length;
-  const total = decided + open.length;
+  const open = table.rows.filter(isOpen);
+  const agreeing = open.filter(agrees);
 
-  /** Small chunks keep every request far from the proxy timeout and let the
-   * screen show progress; the briefing is written once at the end. */
-  async function analyze() {
+  async function suggest() {
     const codes = open.map((row) => row.account_code);
-    const chunks: string[][] = [];
+    const queue: string[][] = [];
     for (let index = 0; index < codes.length; index += CHUNK) {
-      chunks.push(codes.slice(index, index + CHUNK));
+      queue.push(codes.slice(index, index + CHUNK));
     }
-    setRunning(true);
-    setFeedback(null);
-    setAnalyzed(0);
-    const results: SuggestionRunResult[] = [];
+    const total = queue.length;
+    let suggested = 0;
     let failures = 0;
-    const queue = [...chunks];
+    setProgress(0);
+    onFeedback(null);
     async function worker() {
       for (let chunk = queue.shift(); chunk; chunk = queue.shift()) {
         try {
@@ -118,154 +124,96 @@ function AssistantCard({
             `${CLASSIFICATION_API}/${table.source_id}/suggestions`,
             { account_codes: chunk, briefing: false }
           );
-          results.push(result);
+          suggested += result.suggested;
         } catch {
           failures += 1;
         }
-        setAnalyzed((value) => value + chunk.length);
+        const size = chunk.length;
+        setProgress((value) => (value ?? 0) + size);
       }
     }
-    try {
-      await Promise.all(
-        Array.from({ length: Math.min(PARALLEL, chunks.length) }, worker)
-      );
-      if (results.length) {
-        await postJson(`${CLASSIFICATION_API}/${table.source_id}/briefing`, {});
-      }
-      const total: SuggestionRunResult = {
-        requested: codes.length,
-        suggested: results.reduce((sum, item) => sum + item.suggested, 0),
-        skipped: results.flatMap((item) => item.skipped),
-        model_name: results[0]?.model_name ?? null,
-        briefing: true,
-      };
-      setFeedback(
-        failures === chunks.length
-          ? { tone: "error", text: COPY.assistant.failed }
-          : { tone: "success", text: COPY.assistant.done(total) }
-      );
-      await onChanged();
-    } catch {
-      setFeedback({ tone: "error", text: COPY.assistant.failed });
-    } finally {
-      setRunning(false);
-    }
+    await Promise.all(
+      Array.from({ length: Math.min(PARALLEL, total) }, worker)
+    );
+    setProgress(null);
+    onFeedback(
+      failures === total
+        ? { tone: "error", text: COPY.suggestFailed }
+        : {
+            tone: "success",
+            text: COPY.suggestDone({ suggested, requested: codes.length }),
+          }
+    );
+    await onChanged();
   }
 
   async function confirmAgreeing() {
     setBusy(true);
-    setFeedback(null);
     try {
       const result = await postJson<{ confirmed: number }>(
         `${CLASSIFICATION_API}/${table.source_id}/confirm-batch`,
         { account_codes: agreeing.map((row) => row.account_code) }
       );
-      setFeedback({
-        tone: "success",
-        text: COPY.assistant.batchDone(result.confirmed),
-      });
+      onFeedback({ tone: "success", text: COPY.batchDone(result.confirmed) });
       setAsking(false);
       await onChanged();
     } catch {
-      setFeedback({ tone: "error", text: CLASSIFICATION_COPY_FAILED });
+      onFeedback({ tone: "error", text: COPY.failed });
     } finally {
       setBusy(false);
     }
   }
 
-  return (
-    <TonCard as="div" className="flex flex-col gap-4 p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <span className="flex items-center gap-2">
-          <SvgSparkle size={18} className="ton-brand-text" />
-          <Text as="h2" font="heading-h3" color="text-05">
-            {COPY.assistant.title}
-          </Text>
-        </span>
-        {total > 0 && (
-          <span className="flex min-w-[12rem] flex-col gap-1">
-            <Text font="secondary-action" color="text-04">
-              {COPY.assistant.progress(decided, total)}
-            </Text>
-            <span className="h-1.5 w-full overflow-hidden rounded-full bg-background-neutral-02">
-              <span
-                className="block h-full rounded-full"
-                style={{
-                  width: `${Math.round((decided / total) * 100)}%`,
-                  background: "var(--ton-brand)",
-                }}
-              />
-            </span>
-          </span>
-        )}
-      </div>
-
-      <Text as="p" font="main-ui-body" color="text-04">
-        {open.length === 0
-          ? COPY.assistant.allDone
-          : (table.briefing?.summary ?? COPY.assistant.empty)}
-      </Text>
-      {table.briefing && (
-        <Text font="secondary-body" color="text-03">
-          {COPY.assistant.analyzed(
-            formatRelativeDateTime(table.briefing.created_at)
-          )}
+  if (asking) {
+    return (
+      <span className="flex items-center gap-2">
+        <Text font="secondary-body" color="text-04">
+          {COPY.batchAsk(agreeing.length)}
         </Text>
+        <Button
+          size="sm"
+          icon={SvgCheckCircle}
+          disabled={busy}
+          onClick={() => void confirmAgreeing()}
+        >
+          {busy ? COPY.saving : COPY.batchYes}
+        </Button>
+        <Button
+          size="sm"
+          prominence="tertiary"
+          disabled={busy}
+          onClick={() => setAsking(false)}
+        >
+          {COPY.batchNo}
+        </Button>
+      </span>
+    );
+  }
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      {agreeing.length > 0 && (
+        <Button size="sm" icon={SvgCheckCircle} onClick={() => setAsking(true)}>
+          {COPY.batch(agreeing.length)}
+        </Button>
       )}
-
-      {asking ? (
-        <div className="flex flex-col gap-2 rounded-12 border border-border-02 p-3">
-          <Text font="secondary-body" color="text-04">
-            {COPY.assistant.batchAsk(agreeing.length)}
-          </Text>
-          <span className="flex flex-wrap gap-2">
-            <Button
-              icon={SvgCheckCircle}
-              disabled={busy}
-              onClick={() => void confirmAgreeing()}
-            >
-              {busy ? COPY.panel.saving : COPY.assistant.batchYes}
-            </Button>
-            <Button
-              prominence="tertiary"
-              disabled={busy}
-              onClick={() => setAsking(false)}
-            >
-              {COPY.assistant.batchNo}
-            </Button>
-          </span>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {agreeing.length > 0 && (
-            <Button icon={SvgCheckCircle} onClick={() => setAsking(true)}>
-              {COPY.assistant.batch(agreeing.length)}
-            </Button>
-          )}
-          {open.length > 0 && (
-            <Button
-              prominence={agreeing.length ? "secondary" : "primary"}
-              icon={table.briefing ? SvgRefreshCw : SvgSparkle}
-              disabled={running}
-              onClick={() => void analyze()}
-            >
-              {running
-                ? COPY.assistant.analyzing(analyzed, open.length)
-                : table.briefing
-                  ? COPY.assistant.reanalyze
-                  : COPY.assistant.analyze}
-            </Button>
-          )}
-        </div>
+      {open.length > 0 && (
+        <Button
+          size="sm"
+          prominence="secondary"
+          icon={SvgSparkle}
+          disabled={progress !== null}
+          onClick={() => void suggest()}
+        >
+          {progress !== null
+            ? COPY.suggesting(progress, open.length)
+            : COPY.suggest}
+        </Button>
       )}
-      <FeedbackLine feedback={feedback} />
-    </TonCard>
+    </span>
   );
 }
 
-const CLASSIFICATION_COPY_FAILED = COPY.panel.failed;
-
-function RecomputeBanner({
+function RecomputeLink({
   table,
   onDone,
 }: {
@@ -277,6 +225,13 @@ function RecomputeBanner({
   );
   if (!table.normalization_run_id) return null;
   if (table.changes_since_calculation === 0 && state !== "done") return null;
+  if (state === "done") {
+    return (
+      <Text font="secondary-body" color="text-03">
+        {COPY.recompute.done}
+      </Text>
+    );
+  }
 
   async function recompute() {
     setState("running");
@@ -293,33 +248,21 @@ function RecomputeBanner({
   }
 
   return (
-    <div
-      role="status"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-12 border border-border-02 bg-background-tint-01 px-4 py-3"
-    >
-      <Text font="secondary-body" color="text-04">
-        {state === "done"
-          ? COPY.recompute.done
-          : state === "failed"
-            ? COPY.recompute.failed
-            : COPY.recompute.text(table.changes_since_calculation)}
+    <span className="flex items-center gap-2">
+      <Text font="secondary-body" color="text-03">
+        {state === "failed"
+          ? COPY.recompute.failed
+          : COPY.recompute.text(table.changes_since_calculation)}
       </Text>
-      {state === "done" ? (
-        <Button size="sm" rightIcon={SvgArrowRight} href="/ton/dre">
-          {COPY.recompute.openDre}
-        </Button>
-      ) : (
-        <Button
-          size="sm"
-          prominence="secondary"
-          icon={SvgRefreshCw}
-          disabled={state === "running"}
-          onClick={() => void recompute()}
-        >
-          {state === "running" ? COPY.recompute.running : COPY.recompute.action}
-        </Button>
-      )}
-    </div>
+      <Button
+        size="sm"
+        prominence="tertiary"
+        disabled={state === "running"}
+        onClick={() => void recompute()}
+      >
+        {state === "running" ? COPY.recompute.running : COPY.recompute.action}
+      </Button>
+    </span>
   );
 }
 
@@ -327,68 +270,39 @@ export default function ClassificationPage() {
   const { hasAdminAccess } = useUser();
   const table = useClassificationTable(hasAdminAccess);
   const [tab, setTab] = useState("accounts");
+  const [filter, setFilter] = useState<Filter>("open");
   const [query, setQuery] = useState("");
-  const [showConfirmed, setShowConfirmed] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [draft, setDraft] = useState<string | null>(null);
   const [creatingFor, setCreatingFor] = useState<string | null | undefined>(
     undefined
   );
+  const [pending, setPending] = useState<{
+    code: string;
+    accountId: string;
+  } | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
-  const rows = table.data?.rows ?? [];
+  const rows = useMemo(() => table.data?.rows ?? [], [table.data]);
+  const counts = {
+    open: rows.filter(isOpen).length,
+    confirmed: rows.filter((row) => !isOpen(row)).length,
+    all: rows.length,
+  };
   const visible = useMemo(
     () =>
       rows
+        .filter((row) =>
+          filter === "all"
+            ? true
+            : filter === "open"
+              ? isOpen(row)
+              : !isOpen(row)
+        )
         .filter((row) => matchesQuery(row, query))
-        .filter((row) => showConfirmed || sectionOf(row) !== "confirmed"),
-    [rows, query, showConfirmed]
+        .map((row, index) => ({ row, index }))
+        .sort((a, b) => rank(a.row) - rank(b.row) || a.index - b.index)
+        .map((item) => item.row),
+    [rows, filter, query]
   );
-  // Grid order: sections first, then code order inside each.
-  const ordered = useMemo(
-    () =>
-      (["needs_you", "agrees", "confirmed"] as const).flatMap((section) =>
-        visible.filter((row) => sectionOf(row) === section)
-      ),
-    [visible]
-  );
-  const current =
-    rows.find((row) => row.account_code === selected) ?? ordered[0] ?? null;
-  const confirmedCount = rows.filter(
-    (row) => sectionOf(row) === "confirmed"
-  ).length;
-
-  useEffect(() => {
-    if (tab !== "accounts") return;
-    function onKey(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null;
-      if (
-        target &&
-        (target.closest("input, textarea, [role='listbox'], [role='combobox']") ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
-      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-      if (!ordered.length) return;
-      event.preventDefault();
-      const index = ordered.findIndex(
-        (row) => row.account_code === current?.account_code
-      );
-      const next =
-        event.key === "ArrowDown"
-          ? Math.min(ordered.length - 1, index + 1)
-          : Math.max(0, index - 1);
-      const code = ordered[next]!.account_code;
-      setSelected(code);
-      setDraft(null);
-      document
-        .querySelector(`tr[data-code="${CSS.escape(code)}"]`)
-        ?.scrollIntoView({ block: "nearest" });
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [tab, ordered, current]);
 
   if (!hasAdminAccess) {
     return (
@@ -402,32 +316,23 @@ export default function ClassificationPage() {
     );
   }
 
-  /** After a decision, move to the next open account in grid order. */
-  async function afterSave(code: string) {
-    const index = ordered.findIndex((row) => row.account_code === code);
-    const next = ordered
-      .slice(index + 1)
-      .find((row) => sectionOf(row) !== "confirmed");
-    setFeedback({ tone: "success", text: COPY.panel.saved });
-    await table.mutate();
-    if (next) setSelected(next.account_code);
-  }
-
   function natureCreated(nature: NatureView) {
     const forCode = creatingFor;
     setCreatingFor(undefined);
-    setFeedback({ tone: "success", text: COPY.natures.created(nature.natureza) });
+    setFeedback({
+      tone: "success",
+      text: COPY.natures.created(nature.natureza),
+    });
     void table.mutate().then(() => {
       if (forCode) {
-        setSelected(forCode);
-        setDraft(nature.account_id);
         setTab("accounts");
+        setPending({ code: forCode, accountId: nature.account_id });
       }
     });
   }
 
   return (
-    <PageContainer className="max-w-[1440px]">
+    <PageContainer className="max-w-[1280px]">
       <BackLink href="/ton/administracao" label={COPY.back} />
       <PageHeader
         eyebrow={COPY.eyebrow}
@@ -439,7 +344,8 @@ export default function ClassificationPage() {
             icon={SvgDownload}
             onClick={() =>
               void downloadWorkbook().then((ok) => {
-                if (!ok) setFeedback({ tone: "error", text: COPY.exportFailed });
+                if (!ok)
+                  setFeedback({ tone: "error", text: COPY.exportFailed });
               })
             }
           >
@@ -460,67 +366,61 @@ export default function ClassificationPage() {
             <Tabs.Trigger value="natures">{COPY.tabs.natures}</Tabs.Trigger>
           </Tabs.List>
           <Tabs.Content value="accounts">
-            <div className="flex flex-col gap-4 pt-4">
-              <AssistantCard table={table.data} onChanged={table.mutate} />
-              <RecomputeBanner table={table.data} onDone={table.mutate} />
-              <FeedbackLine feedback={feedback} />
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start">
-                <div className="flex flex-col gap-3 lg:col-span-7">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="min-w-[14rem] flex-1">
-                      <InputTypeIn
-                        searchIcon
-                        aria-label={COPY.list.search}
-                        placeholder={COPY.list.search}
-                        value={query}
-                        onChange={(event) => setQuery(event.target.value)}
-                      />
-                    </div>
-                    {confirmedCount > 0 && (
-                      <Button
-                        size="sm"
-                        prominence="tertiary"
-                        onClick={() => setShowConfirmed((value) => !value)}
-                      >
-                        {showConfirmed
-                          ? COPY.list.hideConfirmed
-                          : COPY.list.showConfirmed(confirmedCount)}
-                      </Button>
-                    )}
-                    <Text font="secondary-body" color="text-03">
-                      {COPY.list.keyboardHint}
-                    </Text>
-                  </div>
-                  <AccountGrid
-                    rows={ordered}
-                    natures={table.data.natures}
-                    selected={current?.account_code ?? null}
-                    showConfirmed={showConfirmed}
-                    onSelect={(code) => {
-                      if (code !== current?.account_code) setDraft(null);
-                      setSelected(code);
-                    }}
-                    onPick={(code, accountId) => {
-                      setSelected(code);
-                      setDraft(accountId);
-                    }}
-                    onNewNature={(code) => setCreatingFor(code)}
+            <div className="flex flex-col gap-3 pt-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="w-full sm:w-72">
+                  <InputTypeIn
+                    searchIcon
+                    aria-label={COPY.search}
+                    placeholder={COPY.search}
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
                   />
                 </div>
-                <div className="lg:col-span-5 lg:sticky lg:top-4">
-                  <AccountPanel
-                    key={current?.account_code ?? "none"}
-                    row={current}
+                <div className="w-full sm:w-56">
+                  <InputSingleSelect
+                    value={filter}
+                    onValueChange={(value) => setFilter(value as Filter)}
+                  >
+                    <InputSingleSelect.Trigger
+                      placeholder={COPY.filters.label}
+                      aria-label={COPY.filters.label}
+                    />
+                    <InputSingleSelect.Content>
+                      <InputSingleSelect.Item value="open">
+                        {COPY.filters.open(counts.open)}
+                      </InputSingleSelect.Item>
+                      <InputSingleSelect.Item value="confirmed">
+                        {COPY.filters.confirmed(counts.confirmed)}
+                      </InputSingleSelect.Item>
+                      <InputSingleSelect.Item value="all">
+                        {COPY.filters.all(counts.all)}
+                      </InputSingleSelect.Item>
+                    </InputSingleSelect.Content>
+                  </InputSingleSelect>
+                </div>
+                <span className="ms-auto">
+                  <Actions
                     table={table.data}
-                    draft={draft}
-                    onDraft={setDraft}
-                    onNewNature={() =>
-                      setCreatingFor(current?.account_code ?? null)
-                    }
-                    onSaved={(code) => void afterSave(code)}
+                    onChanged={table.mutate}
+                    onFeedback={setFeedback}
                   />
-                </div>
+                </span>
               </div>
+              {(feedback || table.data.changes_since_calculation > 0) && (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <FeedbackLine feedback={feedback} />
+                  <RecomputeLink table={table.data} onDone={table.mutate} />
+                </div>
+              )}
+              <AccountGrid
+                table={table.data}
+                rows={visible}
+                onNewNature={(code) => setCreatingFor(code)}
+                onSaved={table.mutate}
+                pending={pending}
+                onPendingUsed={() => setPending(null)}
+              />
             </div>
           </Tabs.Content>
           <Tabs.Content value="natures">

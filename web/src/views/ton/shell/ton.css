@@ -749,14 +749,26 @@ html:has(.ton-shell) body {
   }
 }
 
-/* Classification grid: section rows and compact inline selects. */
-.ton-classification-grid tr[data-type="SECTION"] td {
-  background: var(--background-neutral-01);
-  padding-top: 0.75rem;
-  padding-bottom: 0.5rem;
-  cursor: default;
-}
-.ton-classification-grid td,
-.ton-classification-grid th {
+/* Classification grid: a plain spreadsheet. Text left, amounts right. */
+.ton-classification-grid th,
+.ton-classification-grid td {
+  text-align: start;
   vertical-align: middle;
+  white-space: normal;
+}
+.ton-classification-grid tbody th {
+  position: static;
+  min-width: 0;
+}
+.ton-classification-grid [data-numeric] {
+  text-align: end;
+  white-space: nowrap;
+}
+.ton-classification-grid tr[data-type="DETAIL"] td {
+  background: var(--background-neutral-01);
+  padding-top: 0.25rem;
+  padding-bottom: 0.75rem;
+}
+.ton-classification-grid tr[data-type="DETAIL"] {
+  border-top: none;
 }

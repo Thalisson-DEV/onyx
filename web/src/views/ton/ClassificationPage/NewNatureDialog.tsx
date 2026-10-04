@@ -114,10 +114,10 @@ export default function NewNatureDialog({
             )}
             <div className="flex justify-end gap-2">
               <Button prominence="tertiary" disabled={busy} onClick={onClose}>
-                {CLASSIFICATION_COPY.panel.cancel}
+                {CLASSIFICATION_COPY.change.cancel}
               </Button>
               <Button disabled={!ready || busy} onClick={() => void save()}>
-                {busy ? CLASSIFICATION_COPY.panel.saving : COPY.save}
+                {busy ? CLASSIFICATION_COPY.saving : COPY.save}
               </Button>
             </div>
           </div>

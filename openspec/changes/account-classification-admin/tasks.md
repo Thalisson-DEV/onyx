@@ -27,6 +27,14 @@
   aguardando, sem classificação, sugestão diferente, confirmadas), busca e diálogo de revisão
 - [ ] 3.2 Tela de regras de pré-classificação
 
+- [x] 3.3 Revisão 2 (2026-10-04, pedido do Thalisson): grade no estilo da planilha (natureza escolhida
+  na linha, com "+ Nova natureza…"), painel lateral no lugar do modal (pergunta que decide, hoje × sugestão,
+  impacto na DRE, lançamentos de exemplo, perguntar ao assistente), resumo do assistente no topo,
+  confirmação em lote das contas em que TON e assistente concordam, seções "Precisam de você" /
+  "O assistente concorda" / "Confirmadas", aviso de decisões que ainda não entraram na DRE
+- [x] 3.4 Aba "Naturezas e grupos da DRE" (equivalente à AUXILIARES): criar natureza nova num grupo da DRE
+  cria a conta canônica e uma nova versão da estrutura da DRE com a linha própria (migração `c4f2a9e6b1d3`)
+
 ## 4. Validação
 
 - [ ] 4.1 Testes de versão, importação como proposta, conta nova e regra: unitários da origem,

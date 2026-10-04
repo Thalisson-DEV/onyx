@@ -7,7 +7,7 @@ mapping on their own. Every route here is TON-administrator only.
 """
 
 import datetime
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
 from uuid import UUID
@@ -17,11 +17,13 @@ from sqlalchemy.orm import Session
 
 from onyx.db.enums import Permission
 from onyx.db.models import User
+from onyx.db.ton import dre as dre_repository
 from onyx.db.ton.acl import is_ton_administrator
 from onyx.db.ton.audit import emit_ton_audit_event
 from onyx.db.ton.enums import TonAuditResourceKind
-from onyx.db.ton.financial_domain import create_mapping
+from onyx.db.ton.financial_domain import create_account, create_mapping
 from onyx.db.ton.models import (
+    AccountClassificationBriefing,
     AccountClassificationReview,
     AccountClassificationSuggestion,
     BusinessUnit,
@@ -45,16 +47,27 @@ from onyx.ton.account_classification.logic import (
     prefix_pattern,
 )
 from onyx.ton.account_classification.models import (
+    BriefingView,
     ClassificationChange,
     ClassificationConfirm,
+    ClassificationConfirmBatch,
     ClassificationOrigin,
     ClassificationRow,
     ClassificationStatus,
     ClassificationTable,
+    DreGroupView,
+    EntryView,
+    NatureCreate,
     NatureView,
     SuggestionView,
 )
-from onyx.ton.financial_domain.models import MappingCreate, MappingKind
+from onyx.ton.dre.models import (
+    DreAccountAssignment,
+    DreLineDefinition,
+    DreLineType,
+    DreVersionCreate,
+)
+from onyx.ton.financial_domain.models import AccountCreate, MappingCreate, MappingKind
 from onyx.utils.audit import AuditAction, AuditOutcome
 
 OUT_OF_RESULT = "Fora do resultado"
@@ -106,43 +119,83 @@ def resolve_source_id(session: Session, source_id: UUID | None) -> UUID:
     return found
 
 
-def _dre_groups(session: Session) -> dict[UUID, str]:
-    """Account -> parent DRE line label, from the newest version of each
-    structure."""
+@dataclass
+class _DreLayout:
+    """Where each natureza sits in the managerial DRE (newest version)."""
+
+    version: DreStructureVersion | None
+    account_group: dict[UUID, tuple[str, str]]
+    groups: list[DreGroupView]
+
+
+def _newest_version(session: Session) -> DreStructureVersion | None:
+    """Newest version of the structure with the most account assignments."""
     versions = session.scalars(
         sa.select(DreStructureVersion).order_by(DreStructureVersion.number.desc())
     ).all()
     newest: dict[UUID, DreStructureVersion] = {}
     for version in versions:
         newest.setdefault(version.structure_id, version)
-    result: dict[UUID, str] = {}
-    for version in newest.values():
-        labels = {line["code"]: line for line in version.lines}
-        for item in session.scalars(
-            sa.select(DreAccountMapping).where(
-                DreAccountMapping.version_id == version.id
+    if not newest:
+        return None
+    sizes = dict(
+        session.execute(
+            sa.select(DreAccountMapping.version_id, sa.func.count())
+            .where(
+                DreAccountMapping.version_id.in_([item.id for item in newest.values()])
             )
-        ):
-            line = labels.get(item.line_code)
-            parent = labels.get(line.get("parent_code")) if line else None
-            label = (parent or line or {}).get("label")
-            if label:
-                result.setdefault(item.account_id, label)
-    return result
+            .group_by(DreAccountMapping.version_id)
+        ).all()
+    )
+    return max(newest.values(), key=lambda item: sizes.get(item.id, 0))
 
 
-def _natures(session: Session) -> list[NatureView]:
-    groups = _dre_groups(session)
-    return [
-        NatureView(
-            account_id=account.id,
-            natureza=account.label,
-            dre_group=groups.get(account.id, OUT_OF_RESULT),
-        )
-        for account in session.scalars(
-            sa.select(FinancialAccount).order_by(FinancialAccount.code)
+def _dre_layout(session: Session) -> _DreLayout:
+    version = _newest_version(session)
+    if version is None:
+        return _DreLayout(None, {}, [])
+    lines = {line["code"]: line for line in version.lines}
+    groups = [
+        DreGroupView(code=line["code"], label=line["label"])
+        for line in sorted(version.lines, key=lambda item: item["position"])
+        if line["line_type"] == DreLineType.SUBTOTAL.value
+        and any(
+            child.get("parent_code") == line["code"]
+            and child["line_type"] == DreLineType.SOURCE_SUM.value
+            for child in version.lines
         )
     ]
+    account_group: dict[UUID, tuple[str, str]] = {}
+    for item in session.scalars(
+        sa.select(DreAccountMapping).where(DreAccountMapping.version_id == version.id)
+    ):
+        line = lines.get(item.line_code)
+        parent = lines.get(line.get("parent_code")) if line else None
+        target = parent or line
+        if target:
+            account_group[item.account_id] = (target["code"], target["label"])
+    return _DreLayout(version, account_group, groups)
+
+
+def _natures(
+    session: Session, layout: _DreLayout, usage: dict[UUID, int]
+) -> list[NatureView]:
+    result = []
+    for account in session.scalars(
+        sa.select(FinancialAccount).order_by(FinancialAccount.code)
+    ):
+        group = layout.account_group.get(account.id)
+        result.append(
+            NatureView(
+                account_id=account.id,
+                code=account.code,
+                natureza=account.label,
+                dre_group=group[1] if group else OUT_OF_RESULT,
+                dre_group_code=group[0] if group else None,
+                accounts=usage.get(account.id, 0),
+            )
+        )
+    return result
 
 
 @dataclass
@@ -290,14 +343,23 @@ def classification_table(
     _require_admin(user)
     source = get_source(session, user, resolve_source_id(session, source_id))
     run = _latest_run(session)
-    natures = _natures(session)
+    current = _current_mappings(session, source.id)
+    layout = _dre_layout(session)
+    natures = _natures(
+        session,
+        layout,
+        Counter(
+            entry.mapping.account_id
+            for entry in current.values()
+            if entry.mapping.account_id is not None
+        ),
+    )
     nature_by_id = {item.account_id: item for item in natures}
     bases = dict(
         session.execute(
             sa.select(FinancialAccount.id, FinancialAccount.actual_amount_basis)
         ).all()
     )
-    current = _current_mappings(session, source.id)
     reviews = _latest_by_code(session, AccountClassificationReview, source.id)
     suggestions = _latest_by_code(session, AccountClassificationSuggestion, source.id)
     usage, periods = _usage(session, source.id, run.id if run else None)
@@ -382,6 +444,7 @@ def classification_table(
                     natureza=suggested.natureza,
                     confidence=suggestion.confidence,
                     rationale=suggestion.rationale,
+                    question=suggestion.question,
                     model_name=suggestion.model_name,
                     created_at=suggestion.created_at,
                     agrees_with_current=nature is not None
@@ -399,6 +462,8 @@ def classification_table(
                 reason=reason,
                 decided_by=names.get(author) if author else None,
                 decided_at=when,
+                decided_by_person=decided is not None
+                and decided.created_by is not None,
                 entries=uses.entries,
                 total_amount=_cents(uses.final if final_basis else uses.movement),
                 monthly={key: _cents(monthly.get(key, Decimal(0))) for key in periods},
@@ -413,7 +478,48 @@ def classification_table(
         normalization_run_id=run.id if run else None,
         periods=periods,
         natures=natures,
+        groups=layout.groups,
         rows=rows,
+        briefing=_latest_briefing(session, source.id),
+        changes_since_calculation=_changes_since(session, source.id, run),
+    )
+
+
+def _latest_briefing(session: Session, source_id: UUID) -> BriefingView | None:
+    item = session.scalar(
+        sa.select(AccountClassificationBriefing)
+        .where(AccountClassificationBriefing.source_id == source_id)
+        .order_by(AccountClassificationBriefing.created_at.desc())
+        .limit(1)
+    )
+    if item is None:
+        return None
+    return BriefingView(
+        summary=item.summary, model_name=item.model_name, created_at=item.created_at
+    )
+
+
+def _changes_since(
+    session: Session, source_id: UUID, run: FinancialNormalizationRun | None
+) -> int:
+    """Account mapping versions the latest normalization does not include yet."""
+    if run is None:
+        return 0
+    return int(
+        session.scalar(
+            sa.select(sa.func.count())
+            .select_from(FinancialMapping)
+            .join(
+                FinancialMappingRevision,
+                FinancialMappingRevision.id == FinancialMapping.revision_id,
+            )
+            .where(
+                FinancialMapping.source_id == source_id,
+                FinancialMapping.kind == MappingKind.ACCOUNT.value,
+                FinancialMappingRevision.number > run.mapping_revision_number,
+            )
+        )
+        or 0
     )
 
 
@@ -611,6 +717,7 @@ def record_suggestions(
                 method="AI",
                 confidence=item.confidence.value,
                 rationale=item.rationale,
+                question=item.question,
                 model_name=model_name,
                 evidence=evidence.get(item.code, {}),
                 created_by=user.id,
@@ -628,3 +735,207 @@ def record_suggestions(
         extra={"suggested": count, "model": model_name},
     )
     return count
+
+
+def record_briefing(
+    session: Session,
+    user: User,
+    source_id: UUID,
+    summary: str,
+    model_name: str | None,
+    codes: list[str],
+) -> None:
+    session.add(
+        AccountClassificationBriefing(
+            source_id=source_id,
+            summary=summary,
+            model_name=model_name,
+            account_codes=codes,
+            created_by=user.id,
+        )
+    )
+    session.flush()
+
+
+def confirm_batch(
+    session: Session, user: User, source_id: UUID, request: ClassificationConfirmBatch
+) -> int:
+    """Confirm several codes at once with one note (e.g. every code where the
+    current natureza and the assistant agree)."""
+    note = (request.note or "").strip() or (
+        "Confirmada em lote: classificação atual e assistente concordam"
+    )
+    count = 0
+    for code in dict.fromkeys(request.account_codes):
+        confirm_classification(
+            session,
+            user,
+            source_id,
+            ClassificationConfirm(account_code=code, note=note),
+        )
+        count += 1
+    return count
+
+
+def list_entries(
+    session: Session, user: User, source_id: UUID, code: str, limit: int
+) -> list[EntryView]:
+    """Largest entries of a code in the latest normalization."""
+    _require_admin(user)
+    get_source(session, user, source_id)
+    run = _latest_run(session)
+    if run is None:
+        return []
+    rows = session.execute(
+        sa.select(
+            ParsedSourceRecord.emission_date,
+            ParsedSourceRecord.administrative_unit,
+            ParsedSourceRecord.document_number,
+            ParsedSourceRecord.history,
+            FinancialActualFact.movement_amount,
+        )
+        .join(
+            FinancialActualFact,
+            FinancialActualFact.parsed_record_id == ParsedSourceRecord.id,
+        )
+        .where(
+            FinancialActualFact.run_id == run.id,
+            ParsedSourceRecord.source_id == source_id,
+            ParsedSourceRecord.account_code == code,
+        )
+        .order_by(
+            sa.func.abs(sa.func.coalesce(FinancialActualFact.movement_amount, 0)).desc()
+        )
+        .limit(limit)
+    ).all()
+    return [
+        EntryView(
+            date=date,
+            unit=_unit_name(unit),
+            document=document,
+            history=" ".join((history or "").split()),
+            amount=_cents(amount) if amount is not None else None,
+        )
+        for date, unit, document, history, amount in rows
+    ]
+
+
+def _unit_name(value: str | None) -> str | None:
+    """NG units come as '000009 - MOSSORÓ-RN '."""
+    if not value:
+        return None
+    return value.split(" - ", 1)[-1].strip()
+
+
+def create_nature(session: Session, user: User, request: NatureCreate) -> NatureView:
+    """New natureza under a DRE group: a canonical account plus a new DRE
+    structure version with its own line, like a row added to AUXILIARES."""
+    _require_admin(user)
+    name = " ".join(request.natureza.split()).upper()
+    if session.scalar(
+        sa.select(FinancialAccount.id).where(
+            sa.func.upper(FinancialAccount.label) == name
+        )
+    ):
+        raise OnyxError(OnyxErrorCode.CONFLICT, "Natureza already exists")
+    layout = _dre_layout(session)
+    group = next(
+        (item for item in layout.groups if item.code == request.dre_group_code), None
+    )
+    if layout.version is None or group is None:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Unknown DRE group")
+    lines = [DreLineDefinition.model_validate(item) for item in layout.version.lines]
+    siblings = [
+        line
+        for line in lines
+        if line.parent_code == group.code and line.line_type == DreLineType.SOURCE_SUM
+    ]
+    prefix = group.code.lstrip("g")
+    number = 1 + max(
+        (
+            int(line.code.rsplit(".", 1)[-1])
+            for line in siblings
+            if line.code.rsplit(".", 1)[-1].isdigit()
+        ),
+        default=0,
+    )
+    line_code = f"n{prefix}.{number:02d}"
+    account_code = f"{prefix}.{number:02d}"
+    while session.scalar(
+        sa.select(FinancialAccount.id).where(FinancialAccount.code == account_code)
+    ):
+        number += 1
+        line_code, account_code = f"n{prefix}.{number:02d}", f"{prefix}.{number:02d}"
+    template = (
+        session.scalar(
+            sa.select(DreAccountMapping.account_id)
+            .where(
+                DreAccountMapping.version_id == layout.version.id,
+                DreAccountMapping.line_code == siblings[-1].code,
+            )
+            .limit(1)
+        )
+        if siblings
+        else None
+    )
+    sibling_account = session.get(FinancialAccount, template) if template else None
+    account = create_account(
+        session,
+        user,
+        AccountCreate(
+            code=account_code,
+            label=name,
+            dre_classification=(
+                sibling_account.dre_classification if sibling_account else "EXPENSE"
+            ),
+            actual_amount_basis=(
+                sibling_account.actual_amount_basis if sibling_account else "MOVEMENT"
+            ),
+        ),
+    )
+    anchor = max(
+        (line.position for line in siblings),
+        default=next(line.position for line in lines if line.code == group.code),
+    )
+    shifted = [
+        line.model_copy(update={"position": line.position + 1})
+        if line.position > anchor
+        else line
+        for line in lines
+    ]
+    shifted.append(
+        DreLineDefinition(
+            code=line_code,
+            label=name.capitalize(),
+            position=anchor + 1,
+            parent_code=group.code,
+            line_type=DreLineType.SOURCE_SUM,
+        )
+    )
+    current = dre_repository.get_latest_version(
+        session, user, layout.version.structure_id
+    )
+    assignments = [*current.assignments]
+    assignments.append(
+        DreAccountAssignment(
+            account_id=account.id, line_code=line_code, status="APPROVED"
+        )
+    )
+    dre_repository.create_version(
+        session,
+        user,
+        layout.version.structure_id,
+        DreVersionCreate(
+            lines=sorted(shifted, key=lambda line: line.position),
+            assignments=assignments,
+            reason=f"Nova natureza {name}: {request.reason.strip()}"[:500],
+        ),
+    )
+    return NatureView(
+        account_id=account.id,
+        code=account.code,
+        natureza=account.label,
+        dre_group=group.label,
+        dre_group_code=group.code,
+        accounts=0,
+    )

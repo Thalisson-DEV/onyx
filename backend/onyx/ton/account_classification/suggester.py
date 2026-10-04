@@ -12,11 +12,15 @@ from onyx.llm.interfaces import LLM
 from onyx.llm.models import SystemMessage, UserMessage
 from onyx.llm.utils import llm_response_to_string
 from onyx.ton.account_classification.logic import (
+    BRIEFING_PROMPT,
     SYSTEM_PROMPT,
+    BriefingItem,
     ParsedSuggestion,
     SuggestionInput,
     batches,
+    build_briefing_prompt,
     build_prompt,
+    parse_briefing,
     parse_suggestions,
 )
 from onyx.utils.logger import setup_logger
@@ -74,7 +78,7 @@ def suggest(
             for batch in batches(targets)
         ],
         allow_failures=True,
-        max_workers=4,
+        max_workers=8,
     )
     for output in outputs:
         if output is None:
@@ -85,3 +89,22 @@ def suggest(
     covered = {item.code for item in result.suggestions} | set(result.skipped)
     result.skipped.extend(item.code for item in targets if item.code not in covered)
     return result
+
+
+def write_briefing(items: Sequence[BriefingItem], llm: LLM | None = None) -> str | None:
+    """Plain-language summary of the pending review; None when the model fails."""
+    if not items:
+        return None
+    model = llm or get_default_llm(timeout=LLM_TIMEOUT_SECONDS, temperature=0)
+    try:
+        response = model.invoke(
+            [
+                SystemMessage(content=BRIEFING_PROMPT),
+                UserMessage(content=build_briefing_prompt(items)),
+            ],
+            timeout_override=LLM_TIMEOUT_SECONDS,
+        )
+        return parse_briefing(llm_response_to_string(response))
+    except Exception:
+        logger.exception("TON account classification briefing failed")
+        return None

@@ -8,12 +8,15 @@ from uuid import uuid4
 from openpyxl import load_workbook
 
 from onyx.ton.account_classification.logic import (
+    BriefingItem,
     SuggestionInput,
     batches,
+    build_briefing_prompt,
     build_prompt,
     code_prefixes,
     default_status,
     infer_origin,
+    parse_briefing,
     parse_suggestions,
     prefix_pattern,
 )
@@ -80,7 +83,8 @@ def test_parse_keeps_only_known_codes_and_natures() -> None:
     text = """```json
     {"sugestoes": [
       {"codigo": "3.1.0001", "natureza": "folha", "confianca": "ALTA",
-       "justificativa": "Salário pago no NG."},
+       "justificativa": "Salário pago no NG.",
+       "pergunta": "Salário líquido   pago no NG entra como FOLHA?"},
       {"codigo": "4.1", "natureza": "MÚTUO", "confianca": "ALTA",
        "justificativa": "Natureza inventada."},
       {"codigo": "9.9.9999", "natureza": "FOLHA", "confianca": "ALTA",
@@ -97,6 +101,44 @@ def test_parse_keeps_only_known_codes_and_natures() -> None:
         ("7.2", "MOVIMENTOS NÃO GERENCIAIS", SuggestionConfidence.MEDIUM),
     ]
     assert outcome.rejected == ["4.1"]
+    assert outcome.suggestions[0].question == (
+        "Salário líquido pago no NG entra como FOLHA?"
+    )
+    assert outcome.suggestions[1].question is None
+
+
+def test_briefing_prompt_and_parse() -> None:
+    items = [
+        BriefingItem(
+            code="3.1.0020",
+            description="Emprestimo Consignado",
+            current="FOLHA",
+            current_group="2 CUSTOS MÃO DE OBRA",
+            suggested="MOVIMENTOS NÃO GERENCIAIS",
+            suggested_group="Fora do resultado",
+            confidence=SuggestionConfidence.MEDIUM,
+            total_amount="-928548.04",
+            question="Consignado é custo ou repasse?",
+        ),
+        BriefingItem(
+            code="4.1",
+            description="Delta Park (R)",
+            current="MOVIMENTOS NÃO GERENCIAIS",
+            current_group="Fora do resultado",
+            suggested="MOVIMENTOS NÃO GERENCIAIS",
+            suggested_group="Fora do resultado",
+            confidence=SuggestionConfidence.HIGH,
+            total_amount="172380.66",
+            question="Mútuo fica fora?",
+        ),
+    ]
+    prompt = build_briefing_prompt(items)
+    assert "3.1.0020" in prompt and "| diverge" in prompt and "| concorda" in prompt
+    assert "pergunta: Consignado é custo ou repasse?" in prompt
+    assert "Mútuo fica fora?" not in prompt
+    assert parse_briefing('{"resumo": "  Tudo certo.  "}') == "Tudo certo."
+    assert parse_briefing("sem json") is None
+    assert parse_briefing('{"resumo": ""}') is None
 
 
 def test_parse_rejects_everything_on_garbage() -> None:
@@ -130,16 +172,21 @@ def test_prompt_carries_evidence_and_truncates_history() -> None:
     assert "ainda não confirmada: MOVIMENTOS NÃO GERENCIAIS" in prompt
     history_line = next(line for line in prompt.splitlines() if "FUNDO FIXO" in line)
     assert len(history_line) <= len("Histórico: ") + 140
-    assert [len(batch) for batch in batches([_target(str(i)) for i in range(23)])] == [
-        10,
-        10,
-        3,
+    assert [len(batch) for batch in batches([_target(str(i)) for i in range(12)])] == [
+        5,
+        5,
+        2,
     ]
 
 
 def test_workbook_lists_rows_with_review_columns() -> None:
     nature = NatureView(
-        account_id=uuid4(), natureza="FOLHA", dre_group="2 CUSTOS MÃO DE OBRA"
+        account_id=uuid4(),
+        code="2.01",
+        natureza="FOLHA",
+        dre_group="2 CUSTOS MÃO DE OBRA",
+        dre_group_code="g2",
+        accounts=1,
     )
     table = ClassificationTable(
         source_id=uuid4(),
@@ -147,6 +194,9 @@ def test_workbook_lists_rows_with_review_columns() -> None:
         normalization_run_id=None,
         periods=["2026-05", "2026-06"],
         natures=[nature],
+        groups=[],
+        briefing=None,
+        changes_since_calculation=0,
         rows=[
             ClassificationRow(
                 account_code="3.1.0001",
@@ -159,6 +209,7 @@ def test_workbook_lists_rows_with_review_columns() -> None:
                 reason="Folha paga no NG",
                 decided_by=None,
                 decided_at=None,
+                decided_by_person=False,
                 entries=2,
                 total_amount=Decimal("-10.50"),
                 monthly={"2026-05": Decimal("-4"), "2026-06": Decimal("-6.5")},

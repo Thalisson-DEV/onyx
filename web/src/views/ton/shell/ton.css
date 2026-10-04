@@ -748,3 +748,15 @@ html:has(.ton-shell) body {
     border: none !important;
   }
 }
+
+/* Classification grid: section rows and compact inline selects. */
+.ton-classification-grid tr[data-type="SECTION"] td {
+  background: var(--background-neutral-01);
+  padding-top: 0.75rem;
+  padding-bottom: 0.5rem;
+  cursor: default;
+}
+.ton-classification-grid td,
+.ton-classification-grid th {
+  vertical-align: middle;
+}

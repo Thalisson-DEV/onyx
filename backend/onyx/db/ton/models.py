@@ -1566,6 +1566,8 @@ class AccountClassificationSuggestion(Base):
     method: Mapped[str] = mapped_column(String(16), nullable=False)
     confidence: Mapped[str] = mapped_column(String(16), nullable=False)
     rationale: Mapped[str] = mapped_column(String(1000), nullable=False)
+    # The one business question the Controladoria answers to decide the code.
+    question: Mapped[str | None] = mapped_column(String(300))
     model_name: Mapped[str | None] = mapped_column(String(200))
     evidence: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     created_by: Mapped[UUID | None] = mapped_column(
@@ -1586,6 +1588,36 @@ class AccountClassificationSuggestion(Base):
             "ix_ton_account_classification_suggestion_key",
             "source_id",
             "account_code",
+            "created_at",
+        ),
+    )
+
+
+class AccountClassificationBriefing(Base):
+    """Append-only plain-language summary the assistant writes for a review."""
+
+    __tablename__ = "ton_account_classification_briefing"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_source.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    summary: Mapped[str] = mapped_column(String(1500), nullable=False)
+    model_name: Mapped[str | None] = mapped_column(String(200))
+    account_codes: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        Index(
+            "ix_ton_account_classification_briefing_source",
+            "source_id",
             "created_at",
         ),
     )

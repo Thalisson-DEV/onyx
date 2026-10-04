@@ -25,8 +25,11 @@ ANALOGY_MARKER = "ausente do BANCO DE DADOS"
 WORKBOOK_MARKER = "BANCO DE DADOS"
 SAMPLE_HISTORY_LIMIT = 4
 SAMPLE_HISTORY_CHARS = 140
-SUGGESTION_BATCH_SIZE = 10
+# Small batches run in parallel: answer length, not prompt size, sets latency.
+SUGGESTION_BATCH_SIZE = 5
 RATIONALE_CHARS = 900
+QUESTION_CHARS = 300
+BRIEFING_CHARS = 1500
 
 CONFIDENCE_ALIASES = {
     "HIGH": SuggestionConfidence.HIGH,
@@ -98,6 +101,7 @@ class ParsedSuggestion:
     natureza: str
     confidence: SuggestionConfidence
     rationale: str
+    question: str | None = None
 
 
 @dataclass
@@ -120,10 +124,15 @@ são receita nem custo vão para MOVIMENTOS NÃO GERENCIAIS.
 - A sugestão será revisada por uma pessoa da Controladoria; não invente fatos.
 - Escreva a justificativa em português do Brasil, em até duas frases, sem jargão \
 de TI.
+- Escreva também a PERGUNTA: a única pergunta, em uma frase curta, que a \
+controladora precisa responder para decidir esta conta. Ela deve ser respondível \
+por quem conhece a empresa, sem olhar sistema. Exemplos: "O consignado é custo da \
+empresa ou só repasse ao banco do desconto do empregado?"; "Salário líquido pago \
+no NG entra na DRE como FOLHA?".
 
 Responda apenas com JSON, sem texto fora dele, no formato:
 {"sugestoes": [{"codigo": "...", "natureza": "...", "confianca": "ALTA|MEDIA|BAIXA", \
-"justificativa": "..."}]}"""
+"justificativa": "...", "pergunta": "..."}]}"""
 
 
 def build_prompt(
@@ -204,6 +213,7 @@ def parse_suggestions(
             str(item.get("confianca") or "").strip().upper()
         )
         rationale = str(item.get("justificativa") or "").strip()
+        question = " ".join(str(item.get("pergunta") or "").split())
         if nature is None or confidence is None or not rationale:
             continue
         seen.add(code)
@@ -213,6 +223,7 @@ def parse_suggestions(
                 natureza=nature,
                 confidence=confidence,
                 rationale=rationale[:RATIONALE_CHARS],
+                question=question[:QUESTION_CHARS] or None,
             )
         )
     outcome.rejected = sorted(expected - seen)
@@ -224,3 +235,57 @@ def batches(items: Sequence[SuggestionInput]) -> list[list[SuggestionInput]]:
         list(items[start : start + SUGGESTION_BATCH_SIZE])
         for start in range(0, len(items), SUGGESTION_BATCH_SIZE)
     ]
+
+
+BRIEFING_PROMPT = """Você é o assistente do TON e prepara a controladora da Vale \
+Norte para revisar a classificação de contas do NG. Abaixo estão as contas que \
+aguardam decisão, com a classificação atual e a sua sugestão.
+
+Escreva um resumo em português do Brasil, em 3 a 5 frases curtas, sem jargão de TI:
+- em quantas contas você concorda com a classificação atual, que podem ser \
+confirmadas de uma vez;
+- quais precisam de atenção, agrupadas por tema (ex.: descontos do empregado \
+repassados a terceiros), com a pergunta de negócio que decide cada tema;
+- o que muda na DRE se as sugestões forem aceitas, sem inventar valores além dos \
+fornecidos.
+
+Responda apenas com JSON: {"resumo": "..."}"""
+
+
+@dataclass(frozen=True)
+class BriefingItem:
+    code: str
+    description: str
+    current: str | None
+    current_group: str | None
+    suggested: str
+    suggested_group: str
+    confidence: SuggestionConfidence
+    total_amount: str
+    question: str | None
+
+
+def build_briefing_prompt(items: Sequence[BriefingItem]) -> str:
+    lines = ["CONTAS (código | descrição | atual -> sugerida | confiança | total R$):"]
+    for item in items:
+        agrees = item.current == item.suggested
+        lines.append(
+            f"- {item.code} | {item.description} | "
+            f"{item.current or 'sem natureza'} ({item.current_group or '-'}) -> "
+            f"{item.suggested} ({item.suggested_group}) | {item.confidence.value} | "
+            f"{item.total_amount} | {'concorda' if agrees else 'diverge'}"
+        )
+        if item.question and not agrees:
+            lines.append(f"  pergunta: {item.question}")
+    return "\n".join(lines)
+
+
+def parse_briefing(text: str) -> str | None:
+    try:
+        payload = _json_payload(text)
+    except (ValueError, json.JSONDecodeError):
+        return None
+    summary = payload.get("resumo") if isinstance(payload, dict) else None
+    if not isinstance(summary, str) or not summary.strip():
+        return None
+    return summary.strip()[:BRIEFING_CHARS]

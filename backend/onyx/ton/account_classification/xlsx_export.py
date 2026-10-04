@@ -94,6 +94,7 @@ def build_workbook(
         ("Padrão do prefixo", 30),
         ("Sugestão do assistente", 26),
         ("Confiança", 10),
+        ("Pergunta para a Controladoria", 44),
         ("Justificativa da sugestão", 52),
         ("Lançamentos", 11),
         ("Total (R$)", 15),
@@ -135,6 +136,7 @@ def build_workbook(
             pattern,
             suggestion.natureza if suggestion else "",
             CONFIDENCE_LABELS[suggestion.confidence] if suggestion else "",
+            (suggestion.question or "") if suggestion else "",
             suggestion.rationale if suggestion else "",
             item.entries,
         ]

@@ -39,16 +39,14 @@ export default function NaturesTab({
         </span>
       </div>
       <div className="ton-card overflow-x-auto">
-        <table className="ton-statement w-full min-w-[560px] border-collapse">
+        <table className="ton-statement ton-classification-grid w-full min-w-[560px] border-collapse">
           <thead>
             <tr>
-              <th scope="col" className="text-start">
-                {COPY.columns.nature}
+              <th scope="col">{COPY.columns.nature}</th>
+              <th scope="col">{COPY.columns.group}</th>
+              <th scope="col" data-numeric>
+                {COPY.columns.accounts}
               </th>
-              <th scope="col" className="text-start">
-                {COPY.columns.group}
-              </th>
-              <th scope="col">{COPY.columns.accounts}</th>
             </tr>
           </thead>
           <tbody>
@@ -62,12 +60,12 @@ export default function NaturesTab({
                         {item.natureza}
                       </Text>
                     </th>
-                    <td className="text-start">
+                    <td>
                       <Text font="secondary-body" color="text-04">
                         {item.dre_group}
                       </Text>
                     </td>
-                    <td>
+                    <td data-numeric>
                       <Text font="secondary-body" color="text-05">
                         {String(item.accounts)}
                       </Text>

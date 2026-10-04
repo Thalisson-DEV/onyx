@@ -165,6 +165,9 @@ from onyx.server.security.store import seed_jwt_settings_from_env
 from onyx.server.settings.api import admin_router as settings_admin_router
 from onyx.server.settings.api import basic_router as settings_router
 from onyx.server.sso_discovery import router as sso_discovery_router
+from onyx.server.ton.account_classification import (
+    router as ton_account_classification_router,
+)
 from onyx.server.ton.agent import router as ton_agent_router
 from onyx.server.ton.client_import import router as ton_client_import_router
 from onyx.server.ton.dre import router as ton_dre_router
@@ -615,6 +618,9 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(application, ton_sources_router)
     include_router_with_global_prefix_prepended(application, ton_client_import_router)
     include_router_with_global_prefix_prepended(application, ton_agent_router)
+    include_router_with_global_prefix_prepended(
+        application, ton_account_classification_router
+    )
     include_router_with_global_prefix_prepended(
         application, ton_financial_review_router
     )

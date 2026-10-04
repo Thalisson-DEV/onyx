@@ -1496,6 +1496,101 @@ class DreStructureVersion(Base):
     )
 
 
+class AccountClassificationReview(Base):
+    """Append-only review state of one NG account code's classification.
+
+    The latest row per (source_id, account_code) wins. The classification itself
+    stays in :class:`FinancialMapping`; this row only says where it came from
+    and whether the Controladoria confirmed it.
+    """
+
+    __tablename__ = "ton_account_classification_review"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_source.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    account_code: Mapped[str] = mapped_column(String(100), nullable=False)
+    mapping_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_mapping.id", ondelete="RESTRICT"),
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    origin: Mapped[str] = mapped_column(String(32), nullable=False)
+    note: Mapped[str] = mapped_column(String(1000), nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('AWAITING_CONFIRMATION', 'CONFIRMED')",
+            name="ck_ton_account_classification_review_status",
+        ),
+        CheckConstraint(
+            "origin IN ('CONTROLLER_WORKBOOK', 'ANALOGY', 'MANUAL')",
+            name="ck_ton_account_classification_review_origin",
+        ),
+        Index(
+            "ix_ton_account_classification_review_key",
+            "source_id",
+            "account_code",
+            "created_at",
+        ),
+    )
+
+
+class AccountClassificationSuggestion(Base):
+    """Append-only pre-classification suggestion. Never applied by itself."""
+
+    __tablename__ = "ton_account_classification_suggestion"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_source.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    account_code: Mapped[str] = mapped_column(String(100), nullable=False)
+    account_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    method: Mapped[str] = mapped_column(String(16), nullable=False)
+    confidence: Mapped[str] = mapped_column(String(16), nullable=False)
+    rationale: Mapped[str] = mapped_column(String(1000), nullable=False)
+    model_name: Mapped[str | None] = mapped_column(String(200))
+    evidence: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "method IN ('AI')", name="ck_ton_account_classification_suggestion_method"
+        ),
+        CheckConstraint(
+            "confidence IN ('HIGH', 'MEDIUM', 'LOW')",
+            name="ck_ton_account_classification_suggestion_confidence",
+        ),
+        Index(
+            "ix_ton_account_classification_suggestion_key",
+            "source_id",
+            "account_code",
+            "created_at",
+        ),
+    )
+
+
 class DreAccountMapping(Base):
     __tablename__ = "ton_dre_account_mapping"
     id: Mapped[UUID] = mapped_column(

@@ -110,7 +110,7 @@ Ordem dentro da fase, conforme a reunião: (1) `ng-direct-integration`, (2) `wee
 | `history-2025-baseline` | Histórico 2025 e comparação anual | M | NG 2025 autorizado |
 | `ng-direct-integration` | Conector somente leitura via VPN, modo sombra → primário | G | TI (Celso): VPN, SGBD, usuário read-only |
 | `weekly-inconsistency-report` | E-mail semanal ao Financeiro com as inconsistências abertas; verificação de correção a cada extração (pedido da Luyla) | M | SMTP, e-mails do Financeiro |
-| `account-classification-admin` | Tabela de classificação editável no TON, conta nova acusada, regras de pré-classificação, 29 códigos a confirmar | M | Regras da Controladoria |
+| `account-classification-admin` | Tabela de classificação editável no TON, conta nova acusada, regras de pré-classificação, 29 códigos a confirmar. **Em andamento (2026-10-04):** tela `/ton/classificacao`, 29 aguardando confirmação, pré-classificação pelo assistente, confirmação/mudança versionada, Excel; faltam importação do Excel, regras da Controladoria e item no relatório semanal | M | Regras da Controladoria |
 | `zeev-integration` | BE-004C: sincronizar os fluxos Zeev escolhidos (liberações financeiras, aprovações, contratos, certidões, desligamentos) como snapshots; fatos de aprovação e SLA | G | 8 perguntas do catálogo Zeev à Luyla |
 
 **Marco:** a Luyla fecha um mês usando o Excel do TON lado a lado com o BI, com diferenças explicadas;

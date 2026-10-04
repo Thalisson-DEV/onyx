@@ -17,6 +17,7 @@ import {
   SvgServer,
   SvgShield,
   SvgSparkle,
+  SvgTag,
   SvgUsers,
   SvgLock,
 } from "@opal/icons";
@@ -30,6 +31,10 @@ import {
   useTonReportGroups,
   useTonSpecialists,
 } from "@/lib/ton/api";
+import {
+  CLASSIFICATION_COPY,
+  useClassificationTable,
+} from "@/lib/ton/classification";
 import { COPY, formatRelativeDateTime } from "@/lib/ton/copy";
 import {
   CardHeader,
@@ -111,6 +116,7 @@ export default function TonAdminPage() {
   const specialists = useTonSpecialists();
   const reports = useTonReportGroups();
   const persona = useTonPersona();
+  const classification = useClassificationTable(hasAdminAccess);
   const schedule = useSWR<R3Schedule>(
     hasAdminAccess ? "/api/ton/agent/routines/R3/schedule" : null,
     errorHandlingFetcher
@@ -217,6 +223,25 @@ export default function TonAdminPage() {
                       specialists.data.length
                     ),
                   }
+                : null
+            }
+          />
+          <AdminEntry
+            icon={SvgTag}
+            title={CLASSIFICATION_COPY.adminEntry.title}
+            description={CLASSIFICATION_COPY.adminEntry.description}
+            href="/ton/classificacao"
+            status={
+              classification.data
+                ? (() => {
+                    const open = classification.data.rows.filter(
+                      (row) => row.status !== "CONFIRMED"
+                    ).length;
+                    return {
+                      tone: open ? "warning" : "success",
+                      label: CLASSIFICATION_COPY.adminEntry.status(open),
+                    };
+                  })()
                 : null
             }
           />

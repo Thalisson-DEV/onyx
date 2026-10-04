@@ -35,7 +35,9 @@ Norte).xlsm" por script, e 29 códigos foram classificados por semelhança sem e
 ## Dependências
 
 - Regras de pré-classificação escritas pela Luyla. Não-negociável preservado: nada de classificação
-  por similaridade ou LLM como decisão; regra explícita da Controladoria + confirmação humana.
+  por similaridade ou LLM como **decisão**; a decisão é sempre confirmação humana.
+- 2026-10-04: o Thalisson decidiu que a **pré-classificação** pode usar o assistente (IA) sem esperar
+  as regras da Luyla, porque é só sugestão com justificativa e passa pela análise dela.
 
 ## Estado de dado
 

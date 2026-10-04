@@ -8,11 +8,11 @@
 
 ## 2. Assistente
 
-- [ ] 2.1 Corrigir `financial_context` para buscar os cálculos do período/escopo pedido na base mais recente (sem limite fixo de 10)
-- [ ] 2.2 Medir latência e número de chamadas das perguntas de referência na base real
-- [ ] 2.3 Reduzir etapas: ferramenta agregada de fechamento por período/escopo, instrução de parada no prompt
-- [ ] 2.4 Criar suíte de grounding (perguntas de referência × read models) e rodá-la no CI local
-- [ ] 2.5 Validar no Chrome três perguntas reais e registrar tempo e números
+- [x] 2.1 Corrigir `financial_context` para buscar os cálculos do período/escopo pedido na base mais recente (sem limite fixo de 10) — base real: 29 resultados na base mais recente (antes 10), 0,09 s
+- [x] 2.2 Medir latência e número de chamadas das perguntas de referência na base real — antes: 1,5–3 min; com a ferramenta agregada: 1 chamada, mas ~53 s numa resposta de 490 palavras (geração de texto). Prompt limitado a ~200 palavras e tabela com as linhas principais
+- [x] 2.3 Reduzir etapas: ferramenta agregada de fechamento por período/escopo, instrução de parada no prompt — `ton_get_closing_overview`; base real: 0,05–1,0 s, linhas iguais ao demonstrativo (jun consolidado e abr MOSSORÓ-RN); "Juazeiro" ambíguo devolve candidatas
+- [x] 2.4 Criar suíte de grounding (perguntas de referência × read models) e rodá-la no CI local — `backend/scripts/ton_grounding_suite.py` + `onyx/ton/agent/grounding.py` (testes unitários)
+- [x] 2.5 Validar no Chrome três perguntas reais e registrar tempo e números — 2026-10-04, base real, stream medido do envio ao fim: fechamento de junho 18,0 s (14/14 valores = demonstrativo); resultado de abril em Mossoró-RN 14,2 s (8/8); pendências que impedem a DRE 16,9 s (6/6). 1 chamada (`Fechamento do período`) em cada; primeira palavra em 8,5–10,8 s
 
 ## 3. Produto e fontes
 
@@ -28,5 +28,5 @@
 
 ## 5. Ajustes pedidos na reunião de 2026-10-03
 
-- [ ] 5.1 Renomear o filtro "Escopo" da DRE para "Unidades/filiais"
-- [ ] 5.2 Renomear o especialista PROCUREMENT para "Compras/Suprimentos" em toda a UI
+- [x] 5.1 Renomear o filtro "Escopo" da DRE para "Unidades/filiais" (rótulo "Unidade/filial", seleção única)
+- [x] 5.2 Renomear o especialista PROCUREMENT para "Compras/Suprimentos" em toda a UI

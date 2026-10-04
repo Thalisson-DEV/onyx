@@ -10,7 +10,7 @@
 - [x] 2.1 Backend: contribuintes com nome da unidade, conta do NG, histórico; ordem por data
 - [x] 2.2 Gaveta larga com tabela de lançamentos, valores sem quebra, origem do arquivo uma vez
 - [x] 2.3 Renome "Escopo" → "Unidade/filial"; cabeçalho "Linha" alinhado
-- [ ] 2.4 Carregamento da DRE (~15 s na base real): investigar e reduzir
+- [ ] 2.4 Carregamento da DRE (~15 s na base real): investigar e reduzir — 2026-10-04: 5,5 s até o demonstrativo aparecer. Caminho crítico: prontidão por mês 3,9 s (1,0–1,5 s isolada; o loader já tem cache por sessão), disputando o api_server com `/agent/closing`, `/agent/specialists` e `readiness/changes` (4,4–4,8 s) do shell. Próximo passo: adiar essas chamadas do shell na tela DRE ou servir a prontidão persistida
 
 ## 3. Telas
 

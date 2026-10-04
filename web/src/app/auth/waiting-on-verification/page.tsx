@@ -30,7 +30,7 @@ export default async function Page() {
   }
 
   if (!authTypeMetadata?.requiresVerification || currentUser.is_verified) {
-    return redirect("/app");
+    return redirect("/ton");
   }
 
   return (

@@ -41,7 +41,7 @@ const Page = async (props: {
   // if user is already logged in, take them to the main app page
   if (currentUser && currentUser.is_active && !currentUser.is_anonymous_user) {
     if (!authTypeMetadata?.requiresVerification || currentUser.is_verified) {
-      return redirect("/app");
+      return redirect("/ton");
     }
     return redirect("/auth/waiting-on-verification");
   }
@@ -49,7 +49,7 @@ const Page = async (props: {
 
   // No auth metadata (backend unreachable), nothing to render here.
   if (authTypeMetadata?.multiTenant !== false && !cloud) {
-    return redirect("/app");
+    return redirect("/ton");
   }
 
   // Kill switch off: signup is refused by the backend, bounce to login.

@@ -17,7 +17,7 @@ import { completeMCPUserOAuth } from "@/lib/tools/svc";
 import { useTranslations } from "next-intl";
 
 const AUTO_REDIRECT_DELAY_MS = 2000;
-const DEFAULT_REDIRECT_PATH = "/app";
+const DEFAULT_REDIRECT_PATH = "/ton/chat";
 
 type CallbackTranslate = ReturnType<typeof useTranslations<"actions">>;
 

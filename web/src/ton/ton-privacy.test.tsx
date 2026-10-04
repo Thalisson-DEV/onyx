@@ -12,11 +12,11 @@ describe("TON privacy boundaries", () => {
   it("drops query data and fragments from login return paths", () => {
     expect(
       safeLoginReturnPath(
-        "/app",
+        "/ton/chat",
         "?user-prompt=payroll&token=secret",
         "#private"
       )
-    ).toBe("/app");
+    ).toBe("/ton/chat");
   });
 
   it("accepts only parent messages from extension origins for this app", () => {

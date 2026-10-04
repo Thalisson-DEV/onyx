@@ -28,8 +28,8 @@ export default function AnonymousPage({
         console.error("Failed to login as anonymous user", response);
         throw new Error("Failed to login as anonymous user");
       }
-      // Redirect to the chat page and force a refresh
-      window.location.href = "/app";
+      // Redirect to the TON home and force a refresh
+      window.location.href = "/ton";
     } catch (error) {
       console.error("Error logging in as anonymous user:", error);
       redirect("/auth/signup?error=Anonymous");

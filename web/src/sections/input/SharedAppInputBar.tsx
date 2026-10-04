@@ -56,7 +56,7 @@ export default function SharedAppInputBar() {
 
       {/* CTA button */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <Button prominence="secondary" icon={SvgEditBig} href="/app">
+        <Button prominence="secondary" icon={SvgEditBig} href="/ton/chat">
           {t("sharedAppInputBar.startSessionButton.label")}
         </Button>
       </div>

@@ -57,7 +57,7 @@ export default function SharedChatDisplay({
             title={t("notFound.title")}
             description={t("notFound.description")}
           />
-          <Button href="/app" prominence="secondary">
+          <Button href="/ton/chat" prominence="secondary">
             {t("newChatButton.label")}
           </Button>
         </Section>
@@ -82,7 +82,7 @@ export default function SharedChatDisplay({
             title={t("notFound.title")}
             description={t("emptyChat.description")}
           />
-          <Button href="/app" prominence="secondary">
+          <Button href="/ton/chat" prominence="secondary">
             {t("newChatButton.label")}
           </Button>
         </Section>

@@ -11,7 +11,7 @@ export default function EEFeatureRedirect() {
     toast.error(
       "This feature requires a license. Please upgrade your plan to access."
     );
-    router.replace("/app");
+    router.replace("/ton");
   }, [router]);
 
   return null;

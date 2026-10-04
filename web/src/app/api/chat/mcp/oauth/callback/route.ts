@@ -58,8 +58,8 @@ export async function GET(req: NextRequest) {
         // For admin flow, redirect back to the MCP actions list
         redirectTo = `${ADMIN_ROUTES.MCP_ACTIONS.path}?server_id=${serverId}`;
       } else {
-        // For user flow, redirect to chat
-        redirectTo = "/app";
+        // For user flow, redirect to the TON assistant
+        redirectTo = "/ton/chat";
       }
     }
 

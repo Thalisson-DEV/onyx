@@ -75,7 +75,7 @@ export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
     }, 1000);
 
     const timer = setTimeout(() => {
-      const target = redirectPath || config.defaultRedirectPath || "/app";
+      const target = redirectPath || config.defaultRedirectPath || "/ton/chat";
       router.push(target as Route);
     }, delayMs);
 
@@ -170,10 +170,10 @@ export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
           responseData.redirect_url ||
           searchParams?.get("return_path") ||
           config.defaultRedirectPath ||
-          "/app";
+          "/ton/chat";
         const sanitizedPath =
           rawPath.startsWith("http://") || rawPath.startsWith("https://")
-            ? "/app"
+            ? "/ton/chat"
             : "/" + rawPath.replace(/^\/+/, "");
         const redirectUrl = new URL(sanitizedPath, window.location.origin);
         redirectUrl.searchParams.set("message", "oauth_connected");
@@ -265,7 +265,7 @@ export default function OAuthCallbackPage({ config }: OAuthCallbackPageProps) {
                   <Button
                     onClick={() => {
                       const target =
-                        redirectPath || config.defaultRedirectPath || "/app";
+                        redirectPath || config.defaultRedirectPath || "/ton/chat";
                       router.push(target as Route);
                     }}
                     width="full"

@@ -15,7 +15,7 @@ export default function FederatedOAuthCallbackPage() {
     backButtonText: t("backButton.label"),
     redirectingMessage: t("redirecting.text"),
     autoRedirectDelay: 2000,
-    defaultRedirectPath: "/app",
+    defaultRedirectPath: "/ton/chat",
     callbackApiUrl: "/api/federated/callback",
     errorMessageMap: {
       "validation errors": t("errors.validation"),

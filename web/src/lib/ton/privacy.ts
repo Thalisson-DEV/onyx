@@ -21,7 +21,7 @@ export function safeLoginReturnPath(
   _hash = ""
 ): string {
   const safePathname =
-    pathname.startsWith("/") && !pathname.startsWith("//") ? pathname : "/app";
+    pathname.startsWith("/") && !pathname.startsWith("//") ? pathname : "/ton";
   const safeSearchParams = new URLSearchParams();
   new URLSearchParams(search).forEach((value, key) => {
     if (LOGIN_RETURN_QUERY_ALLOWLIST.has(key)) {

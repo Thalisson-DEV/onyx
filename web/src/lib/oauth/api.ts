@@ -77,7 +77,7 @@ interface OAuthInitiateResponse {
 
 export async function initiateOAuthFlow(
   oauthConfigId: number,
-  returnPath: string = "/app"
+  returnPath: string = "/ton/chat"
 ): Promise<void> {
   const response = await fetch("/api/oauth-config/initiate", {
     method: "POST",

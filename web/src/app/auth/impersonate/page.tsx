@@ -46,7 +46,7 @@ export default function ImpersonatePage() {
         helpers.setSubmitting(false);
       } else {
         helpers.setSubmitting(false);
-        router.push("/app");
+        router.push("/ton");
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : genericError);

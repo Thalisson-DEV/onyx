@@ -41,12 +41,12 @@ export interface ActivityEvent {
  * recomputed bases. Nothing here is inferred or simulated; an event exists
  * because a record exists.
  */
-export function useTonActivity() {
+export function useTonActivity(enabled = true) {
   const reports = useTonReportGroups();
   const sources = useTonDataSources();
-  const specialists = useTonSpecialists();
+  const specialists = useTonSpecialists(enabled);
   const decisions = useDecisionLog();
-  const closing = useTonClosing();
+  const closing = useTonClosing(undefined, enabled);
   const changes = useReadinessChanges(
     closing.data?.normalization_run_id,
     closing.data?.structure_version_id,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import type { ReactNode } from "react";
 import { Text } from "@opal/components";
-import { useTonClosing } from "@/lib/ton/api";
+import { useDeferredStart, useTonClosing } from "@/lib/ton/api";
 import { COPY, formatPeriod } from "@/lib/ton/copy";
 import { PageContainer, PageHeader } from "@/views/ton/components/ui";
 
@@ -33,7 +33,8 @@ export default function ClosingFrame({
   children,
   wide = false,
 }: ClosingFrameProps) {
-  const closing = useTonClosing();
+  // Only the eyebrow needs it; the page under the frame loads first.
+  const closing = useTonClosing(undefined, useDeferredStart());
   const eyebrow = closing.data
     ? `${COPY.closing.eyebrow} · ${formatPeriod(closing.data.period)} · ${closing.data.scope}`
     : COPY.closing.eyebrow;

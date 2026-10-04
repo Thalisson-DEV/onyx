@@ -28,6 +28,7 @@ import { getUserDisplayName, getUserEmail, logout } from "@/lib/users/svc";
 import {
   isSyntheticContext,
   useTonAccess,
+  useDeferredStart,
   useTonClosing,
   useTonDataSources,
 } from "@/lib/ton/api";
@@ -79,7 +80,7 @@ function SourcesStatus() {
 }
 
 function DemoIndicator() {
-  const closing = useTonClosing();
+  const closing = useTonClosing(undefined, useDeferredStart());
   if (!isSyntheticContext(closing.data)) return null;
   return (
     <span
@@ -259,7 +260,7 @@ function SearchTrigger() {
 
 function Notifications() {
   const { user } = useUser();
-  const { events, isLoading } = useTonActivity();
+  const { events, isLoading } = useTonActivity(useDeferredStart());
   const [seenAt, setSeenAt] = useState<string | null>(() =>
     readSeenAt(user?.id)
   );

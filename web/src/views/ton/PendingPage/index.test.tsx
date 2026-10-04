@@ -136,44 +136,53 @@ beforeEach(() => {
   const mockSWR = useSWR as jest.MockedFunction<typeof useSWR>;
   mockSWR.mockImplementation((key) => {
     const path = typeof key === "string" ? key : "";
-    const data = path.includes("/blockers/SOURCE_RECONCILIATION_UNRESOLVED")
-      ? { total: 1, rows: RECONCILIATION_ROWS }
-      : path.includes("/blockers/BUDGET_PERIOD_UNRESOLVED")
-        ? { total: 1, rows: BUDGET_ROWS }
-        : path.includes("/blockers/NO_ACTUAL")
-          ? MISSING_MONTHS
-          : path.includes("/readiness?")
-            ? {
-                periods: [
-                  {
-                    status: "NOT_READY",
-                    scope: { period: "2026-07-01" },
-                    blockers: {
-                      SOURCE_RECONCILIATION_UNRESOLVED: 3,
-                      BUDGET_PERIOD_UNRESOLVED: 2,
-                      NO_ACTUAL: 6,
+    // A null key (a deferred or disabled read) has no data, as in SWR.
+    const data = !path
+      ? undefined
+      : path.includes("/blockers/SOURCE_RECONCILIATION_UNRESOLVED")
+        ? { total: 1, rows: RECONCILIATION_ROWS }
+        : path.includes("/blockers/BUDGET_PERIOD_UNRESOLVED")
+          ? { total: 1, rows: BUDGET_ROWS }
+          : path.includes("/blockers/NO_ACTUAL")
+            ? MISSING_MONTHS
+            : path.includes("/readiness?")
+              ? {
+                  periods: [
+                    {
+                      status: "NOT_READY",
+                      scope: { period: "2026-07-01" },
+                      blockers: {
+                        SOURCE_RECONCILIATION_UNRESOLVED: 3,
+                        BUDGET_PERIOD_UNRESOLVED: 2,
+                        NO_ACTUAL: 6,
+                      },
                     },
-                  },
-                ],
-              }
-            : path.includes("/latest-version")
-              ? { id: "version-1", number: 1, lines: [] }
-              : path.includes("/structures?")
-                ? [{ id: "structure-1", label: "Estrutura", latest_version: 1 }]
-                : path.includes("/normalizations?")
+                  ],
+                }
+              : path.includes("/latest-version")
+                ? { id: "version-1", number: 1, lines: [] }
+                : path.includes("/structures?")
                   ? [
                       {
-                        id: "run-1",
-                        mapping_revision_number: 8,
-                        started_at: "2026-10-01T01:00:00Z",
+                        id: "structure-1",
+                        label: "Estrutura",
+                        latest_version: 1,
                       },
                     ]
-                  : path.includes("/agent/closing") ||
-                      path.includes("/readiness/changes")
-                    ? undefined
-                    : path.includes("/decisions")
-                      ? { pending_decisions: 0, entries: [] }
-                      : [];
+                  : path.includes("/normalizations?")
+                    ? [
+                        {
+                          id: "run-1",
+                          mapping_revision_number: 8,
+                          started_at: "2026-10-01T01:00:00Z",
+                        },
+                      ]
+                    : path.includes("/agent/closing") ||
+                        path.includes("/readiness/changes")
+                      ? undefined
+                      : path.includes("/decisions")
+                        ? { pending_decisions: 0, entries: [] }
+                        : [];
     return {
       data,
       isLoading: false,

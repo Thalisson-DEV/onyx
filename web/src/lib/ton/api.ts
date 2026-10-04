@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { hasPermission } from "@/lib/permissions";
@@ -62,10 +62,24 @@ export function closingKey(unitId?: string | null): string {
     : TON_API.closing;
 }
 
-export function useTonClosing(unitId?: string | null) {
+/**
+ * False until `delayMs` after mount. Shell widgets (bell, demo chip, closing
+ * eyebrow) wait on it so their slow closing/specialist reads do not compete
+ * with the page's own data on the same API workers.
+ */
+export function useDeferredStart(delayMs = 2500): boolean {
+  const [started, setStarted] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setStarted(true), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [delayMs]);
+  return started;
+}
+
+export function useTonClosing(unitId?: string | null, enabled = true) {
   const { canRead } = useTonAccess();
   return useSWR<ClosingOutput>(
-    canRead ? closingKey(unitId) : null,
+    canRead && enabled ? closingKey(unitId) : null,
     errorHandlingFetcher,
     { revalidateOnFocus: false }
   );
@@ -79,10 +93,10 @@ export function useTonRoutines() {
   );
 }
 
-export function useTonSpecialists() {
+export function useTonSpecialists(enabled = true) {
   const { canRead } = useTonAccess();
   return useSWR<SpecialistView[]>(
-    canRead ? TON_API.specialists : null,
+    canRead && enabled ? TON_API.specialists : null,
     errorHandlingFetcher,
     { revalidateOnFocus: false }
   );

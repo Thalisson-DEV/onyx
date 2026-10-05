@@ -14,6 +14,7 @@ import {
   SvgChevronRight,
   SvgClipboard,
   SvgFileText,
+  SvgFilter,
   SvgServer,
   SvgShield,
   SvgSparkle,
@@ -36,6 +37,7 @@ import {
   useClassificationTable,
 } from "@/lib/ton/classification";
 import { COPY, formatRelativeDateTime } from "@/lib/ton/copy";
+import { TREATMENTS_COPY, useTreatmentTable } from "@/lib/ton/treatments";
 import {
   CardHeader,
   EmptyState,
@@ -117,6 +119,7 @@ export default function TonAdminPage() {
   const reports = useTonReportGroups();
   const persona = useTonPersona();
   const classification = useClassificationTable(hasAdminAccess);
+  const treatments = useTreatmentTable(hasAdminAccess);
   const schedule = useSWR<R3Schedule>(
     hasAdminAccess ? "/api/ton/agent/routines/R3/schedule" : null,
     errorHandlingFetcher
@@ -240,6 +243,29 @@ export default function TonAdminPage() {
                     return {
                       tone: open ? "warning" : "success",
                       label: CLASSIFICATION_COPY.adminEntry.status(open),
+                    };
+                  })()
+                : null
+            }
+          />
+          <AdminEntry
+            icon={SvgFilter}
+            title={TREATMENTS_COPY.adminEntry.title}
+            description={TREATMENTS_COPY.adminEntry.description}
+            href={"/ton/tratamentos" as Route}
+            status={
+              treatments.data
+                ? (() => {
+                    const items = treatments.data.treatments;
+                    const blocked = items.filter(
+                      (item) => item.status === "BLOCKED"
+                    ).length;
+                    return {
+                      tone: blocked ? "warning" : "success",
+                      label: TREATMENTS_COPY.adminEntry.status(
+                        items.filter((item) => item.status === "ACTIVE").length,
+                        blocked
+                      ),
                     };
                   })()
                 : null

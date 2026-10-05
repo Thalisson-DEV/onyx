@@ -152,6 +152,13 @@ class DreContributorView(BaseModel):
     source_account_code: str | None = None
     source_account_label: str | None = None
     description: str | None = None
+    # Closing treatment that changed this entry: ``amount`` is the treated
+    # value, ``original_amount`` the NG value.
+    treatment_title: str | None = None
+    treatment_effect: str | None = None
+    treatment_version: int | None = None
+    original_amount: Decimal | None = None
+    original_account_label: str | None = None
 
 
 class DreContributorPage(BaseModel):

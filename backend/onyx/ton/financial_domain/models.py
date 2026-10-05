@@ -136,6 +136,7 @@ class NormalizationView(BaseModel):
     mapping_revision_number: int
     amount_basis_revision_number: int
     reconciliation_decision_number: int
+    treatment_number: int = 0
     derivation_version: str
     authority_policy_version: str
     statistics: dict[str, int]
@@ -160,6 +161,12 @@ class FactView(BaseModel):
     amount: Decimal | None
     amount_basis: str
     authority_role: str
+    # Set when a closing treatment changed this fact; ``amount`` is the
+    # treated value and ``original_amount`` the source value.
+    treatment_id: UUID | None = None
+    treatment_effect: str | None = None
+    original_amount: Decimal | None = None
+    original_account_id: UUID | None = None
 
 
 class ReconciliationItemView(BaseModel):
@@ -196,3 +203,75 @@ class DreInputDataset(BaseModel):
     readiness: ReadinessView
     actuals: list[FactView]
     budgets: list[FactView]
+
+
+class TreatmentStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    # Decided, but needs a source TON does not have yet; changes nothing.
+    BLOCKED = "BLOCKED"
+    REVOKED = "REVOKED"
+
+
+class TreatmentEffect(StrEnum):
+    EXCLUDE = "EXCLUDE"
+    RECLASSIFY = "RECLASSIFY"
+    REPLACE_BY_SOURCE = "REPLACE_BY_SOURCE"
+
+
+class TreatmentCreate(BaseModel):
+    """A new version of a closing treatment. Same key = new version."""
+
+    treatment_key: str = Field(
+        min_length=1, max_length=100, pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$"
+    )
+    title: str = Field(min_length=1, max_length=200)
+    status: TreatmentStatus
+    effect: TreatmentEffect
+    account_id: UUID | None = None
+    unit_id: UUID | None = None
+    period_from: date | None = None
+    period_to: date | None = None
+    target_account_id: UUID | None = None
+    required_source: str | None = Field(default=None, min_length=1, max_length=500)
+    justification: str = Field(min_length=1, max_length=2000)
+    evidence: str = Field(min_length=1, max_length=1000)
+
+
+class TreatmentView(BaseModel):
+    id: UUID
+    number: int
+    treatment_key: str
+    version: int
+    title: str
+    status: TreatmentStatus
+    effect: TreatmentEffect
+    account_id: UUID | None
+    account_label: str | None
+    unit_id: UUID | None
+    unit_name: str | None
+    period_from: date | None
+    period_to: date | None
+    target_account_id: UUID | None
+    target_account_label: str | None
+    required_source: str | None
+    justification: str
+    evidence: str
+    created_by_email: str | None
+    created_at: datetime
+    # Facts this version changed in the latest successful normalization run;
+    # None when that run predates the version.
+    applied_fact_count: int | None = None
+
+
+class TreatmentOption(BaseModel):
+    id: UUID
+    label: str
+
+
+class TreatmentTable(BaseModel):
+    treatments: list[TreatmentView]
+    accounts: list[TreatmentOption]
+    units: list[TreatmentOption]
+    # Latest successful base and how many treatment versions it does not have.
+    normalization_run_id: UUID | None
+    changes_since_calculation: int

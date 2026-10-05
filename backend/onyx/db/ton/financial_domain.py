@@ -17,6 +17,7 @@ from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.db.ton.acl import business_unit_visible_clause, is_ton_administrator
 from onyx.db.ton.audit import emit_ton_audit_event
+from onyx.db.ton.closing_treatments import rules_up_to, treatment_number
 from onyx.db.ton.enums import TonAuditResourceKind
 from onyx.db.ton.financial_review import get_review_run, load_finding_states
 from onyx.db.ton.import_profiles import get_execution
@@ -43,6 +44,7 @@ from onyx.db.ton.models import (
 from onyx.db.ton.sources import check_page, get_source
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
+from onyx.ton.financial_domain import treatments
 from onyx.ton.financial_domain.models import (
     AccountCreate,
     BudgetInput,
@@ -54,6 +56,7 @@ from onyx.ton.financial_domain.models import (
     MappingView,
     NormalizationRequest,
     ReadinessView,
+    TreatmentEffect,
 )
 from onyx.ton.financial_review.catalog import DATASET_POLICY_VERSION
 from onyx.ton.financial_review.dataset import (
@@ -732,6 +735,23 @@ def _apply_reconciliation_decisions(
     return carried
 
 
+def _apply_treatment(
+    rules: list[treatments.TreatmentRule],
+    account_id: UUID | None,
+    unit_id: UUID | None,
+    period: datetime.date,
+    counts: Counter[str],
+) -> tuple[treatments.TreatmentRule | None, UUID | None, UUID | None]:
+    """(treatment, account the fact lands on, account it came from if moved)."""
+    treatment = treatments.find(rules, account_id, unit_id, period)
+    if treatment is None:
+        return None, account_id, None
+    counts[f"treated_{treatment.effect.value.lower()}"] += 1
+    if treatment.effect is TreatmentEffect.RECLASSIFY:
+        return treatment, treatment.target_account_id, account_id
+    return treatment, account_id, None
+
+
 def _persist_projection(
     session: Session,
     run: FinancialNormalizationRun,
@@ -741,6 +761,7 @@ def _persist_projection(
     mapping_number: int,
 ) -> dict[str, int]:
     mappings = _load_mappings(session, mapping_number)
+    treatment_rules = treatments.in_force(rules_up_to(session, run.treatment_number))
     states, watermark = load_finding_states(session, review, run.dataset_as_of)
     if (
         dataset_revision(review_run_id=review.id, event_watermark=watermark)
@@ -813,13 +834,21 @@ def _persist_projection(
             record.emission_date,
         )
         actual_id = uuid4()
+        unit_id = unit_map.unit_id if unit_map else None
+        treatment, account_id, original_account_id = _apply_treatment(
+            treatment_rules,
+            account_map.account_id if account_map else None,
+            unit_id,
+            _period(record.emission_date),
+            counts,
+        )
         actuals.append(
             {
                 "id": actual_id,
                 "run_id": run.id,
                 "parsed_record_id": record.id,
-                "account_id": account_map.account_id if account_map else None,
-                "unit_id": unit_map.unit_id if unit_map else None,
+                "account_id": account_id,
+                "unit_id": unit_id,
                 "account_mapping_id": account_map.id if account_map else None,
                 "unit_mapping_id": unit_map.id if unit_map else None,
                 "emission_date": record.emission_date,
@@ -828,6 +857,9 @@ def _persist_projection(
                 "movement_amount": record.movement_amount,
                 "final_amount": record.final_amount,
                 "disposition": disposition,
+                "treatment_id": treatment.id if treatment else None,
+                "treatment_effect": treatment.effect.value if treatment else None,
+                "original_account_id": original_account_id,
             }
         )
         actual_documents[actual_id] = record.document_number
@@ -1038,6 +1070,7 @@ def normalize(
         session.scalar(sa.select(sa.func.max(FinancialReconciliationDecision.number)))
         or 0
     )
+    treatments_number = treatment_number(session)
     input_digest = _digest(
         {
             "review_run_id": review.id,
@@ -1050,6 +1083,8 @@ def normalize(
             "derivation_version": DERIVATION_VERSION,
             "authority_policy_version": AUTHORITY_POLICY_VERSION,
             "dataset_policy_version": DATASET_POLICY_VERSION,
+            # Absent until the first treatment, so earlier digests stay valid.
+            **({"treatment_number": treatments_number} if treatments_number else {}),
         }
     )
     existing = session.scalar(
@@ -1099,6 +1134,7 @@ def normalize(
         mapping_revision_number=mapping_number,
         amount_basis_revision_number=basis_number,
         reconciliation_decision_number=reconciliation_number,
+        treatment_number=treatments_number,
         derivation_version=DERIVATION_VERSION,
         authority_policy_version=AUTHORITY_POLICY_VERSION,
         statistics={},
@@ -1376,6 +1412,33 @@ def decide_reconciliation(
     return revision
 
 
+def actual_amounts(
+    fact: FinancialActualFact,
+    basis_index: dict[UUID, str],
+    accounts: dict[UUID, FinancialAccount],
+) -> tuple[str | None, Decimal | None, Decimal | None]:
+    """(basis, treated amount, source amount) of one actual fact.
+
+    The basis follows the account the source booked, so a reclassified fact
+    keeps the amount its NG account defines. An excluded fact counts as zero.
+    """
+    account_id = fact.original_account_id or fact.account_id
+    account = accounts.get(account_id) if account_id else None
+    basis = (
+        basis_index.get(account.id, account.actual_amount_basis) if account else None
+    )
+    original = (
+        fact.movement_amount
+        if basis == "MOVEMENT"
+        else fact.final_amount
+        if basis == "FINAL"
+        else None
+    )
+    if fact.treatment_effect == TreatmentEffect.EXCLUDE.value and original is not None:
+        return basis, Decimal(0), original
+    return basis, original, original
+
+
 def _fact_view(
     *,
     fact_id: UUID,
@@ -1387,6 +1450,8 @@ def _fact_view(
     amount: Decimal | None,
     amount_basis: str,
     authority_role: str,
+    treated: FinancialActualFact | None = None,
+    original_amount: Decimal | None = None,
 ) -> FactView:
     return FactView(
         id=fact_id,
@@ -1404,6 +1469,10 @@ def _fact_view(
         amount=amount,
         amount_basis=amount_basis,
         authority_role=authority_role,
+        treatment_id=treated.treatment_id if treated else None,
+        treatment_effect=treated.treatment_effect if treated else None,
+        original_amount=original_amount if treated else None,
+        original_account_id=treated.original_account_id if treated else None,
     )
 
 
@@ -1472,7 +1541,15 @@ def _fact_views(
         for account in session.scalars(
             sa.select(FinancialAccount).where(
                 FinancialAccount.id.in_(
-                    item.account_id for item in rows if item.account_id is not None
+                    {
+                        account_id
+                        for item in rows
+                        for account_id in (
+                            item.account_id,
+                            getattr(item, "original_account_id", None),
+                        )
+                        if account_id is not None
+                    }
                 )
             )
         )
@@ -1517,11 +1594,7 @@ def _fact_views(
         account = accounts.get(item.account_id)
         unit = units.get(item.unit_id)
         if fact_type == "ACTUAL":
-            basis = (
-                basis_index.get(account.id, account.actual_amount_basis)
-                if account
-                else None
-            )
+            basis, amount, original = actual_amounts(item, basis_index, accounts)
             views.append(
                 _fact_view(
                     fact_id=item.id,
@@ -1530,15 +1603,11 @@ def _fact_views(
                     account=account,
                     unit=unit,
                     period=item.calendar_period,
-                    amount=(
-                        item.movement_amount
-                        if basis == "MOVEMENT"
-                        else item.final_amount
-                        if basis == "FINAL"
-                        else None
-                    ),
+                    amount=amount,
                     amount_basis=basis or "UNRESOLVED",
                     authority_role="AUTHORITATIVE_ACTUAL",
+                    treated=item if item.treatment_id else None,
+                    original_amount=original,
                 )
             )
         elif fact_type == "BILLING":

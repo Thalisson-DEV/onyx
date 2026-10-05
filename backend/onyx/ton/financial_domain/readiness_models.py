@@ -118,6 +118,7 @@ class DecisionVersions(BaseModel):
     mapping: int
     amount_basis: int
     reconciliation: int
+    treatment: int = 0
 
 
 class ReadinessChanges(BaseModel):
@@ -146,6 +147,7 @@ DecisionKind = Literal[
     "DRE_ASSIGNMENT",
     "REVIEW_DECISION",
     "REVIEW_CARRIED_OVER",
+    "CLOSING_TREATMENT",
 ]
 
 

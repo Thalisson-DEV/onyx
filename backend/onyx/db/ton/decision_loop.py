@@ -13,8 +13,10 @@ from sqlalchemy.orm import Session
 from onyx.db.models import User
 from onyx.db.ton import financial_domain, financial_readiness
 from onyx.db.ton.acl import is_ton_administrator
+from onyx.db.ton.closing_treatments import treatment_number
 from onyx.db.ton.models import (
     BusinessUnit,
+    ClosingTreatment,
     DreAccountMapping,
     DreStructure,
     DreStructureVersion,
@@ -80,6 +82,18 @@ MAPPING_KINDS: dict[str, DecisionKind] = {
 }
 
 
+TREATMENT_EFFECT_LABELS = {
+    "EXCLUDE": "Fora do resultado",
+    "RECLASSIFY": "Movido para outra natureza",
+    "REPLACE_BY_SOURCE": "Substituído por outra fonte",
+}
+TREATMENT_STATUS_LABELS = {
+    "ACTIVE": "aplicado",
+    "BLOCKED": "aguardando fonte",
+    "REVOKED": "revogado",
+}
+
+
 def current_versions(session: Session) -> DecisionVersions:
     return DecisionVersions(
         mapping=int(
@@ -95,6 +109,7 @@ def current_versions(session: Session) -> DecisionVersions:
             )
             or 0
         ),
+        treatment=treatment_number(session),
     )
 
 
@@ -103,6 +118,7 @@ def run_versions(run: FinancialNormalizationRun) -> DecisionVersions:
         mapping=run.mapping_revision_number,
         amount_basis=run.amount_basis_revision_number,
         reconciliation=run.reconciliation_decision_number,
+        treatment=run.treatment_number,
     )
 
 
@@ -129,6 +145,14 @@ def pending_after(session: Session, applied: DecisionVersions) -> int:
             session.scalar(
                 sa.select(sa.func.count()).where(
                     FinancialReconciliationDecision.number > applied.reconciliation
+                )
+            )
+            or 0
+        )
+        + int(
+            session.scalar(
+                sa.select(sa.func.count()).where(
+                    ClosingTreatment.number > applied.treatment
                 )
             )
             or 0
@@ -552,6 +576,28 @@ def decision_log(session: Session, user: User, limit: int) -> DecisionLog:  # no
                 )
             )
             authors.append(version.created_by)
+
+    for treatment in session.scalars(
+        sa.select(ClosingTreatment)
+        .order_by(ClosingTreatment.number.desc())
+        .limit(limit)
+    ):
+        entries.append(
+            DecisionEntry(
+                kind="CLOSING_TREATMENT",
+                subject=treatment.title,
+                outcome=(
+                    f"{TREATMENT_EFFECT_LABELS[treatment.effect]} · "
+                    f"{TREATMENT_STATUS_LABELS[treatment.status]}"
+                ),
+                reason=treatment.justification,
+                decided_by=None,
+                decided_at=treatment.created_at,
+                version=treatment.number,
+                applied=(treatment.number <= applied.treatment) if applied else None,
+            )
+        )
+        authors.append(treatment.created_by)
 
     entries.extend(_review_entries(session, gate, limit, authors))
 

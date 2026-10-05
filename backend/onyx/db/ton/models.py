@@ -1155,6 +1155,10 @@ class FinancialNormalizationRun(Base):
     reconciliation_decision_number: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
     )
+    # Closing treatments up to this number were in force for the run.
+    treatment_number: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     derivation_version: Mapped[str] = mapped_column(String(100), nullable=False)
     authority_policy_version: Mapped[str] = mapped_column(String(100), nullable=False)
     statistics: Mapped[dict[str, int]] = mapped_column(
@@ -1228,6 +1232,18 @@ class FinancialActualFact(Base):
     movement_amount: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
     final_amount: Mapped[Decimal | None] = mapped_column(Numeric(50, 25))
     disposition: Mapped[str] = mapped_column(String(32), nullable=False)
+    # Closing treatment applied to this fact: EXCLUDE keeps the amounts as
+    # evidence but the fact counts as zero; RECLASSIFY moved it from
+    # original_account_id to account_id.
+    treatment_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_closing_treatment.id", ondelete="RESTRICT"),
+    )
+    treatment_effect: Mapped[str | None] = mapped_column(String(32))
+    original_account_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+    )
     __table_args__ = (
         UniqueConstraint(
             "run_id", "parsed_record_id", name="uq_ton_financial_actual_run_record"
@@ -1619,6 +1635,81 @@ class AccountClassificationBriefing(Base):
             "ix_ton_account_classification_briefing_source",
             "source_id",
             "created_at",
+        ),
+    )
+
+
+class ClosingTreatment(Base):
+    """One append-only version of a closing treatment decided by the Controladoria.
+
+    The latest version per ``treatment_key`` up to a normalization run's
+    ``treatment_number`` is the one in force for that run. Only ACTIVE versions
+    change facts; BLOCKED ones wait for ``required_source``.
+    """
+
+    __tablename__ = "ton_closing_treatment"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    number: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
+    treatment_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    effect: Mapped[str] = mapped_column(String(32), nullable=False)
+    account_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+    )
+    unit_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_business_unit.id", ondelete="RESTRICT")
+    )
+    period_from: Mapped[datetime.date | None] = mapped_column(Date)
+    period_to: Mapped[datetime.date | None] = mapped_column(Date)
+    target_account_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+    )
+    required_source: Mapped[str | None] = mapped_column(String(500))
+    justification: Mapped[str] = mapped_column(String(2000), nullable=False)
+    evidence: Mapped[str] = mapped_column(String(1000), nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        UniqueConstraint(
+            "treatment_key", "version", name="uq_ton_closing_treatment_version"
+        ),
+        CheckConstraint(
+            "status IN ('ACTIVE', 'BLOCKED', 'REVOKED')",
+            name="ck_ton_closing_treatment_status",
+        ),
+        CheckConstraint(
+            "effect IN ('EXCLUDE', 'RECLASSIFY', 'REPLACE_BY_SOURCE')",
+            name="ck_ton_closing_treatment_effect",
+        ),
+        CheckConstraint(
+            "status = 'REVOKED' OR account_id IS NOT NULL",
+            name="ck_ton_closing_treatment_scope",
+        ),
+        CheckConstraint(
+            "(effect = 'RECLASSIFY') = (target_account_id IS NOT NULL)",
+            name="ck_ton_closing_treatment_target",
+        ),
+        CheckConstraint(
+            "(status = 'BLOCKED') = (required_source IS NOT NULL)",
+            name="ck_ton_closing_treatment_blocked",
+        ),
+        CheckConstraint(
+            "NOT (status = 'ACTIVE' AND effect = 'REPLACE_BY_SOURCE')",
+            name="ck_ton_closing_treatment_source_effect",
+        ),
+        CheckConstraint(
+            "period_from IS NULL OR period_to IS NULL OR period_from <= period_to",
+            name="ck_ton_closing_treatment_period",
         ),
     )
 

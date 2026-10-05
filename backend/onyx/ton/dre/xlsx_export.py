@@ -60,6 +60,8 @@ BASE_COLUMNS: tuple[tuple[str, int], ...] = (
     ("Situação na revisão", 20),
     ("Arquivo", 30),
     ("Planilha · linha", 18),
+    ("Valor no NG", 16),
+    ("Tratamento da Controladoria", 40),
 )
 
 
@@ -83,6 +85,9 @@ class BaseEntry:
     source_file: str
     sheet_name: str
     row_number: int
+    # Closing treatment that changed the entry; ``amount`` is the treated value.
+    treatment: str | None = None
+    original_amount: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -403,6 +408,10 @@ def _write_base_sheet(
             REVIEW_LABELS.get(entry.review_status or "", entry.review_status or ""),
             entry.source_file,
             f"{entry.sheet_name} · {entry.row_number}",
+            float(entry.original_amount)
+            if entry.original_amount is not None
+            else float(entry.amount),
+            entry.treatment or "",
         ]
         for entry in entries
     ]
@@ -410,6 +419,7 @@ def _write_base_sheet(
     columns[0]["format"] = formats.competence
     columns[3]["format"] = formats.money
     columns[4]["format"] = formats.date
+    columns[16]["format"] = formats.money
     # A table needs at least one data row; an empty Base keeps one blank row.
     sheet.add_table(
         0,

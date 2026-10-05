@@ -103,6 +103,11 @@ export interface Contributor {
   source_account_code?: string | null;
   source_account_label?: string | null;
   description?: string | null;
+  treatment_title?: string | null;
+  treatment_effect?: string | null;
+  treatment_version?: number | null;
+  original_amount?: string | null;
+  original_account_label?: string | null;
 }
 
 export interface ContributorPage {

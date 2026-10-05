@@ -17,9 +17,11 @@ from onyx.db.models import User
 from onyx.db.ton import financial_domain
 from onyx.db.ton.acl import business_unit_visible_clause, is_ton_administrator
 from onyx.db.ton.audit import emit_ton_audit_event
+from onyx.db.ton.closing_treatments import versions_in_force
 from onyx.db.ton.enums import TonAuditResourceKind
 from onyx.db.ton.models import (
     BusinessUnit,
+    ClosingTreatment,
     DreAccountMapping,
     DreCalculationRun,
     DreResultLine,
@@ -730,6 +732,20 @@ def list_calculations(
     return visible[offset : offset + limit]
 
 
+def _treatments_by_id(
+    session: Session, ids: set[UUID | None]
+) -> dict[UUID, ClosingTreatment]:
+    wanted = {item for item in ids if item is not None}
+    if not wanted:
+        return {}
+    return {
+        item.id: item
+        for item in session.scalars(
+            sa.select(ClosingTreatment).where(ClosingTreatment.id.in_(wanted))
+        )
+    }
+
+
 def list_contributors(
     session: Session,
     user: User,
@@ -811,11 +827,30 @@ def list_contributors(
         if fact_type == "ACTUAL"
         else {}
     )
+    accounts = (
+        {item.id: item for item in session.scalars(sa.select(FinancialAccount))}
+        if fact_type == "ACTUAL"
+        else {}
+    )
+    treatments = _treatments_by_id(
+        session,
+        {row[0].treatment_id for row in rows if fact_type == "ACTUAL"},
+    )
     contributors: list[DreContributorView] = []
     for fact, source, account, unit, source_info, snapshot in rows:
+        treatment = None
+        original_amount = None
+        original_account = None
         if fact_type == "ACTUAL":
-            basis = basis_index.get(account.id, account.actual_amount_basis)
-            amount = fact.movement_amount if basis == "MOVEMENT" else fact.final_amount
+            basis, amount, original_amount = financial_domain.actual_amounts(
+                fact, basis_index, accounts
+            )
+            treatment = treatments.get(fact.treatment_id) if fact.treatment_id else None
+            original_account = (
+                accounts.get(fact.original_account_id)
+                if fact.original_account_id
+                else None
+            )
             reference = source.document_number
             review_status = fact.disposition
             record_date = fact.emission_date
@@ -856,6 +891,13 @@ def list_contributors(
                 source_account_code=source_account_code,
                 source_account_label=source_account_label,
                 description=description,
+                treatment_title=treatment.title if treatment else None,
+                treatment_effect=treatment.effect if treatment else None,
+                treatment_version=treatment.version if treatment else None,
+                original_amount=original_amount if treatment else None,
+                original_account_label=(
+                    original_account.label if original_account else None
+                ),
             )
         )
     return DreContributorPage(total=total, rows=contributors)
@@ -906,13 +948,17 @@ def _export_entries(
     basis_index = financial_domain._basis_index(
         session, normalization.amount_basis_revision_number
     )
+    accounts = {item.id: item for item in session.scalars(sa.select(FinancialAccount))}
+    treatments = _treatments_by_id(session, {row[0].treatment_id for row in rows})
     entries: list[BaseEntry] = []
     for fact, source, account, unit, line_code, filename in rows:
         if lines[line_code].line_type != DreLineType.SOURCE_SUM:
             continue
-        basis = basis_index.get(account.id, account.actual_amount_basis)
-        amount = fact.movement_amount if basis == "MOVEMENT" else fact.final_amount
-        assert amount is not None
+        basis, amount, original = financial_domain.actual_amounts(
+            fact, basis_index, accounts
+        )
+        assert amount is not None and basis is not None
+        treatment = treatments.get(fact.treatment_id) if fact.treatment_id else None
         entries.append(
             BaseEntry(
                 competence=fact.calendar_period,
@@ -931,6 +977,12 @@ def _export_entries(
                 source_file=filename or "",
                 sheet_name=source.sheet_name,
                 row_number=source.source_row_number,
+                treatment=(
+                    f"{treatment.title} (versão {treatment.version})"
+                    if treatment is not None
+                    else None
+                ),
+                original_amount=original if treatment is not None else None,
             )
         )
     return entries
@@ -940,20 +992,49 @@ def _months_text(months: list[int]) -> str:
     return ", ".join(month_label(month) for month in months)
 
 
+def _treatment_premise(treatment: ClosingTreatment) -> Premise:
+    decided = (
+        f"Decidido pela Controladoria (versão {treatment.version}, "
+        f"{treatment.created_at.astimezone(SAO_PAULO):%d/%m/%Y}): "
+        f"{treatment.justification}"
+    )
+    if treatment.status == "BLOCKED":
+        return Premise(
+            topic=treatment.title,
+            status=f"{decided}\nAinda não aplicado: falta {treatment.required_source}.",
+            effect="Os valores aparecem como lançados no NG até a fonte existir.",
+        )
+    return Premise(
+        topic=treatment.title,
+        status=decided,
+        effect="Aplicado: veja as colunas Valor no NG e Tratamento da Controladoria "
+        "na aba Base.",
+    )
+
+
 def _export_premises(
     data_scopes: list[ScopeBlock],
     last_month: int,
     entries: list[BaseEntry],
     budget_present: bool,
+    treatments: list[ClosingTreatment],
 ) -> list[Premise]:
     premises = [
-        Premise(
-            topic="Parcelamentos",
-            status="Decidido em 03/10/2026: entra só a parcela paga, no mês do "
-            "pagamento. Ainda não aplicado: o TON usa o valor lançado no NG.",
-            effect="As naturezas com parcelamentos mostram o valor integral do NG "
-            "até a limpeza no NG ou a aprovação do tratamento.",
-        ),
+        _treatment_premise(treatment)
+        for treatment in treatments
+        if treatment.status != "REVOKED"
+    ]
+    if not treatments:
+        premises.append(
+            Premise(
+                topic="Parcelamentos",
+                status="Decidido em 03/10/2026: entra só a parcela paga, no mês "
+                "do pagamento. Ainda não aplicado: o TON usa o valor lançado no NG.",
+                effect="As naturezas com parcelamentos mostram o valor integral do "
+                "NG até a limpeza no NG ou a aprovação do tratamento.",
+            )
+        )
+    premises += [
         Premise(
             topic="PIS/COFINS",
             status="O TON ainda não calcula PIS/COFINS. Os valores vêm como "
@@ -1139,7 +1220,13 @@ def export_workbook(
     data = dataclasses.replace(
         data,
         header=header,
-        premises=_export_premises(scopes, period.month, entries, budget_present),
+        premises=_export_premises(
+            scopes,
+            period.month,
+            entries,
+            budget_present,
+            versions_in_force(session, normalization.treatment_number),
+        ),
     )
     return anchor, build_workbook(data)
 

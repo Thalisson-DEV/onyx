@@ -720,6 +720,18 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
                       <td>{fact.reference ?? "—"}</td>
                       <td className="ton-ledger-history">
                         <span>{fact.description || "—"}</span>
+                        {fact.treatment_title && (
+                          <span className="ton-ledger-muted block pt-1">
+                            {COPY.dre.drawer.treatedDetail(
+                              formatCurrency(
+                                fact.original_amount ?? fact.amount
+                              ),
+                              fact.treatment_title,
+                              fact.treatment_version,
+                              fact.original_account_label
+                            )}
+                          </span>
+                        )}
                         {flagged && (
                           <span className="block pt-1">
                             <StatusPill tone="warning">
@@ -730,6 +742,13 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
                       </td>
                       <td className="ton-ledger-end ton-ledger-amount">
                         {formatCurrency(fact.amount)}
+                        {fact.treatment_title && (
+                          <span className="block pt-1">
+                            <StatusPill tone="brand">
+                              {COPY.dre.drawer.treated}
+                            </StatusPill>
+                          </span>
+                        )}
                       </td>
                       <td className="ton-ledger-muted">
                         {COPY.dre.drawer.row(

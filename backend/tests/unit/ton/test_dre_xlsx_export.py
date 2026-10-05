@@ -274,7 +274,7 @@ def test_workbook_formulas_cache_and_recalculation_match() -> None:
                 )
 
     base = formulas["Base"]
-    assert base.tables["Base"].ref == "A1:P10"
+    assert base.tables["Base"].ref == "A1:R10"
     histories = [row[11] for row in base.iter_rows(min_row=2, values_only=True)]
     # NG text that looks like a formula stays text.
     assert "=HYPERLINK(1)" in histories
@@ -309,4 +309,30 @@ def test_empty_base_still_builds() -> None:
         header=[],
     )
     workbook = openpyxl.load_workbook(io.BytesIO(build_workbook(empty)), data_only=True)
-    assert workbook["Base"].tables["Base"].ref == "A1:P2"
+    assert workbook["Base"].tables["Base"].ref == "A1:R2"
+
+
+def test_treated_entry_shows_ng_value_and_treatment() -> None:
+    data = _input()
+    treated = BaseEntry(
+        **{
+            **_entry(2, "000001", "n2.01", "0", 10).__dict__,
+            "treatment": "Parcelamentos fora do resultado (versão 1)",
+            "original_amount": Decimal("90900000.00"),
+        }
+    )
+    data = DreWorkbookInput(**{**data.__dict__, "entries": [*data.entries, treated]})
+    content = build_workbook(data)
+    base = openpyxl.load_workbook(io.BytesIO(content))["Base"]
+    rows = list(base.iter_rows(values_only=True))
+    header = list(rows[0])
+    assert header[-2:] == ["Valor no NG", "Tratamento da Controladoria"]
+    by_document = {row[10]: row for row in rows[1:]}
+    assert by_document["SYN-10"][3] == 0
+    assert by_document["SYN-10"][16] == 90900000.0
+    assert by_document["SYN-10"][17] == "Parcelamentos fora do resultado (versão 1)"
+    # Untreated entries repeat their own value and leave the treatment empty.
+    assert by_document["SYN-1"][16] == by_document["SYN-1"][3]
+    assert by_document["SYN-1"][17] in (None, "")
+    # The DRE sums the treated value only.
+    assert expected_values(data)["000001"][(2, "n2.01")] == Decimal("900.40")

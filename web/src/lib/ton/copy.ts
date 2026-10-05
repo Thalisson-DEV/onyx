@@ -432,6 +432,16 @@ export const COPY = {
       location: (sheet: string, row: number) =>
         `Planilha ${sheet} · linha ${formatNumber(row)}`,
       review: "Revisão",
+      treated: "Tratado",
+      treatedDetail: (
+        amount: string,
+        title: string,
+        version: number | null | undefined,
+        movedFrom: string | null | undefined
+      ) =>
+        `No NG: ${amount}${movedFrom ? ` em ${movedFrom}` : ""} · ${title}${
+          version ? ` (v${version})` : ""
+        }`,
       sourceOnce: (source: string, file: string) =>
         `Origem: ${source} · ${file}`,
       columns: {
@@ -747,6 +757,7 @@ export const COPY = {
         DRE_ASSIGNMENT: "Classificação da DRE",
         REVIEW_DECISION: "Pendência decidida",
         REVIEW_CARRIED_OVER: "Decisões reaproveitadas na reimportação",
+        CLOSING_TREATMENT: "Tratamento de fechamento",
       },
       outcomes: {
         MOVEMENT: "Movimento",

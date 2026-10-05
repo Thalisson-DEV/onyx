@@ -170,6 +170,7 @@ from onyx.server.ton.account_classification import (
 )
 from onyx.server.ton.agent import router as ton_agent_router
 from onyx.server.ton.client_import import router as ton_client_import_router
+from onyx.server.ton.closing_treatments import router as ton_closing_treatments_router
 from onyx.server.ton.dre import router as ton_dre_router
 from onyx.server.ton.financial_domain import router as ton_financial_domain_router
 from onyx.server.ton.financial_review import router as ton_financial_review_router
@@ -628,6 +629,9 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
         application, ton_financial_domain_router
     )
     include_router_with_global_prefix_prepended(application, ton_dre_router)
+    include_router_with_global_prefix_prepended(
+        application, ton_closing_treatments_router
+    )
     include_router_with_global_prefix_prepended(application, embedding_admin_router)
     include_router_with_global_prefix_prepended(application, embedding_router)
     include_router_with_global_prefix_prepended(application, web_search_router)

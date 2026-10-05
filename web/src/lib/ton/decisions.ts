@@ -36,7 +36,8 @@ export type DecisionKind =
   | "CANDIDATE_REJECTION"
   | "DRE_ASSIGNMENT"
   | "REVIEW_DECISION"
-  | "REVIEW_CARRIED_OVER";
+  | "REVIEW_CARRIED_OVER"
+  | "CLOSING_TREATMENT";
 
 export interface DecisionEntry {
   kind: DecisionKind;

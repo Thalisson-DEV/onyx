@@ -18,6 +18,7 @@ from onyx.db.ton import financial_domain
 from onyx.db.ton.acl import business_unit_visible_clause, is_ton_administrator
 from onyx.db.ton.audit import emit_ton_audit_event
 from onyx.db.ton.closing_treatments import versions_in_force
+from onyx.db.ton.email_flows import record_dre_recalculated__no_commit
 from onyx.db.ton.enums import TonAuditResourceKind
 from onyx.db.ton.models import (
     BusinessUnit,
@@ -576,6 +577,15 @@ def execute(session: Session, user: User, scope: DreScope) -> DreRunView:
         resource_kind=TonAuditResourceKind.DRE_CALCULATION_RUN,
         resource_id=run.id,
     )
+    if not blockers:
+        # Email flows listen to recalculated DREs, grouped per normalization base.
+        record_dre_recalculated__no_commit(
+            session,
+            normalization_run_id=normalization.id,
+            period=scope.period,
+            unit_id=scope.unit_id,
+            now=datetime.datetime.now(datetime.timezone.utc),
+        )
     session.commit()
     return _run_view(run)
 

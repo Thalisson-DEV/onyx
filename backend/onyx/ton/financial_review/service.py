@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from onyx.db.models import User
 from onyx.db.ton import financial_review as repository
 from onyx.db.ton.canonical import compute_content_hash
+from onyx.db.ton.email_flows import emit_flow_event__no_commit
 from onyx.db.ton.models import ReviewRun
 from onyx.db.ton.sources import check_page
 from onyx.error_handling.error_codes import OnyxErrorCode
@@ -39,6 +40,7 @@ from onyx.ton.financial_review.dataset import (
     excluded_rows,
     record_dispositions,
 )
+from onyx.ton.email_flows.catalog import EVENT_KIND_NG_IMPORT
 from onyx.ton.financial_review.engine import FinancialReviewEngine
 from onyx.ton.financial_review.models import (
     DOWNSTREAM_SAFE_DISPOSITIONS,
@@ -191,6 +193,13 @@ def execute_review(
             now=finished,
         )
         view = _view(run)
+        # Email flows listen to finished imports; the event commits with the run.
+        emit_flow_event__no_commit(
+            session,
+            kind=EVENT_KIND_NG_IMPORT,
+            event_key=str(run.id),
+            payload={"review_run_id": str(run.id), "source_id": str(run.source_id)},
+        )
         session.commit()
     except Exception as error:
         session.rollback()

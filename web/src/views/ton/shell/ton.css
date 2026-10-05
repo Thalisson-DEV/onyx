@@ -772,3 +772,205 @@ html:has(.ton-shell) body {
 .ton-classification-grid tr[data-type="DETAIL"] {
   border-top: none;
 }
+
+/* Email flows: node canvas (trigger -> condition -> yes/no -> action) and builder. */
+.ton-flow-workspace {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 1024px) {
+  .ton-flow-workspace {
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: start;
+  }
+}
+.ton-flow-canvas {
+  border: 1px solid var(--border-01);
+  border-radius: var(--ton-radius-card);
+  background-color: var(--background-neutral-01);
+  background-image: radial-gradient(var(--border-02) 1px, transparent 1px);
+  background-size: 16px 16px;
+  padding: 2rem 1rem;
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+.ton-flow-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+.ton-flow-branches {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+}
+.ton-flow-node {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  width: min(300px, 100%);
+  padding: 0.75rem 0.875rem;
+  background: var(--ton-surface);
+  border: 1px solid var(--border-02);
+  border-top: 3px solid var(--ton-brand);
+  border-radius: var(--ton-radius-control);
+  box-shadow: var(--ton-shadow-card);
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.ton-flow-node:hover {
+  border-color: var(--border-03);
+  border-top-color: var(--ton-brand);
+}
+.ton-flow-node[data-selected] {
+  outline: 2px solid var(--ton-brand);
+  outline-offset: 2px;
+}
+.ton-flow-node[data-muted] {
+  border-style: dashed;
+  border-top: 1px dashed var(--border-03);
+  box-shadow: none;
+}
+.ton-flow-node-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--ton-brand-soft);
+  color: var(--ton-brand);
+}
+.ton-flow-node-kind {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ton-brand);
+}
+.ton-flow-connector {
+  position: relative;
+  display: block;
+  width: 2px;
+  height: 2rem;
+  background: var(--border-03);
+}
+.ton-flow-connector::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--border-03);
+}
+.ton-flow-connector-label {
+  position: absolute;
+  top: 0.35rem;
+  left: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-04);
+  background: var(--background-neutral-01);
+  padding: 0 0.25rem;
+  white-space: nowrap;
+}
+.ton-flow-split {
+  width: 50%;
+  height: 1rem;
+  border: 2px solid var(--border-03);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  margin-top: 1rem;
+  position: relative;
+}
+.ton-flow-split::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -1rem;
+  width: 2px;
+  height: 1rem;
+  transform: translateX(-50%);
+  background: var(--border-03);
+}
+.ton-flow-branches .ton-flow-connector {
+  height: 1.5rem;
+}
+.ton-flow-builder {
+  background: var(--ton-surface);
+  border: 1px solid var(--ton-gold);
+  border-radius: var(--ton-radius-card);
+  overflow: hidden;
+}
+.ton-flow-section {
+  border-top: 1px solid var(--border-01);
+}
+.ton-flow-section-head {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-04);
+}
+.ton-flow-section[data-open] .ton-flow-section-head {
+  color: var(--text-05);
+}
+.ton-flow-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.ton-flow-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.625rem 0.375rem;
+  border: 1px dashed var(--border-03);
+  border-radius: var(--ton-radius-control);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--text-04);
+  background: var(--background-neutral-01);
+}
+.ton-flow-tile:hover {
+  border-color: var(--ton-brand);
+  color: var(--text-05);
+}
+.ton-flow-tile[data-active] {
+  border-style: solid;
+  border-color: var(--ton-brand);
+  background: var(--ton-brand-soft);
+  color: var(--ton-brand);
+}
+.ton-flow-clause {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.375rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border-01);
+  border-radius: var(--ton-radius-control);
+}
+.ton-flow-clause > :last-child {
+  grid-column: 2;
+  grid-row: 1;
+}
+.ton-flow-preview {
+  width: 100%;
+  min-height: 480px;
+  border: 1px solid var(--border-01);
+  border-radius: var(--ton-radius-control);
+  background: #ffffff;
+}

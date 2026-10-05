@@ -48,6 +48,9 @@ class LLMFlow(StrEnum):
     KG_DOCUMENT_CLASSIFICATION = "kg_document_classification"
     KG_DEEP_EXTRACTION = "kg_deep_extraction"
 
+    # TON
+    TON_EMAIL_FLOW_SUGGESTION = "ton_email_flow_suggestion"
+
     # Image generation
     IMAGE_GENERATION = "image_generation"
     IMAGE_EDIT = "image_edit"

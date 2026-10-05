@@ -4214,3 +4214,214 @@ def prevent_review_decision_update(
     _mapper: Mapper, _connection: Connection, _target: ReviewDecision
 ) -> None:
     raise ValueError("Review decisions are append-only")
+
+
+# ---------------------------------------------------------------------------
+# Email flows: trigger -> condition -> yes/no e-mail action
+# ---------------------------------------------------------------------------
+
+
+class EmailFlow(Base):
+    """A registered (or TON-suggested) e-mail flow. The definition lives in
+    immutable :class:`EmailFlowVersion` rows; this row carries the lifecycle."""
+
+    __tablename__ = "ton_email_flow"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    origin: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    current_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # Stable key of a flow TON seeds itself, so it is created once.
+    seed_key: Mapped[str | None] = mapped_column(String(64), unique=True)
+    suggestion_reason: Mapped[str | None] = mapped_column(String(1000))
+    suggestion_model: Mapped[str | None] = mapped_column(String(200))
+    # Runs read data with the visibility of whoever registered or activated it.
+    owner_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    active_since: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    approved_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    approved_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    discarded_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    discarded_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "origin IN ('USER', 'TON_SUGGESTED', 'SYSTEM')",
+            name="ck_ton_email_flow_origin",
+        ),
+        CheckConstraint(
+            "status IN ('SUGGESTED', 'ACTIVE', 'PAUSED', 'DISCARDED')",
+            name="ck_ton_email_flow_status",
+        ),
+        Index("ix_ton_email_flow_status", "status"),
+    )
+
+
+class EmailFlowVersion(Base):
+    """Immutable flow definition. Every edit appends a version."""
+
+    __tablename__ = "ton_email_flow_version"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    flow_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_email_flow.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    trigger_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        UniqueConstraint("flow_id", "version", name="uq_ton_email_flow_version"),
+    )
+
+
+class EmailFlowEvent(Base):
+    """Outbox of domain events flows listen to. Written in the source
+    transaction, so an event exists only if its cause committed."""
+
+    __tablename__ = "ton_email_flow_event"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    event_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    processed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    __table_args__ = (
+        UniqueConstraint("kind", "event_key", name="uq_ton_email_flow_event_key"),
+        Index(
+            "ix_ton_email_flow_event_pending",
+            "created_at",
+            postgresql_where=text("processed_at IS NULL"),
+        ),
+    )
+
+
+class EmailFlowRun(Base):
+    """One evaluation of a flow for one event or schedule window."""
+
+    __tablename__ = "ton_email_flow_run"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    flow_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_email_flow.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_email_flow_version.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    event_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    is_test: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    branch: Mapped[str | None] = mapped_column(String(8))
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    item_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    reason: Mapped[str | None] = mapped_column(String(500))
+    context: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    triggered_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    started_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "branch IS NULL OR branch IN ('YES', 'NO')",
+            name="ck_ton_email_flow_run_branch",
+        ),
+        CheckConstraint(
+            "status IN ('RUNNING', 'SENT', 'SILENT', 'PARTIAL', 'FAILED', 'NOT_CONFIGURED')",
+            name="ck_ton_email_flow_run_status",
+        ),
+        # Retries and overlapping ticks never send the same window twice.
+        Index(
+            "uq_ton_email_flow_run_event",
+            "flow_id",
+            "event_key",
+            unique=True,
+            postgresql_where=text("NOT is_test"),
+        ),
+        Index("ix_ton_email_flow_run_flow", "flow_id", "started_at"),
+    )
+
+
+class EmailFlowDelivery(Base):
+    """One message handed to the provider (one per run, or one per batch when
+    the recipients exceed the provider limit), with what was sent."""
+
+    __tablename__ = "ton_email_flow_delivery"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_email_flow_run.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    provider: Mapped[str | None] = mapped_column(String(16))
+    to_addresses: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    cc_addresses: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    bcc_addresses: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    batch_no: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    batch_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    subject: Mapped[str] = mapped_column(String(300), nullable=False)
+    html_body: Mapped[str] = mapped_column(Text, nullable=False)
+    text_body: Mapped[str] = mapped_column(Text, nullable=False)
+    provider_message_id: Mapped[str | None] = mapped_column(String(300))
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error: Mapped[str | None] = mapped_column(String(500))
+    sent_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('SENT', 'FAILED', 'NOT_CONFIGURED')",
+            name="ck_ton_email_flow_delivery_status",
+        ),
+        Index("ix_ton_email_flow_delivery_run", "run_id"),
+    )

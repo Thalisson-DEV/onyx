@@ -20,6 +20,7 @@ import {
   SvgEdit,
   SvgFileText,
   SvgHome,
+  SvgMail,
   SvgMoreHorizontal,
   SvgPlus,
   SvgServer,
@@ -91,6 +92,12 @@ const NAV: NavItem[] = [
     label: COPY.nav.automations,
     icon: SvgWorkflow,
     match: ["/ton/automacoes", "/ton/rotinas"],
+  },
+  {
+    href: "/ton/fluxos",
+    label: COPY.nav.emailFlows,
+    icon: SvgMail,
+    match: ["/ton/fluxos"],
   },
   {
     href: "/ton/relatorios",

@@ -1,10 +1,11 @@
-"""R3 uses the existing tenant-aware Celery Beat and primary worker."""
+"""R3 and email flows use the existing tenant-aware Celery Beat and primary worker."""
 
 from celery import shared_task
 
 from onyx.configs.constants import OnyxCeleryTask
 from onyx.db.engine.sql_engine import get_session_with_tenant
 from onyx.db.ton.routine_schedule import dispatch_due_r3
+from onyx.ton.email_flows.service import tick as email_flows_tick
 
 
 @shared_task(name=OnyxCeleryTask.TON_R3_DISPATCH_DUE, ignore_result=True)
@@ -13,3 +14,13 @@ def dispatch_ton_r3(*, tenant_id: str) -> bool:
         raise ValueError("tenant_id is required")
     with get_session_with_tenant(tenant_id=tenant_id) as session:
         return dispatch_due_r3(session)
+
+
+@shared_task(name=OnyxCeleryTask.TON_EMAIL_FLOWS_TICK, ignore_result=True)
+def ton_email_flows_tick(*, tenant_id: str) -> None:
+    """Email flows: consume the event outbox, then run due schedules. Runs
+    are idempotent per (flow, event), so overlapping ticks never send twice."""
+    if not tenant_id:
+        raise ValueError("tenant_id is required")
+    with get_session_with_tenant(tenant_id=tenant_id) as session:
+        email_flows_tick(session)

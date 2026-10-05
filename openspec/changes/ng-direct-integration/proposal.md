@@ -50,4 +50,4 @@ Ata: `plans/ton/ATA_REUNIAO_LUYLA_2026-10-03.md`.
   4 linhas rejeitadas e parte dos lançamentos sem unidade.
 - A Luyla prefere trazer o histórico de 2025 pela VPN em vez de tratar o export manualmente.
 - É pré-requisito do CNPJ do fornecedor (`supplier-nature-consistency`) e da verificação de correção
-  frequente (`weekly-inconsistency-report`). Prioridade máxima da fase 1.
+  frequente (`email-flows`). Prioridade máxima da fase 1.

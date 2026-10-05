@@ -168,6 +168,7 @@ from onyx.server.sso_discovery import router as sso_discovery_router
 from onyx.server.ton.account_classification import (
     router as ton_account_classification_router,
 )
+from onyx.server.ton.email_flows import router as ton_email_flows_router
 from onyx.server.ton.agent import router as ton_agent_router
 from onyx.server.ton.client_import import router as ton_client_import_router
 from onyx.server.ton.closing_treatments import router as ton_closing_treatments_router
@@ -622,6 +623,7 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(
         application, ton_account_classification_router
     )
+    include_router_with_global_prefix_prepended(application, ton_email_flows_router)
     include_router_with_global_prefix_prepended(
         application, ton_financial_review_router
     )

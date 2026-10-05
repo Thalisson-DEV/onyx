@@ -51,6 +51,16 @@ beat_task_templates: list[dict] = [
         },
     },
     {
+        "name": "ton-email-flows-tick",
+        "task": OnyxCeleryTask.TON_EMAIL_FLOWS_TICK,
+        "schedule": timedelta(minutes=2),
+        "options": {
+            "priority": OnyxCeleryPriority.MEDIUM,
+            "expires": 120,
+            "queue": OnyxCeleryQueues.PRIMARY,
+        },
+    },
+    {
         "name": "check-for-user-file-processing",
         "task": OnyxCeleryTask.CHECK_FOR_USER_FILE_PROCESSING,
         "schedule": timedelta(seconds=20),

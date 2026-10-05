@@ -52,7 +52,7 @@ fração do Prompt Mestre:
 - **Prioridade agora é a DRE.** Contratos e dotações vêm depois.
 - **Parcelamentos:** só a parcela paga, no mês do pagamento; a Luyla limpa o NG com o contador.
 - **Relatório semanal de inconsistências por e-mail ao Financeiro**, com verificação de correção a
-  cada extração (change nova `weekly-inconsistency-report`).
+  cada extração (change nova `email-flows`).
 - **Correções sugeridas pelo TON sempre com aprovação humana.**
 - **Classificação editável no TON** com conta nova acusada e regras de pré-classificação (change nova
   `account-classification-admin`).
@@ -96,7 +96,7 @@ aplicadas e rastreáveis; o assistente responde em < 45 s com números iguais à
 
 ### Fase 1 — Fechamento oficial confiável
 
-Ordem dentro da fase, conforme a reunião: (1) `ng-direct-integration`, (2) `weekly-inconsistency-report`,
+Ordem dentro da fase, conforme a reunião: (1) `ng-direct-integration`, (2) `email-flows`,
 (3) `dre-excel-export`, (4) `account-classification-admin`, (5) `history-2025-baseline` (pela VPN),
 (6) `pis-cofins-source` (planilha da Luyla), (7) `unit-classification-and-consolidation`.
 `budget-vs-actual` desce para depois da compatibilização dotação → natureza pela Controladoria.
@@ -109,7 +109,7 @@ Ordem dentro da fase, conforme a reunião: (1) `ng-direct-integration`, (2) `wee
 | `budget-vs-actual` | Orçado × realizado das dotações aprovadas | M | O1–O3 da Luyla, carry-over |
 | `history-2025-baseline` | Histórico 2025 e comparação anual | M | NG 2025 autorizado |
 | `ng-direct-integration` | Conector somente leitura via VPN, modo sombra → primário | G | TI (Celso): VPN, SGBD, usuário read-only |
-| `weekly-inconsistency-report` | E-mail semanal ao Financeiro com as inconsistências abertas; verificação de correção a cada extração (pedido da Luyla) | M | SMTP, e-mails do Financeiro |
+| `email-flows` | Fluxos de e-mail cadastráveis pela Controladoria (gatilho → condição → sim/não), sugeridos pelo TON com aprovação humana; primeiro fluxo: e-mail semanal ao Financeiro com as inconsistências abertas e verificação de correção a cada extração (pedido da Luyla) | G | Provedor de e-mail (Resend/SMTP, domínio verificado), e-mails do Financeiro |
 | `account-classification-admin` | Tabela de classificação editável no TON, conta nova acusada, regras de pré-classificação, 29 códigos a confirmar. **Em andamento (2026-10-04):** tela `/ton/classificacao`, 29 aguardando confirmação, pré-classificação pelo assistente, confirmação/mudança versionada, Excel; faltam importação do Excel, regras da Controladoria e item no relatório semanal | M | Regras da Controladoria |
 | `zeev-integration` | BE-004C: sincronizar os fluxos Zeev escolhidos (liberações financeiras, aprovações, contratos, certidões, desligamentos) como snapshots; fatos de aprovação e SLA | G | 8 perguntas do catálogo Zeev à Luyla |
 
@@ -276,7 +276,7 @@ production/fleet/hr/procurement ─> specialist-subagents, contract-health-index
 | §16 regulação | `compliance-regulatory-domain` |
 | §17 previsão / licitação | `forecast-and-bid-simulation` |
 | Pedido do cliente: DRE em Excel | `dre-excel-export` |
-| Pedido do cliente: relatório semanal de inconsistências | `weekly-inconsistency-report` |
+| Pedido do cliente: relatório semanal de inconsistências | `email-flows` |
 | Pedido do cliente: classificação editável | `account-classification-admin` |
 | Pedido do cliente: natureza × CNPJ / crédito PIS-COFINS; T8 | `supplier-nature-consistency` |
 | Zeev (processos, aprovações, SLA; `NGF-XS-APPROVAL-MISSING`; ponto cego "processo sem rastreabilidade") | `zeev-integration` |

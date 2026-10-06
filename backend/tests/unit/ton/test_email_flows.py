@@ -28,9 +28,10 @@ from onyx.ton.email_flows.models import (
     FlowTrigger,
     activation_problems,
 )
+from onyx.ton.email_flows.drafter import parse as parse_draft
+from onyx.ton.email_flows.events import build_event
 from onyx.ton.email_flows.service import _deliver, default_weekly_definition
-from onyx.ton.email_flows.suggester import parse_suggestions
-from onyx.ton.email_flows.templates import render
+from onyx.ton.email_flows.steps import activation_problems_v2
 from onyx.ton.email_flows.transport import (
     EmailTransport,
     OutgoingEmail,
@@ -80,13 +81,21 @@ def _email(**kwargs: object) -> EmailAction:
 # --- definition validation -------------------------------------------------
 
 
-def test_default_weekly_flow_is_valid_but_needs_recipients() -> None:
+def _weekly_v1() -> FlowDefinition:
+    return FlowDefinition(
+        trigger=FlowTrigger(kind=TriggerKind.SCHEDULE, frequency="WEEKLY", weekday=0, time="08:00"),
+        conditions=[ConditionClause(field="itens", operator=Operator.GT, value=0)],
+        on_yes=_email(to=[]),
+    )
+
+
+def test_default_weekly_flow_is_v2_and_needs_recipients() -> None:
     definition = default_weekly_definition()
     assert describe_trigger(definition.trigger) == "Toda segunda às 08:00"
-    assert describe_conditions(definition) == "quantidade de itens maior que 0"
-    assert activation_problems(definition) == [
-        "Então: informe ao menos um destinatário em Para"
-    ]
+    assert definition.steps[0].type == "condition"
+    problems = activation_problems_v2(definition)
+    assert problems == ["Inconsistências do NG – semana {semana} ({total}): informe ao menos um destinatário em Para"]
+
 
 
 def test_condition_field_must_exist_on_trigger() -> None:
@@ -164,7 +173,7 @@ def test_item_conditions_filter_and_summary_conditions_decide() -> None:
 
 
 def test_no_branch_when_nothing_open() -> None:
-    result = evaluate(default_weekly_definition(), _event([]))
+    result = evaluate(_weekly_v1(), _event([]))
     assert result.branch is FlowBranch.NO
     assert "quantidade de itens" in result.reason
 
@@ -248,21 +257,6 @@ def test_states_after_import() -> None:
 # --- rendering -------------------------------------------------------------
 
 
-def test_report_groups_by_unit_and_formats_money() -> None:
-    items = [_item("1", "Toledo-PR", 706726.12, weeks=3), _item("2", "Cascavel", 10)]
-    definition = default_weekly_definition()
-    result = evaluate(definition, _event(items))
-    email = render(TemplateKey.INCONSISTENCY_REPORT, definition.on_yes.subject, result.items, result.fields, _event(items))
-    assert email.subject == "Inconsistências do NG – semana 41 (2)"
-    assert "Toledo-PR · 1" in email.html and "Cascavel · 1" in email.html
-    assert "R$ 706.726,12" in email.html
-    assert "Excluir no NG o lançamento duplicado" in email.text
-    assert "O TON não altera o NG" in email.html
-
-
-def test_empty_report_says_nothing_open() -> None:
-    email = render(TemplateKey.INCONSISTENCY_REPORT, "x", [], {"itens": 0}, _event([]))
-    assert "Nenhuma inconsistência aberta." in email.html
 
 
 def test_money_and_subject_helpers() -> None:
@@ -312,30 +306,13 @@ def test_delivery_fails_after_three_attempts() -> None:
 # --- suggestions -----------------------------------------------------------
 
 
-def test_suggestions_are_validated_against_catalog() -> None:
-    text = """{"suggestions": [
-      {"name": "Duplicidades acima de 10 mil", "reason": "Valores altos",
-       "definition": {"trigger": {"kind": "NG_IMPORT_COMPLETED"},
-         "conditions": [{"field": "valor", "operator": "GT", "value": 10000},
-                        {"field": "regra", "operator": "EQ", "value": "NGF-DUP-DOC"}],
-         "on_yes": {"kind": "EMAIL", "to": [], "subject": "Duplicidades ({total})",
-                    "template": "INCONSISTENCY_REPORT"}}},
-      {"name": "Inventado", "definition": {"trigger": {"kind": "SLACK"}}},
-      {"name": "Inconsistências da semana", "definition": {}}
-    ]}"""
-    outcome = parse_suggestions(text, ["Inconsistências da semana"])
-    assert [item.name for item in outcome.suggestions] == ["Duplicidades acima de 10 mil"]
-    assert len(outcome.rejected) == 2
 
 
-def test_dre_event_groups_months_and_units_in_one_notice() -> None:
-    from onyx.ton.email_flows.service import build_event
-
-    trigger = FlowTrigger(kind=TriggerKind.DRE_RECALCULATED)
+def test_dre_event_groups_months_and_units_in_one_note() -> None:
     event = build_event(
         None,  # type: ignore[arg-type]
         None,  # type: ignore[arg-type]
-        trigger,
+        FlowTrigger(kind=TriggerKind.DRE_RECALCULATED),
         event_key="DRE_RECALCULATED:x",
         payload={
             "competencias": ["2026-09-01", "2026-01-01", "2026-05-01"],
@@ -345,26 +322,28 @@ def test_dre_event_groups_months_and_units_in_one_notice() -> None:
     )
     assert event.fields == {"competencia": 9}
     assert event.note == "Meses recalculados: 01/2026 a 09/2026 (consolidado + 2 unidades)."
-    email = render(TemplateKey.SIMPLE_NOTICE, "DRE {data}", [], {"competencia": 9}, event)
-    assert "Meses recalculados: 01/2026 a 09/2026" in email.html
-    assert "Meses recalculados: 01/2026 a 09/2026" in email.text
-    assert "Mês de competência" not in email.text
 
 
-def test_suggestions_forgive_nested_params_and_loose_lists() -> None:
-    text = """{"suggestions": [
-      {"name": "Novas ou reaparecidas", "reason": "Avisar cedo",
-       "definition": {"trigger": {"kind": "NG_OCCURRENCE_CHANGED", "params": {"changes": "NEW, REAPPEARED"}},
-         "conditions": {"field": "itens", "operator": "GT", "value": 0},
-         "on_yes": {"kind": "EMAIL", "to": "luyla@valenorte.com.br", "subject": "Novas ({total})",
-                    "template": "INCONSISTENCY_REPORT"}}},
-      {"name": "Lembrete diário", "reason": "Rotina",
-       "definition": {"trigger": {"kind": "SCHEDULE", "params": {"frequency": "DAILY", "time": "07:30"}},
-         "on_yes": {"kind": "EMAIL", "to": [], "subject": "Abertas", "template": "SIMPLE_NOTICE"}}}
-    ]}"""
-    outcome = parse_suggestions(text, [])
-    assert outcome.rejected == []
-    first, second = outcome.suggestions
-    assert first.definition.trigger.changes == [ItemState.NEW, ItemState.REAPPEARED]
-    assert first.definition.on_yes.to == ["luyla@valenorte.com.br"]
-    assert second.definition.trigger.time == "07:30"
+def test_chat_draft_is_validated_and_forgives_near_misses() -> None:
+    text = """Aqui está: {"name": "Duplicidades grandes", "summary": "Avisa a diretoria",
+      "missing": "e-mail da diretoria",
+      "definition": {"trigger": {"kind": "NG_OCCURRENCE_CHANGED", "params": {"changes": "NEW, REAPPEARED"}},
+        "steps": {"type": "condition",
+          "conditions": {"field": "valor", "operator": "GT", "value": 100000},
+          "then": [{"type": "send_email", "to": "", "subject": "Duplicidades ({total})",
+                    "body": "<p>Olá</p><div data-block='inconsistency_table'></div>"}]}}}"""
+    name, summary, missing, definition = parse_draft(text)
+    assert name == "Duplicidades grandes"
+    assert missing == ["e-mail da diretoria"]
+    assert definition.trigger.changes == [ItemState.NEW, ItemState.REAPPEARED]
+    email = definition.steps[0].then[0]
+    assert email.to == [] and "inconsistency_table" in email.body
+
+
+def test_chat_draft_rejects_unknown_fields() -> None:
+    from onyx.ton.email_flows.drafter import DraftError
+
+    text = """{"name": "X", "definition": {"trigger": {"kind": "DRE_RECALCULATED"},
+      "steps": [{"type": "condition", "conditions": [{"field": "unidade", "operator": "EQ", "value": "A"}]}]}}"""
+    with pytest.raises(DraftError, match="não existe"):
+        parse_draft(text)

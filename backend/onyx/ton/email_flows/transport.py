@@ -2,9 +2,11 @@
 ``TON_EMAIL_PROVIDER``. Without a configured provider nothing is sent and the
 delivery is recorded as not configured; previews keep working."""
 
+import base64
 import os
 import smtplib
 from dataclasses import dataclass
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate, make_msgid
@@ -26,6 +28,16 @@ RESEND_MAX_RECIPIENTS = 50
 
 
 @dataclass(frozen=True)
+class InlineImage:
+    """An image the HTML references as ``cid:<content_id>``."""
+
+    content_id: str
+    filename: str
+    content_type: str
+    data: bytes
+
+
+@dataclass(frozen=True)
 class OutgoingEmail:
     to: list[str]
     cc: list[str]
@@ -33,6 +45,7 @@ class OutgoingEmail:
     subject: str
     html: str
     text: str
+    images: tuple[InlineImage, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -73,6 +86,17 @@ class ResendTransport(EmailTransport):
             payload["cc"] = message.cc
         if message.bcc:
             payload["bcc"] = message.bcc
+        if message.images:
+            # Inline images: Resend matches content_id to cid: in the HTML.
+            payload["attachments"] = [
+                {
+                    "filename": image.filename,
+                    "content": base64.b64encode(image.data).decode("ascii"),
+                    "content_type": image.content_type,
+                    "content_id": image.content_id,
+                }
+                for image in message.images
+            ]
         try:
             response = httpx.post(
                 RESEND_URL,
@@ -102,7 +126,7 @@ class SmtpTransport(EmailTransport):
         self.max_recipients = max_recipients
 
     def send(self, message: OutgoingEmail) -> SendResult:
-        mime = MIMEMultipart("alternative")
+        mime = MIMEMultipart("related") if message.images else MIMEMultipart("alternative")
         mime["Subject"] = message.subject
         mime["From"] = self.sender
         mime["To"] = ", ".join(message.to)
@@ -111,8 +135,19 @@ class SmtpTransport(EmailTransport):
         mime["Date"] = formatdate(localtime=True)
         message_id = make_msgid()
         mime["Message-ID"] = message_id
-        mime.attach(MIMEText(message.text, "plain", "utf-8"))
-        mime.attach(MIMEText(message.html, "html", "utf-8"))
+        if message.images:
+            body = MIMEMultipart("alternative")
+            body.attach(MIMEText(message.text, "plain", "utf-8"))
+            body.attach(MIMEText(message.html, "html", "utf-8"))
+            mime.attach(body)
+            for image in message.images:
+                part = MIMEImage(image.data, _subtype=image.content_type.split("/")[-1])
+                part.add_header("Content-ID", f"<{image.content_id}>")
+                part.add_header("Content-Disposition", "inline", filename=image.filename)
+                mime.attach(part)
+        else:
+            mime.attach(MIMEText(message.text, "plain", "utf-8"))
+            mime.attach(MIMEText(message.html, "html", "utf-8"))
         try:
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=30) as server:
                 if SMTP_STARTTLS:

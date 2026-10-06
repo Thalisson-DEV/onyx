@@ -773,56 +773,96 @@ html:has(.ton-shell) body {
   border-top: none;
 }
 
-/* Email flows: large canvas of wide nodes, one color per step type. */
-.ton-flow-name input {
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-.ton-flow-canvas {
-  position: relative;
-  min-height: 560px;
-  border: 1px solid var(--border-01);
-  border-radius: var(--ton-radius-card);
-  background-color: var(--background-neutral-01);
-  background-image: radial-gradient(var(--border-02) 1px, transparent 1px);
-  background-size: 20px 20px;
-  overflow: hidden;
-}
-.ton-flow-stage {
+/* Email flows v2: full-page canvas (React Flow), nodes colored by step type. */
+.ton-flow-page {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 3rem 1.5rem 3.5rem;
-  transition: padding 160ms ease;
+  height: calc(100dvh - 3.5rem);
+  min-height: 520px;
+  width: 100%;
 }
-@media (min-width: 1024px) {
-  .ton-flow-canvas[data-panel] .ton-flow-stage {
-    padding-right: calc(400px + 1.5rem);
-  }
+.ton-flow-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--border-01);
+  background: var(--ton-surface);
+}
+.ton-flow-name input {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.ton-flow-notice {
+  padding: 0.5rem 1rem;
+  background: var(--ton-brand-soft);
+  border-bottom: 1px solid var(--border-01);
+}
+.ton-flow-canvas-full {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--background-neutral-01);
+}
+.ton-flow-canvas-full .react-flow__background {
+  color: var(--border-02);
+}
+.ton-flow-canvas-full .react-flow__controls {
+  box-shadow: none;
+  border: 1px solid var(--border-02);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.ton-flow-canvas-full .react-flow__controls-button {
+  background: var(--ton-surface);
+  border-bottom: 1px solid var(--border-01);
+  color: var(--text-04);
+  fill: var(--text-04);
+}
+.ton-flow-minimap {
+  border: 1px solid var(--border-02);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--ton-surface) !important;
+}
+.ton-flow-handle {
+  opacity: 0;
+  pointer-events: none;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  border: none !important;
+}
+.ton-flow-edge {
+  stroke: var(--border-03) !important;
+  stroke-width: 2px !important;
 }
 .ton-flow-node {
   --node-accent: var(--ton-brand);
   --node-soft: var(--ton-brand-soft);
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.875rem;
-  width: min(380px, 100%);
-  min-height: 76px;
+  min-height: 84px;
   padding: 0.875rem 1.125rem;
   background: var(--ton-surface);
   border: 1px solid var(--border-02);
+  border-left: 4px solid var(--node-accent);
   border-radius: 14px;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 14px rgb(0 0 0 / 0.05);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 6px 18px rgb(0 0 0 / 0.06);
   cursor: pointer;
-  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+  transition: box-shadow 120ms ease, transform 120ms ease;
 }
 .ton-flow-node:hover {
-  border-color: var(--node-accent);
   transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.05), 0 10px 24px rgb(0 0 0 / 0.08);
 }
 .ton-flow-node[data-selected] {
+  box-shadow: 0 0 0 3px var(--node-soft), 0 10px 24px rgb(0 0 0 / 0.08);
   border-color: var(--node-accent);
-  box-shadow: 0 0 0 3px var(--node-soft), 0 4px 14px rgb(0 0 0 / 0.06);
 }
 .ton-flow-node[data-tone="condition"] {
   --node-accent: var(--vale-norte-gold-60);
@@ -832,12 +872,17 @@ html:has(.ton-shell) body {
   --node-accent: var(--status-info-05);
   --node-soft: var(--status-info-01);
 }
-.ton-flow-node[data-tone="none"] {
+.ton-flow-node[data-tone="loop"] {
+  --node-accent: var(--vale-norte-green-60);
+  --node-soft: var(--vale-norte-green-05);
+}
+.ton-flow-node[data-tone="wait"] {
   --node-accent: var(--text-03);
   --node-soft: var(--background-neutral-02);
-  background: transparent;
-  border-style: dashed;
-  box-shadow: none;
+}
+.ton-flow-node[data-tone="approval"] {
+  --node-accent: var(--status-warning-05);
+  --node-soft: var(--status-warning-01);
 }
 .ton-flow-node-icon {
   display: inline-flex;
@@ -862,34 +907,35 @@ html:has(.ton-shell) body {
   font-weight: 600;
   line-height: 1.3;
   color: var(--text-05);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .ton-flow-node-detail {
   font-size: 0.8125rem;
   line-height: 1.35;
   color: var(--text-03);
 }
-.ton-flow-connector {
-  position: relative;
+.ton-flow-merge {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--border-03);
+}
+.ton-flow-end {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2px;
-  height: 2.75rem;
-  background: var(--border-03);
-}
-.ton-flow-connector::after {
-  content: "";
-  position: absolute;
-  bottom: -2px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 7px solid var(--border-03);
+  width: 120px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px dashed var(--border-03);
+  background: var(--ton-surface);
 }
 .ton-flow-pill {
-  position: relative;
-  z-index: 1;
+  position: absolute;
+  z-index: 2;
   padding: 0.125rem 0.625rem;
   border-radius: 999px;
   font-size: 0.75rem;
@@ -898,6 +944,7 @@ html:has(.ton-shell) body {
   background: var(--ton-surface);
   border: 1px solid var(--border-02);
   color: var(--text-04);
+  pointer-events: none;
 }
 .ton-flow-pill[data-tone="yes"] {
   background: var(--status-success-01);
@@ -906,46 +953,69 @@ html:has(.ton-shell) body {
 }
 .ton-flow-pill[data-tone="no"] {
   background: var(--background-neutral-02);
-  color: var(--text-04);
 }
-.ton-flow-fork {
-  position: relative;
-  width: calc(min(880px, 100%) / 2 + 1rem);
-  height: 1.25rem;
-  margin-top: 1.25rem;
-  border: 2px solid var(--border-03);
-  border-bottom: none;
-  border-radius: 12px 12px 0 0;
+.ton-flow-pill[data-tone="loop"] {
+  background: var(--vale-norte-green-05);
+  border-color: var(--vale-norte-green-60);
+  color: var(--vale-norte-green-60);
 }
-.ton-flow-fork::before {
-  content: "";
+.ton-flow-insert {
   position: absolute;
+  z-index: 3;
+  pointer-events: all;
+}
+.ton-flow-plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--border-03);
+  background: var(--ton-surface);
+  color: var(--text-04);
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+.ton-flow-plus:hover {
+  transform: scale(1.15);
+  border-color: var(--ton-brand);
+  color: var(--ton-brand);
+}
+.ton-flow-menu {
+  position: absolute;
+  top: 28px;
   left: 50%;
-  top: -1.25rem;
-  width: 2px;
-  height: 1.25rem;
   transform: translateX(-50%);
-  background: var(--border-03);
-}
-.ton-flow-branches {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2rem;
-  width: min(880px, 100%);
-}
-.ton-flow-branch {
+  width: 280px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  min-width: 0;
+  gap: 2px;
+  padding: 6px;
+  background: var(--ton-surface);
+  border: 1px solid var(--border-02);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.14);
 }
-.ton-flow-hint {
-  position: absolute;
-  left: 1rem;
-  bottom: 0.75rem;
+.ton-flow-menu-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  border-radius: 8px;
+  color: var(--text-04);
+  text-align: start;
+}
+.ton-flow-menu-item:hover {
+  background: var(--background-neutral-01);
+  color: var(--ton-brand);
+}
+.ton-flow-menu-item svg {
+  margin-top: 0.125rem;
+  flex-shrink: 0;
 }
 .ton-flow-panel {
   position: absolute;
+  z-index: 5;
   top: 0.75rem;
   right: 0.75rem;
   bottom: 0.75rem;
@@ -1006,5 +1076,146 @@ html:has(.ton-shell) body {
   min-height: 60vh;
   border: 1px solid var(--border-01);
   border-radius: var(--ton-radius-control);
+  background: #ffffff;
+}
+.ton-flow-draft-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 10px;
+  background: var(--background-neutral-01);
+}
+.ton-layout-logo {
+  max-height: 48px;
+  width: auto;
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+/* E-mail editor */
+.ton-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  height: 100%;
+}
+@media (min-width: 1100px) {
+  .ton-composer {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  }
+}
+.ton-composer-main,
+.ton-composer-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-height: 0;
+}
+.ton-composer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem;
+  border: 1px solid var(--border-02);
+  border-radius: 10px;
+  background: var(--background-neutral-01);
+}
+.ton-composer-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 0.25rem;
+  background: var(--border-02);
+}
+.ton-composer-colors {
+  display: inline-flex;
+  gap: 4px;
+  padding: 0 0.25rem;
+}
+.ton-composer-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid var(--ton-surface);
+  box-shadow: 0 0 0 1px var(--border-03);
+}
+.ton-composer-editor {
+  flex: 1;
+  min-height: 360px;
+  overflow-y: auto;
+  border: 1px solid var(--border-02);
+  border-radius: 10px;
+  background: #ffffff;
+}
+.ton-composer-content {
+  min-height: 340px;
+  padding: 1rem 1.25rem;
+  outline: none;
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.ton-composer-content p {
+  margin: 0 0 12px;
+}
+.ton-composer-content h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 16px 0 8px;
+}
+.ton-composer-content h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 14px 0 6px;
+}
+.ton-composer-content ul {
+  list-style: disc;
+  padding-left: 22px;
+  margin: 0 0 12px;
+}
+.ton-composer-content ol {
+  list-style: decimal;
+  padding-left: 22px;
+  margin: 0 0 12px;
+}
+.ton-composer-content a {
+  color: #1f6f43;
+  text-decoration: underline;
+}
+.ton-composer-content img {
+  max-width: 100%;
+  height: auto;
+}
+.ton-composer-content img.ProseMirror-selectednode,
+.ton-composer-content .ProseMirror-selectednode {
+  outline: 2px solid #1f6f43;
+}
+.ton-var-chip {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: #e0f2e9;
+  color: #1f6f43;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ton-block-chip {
+  margin: 4px 0 12px;
+  padding: 12px 14px;
+  border: 1px dashed #93c5aa;
+  border-radius: 8px;
+  background: #f3faf6;
+  color: #1f6f43;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ton-composer-frame {
+  flex: 1;
+  width: 100%;
+  min-height: 420px;
+  border: 1px solid var(--border-01);
+  border-radius: 10px;
   background: #ffffff;
 }

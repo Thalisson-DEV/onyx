@@ -82,6 +82,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     Sequence,
     String,
@@ -4365,14 +4366,25 @@ class EmailFlowRun(Base):
     finished_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True)
     )
+    # v2: a run paused at "esperar" or "aprovação" resumes at the cursor.
+    resume_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    cursor: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     __table_args__ = (
         CheckConstraint(
             "branch IS NULL OR branch IN ('YES', 'NO')",
             name="ck_ton_email_flow_run_branch",
         ),
         CheckConstraint(
-            "status IN ('RUNNING', 'SENT', 'SILENT', 'PARTIAL', 'FAILED', 'NOT_CONFIGURED')",
+            "status IN ('RUNNING', 'WAITING', 'SENT', 'SILENT', 'PARTIAL', 'FAILED', "
+            "'NOT_CONFIGURED', 'STOPPED')",
             name="ck_ton_email_flow_run_status",
+        ),
+        Index(
+            "ix_ton_email_flow_run_waiting",
+            "resume_at",
+            postgresql_where=text("status = 'WAITING'"),
         ),
         # Retries and overlapping ticks never send the same window twice.
         Index(
@@ -4410,6 +4422,9 @@ class EmailFlowDelivery(Base):
     html_body: Mapped[str] = mapped_column(Text, nullable=False)
     text_body: Mapped[str] = mapped_column(Text, nullable=False)
     provider_message_id: Mapped[str | None] = mapped_column(String(300))
+    # v2: which send_email step (and unit, inside "para cada unidade").
+    step_id: Mapped[str | None] = mapped_column(String(40))
+    unit: Mapped[str | None] = mapped_column(String(120))
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error: Mapped[str | None] = mapped_column(String(500))
     sent_at: Mapped[datetime.datetime | None] = mapped_column(
@@ -4424,4 +4439,81 @@ class EmailFlowDelivery(Base):
             name="ck_ton_email_flow_delivery_status",
         ),
         Index("ix_ton_email_flow_delivery_run", "run_id"),
+        # Resuming or retrying a run never sends the same step twice.
+        Index(
+            "uq_ton_email_flow_delivery_step",
+            "run_id",
+            "step_id",
+            text("coalesce(unit, '')"),
+            "batch_no",
+            unique=True,
+            postgresql_where=text("step_id IS NOT NULL"),
+        ),
+    )
+
+
+class EmailFlowApproval(Base):
+    """A run paused at an "aprovação" step, waiting for a person."""
+
+    __tablename__ = "ton_email_flow_approval"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_email_flow_run.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    step_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    approvers: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    message: Mapped[str | None] = mapped_column(String(1000))
+    item_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    decided_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    decided_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    note: Mapped[str | None] = mapped_column(String(1000))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED')",
+            name="ck_ton_email_flow_approval_status",
+        ),
+        Index(
+            "ix_ton_email_flow_approval_pending",
+            "created_at",
+            postgresql_where=text("status = 'PENDING'"),
+        ),
+    )
+
+
+class EmailAsset(Base):
+    """An image e-mails can embed (logo, signature). Sent inline (cid:)."""
+
+    __tablename__ = "ton_email_asset"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    seed_key: Mapped[str | None] = mapped_column(String(64), unique=True)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "content_type IN ('image/png', 'image/jpeg', 'image/gif')",
+            name="ck_ton_email_asset_type",
+        ),
+        CheckConstraint("size_bytes <= 1048576", name="ck_ton_email_asset_size"),
     )

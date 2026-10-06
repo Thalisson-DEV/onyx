@@ -1,47 +1,51 @@
-"""Email flows: trigger -> condition -> yes/no e-mail action. Read with the
-TON report read permission; registering, editing and approving suggestions
-need the report management permission."""
+"""Email flows: trigger → steps (conditions, e-mails, per unit, waits,
+approvals). Read with the TON report read permission; registering, editing,
+drafting and approving need the report management permission (approvers
+named in a flow may decide their own approvals)."""
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi.responses import HTMLResponse, Response
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from onyx.auth.permissions import require_permission
 from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import Permission
 from onyx.db.models import User
+from onyx.error_handling.error_codes import OnyxErrorCode
+from onyx.error_handling.exceptions import OnyxError
 from onyx.ton.email_flows import service
-from onyx.ton.email_flows.models import (
+from onyx.ton.email_flows.api import (
+    ApprovalView,
+    AssetView,
     CatalogView,
-    FlowBranch,
+    DecisionRequest,
+    DraftResult,
     FlowCreate,
-    FlowDefinition,
     FlowDetail,
-    FlowStatus,
     FlowTable,
     FlowUpdate,
+    LayoutView,
+    PreviewRequest,
     PreviewView,
     RunView,
-    SuggestionRunResult,
+    TestRequest,
 )
+from onyx.ton.email_flows.models import FlowStatus
 
 _read = require_permission(Permission.READ_TON_REPORTS)
 _manage = require_permission(Permission.MANAGE_TON_REPORTS)
 
 router = APIRouter(prefix="/ton/email-flows", tags=["TON Email Flows"])
 
+MAX_UPLOAD_BYTES = 1_048_576
 
-class PreviewRequest(BaseModel):
+
+class DraftRequest(BaseModel):
+    request: str = Field(min_length=5, max_length=4000)
     flow_id: UUID | None = None
-    definition: FlowDefinition | None = None
-    branch: FlowBranch | None = None
-
-
-class TestRequest(BaseModel):
-    branch: FlowBranch | None = None
 
 
 @router.get("")
@@ -53,8 +57,11 @@ def list_flows(
 
 
 @router.get("/catalog")
-def get_catalog(user: User = Depends(_read)) -> CatalogView:
-    return service.catalog_view()
+def get_catalog(
+    user: User = Depends(_read),
+    session: Session = Depends(get_session),
+) -> CatalogView:
+    return service.catalog_view(session)
 
 
 @router.post("")
@@ -77,16 +84,74 @@ def preview_flow(
         user,
         flow_id=request.flow_id,
         definition=request.definition,
-        branch=request.branch,
+        step_id=request.step_id,
+        flow_name=request.flow_name,
     )
 
 
-@router.post("/suggestions")
-def request_suggestions(
+@router.post("/drafts")
+def draft_flow(
+    request: DraftRequest,
     user: User = Depends(_manage),
     session: Session = Depends(get_session),
-) -> SuggestionRunResult:
-    return service.request_suggestions(session, user)
+) -> DraftResult:
+    return service.draft_flow(session, user, request.request, request.flow_id)
+
+
+@router.get("/layout")
+def get_layout(
+    user: User = Depends(_read),
+    session: Session = Depends(get_session),
+) -> LayoutView:
+    return service.layout_view(session)
+
+
+@router.put("/layout")
+def put_layout(
+    request: LayoutView,
+    user: User = Depends(_manage),
+    session: Session = Depends(get_session),
+) -> LayoutView:
+    return service.save_layout(session, user, request)
+
+
+@router.post("/assets")
+async def upload_asset(
+    file: UploadFile = File(...),
+    name: str = Form(""),
+    user: User = Depends(_manage),
+    session: Session = Depends(get_session),
+) -> AssetView:
+    data = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "A imagem deve ter até 1 MB")
+    return service.upload_asset(
+        session, user, name or file.filename or "imagem", file.content_type or "", data
+    )
+
+
+@router.get("/assets/{asset_id}")
+def get_asset(
+    asset_id: UUID,
+    user: User = Depends(_read),
+    session: Session = Depends(get_session),
+) -> Response:
+    data, content_type = service.asset_bytes(session, user, asset_id)
+    return Response(
+        content=data,
+        media_type=content_type,
+        headers={"Cache-Control": "private, max-age=3600"},
+    )
+
+
+@router.post("/approvals/{approval_id}/decide")
+def decide_approval(
+    approval_id: UUID,
+    request: DecisionRequest,
+    user: User = Depends(_read),
+    session: Session = Depends(get_session),
+) -> ApprovalView:
+    return service.decide(session, user, approval_id, request.approve, request.note)
 
 
 @router.get("/deliveries/{delivery_id}/html")
@@ -123,7 +188,7 @@ def activate_flow(
     user: User = Depends(_manage),
     session: Session = Depends(get_session),
 ) -> FlowDetail:
-    """Also how a TON suggestion is registered ("Cadastrar")."""
+    """Also how a TON draft is registered ("Ativar")."""
     return service.change_status(session, user, flow_id, FlowStatus.ACTIVE)
 
 
@@ -152,4 +217,4 @@ def send_test(
     user: User = Depends(_manage),
     session: Session = Depends(get_session),
 ) -> RunView:
-    return service.send_test(session, user, flow_id, request.branch)
+    return service.send_test(session, user, flow_id, request.step_id)

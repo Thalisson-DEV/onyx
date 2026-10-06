@@ -15,7 +15,7 @@ from uuid import UUID
 
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from onyx.db.enums import Permission
 from onyx.db.models import User
@@ -23,8 +23,11 @@ from onyx.db.ton import acl
 from onyx.db.ton.audit import emit_ton_audit_event
 from onyx.db.ton.enums import OccurrenceTransition, TonAuditResourceKind
 from onyx.db.ton.financial_review import FINDING_SCHEMA
+from onyx.db.models import KVStore
 from onyx.db.ton.models import (
+    EmailAsset,
     EmailFlow,
+    EmailFlowApproval,
     EmailFlowDelivery,
     EmailFlowEvent,
     EmailFlowRun,
@@ -47,11 +50,8 @@ from onyx.ton.email_flows.catalog import (
     ItemState,
 )
 from onyx.ton.email_flows.logic import FlowItem, format_money, state_of
-from onyx.ton.email_flows.models import (
-    FlowDefinition,
-    FlowOrigin,
-    FlowStatus,
-)
+from onyx.ton.email_flows.models import FlowOrigin, FlowStatus
+from onyx.ton.email_flows.steps import FlowDefinitionV2
 from onyx.ton.financial_review.catalog import DEFAULT_CATALOG
 from onyx.ton.financial_review.models import ReviewRunStatus
 from onyx.utils.audit import AuditAction, AuditOutcome
@@ -432,7 +432,7 @@ def create_flow__no_commit(
     user: User | None,
     *,
     name: str,
-    definition: FlowDefinition,
+    definition: FlowDefinitionV2,
     origin: FlowOrigin,
     status: FlowStatus,
     now: datetime.datetime,
@@ -464,7 +464,7 @@ def create_flow__no_commit(
             version=1,
             name=name,
             trigger_kind=definition.trigger.kind.value,
-            definition=definition.model_dump(mode="json"),
+            definition=definition.dump(),
             created_by=user.id if user else None,
         )
     )
@@ -484,7 +484,7 @@ def add_version__no_commit(
     flow: EmailFlow,
     *,
     name: str,
-    definition: FlowDefinition,
+    definition: FlowDefinitionV2,
     now: datetime.datetime,
 ) -> EmailFlowVersion:
     if flow.status == FlowStatus.DISCARDED.value:
@@ -497,7 +497,7 @@ def add_version__no_commit(
         version=flow.current_version,
         name=name,
         trigger_kind=definition.trigger.kind.value,
-        definition=definition.model_dump(mode="json"),
+        definition=definition.dump(),
         created_by=user.id,
     )
     session.add(version)
@@ -670,3 +670,195 @@ def latest_succeeded_review(session: Session) -> ReviewRun | None:
         .order_by(ReviewRun.started_at.desc())
         .limit(1)
     )
+
+
+
+# ---------------------------------------------------------------------------
+# v2: resumable runs, per-step deliveries, approvals
+# ---------------------------------------------------------------------------
+
+
+def get_run(session: Session, run_id: UUID) -> EmailFlowRun:
+    run = session.get(EmailFlowRun, run_id)
+    if run is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Execução não encontrada")
+    return run
+
+
+def due_waiting_runs(session: Session, now: datetime.datetime, limit: int = 20) -> list[EmailFlowRun]:
+    return list(
+        session.scalars(
+            sa.select(EmailFlowRun)
+            .where(
+                EmailFlowRun.status == "WAITING",
+                EmailFlowRun.resume_at.is_not(None),
+                EmailFlowRun.resume_at <= now,
+            )
+            .order_by(EmailFlowRun.resume_at)
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+        )
+    )
+
+
+def delivered_steps(session: Session, run_id: UUID) -> set[tuple[str, str]]:
+    """(step_id, unit) pairs already handed to the provider in this run."""
+    rows = session.execute(
+        sa.select(EmailFlowDelivery.step_id, EmailFlowDelivery.unit).where(
+            EmailFlowDelivery.run_id == run_id, EmailFlowDelivery.step_id.is_not(None)
+        )
+    ).all()
+    return {(str(row[0]), row[1] or "") for row in rows}
+
+
+def run_deliveries(session: Session, run_id: UUID) -> list[EmailFlowDelivery]:
+    return list(
+        session.scalars(
+            sa.select(EmailFlowDelivery).where(EmailFlowDelivery.run_id == run_id)
+        )
+    )
+
+
+def create_approval__no_commit(
+    session: Session,
+    *,
+    run: EmailFlowRun,
+    step_id: str,
+    approvers: list[str],
+    message: str | None,
+    item_count: int,
+) -> EmailFlowApproval:
+    approval = EmailFlowApproval(
+        run_id=run.id,
+        step_id=step_id,
+        approvers=approvers,
+        message=message or None,
+        item_count=item_count,
+        status="PENDING",
+    )
+    session.add(approval)
+    session.flush()
+    return approval
+
+
+def get_approval(session: Session, approval_id: UUID) -> EmailFlowApproval:
+    approval = session.get(EmailFlowApproval, approval_id)
+    if approval is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Aprovação não encontrada")
+    return approval
+
+
+def pending_approvals(session: Session) -> list[tuple[EmailFlowApproval, EmailFlowRun, EmailFlow]]:
+    rows = session.execute(
+        sa.select(EmailFlowApproval, EmailFlowRun, EmailFlow)
+        .join(EmailFlowRun, EmailFlowRun.id == EmailFlowApproval.run_id)
+        .join(EmailFlow, EmailFlow.id == EmailFlowRun.flow_id)
+        .where(EmailFlowApproval.status == "PENDING")
+        .order_by(EmailFlowApproval.created_at)
+    ).all()
+    return [(row[0], row[1], row[2]) for row in rows]
+
+
+def cancel_pending_approvals__no_commit(session: Session, flow_id: UUID, now: datetime.datetime) -> None:
+    session.execute(
+        sa.update(EmailFlowApproval)
+        .where(
+            EmailFlowApproval.status == "PENDING",
+            EmailFlowApproval.run_id.in_(
+                sa.select(EmailFlowRun.id).where(EmailFlowRun.flow_id == flow_id)
+            ),
+        )
+        .values(status="CANCELLED", decided_at=now, note="Fluxo pausado ou descartado")
+        .execution_options(synchronize_session=False)
+    )
+    session.execute(
+        sa.update(EmailFlowRun)
+        .where(EmailFlowRun.flow_id == flow_id, EmailFlowRun.status == "WAITING")
+        .values(status="STOPPED", finished_at=now, resume_at=None, reason="Fluxo pausado ou descartado")
+        .execution_options(synchronize_session=False)
+    )
+
+
+# ---------------------------------------------------------------------------
+# Assets and the default style template
+# ---------------------------------------------------------------------------
+
+LAYOUT_KEY = "ton:email_flows:layout:v1"
+LOGO_SEED_KEY = "vale-norte-logo"
+ALLOWED_ASSET_TYPES = {"image/png", "image/jpeg", "image/gif"}
+MAX_ASSET_BYTES = 1_048_576
+
+
+def list_assets(session: Session) -> list[EmailAsset]:
+    return list(
+        session.scalars(
+            sa.select(EmailAsset)
+            .options(defer(EmailAsset.data))
+            .order_by(EmailAsset.created_at)
+        )
+    )
+
+
+def get_asset(session: Session, asset_id: UUID) -> EmailAsset:
+    asset = session.get(EmailAsset, asset_id)
+    if asset is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Imagem não encontrada")
+    return asset
+
+
+def assets_by_id(session: Session, asset_ids: Sequence[str]) -> dict[str, EmailAsset]:
+    ids = []
+    for raw in asset_ids:
+        try:
+            ids.append(UUID(raw))
+        except ValueError:
+            continue
+    if not ids:
+        return {}
+    return {
+        asset.id.hex: asset
+        for asset in session.scalars(sa.select(EmailAsset).where(EmailAsset.id.in_(ids)))
+    }
+
+
+def create_asset__no_commit(
+    session: Session,
+    user: User | None,
+    *,
+    name: str,
+    content_type: str,
+    data: bytes,
+    seed_key: str | None = None,
+) -> EmailAsset:
+    if content_type not in ALLOWED_ASSET_TYPES:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Use uma imagem PNG, JPEG ou GIF")
+    if len(data) > MAX_ASSET_BYTES:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "A imagem deve ter até 1 MB")
+    asset = EmailAsset(
+        name=name[:200],
+        content_type=content_type,
+        size_bytes=len(data),
+        data=data,
+        seed_key=seed_key,
+        created_by=user.id if user else None,
+    )
+    session.add(asset)
+    session.flush()
+    return asset
+
+
+def seeded_asset(session: Session, seed_key: str) -> EmailAsset | None:
+    return session.scalar(sa.select(EmailAsset).where(EmailAsset.seed_key == seed_key))
+
+
+def read_layout(session: Session) -> dict[str, Any] | None:
+    row = session.get(KVStore, LAYOUT_KEY)
+    return dict(row.value) if row is not None and isinstance(row.value, dict) else None
+
+
+def save_layout__no_commit(session: Session, value: dict[str, Any]) -> None:
+    row = session.get(KVStore, LAYOUT_KEY)
+    if row is None:
+        row = KVStore(key=LAYOUT_KEY)
+        session.add(row)
+    row.value = value

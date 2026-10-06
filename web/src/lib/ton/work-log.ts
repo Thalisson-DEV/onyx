@@ -337,6 +337,10 @@ export function querySummary(
       if (!isObject(body)) break;
       return W.overdue(sum(body.items));
     }
+    case "ton_draft_email_flow": {
+      if (!isObject(body) || typeof body.name !== "string") break;
+      return `Rascunho “${body.name}”`;
+    }
     case "ton_get_recent_changes": {
       if (!isObject(body) || !isObject(body.changes)) break;
       const periods = Array.isArray(body.changes.periods)

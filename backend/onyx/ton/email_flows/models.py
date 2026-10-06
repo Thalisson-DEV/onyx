@@ -1,4 +1,5 @@
-"""Flow definitions and API views for email flows.
+"""Enums and the version-1 definition pieces of email flows (still used to
+read old definitions; v2 is in ``steps``).
 
 A definition is validated against the closed catalogs here, so the same rules
 apply to the screen, the seeded default flow and the assistant's proposals.
@@ -51,6 +52,10 @@ class FlowBranch(str, Enum):
 
 class FlowRunStatus(str, Enum):
     RUNNING = "RUNNING"
+    # Paused at "esperar" or "aprovação".
+    WAITING = "WAITING"
+    # Ended early: approval refused.
+    STOPPED = "STOPPED"
     SENT = "SENT"
     SILENT = "SILENT"
     PARTIAL = "PARTIAL"
@@ -210,133 +215,3 @@ def _coerce(
         if any(item not in allowed for item in result):
             raise ValueError("Valor fora das opções do campo")
     return result if operator is Operator.IN else result[0]
-
-
-# ---------------------------------------------------------------------------
-# API
-# ---------------------------------------------------------------------------
-
-
-class FlowCreate(BaseModel):
-    name: str = Field(min_length=3, max_length=120)
-    definition: FlowDefinition
-    activate: bool = True
-
-
-class FlowUpdate(BaseModel):
-    name: str = Field(min_length=3, max_length=120)
-    definition: FlowDefinition
-
-
-class FlowTestRequest(BaseModel):
-    definition: FlowDefinition | None = None
-    branch: FlowBranch = FlowBranch.YES
-
-
-class DeliveryView(BaseModel):
-    id: UUID
-    status: DeliveryStatus
-    provider: str | None
-    to: list[str]
-    cc: list[str]
-    bcc: list[str]
-    batch_no: int
-    batch_count: int
-    subject: str
-    error: str | None
-    sent_at: datetime.datetime | None
-    created_at: datetime.datetime
-
-
-class RunView(BaseModel):
-    id: UUID
-    version: int
-    event_key: str
-    branch: FlowBranch | None
-    status: FlowRunStatus
-    is_test: bool
-    item_count: int
-    reason: str | None
-    started_at: datetime.datetime
-    finished_at: datetime.datetime | None
-    deliveries: list[DeliveryView]
-
-
-class FlowSummary(BaseModel):
-    id: UUID
-    name: str
-    origin: FlowOrigin
-    status: FlowStatus
-    version: int
-    definition: FlowDefinition
-    when: str
-    condition: str
-    on_yes: str
-    on_no: str
-    suggestion_reason: str | None
-    last_run: RunView | None
-    next_run_at: datetime.datetime | None
-    updated_at: datetime.datetime
-
-
-class FlowDetail(FlowSummary):
-    runs: list[RunView]
-    created_by: str | None
-    approved_by: str | None
-    approved_at: datetime.datetime | None
-
-
-class FieldView(BaseModel):
-    key: str
-    label: str
-    type: FieldType
-    per_item: bool
-    operators: list[Operator]
-    choices: list[tuple[str, str]]
-
-
-class TriggerView(BaseModel):
-    kind: TriggerKind
-    label: str
-    description: str
-    fields: list[FieldView]
-    templates: list[TemplateKey]
-
-
-class CatalogView(BaseModel):
-    triggers: list[TriggerView]
-    templates: dict[TemplateKey, str]
-    operators: dict[Operator, str]
-    subject_markers: dict[str, str]
-    changes: list[tuple[ItemState, str]]
-    provider: str | None
-    provider_ready: bool
-    sender: str | None
-
-
-class FlowTable(BaseModel):
-    flows: list[FlowSummary]
-    can_manage: bool
-    provider_ready: bool
-
-
-class PreviewView(BaseModel):
-    branch: FlowBranch
-    reason: str
-    item_count: int
-    subject: str | None
-    html: str | None
-    to: list[str]
-    cc: list[str]
-    bcc: list[str]
-    batches: int
-
-
-class TestSendResult(BaseModel):
-    run: RunView
-
-
-class SuggestionRunResult(BaseModel):
-    created: int
-    skipped: list[str]
-    model_name: str | None

@@ -8,6 +8,7 @@ import {
   SvgClock,
   SvgFileText,
   SvgHistory,
+  SvgMail,
   SvgBlocks,
   SvgServer,
   SvgWallet,
@@ -102,6 +103,13 @@ export const TON_TOOLS: Record<string, TonToolDescriptor> = {
     href: "/ton/pendencias",
     icon: SvgClipboard,
     kind: "findings",
+  },
+  ton_draft_email_flow: {
+    doing: "Montando o rascunho do fluxo de e-mail",
+    label: "Rascunho de fluxo de e-mail",
+    href: "/ton/fluxos",
+    icon: SvgMail,
+    kind: "activity",
   },
   ton_get_recent_changes: {
     doing: "Comparando com a base anterior",

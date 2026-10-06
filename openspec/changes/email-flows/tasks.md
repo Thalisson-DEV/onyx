@@ -39,3 +39,12 @@
 - [x] 6.1 Testes (unitários + roteiro ponta a ponta numa cópia do banco local): relatório com itens, vazio, sem provedor, falha do provedor, destinatários agrupados, lotes, corrigida, reaparecida, idempotência, ramo "não", sugestão descartada
 - [ ] 6.2 Envio real de teste para o e-mail da Luyla e aprovação do formato
 - [ ] 6.3 Atualizar `openspec/roadmap.md` e o design do `routine-framework` (reaproveitar o motor)
+
+## 7. v2 — fluxos avançados (design-v2.md)
+
+- [x] 7.1 Definição v2 (passos aninhados: condição, e-mail, para cada unidade, esperar, aprovação; variáveis do fluxo) com conversão da v1 na leitura
+- [x] 7.2 Execução retomável (WAITING, resume_at, cursor) e aprovações; envios idempotentes por passo/unidade/lote
+- [x] 7.3 E-mail: saneamento do HTML do editor, variáveis, blocos com dados, imagens inline (CID), modelo padrão de estilo, biblioteca de assets com a logo
+- [x] 7.4 Ferramenta do chat `ton_draft_email_flow` e cartão do rascunho no chat (prévia, Abrir no editor, Ativar)
+- [x] 7.5 Tela cheia com React Flow (zoom, arraste, mini-mapa, "+" entre passos) e editor TipTap com prévia
+- [x] 7.6 Testes, rebuild e teste em localhost:3000

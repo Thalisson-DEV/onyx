@@ -16,6 +16,8 @@ import { getBusinessLabel, getStatusTone } from "@/lib/ton/labels";
 import type { Json } from "@/lib/ton/work-log";
 import { COPY, formatPeriod } from "@/lib/ton/copy";
 import { totalBlockers } from "@/lib/ton/blockers";
+import { isDraftResult } from "@/lib/ton/emailFlows";
+import FlowDraftCard from "@/views/ton/EmailFlowsPage/FlowDraftCard";
 import {
   blockerCode,
   blockerLabel,
@@ -460,6 +462,8 @@ export function TonToolCard({ toolName, data, subtitle }: TonToolCardProps) {
     payload.report_url.startsWith("/ton/controladoria/reports/")
       ? payload
       : null;
+  if (record(payload) && payload.kind === "flow_draft" && isDraftResult(payload))
+    return <FlowDraftCard draft={payload} />;
   if (publication)
     return (
       <ReportCard
@@ -521,6 +525,7 @@ export function TonToolCard({ toolName, data, subtitle }: TonToolCardProps) {
 export function cardNeedsAttention(data: Json | undefined): boolean {
   const payload = record(data) && "data" in data ? data.data : data;
   if (!record(payload)) return false;
+  if (payload.kind === "flow_draft") return true;
   if (
     typeof payload.report_url === "string" &&
     payload.report_url.startsWith("/ton/controladoria/reports/")

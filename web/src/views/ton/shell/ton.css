@@ -1094,25 +1094,25 @@ html:has(.ton-shell) body {
 }
 
 /* E-mail editor */
-.ton-composer {
+.ton-email-composer {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   height: 100%;
 }
 @media (min-width: 1100px) {
-  .ton-composer {
+  .ton-email-composer {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   }
 }
-.ton-composer-main,
-.ton-composer-preview {
+.ton-email-composer-main,
+.ton-email-composer-preview {
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
   min-height: 0;
 }
-.ton-composer-toolbar {
+.ton-email-composer-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1122,18 +1122,18 @@ html:has(.ton-shell) body {
   border-radius: 10px;
   background: var(--background-neutral-01);
 }
-.ton-composer-sep {
+.ton-email-composer-sep {
   width: 1px;
   height: 20px;
   margin: 0 0.25rem;
   background: var(--border-02);
 }
-.ton-composer-colors {
+.ton-email-composer-colors {
   display: inline-flex;
   gap: 4px;
   padding: 0 0.25rem;
 }
-.ton-composer-swatch {
+.ton-email-composer-swatch {
   display: inline-block;
   width: 18px;
   height: 18px;
@@ -1141,7 +1141,7 @@ html:has(.ton-shell) body {
   border: 2px solid var(--ton-surface);
   box-shadow: 0 0 0 1px var(--border-03);
 }
-.ton-composer-editor {
+.ton-email-composer-editor {
   flex: 1;
   min-height: 360px;
   overflow-y: auto;
@@ -1149,7 +1149,7 @@ html:has(.ton-shell) body {
   border-radius: 10px;
   background: #ffffff;
 }
-.ton-composer-content {
+.ton-email-composer-content {
   min-height: 340px;
   padding: 1rem 1.25rem;
   outline: none;
@@ -1157,39 +1157,39 @@ html:has(.ton-shell) body {
   font-size: 14px;
   line-height: 1.55;
 }
-.ton-composer-content p {
+.ton-email-composer-content p {
   margin: 0 0 12px;
 }
-.ton-composer-content h2 {
+.ton-email-composer-content h2 {
   font-size: 18px;
   font-weight: 700;
   margin: 16px 0 8px;
 }
-.ton-composer-content h3 {
+.ton-email-composer-content h3 {
   font-size: 16px;
   font-weight: 700;
   margin: 14px 0 6px;
 }
-.ton-composer-content ul {
+.ton-email-composer-content ul {
   list-style: disc;
   padding-left: 22px;
   margin: 0 0 12px;
 }
-.ton-composer-content ol {
+.ton-email-composer-content ol {
   list-style: decimal;
   padding-left: 22px;
   margin: 0 0 12px;
 }
-.ton-composer-content a {
+.ton-email-composer-content a {
   color: #1f6f43;
   text-decoration: underline;
 }
-.ton-composer-content img {
+.ton-email-composer-content img {
   max-width: 100%;
   height: auto;
 }
-.ton-composer-content img.ProseMirror-selectednode,
-.ton-composer-content .ProseMirror-selectednode {
+.ton-email-composer-content img.ProseMirror-selectednode,
+.ton-email-composer-content .ProseMirror-selectednode {
   outline: 2px solid #1f6f43;
 }
 .ton-var-chip {
@@ -1211,7 +1211,7 @@ html:has(.ton-shell) body {
   font-size: 13px;
   font-weight: 600;
 }
-.ton-composer-frame {
+.ton-email-composer-frame {
   flex: 1;
   width: 100%;
   min-height: 420px;

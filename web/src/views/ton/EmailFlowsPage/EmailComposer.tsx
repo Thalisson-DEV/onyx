@@ -161,27 +161,27 @@ function Toolbar({
   }
 
   return (
-    <div className="ton-composer-toolbar">
+    <div className="ton-email-composer-toolbar">
       <ToolButton label={C.bold} glyph={GLYPHS.bold} active={editor.isActive("bold")} onClick={() => chain().toggleBold().run()} />
       <ToolButton label={C.italic} glyph={GLYPHS.italic} active={editor.isActive("italic")} onClick={() => chain().toggleItalic().run()} />
       <ToolButton label={C.underline} glyph={GLYPHS.underline} active={editor.isActive("underline")} onClick={() => chain().toggleUnderline().run()} />
       <ToolButton label={C.strike} glyph={GLYPHS.strike} active={editor.isActive("strike")} onClick={() => chain().toggleStrike().run()} />
-      <span className="ton-composer-sep" />
+      <span className="ton-email-composer-sep" />
       <ToolButton label={C.h2} glyph={GLYPHS.h2} active={editor.isActive("heading", { level: 2 })} onClick={() => chain().toggleHeading({ level: 2 }).run()} />
       <ToolButton label={C.h3} glyph={GLYPHS.h3} active={editor.isActive("heading", { level: 3 })} onClick={() => chain().toggleHeading({ level: 3 }).run()} />
       <ToolButton label={C.bullet} glyph={GLYPHS.bullet} active={editor.isActive("bulletList")} onClick={() => chain().toggleBulletList().run()} />
       <ToolButton label={C.ordered} glyph={GLYPHS.ordered} active={editor.isActive("orderedList")} onClick={() => chain().toggleOrderedList().run()} />
-      <span className="ton-composer-sep" />
+      <span className="ton-email-composer-sep" />
       <ToolButton label={C.alignLeft} glyph={GLYPHS.left} active={editor.isActive({ textAlign: "left" })} onClick={() => chain().setTextAlign("left").run()} />
       <ToolButton label={C.alignCenter} glyph={GLYPHS.center} active={editor.isActive({ textAlign: "center" })} onClick={() => chain().setTextAlign("center").run()} />
       <ToolButton label={C.alignRight} glyph={GLYPHS.right} active={editor.isActive({ textAlign: "right" })} onClick={() => chain().setTextAlign("right").run()} />
-      <span className="ton-composer-sep" />
-      <span className="ton-composer-colors" aria-label={C.color}>
+      <span className="ton-email-composer-sep" />
+      <span className="ton-email-composer-colors" aria-label={C.color}>
         {COLORS.map((color) => (
           <button
             key={color}
             type="button"
-            className="ton-composer-swatch ton-focusable"
+            className="ton-email-composer-swatch ton-focusable"
             style={{ background: color }}
             aria-label={`${C.color} ${color}`}
             onClick={() => chain().setColor(color).run()}
@@ -201,7 +201,7 @@ function Toolbar({
           else chain().setLink({ href }).run();
         }}
       />
-      <span className="ton-composer-sep" />
+      <span className="ton-email-composer-sep" />
       <div className="min-w-[9rem]">
         <InputSingleSelect
           value=""
@@ -323,7 +323,7 @@ export default function EmailComposer({
         blockExtension(catalog.blocks),
       ],
       content: step.body,
-      editorProps: { attributes: { class: "ton-composer-content" } },
+      editorProps: { attributes: { class: "ton-email-composer-content" } },
       onUpdate: ({ editor: current }) => onChange({ ...stepRef.current, body: current.getHTML() }),
     },
     [step.id]
@@ -366,8 +366,8 @@ export default function EmailComposer({
       <Modal.Content width="full" height="full">
         <Modal.Header icon={SvgMail} title={C.title} description={step.subject || undefined} onClose={onClose} />
         <Modal.Body twoTone={false}>
-          <div className="ton-composer">
-            <div className="ton-composer-main">
+          <div className="ton-email-composer">
+            <div className="ton-email-composer-main">
               <InputTypeIn
                 aria-label={COPY.editor.subject}
                 placeholder={COPY.editor.subject}
@@ -384,11 +384,11 @@ export default function EmailComposer({
                   onAssetAdded={onAssetAdded}
                 />
               )}
-              <div className="ton-composer-editor">
+              <div className="ton-email-composer-editor">
                 <EditorContent editor={editor} />
               </div>
             </div>
-            <div className="ton-composer-preview">
+            <div className="ton-email-composer-preview">
               <div className="flex items-center justify-between gap-2">
                 <Text font="secondary-body" color="text-03">
                   {preview ? (preview.html ? C.previewOf(preview.item_count) : preview.reason) : ""}
@@ -403,7 +403,7 @@ export default function EmailComposer({
                   srcDoc={preview.html}
                   // No scripts; same origin only so the library images load with the session.
                   sandbox="allow-same-origin"
-                  className="ton-composer-frame"
+                  className="ton-email-composer-frame"
                 />
               )}
             </div>

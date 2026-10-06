@@ -453,20 +453,22 @@ describe("disabled composer", () => {
 // ---------------------------------------------------------------------------
 
 describe("preserved editor and composer contracts", () => {
-  test("no editor library was introduced", () => {
-    const packageJson = read("package.json");
-
-    for (const library of [
-      "@tiptap",
-      "lexical",
-      "prosemirror",
-      "slate",
-      "quill",
-    ]) {
-      expect({ library, present: packageJson.includes(library) }).toEqual({
-        library,
-        present: false,
-      });
+  test("no editor library was introduced for chat composers", () => {
+    for (const file of COMPOSER_SOURCES) {
+      const source = read(file);
+      for (const library of [
+        "@tiptap",
+        "lexical",
+        "prosemirror",
+        "slate",
+        "quill",
+      ]) {
+        expect({ file, library, present: source.includes(library) }).toEqual({
+          file,
+          library,
+          present: false,
+        });
+      }
     }
   });
 

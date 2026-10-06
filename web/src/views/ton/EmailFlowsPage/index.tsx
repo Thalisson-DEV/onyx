@@ -183,7 +183,7 @@ function LayoutModal({ open, onClose }: { open: boolean; onClose: () => void }) 
                   {L.color}
                 </Text>
                 <span className="flex items-center gap-2">
-                  <span className="ton-composer-swatch" style={{ background: layout.brand_color }} />
+                  <span className="ton-email-composer-swatch" style={{ background: layout.brand_color }} />
                   <InputTypeIn
                     aria-label={L.color}
                     value={layout.brand_color}

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import {
   Button,
   InputSingleSelect,
   InputTypeIn,
+  Modal,
   Text,
 } from "@opal/components";
 import {
@@ -60,21 +61,22 @@ import {
 type NodeId = "trigger" | "condition" | "yes" | "no";
 type Branch = "yes" | "no";
 type AddressField = "to" | "cc" | "bcc";
+type NodeTone = "trigger" | "condition" | "email" | "none";
 
-const TRIGGER_ICONS: Record<TriggerKind, IconFunctionComponent> = {
+const TRIGGER_ICONS = {
   SCHEDULE: SvgCalendar,
   NG_IMPORT_COMPLETED: SvgZap,
   NG_OCCURRENCE_CHANGED: SvgBranch,
   ACCOUNT_UNCLASSIFIED: SvgFilter,
   DRE_RECALCULATED: SvgSparkle,
-};
+} satisfies Record<TriggerKind, IconFunctionComponent>;
 
-const STATUS_TONE: Record<FlowStatus, TonTone> = {
+const STATUS_TONE = {
   SUGGESTED: "brand",
   ACTIVE: "success",
   PAUSED: "neutral",
   DISCARDED: "neutral",
-};
+} satisfies Record<FlowStatus, TonTone>;
 
 // ---------------------------------------------------------------------------
 // Sentences (mirror the backend's, so the canvas updates while editing)
@@ -91,12 +93,16 @@ function describeTrigger(definition: FlowDefinition, catalog: CatalogView): stri
     const labels = Object.fromEntries(catalog.changes);
     return trigger.changes.length
       ? `Inconsistência ${trigger.changes.map((c) => labels[c]).join(", ")}`
-      : "Escolha as mudanças";
+      : COPY.editor.chooseChanges;
   }
   return catalog.triggers.find((item) => item.kind === trigger.kind)?.label ?? "";
 }
 
-function describeClause(clause: ConditionClause, spec: TriggerView | undefined, catalog: CatalogView): string {
+function describeClause(
+  clause: ConditionClause,
+  spec: TriggerView | undefined,
+  catalog: CatalogView
+): string {
   const field = spec?.fields.find((item) => item.key === clause.field);
   if (!field) return clause.field;
   const choices = Object.fromEntries(field.choices);
@@ -108,17 +114,14 @@ function describeClause(clause: ConditionClause, spec: TriggerView | undefined, 
         : choices[String(value)] ?? String(value)
     )
     .join(", ");
-  return `${field.label.toLocaleLowerCase("pt-BR")} ${catalog.operators[clause.operator]} ${text}`;
+  return `${field.label} ${catalog.operators[clause.operator]} ${text}`;
 }
 
-function describeAction(action: EmailAction, catalog: CatalogView): string {
-  if (action.kind === "NONE") return COPY.editor.nothing;
-  const people = action.to.length + action.cc.length + action.bcc.length;
-  const template = action.template ? catalog.templates[action.template].split(" (")[0] : "";
-  const who = people
-    ? `${people} ${people === 1 ? "pessoa" : "pessoas"}`
-    : "sem destinatários";
-  return `E-mail para ${who} · ${template}`;
+function recipientsLine(action: EmailAction): string {
+  if (!action.to.length) return COPY.editor.noRecipients;
+  const to = action.to.length === 1 ? action.to[0] : `${action.to.length} destinatários`;
+  const copies = action.cc.length + action.bcc.length;
+  return copies ? `${COPY.editor.to}: ${to} · ${COPY.editor.cc}: ${copies}` : `${COPY.editor.to}: ${to}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,18 +129,20 @@ function describeAction(action: EmailAction, catalog: CatalogView): string {
 // ---------------------------------------------------------------------------
 
 function FlowNode({
+  tone,
   icon,
-  kind,
-  summary,
+  label,
+  title,
+  detail,
   selected,
-  muted,
   onSelect,
 }: {
+  tone: NodeTone;
   icon: IconFunctionComponent;
-  kind: string;
-  summary: string;
+  label: string;
+  title: string;
+  detail?: string;
   selected: boolean;
-  muted?: boolean;
   onSelect: () => void;
 }) {
   const Icon = icon;
@@ -145,27 +150,30 @@ function FlowNode({
     <button
       type="button"
       className="ton-flow-node ton-focusable"
+      data-tone={tone}
       data-selected={selected || undefined}
-      data-muted={muted || undefined}
       onClick={onSelect}
     >
       <span className="ton-flow-node-icon" aria-hidden>
-        <Icon size={16} />
+        <Icon size={18} />
       </span>
-      <span className="flex min-w-0 flex-col items-start gap-1 text-start">
-        <span className="ton-flow-node-kind">{kind}</span>
-        <Text font="secondary-body" color="text-05">
-          {summary}
-        </Text>
+      <span className="flex min-w-0 flex-col items-start gap-0.5 text-start">
+        <span className="ton-flow-node-label">{label}</span>
+        <span className="ton-flow-node-title">{title}</span>
+        {detail && <span className="ton-flow-node-detail">{detail}</span>}
       </span>
     </button>
   );
 }
 
-function Connector({ label }: { label?: string }) {
+function Connector({ label, tone }: { label?: string; tone?: "yes" | "no" }) {
   return (
     <span className="ton-flow-connector" aria-hidden>
-      {label && <span className="ton-flow-connector-label">{label}</span>}
+      {label && (
+        <span className="ton-flow-pill" data-tone={tone}>
+          {label}
+        </span>
+      )}
     </span>
   );
 }
@@ -178,109 +186,81 @@ function Canvas({
 }: {
   definition: FlowDefinition;
   catalog: CatalogView;
-  selected: NodeId;
+  selected: NodeId | null;
   onSelect: (node: NodeId) => void;
 }) {
   const spec = catalog.triggers.find((item) => item.kind === definition.trigger.kind);
-  const condition = definition.conditions.length
-    ? definition.conditions.map((c) => describeClause(c, spec, catalog)).join(" e ")
-    : COPY.editor.always;
+  const clauses = definition.conditions.map((c) => describeClause(c, spec, catalog));
   return (
-    <div className="ton-flow-canvas">
-      <div className="ton-flow-column">
-        <FlowNode
-          icon={TRIGGER_ICONS[definition.trigger.kind]}
-          kind={COPY.editor.trigger}
-          summary={describeTrigger(definition, catalog)}
-          selected={selected === "trigger"}
-          onSelect={() => onSelect("trigger")}
-        />
-        <Connector />
-        <FlowNode
-          icon={SvgFilter}
-          kind={COPY.editor.condition}
-          summary={condition}
-          selected={selected === "condition"}
-          onSelect={() => onSelect("condition")}
-        />
-        <div className="ton-flow-split" aria-hidden />
-        <div className="ton-flow-branches">
-          {(["yes", "no"] as const).map((branch) => {
-            const action = branch === "yes" ? definition.on_yes : definition.on_no;
-            return (
-              <div key={branch} className="ton-flow-column">
-                <Connector label={branch === "yes" ? COPY.editor.yes : COPY.editor.no} />
-                <FlowNode
-                  icon={action.kind === "EMAIL" ? SvgMail : SvgX}
-                  kind={COPY.editor.action}
-                  summary={describeAction(action, catalog)}
-                  selected={selected === branch}
-                  muted={action.kind === "NONE"}
-                  onSelect={() => onSelect(branch)}
-                />
-              </div>
-            );
-          })}
-        </div>
+    <div className="ton-flow-stage">
+      <FlowNode
+        tone="trigger"
+        icon={TRIGGER_ICONS[definition.trigger.kind]}
+        label={COPY.editor.when}
+        title={describeTrigger(definition, catalog)}
+        detail={definition.trigger.kind === "SCHEDULE" ? COPY.editor.brasilia : spec?.label}
+        selected={selected === "trigger"}
+        onSelect={() => onSelect("trigger")}
+      />
+      <Connector />
+      <FlowNode
+        tone="condition"
+        icon={SvgFilter}
+        label={COPY.editor.if}
+        title={clauses[0] ?? COPY.editor.always}
+        detail={clauses.length > 1 ? clauses.slice(1).map((c) => `e ${c}`).join(" · ") : undefined}
+        selected={selected === "condition"}
+        onSelect={() => onSelect("condition")}
+      />
+      <div className="ton-flow-fork" aria-hidden />
+      <div className="ton-flow-branches">
+        {(["yes", "no"] as const).map((branch) => {
+          const action = branch === "yes" ? definition.on_yes : definition.on_no;
+          const email = action.kind === "EMAIL";
+          return (
+            <div key={branch} className="ton-flow-branch">
+              <Connector
+                label={branch === "yes" ? COPY.editor.yes : COPY.editor.no}
+                tone={branch}
+              />
+              <FlowNode
+                tone={email ? "email" : "none"}
+                icon={email ? SvgMail : SvgX}
+                label={email ? COPY.editor.sendEmail : COPY.editor.nothing}
+                title={
+                  email
+                    ? action.template
+                      ? catalog.templates[action.template].split(" (")[0] ?? ""
+                      : ""
+                    : COPY.editor.nothingDetail
+                }
+                detail={email ? recipientsLine(action) : undefined}
+                selected={selected === branch}
+                onSelect={() => onSelect(branch)}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Builder
+// Node panel
 // ---------------------------------------------------------------------------
 
-function BlockTile({
-  icon,
+function Field({
   label,
-  active,
-  onClick,
-}: {
-  icon: IconFunctionComponent;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const Icon = icon;
-  return (
-    <button
-      type="button"
-      className="ton-flow-tile ton-focusable"
-      data-active={active || undefined}
-      onClick={onClick}
-    >
-      <Icon size={16} />
-      <span>{label}</span>
-    </button>
-  );
-}
-
-function Section({
-  title,
-  open,
-  onOpen,
   children,
+  hint,
 }: {
-  title: string;
-  open: boolean;
-  onOpen: () => void;
-  children: React.ReactNode;
+  label: string;
+  children: ReactNode;
+  hint?: string;
 }) {
   return (
-    <section className="ton-flow-section" data-open={open || undefined}>
-      <button type="button" className="ton-flow-section-head ton-focusable" onClick={onOpen}>
-        <span>{title}</span>
-        <span aria-hidden>{open ? "–" : "+"}</span>
-      </button>
-      {open && <div className="flex flex-col gap-3 px-4 pb-4">{children}</div>}
-    </section>
-  );
-}
-
-function Labeled({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
-  return (
-    <label className="flex flex-col gap-1">
+    <label className="flex flex-col gap-1.5">
       <Text font="secondary-action" color="text-04">
         {label}
       </Text>
@@ -319,15 +299,46 @@ function Select({
   );
 }
 
-function TriggerFields({
-  definition,
-  catalog,
-  onChange,
+function Choice({
+  icon,
+  label,
+  description,
+  active,
+  onClick,
 }: {
+  icon: IconFunctionComponent;
+  label: string;
+  description?: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const Icon = icon;
+  return (
+    <button
+      type="button"
+      className="ton-flow-choice ton-focusable"
+      data-active={active || undefined}
+      aria-pressed={active}
+      onClick={onClick}
+    >
+      <Icon size={16} />
+      <span className="flex min-w-0 flex-col items-start text-start">
+        <span className="ton-flow-choice-label">{label}</span>
+        {description && active && (
+          <span className="ton-flow-choice-description">{description}</span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+interface EditorProps {
   definition: FlowDefinition;
   catalog: CatalogView;
   onChange: (definition: FlowDefinition) => void;
-}) {
+}
+
+function TriggerFields({ definition, catalog, onChange }: EditorProps) {
   const trigger = definition.trigger;
   function setTrigger(patch: Partial<FlowDefinition["trigger"]>) {
     onChange({ ...definition, trigger: { ...trigger, ...patch } });
@@ -355,23 +366,21 @@ function TriggerFields({
   }
   return (
     <>
-      <div className="ton-flow-tiles">
+      <div className="flex flex-col gap-1.5">
         {catalog.triggers.map((item) => (
-          <BlockTile
+          <Choice
             key={item.kind}
             icon={TRIGGER_ICONS[item.kind]}
             label={item.label}
+            description={item.description}
             active={item.kind === trigger.kind}
             onClick={() => choose(item.kind)}
           />
         ))}
       </div>
-      <Text font="secondary-body" color="text-03">
-        {catalog.triggers.find((item) => item.kind === trigger.kind)?.description}
-      </Text>
       {trigger.kind === "SCHEDULE" && (
-        <>
-          <Labeled label={COPY.editor.frequency}>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={COPY.editor.frequency}>
             <Select
               label={COPY.editor.frequency}
               value={trigger.frequency ?? "WEEKLY"}
@@ -386,18 +395,8 @@ function TriggerFields({
                 })
               }
             />
-          </Labeled>
-          {trigger.frequency === "WEEKLY" && (
-            <Labeled label={COPY.editor.weekday}>
-              <Select
-                label={COPY.editor.weekday}
-                value={String(trigger.weekday ?? 0)}
-                options={WEEKDAYS.map((day, index) => [String(index), day])}
-                onChange={(value) => setTrigger({ weekday: Number(value) })}
-              />
-            </Labeled>
-          )}
-          <Labeled label={COPY.editor.time}>
+          </Field>
+          <Field label={COPY.editor.time}>
             <InputTypeIn
               aria-label={COPY.editor.time}
               placeholder="08:00"
@@ -405,11 +404,21 @@ function TriggerFields({
               maxLength={5}
               onChange={(event) => setTrigger({ time: event.target.value })}
             />
-          </Labeled>
-        </>
+          </Field>
+          {trigger.frequency === "WEEKLY" && (
+            <Field label={COPY.editor.weekday}>
+              <Select
+                label={COPY.editor.weekday}
+                value={String(trigger.weekday ?? 0)}
+                options={WEEKDAYS.map((day, index) => [String(index), day])}
+                onChange={(value) => setTrigger({ weekday: Number(value) })}
+              />
+            </Field>
+          )}
+        </div>
       )}
       {trigger.kind === "NG_OCCURRENCE_CHANGED" && (
-        <Labeled label={COPY.editor.changes}>
+        <Field label={COPY.editor.changes}>
           <span className="flex flex-wrap gap-1.5">
             {catalog.changes.map(([state, label]) => {
               const on = trigger.changes.includes(state);
@@ -431,21 +440,13 @@ function TriggerFields({
               );
             })}
           </span>
-        </Labeled>
+        </Field>
       )}
     </>
   );
 }
 
-function ConditionFields({
-  definition,
-  catalog,
-  onChange,
-}: {
-  definition: FlowDefinition;
-  catalog: CatalogView;
-  onChange: (definition: FlowDefinition) => void;
-}) {
+function ConditionFields({ definition, catalog, onChange }: EditorProps) {
   const spec = catalog.triggers.find((item) => item.kind === definition.trigger.kind);
   const fields = spec?.fields ?? [];
   function setClause(index: number, clause: ConditionClause) {
@@ -457,13 +458,30 @@ function ConditionFields({
     <>
       {definition.conditions.length === 0 && (
         <Text font="secondary-body" color="text-03">
-          {COPY.editor.always}
+          {COPY.editor.alwaysHint}
         </Text>
       )}
       {definition.conditions.map((clause, index) => {
         const field = fields.find((item) => item.key === clause.field) ?? fields[0];
         return (
           <div key={index} className="ton-flow-clause">
+            <div className="flex items-center justify-between">
+              <Text font="secondary-action" color="text-04">
+                {index === 0 ? COPY.editor.if : COPY.editor.and}
+              </Text>
+              <Button
+                size="sm"
+                prominence="tertiary"
+                icon={SvgTrash}
+                aria-label={COPY.editor.remove}
+                onClick={() =>
+                  onChange({
+                    ...definition,
+                    conditions: definition.conditions.filter((_, i) => i !== index),
+                  })
+                }
+              />
+            </div>
             <Select
               label={COPY.editor.field}
               value={clause.field}
@@ -478,52 +496,44 @@ function ConditionFields({
                 });
               }}
             />
-            {field && (
-              <Select
-                label={COPY.editor.operator}
-                value={clause.operator}
-                options={field.operators.map((op) => [op, catalog.operators[op]])}
-                onChange={(op) =>
-                  setClause(index, { ...clause, operator: op as ConditionClause["operator"] })
-                }
-              />
-            )}
-            {field && field.choices.length > 0 && clause.operator === "EQ" ? (
-              <Select
-                label={COPY.editor.value}
-                value={String(clause.value)}
-                options={field.choices}
-                onChange={(value) => setClause(index, { ...clause, value })}
-              />
-            ) : (
-              <InputTypeIn
-                aria-label={COPY.editor.value}
-                placeholder={COPY.editor.value}
-                value={Array.isArray(clause.value) ? clause.value.join(", ") : String(clause.value)}
-                onChange={(event) => {
-                  const raw = event.target.value;
-                  setClause(index, {
-                    ...clause,
-                    value:
-                      clause.operator === "IN"
-                        ? raw.split(",").map((item) => item.trim())
-                        : raw,
-                  });
-                }}
-              />
-            )}
-            <Button
-              size="sm"
-              prominence="tertiary"
-              icon={SvgTrash}
-              aria-label={COPY.editor.remove}
-              onClick={() =>
-                onChange({
-                  ...definition,
-                  conditions: definition.conditions.filter((_, i) => i !== index),
-                })
-              }
-            />
+            <div className="grid grid-cols-2 gap-2">
+              {field && (
+                <Select
+                  label={COPY.editor.operator}
+                  value={clause.operator}
+                  options={field.operators.map((op) => [op, catalog.operators[op]])}
+                  onChange={(op) =>
+                    setClause(index, { ...clause, operator: op as ConditionClause["operator"] })
+                  }
+                />
+              )}
+              {field && field.choices.length > 0 && clause.operator === "EQ" ? (
+                <Select
+                  label={COPY.editor.value}
+                  value={String(clause.value)}
+                  options={field.choices}
+                  onChange={(value) => setClause(index, { ...clause, value })}
+                />
+              ) : (
+                <InputTypeIn
+                  aria-label={COPY.editor.value}
+                  placeholder={COPY.editor.value}
+                  value={
+                    Array.isArray(clause.value) ? clause.value.join(", ") : String(clause.value)
+                  }
+                  onChange={(event) => {
+                    const raw = event.target.value;
+                    setClause(index, {
+                      ...clause,
+                      value:
+                        clause.operator === "IN"
+                          ? raw.split(",").map((item) => item.trim())
+                          : raw,
+                    });
+                  }}
+                />
+              )}
+            </div>
           </div>
         );
       })}
@@ -561,13 +571,10 @@ function ActionFields({
   addressText,
   onAddressText,
   onChange,
-}: {
+}: EditorProps & {
   branch: Branch;
-  definition: FlowDefinition;
-  catalog: CatalogView;
   addressText: Record<AddressField, string>;
   onAddressText: (field: AddressField, value: string) => void;
-  onChange: (definition: FlowDefinition) => void;
 }) {
   const key = branch === "yes" ? "on_yes" : "on_no";
   const action = definition[key];
@@ -577,8 +584,8 @@ function ActionFields({
   }
   return (
     <>
-      <div className="ton-flow-tiles">
-        <BlockTile
+      <div className="grid grid-cols-2 gap-1.5">
+        <Choice
           icon={SvgMail}
           label={COPY.editor.sendEmail}
           active={action.kind === "EMAIL"}
@@ -587,7 +594,7 @@ function ActionFields({
             setAction(emailAction((spec?.templates[0] ?? "SIMPLE_NOTICE") as TemplateKey))
           }
         />
-        <BlockTile
+        <Choice
           icon={SvgX}
           label={COPY.editor.nothing}
           active={action.kind === "NONE"}
@@ -597,7 +604,7 @@ function ActionFields({
       {action.kind === "EMAIL" && (
         <>
           {(["to", "cc", "bcc"] as const).map((field) => (
-            <Labeled
+            <Field
               key={field}
               label={COPY.editor[field]}
               hint={field === "to" ? COPY.editor.addressesHint : undefined}
@@ -611,24 +618,17 @@ function ActionFields({
                   setAction({ ...action, [field]: parseAddresses(event.target.value) });
                 }}
               />
-            </Labeled>
+            </Field>
           ))}
-          <Labeled
-            label={COPY.editor.subject}
-            hint={COPY.editor.markers(
-              Object.entries(catalog.subject_markers)
-                .map(([marker, meaning]) => `{${marker}} ${meaning}`)
-                .join(" · ")
-            )}
-          >
+          <Field label={COPY.editor.subject} hint={COPY.editor.markersShort}>
             <InputTypeIn
               aria-label={COPY.editor.subject}
               value={action.subject}
               maxLength={200}
               onChange={(event) => setAction({ ...action, subject: event.target.value })}
             />
-          </Labeled>
-          <Labeled label={COPY.editor.template}>
+          </Field>
+          <Field label={COPY.editor.template}>
             <Select
               label={COPY.editor.template}
               value={action.template ?? ""}
@@ -638,10 +638,38 @@ function ActionFields({
               ])}
               onChange={(value) => setAction({ ...action, template: value as TemplateKey })}
             />
-          </Labeled>
+          </Field>
         </>
       )}
     </>
+  );
+}
+
+function NodePanel({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <aside className="ton-flow-panel" aria-label={title}>
+      <div className="flex items-center justify-between gap-2 px-5 pt-4 pb-3">
+        <Text font="main-ui-action" color="text-05">
+          {title}
+        </Text>
+        <Button
+          size="sm"
+          prominence="tertiary"
+          icon={SvgX}
+          aria-label={COPY.editor.closePanel}
+          onClick={onClose}
+        />
+      </div>
+      <div className="flex flex-col gap-4 overflow-y-auto px-5 pb-5">{children}</div>
+    </aside>
   );
 }
 
@@ -660,7 +688,7 @@ function History({ runs }: { runs: RunView[] }) {
   const columns = COPY.editor.historyColumns;
   return (
     <div className="ton-card overflow-x-auto">
-      <table className="ton-statement ton-classification-grid w-full min-w-[760px] border-collapse">
+      <table className="ton-statement ton-classification-grid w-full min-w-[720px] border-collapse">
         <thead>
           <tr>
             <th scope="col">{columns.date}</th>
@@ -669,7 +697,6 @@ function History({ runs }: { runs: RunView[] }) {
               {columns.items}
             </th>
             <th scope="col">{columns.recipients}</th>
-            <th scope="col">{columns.batch}</th>
             <th scope="col">{columns.status}</th>
           </tr>
         </thead>
@@ -685,7 +712,11 @@ function History({ runs }: { runs: RunView[] }) {
                 </td>
                 <td>
                   <Text font="secondary-body" color="text-04">
-                    {run.branch === "YES" ? COPY.editor.yes : run.branch === "NO" ? COPY.editor.no : "—"}
+                    {run.branch === "YES"
+                      ? COPY.editor.yes
+                      : run.branch === "NO"
+                        ? COPY.editor.no
+                        : "—"}
                   </Text>
                 </td>
                 <td data-numeric>
@@ -696,23 +727,26 @@ function History({ runs }: { runs: RunView[] }) {
                 <td>
                   <Text font="secondary-body" color="text-04">
                     {delivery
-                      ? `${delivery.to.length} / ${delivery.cc.length} / ${delivery.bcc.length}`
+                      ? `${[...delivery.to, ...delivery.cc].join(", ")}${
+                          delivery.batch_count > 1
+                            ? ` · lote ${delivery.batch_no}/${delivery.batch_count}`
+                            : ""
+                        }`
                       : "—"}
-                  </Text>
-                </td>
-                <td>
-                  <Text font="secondary-body" color="text-04">
-                    {delivery ? `${delivery.batch_no}/${delivery.batch_count}` : "—"}
                   </Text>
                 </td>
                 <td>
                   <span className="flex flex-col gap-0.5">
                     <Text font="secondary-body" color="text-05">
-                      {delivery ? COPY.deliveryStatus[delivery.status] : COPY.runStatus[run.status]}
+                      {delivery
+                        ? COPY.deliveryStatus[delivery.status]
+                        : COPY.runStatus[run.status]}
                     </Text>
-                    <Text font="secondary-body" color="text-03">
-                      {delivery?.error ?? run.reason ?? ""}
-                    </Text>
+                    {(delivery?.error ?? (!delivery ? run.reason : null)) && (
+                      <Text font="secondary-body" color="text-03">
+                        {delivery?.error ?? run.reason ?? ""}
+                      </Text>
+                    )}
                     {delivery && (
                       <a
                         className="ton-brand-text text-sm"
@@ -734,47 +768,58 @@ function History({ runs }: { runs: RunView[] }) {
   );
 }
 
-function Preview({ preview, onClose }: { preview: PreviewView; onClose: () => void }) {
+function PreviewModal({
+  preview,
+  onClose,
+}: {
+  preview: PreviewView | null;
+  onClose: () => void;
+}) {
   return (
-    <div className="ton-card flex flex-col gap-3 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <Text font="main-ui-action" color="text-05">
-            {preview.subject ?? COPY.editor.previewTitle}
-          </Text>
-          <Text font="secondary-body" color="text-03">
-            {COPY.editor.previewBranch(
-              preview.branch === "YES" ? COPY.editor.yes : COPY.editor.no,
-              preview.reason,
-              preview.item_count
-            )}
-          </Text>
-          {preview.html && (
-            <Text font="secondary-body" color="text-03">
-              {COPY.editor.previewRecipients(
-                preview.to.length,
-                preview.cc.length,
-                preview.bcc.length,
-                preview.batches
-              )}
+    <Modal open={preview !== null} onOpenChange={(open) => !open && onClose()}>
+      <Modal.Content width="lg" height="lg">
+        <Modal.Header
+          icon={SvgMail}
+          title={preview?.subject ?? COPY.editor.previewTitle}
+          description={
+            preview
+              ? [
+                  COPY.editor.previewBranch(
+                    preview.branch === "YES" ? COPY.editor.yes : COPY.editor.no,
+                    preview.reason,
+                    preview.item_count
+                  ),
+                  preview.html
+                    ? COPY.editor.previewRecipients(
+                        preview.to.length,
+                        preview.cc.length,
+                        preview.bcc.length,
+                        preview.batches
+                      )
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : undefined
+          }
+          onClose={onClose}
+        />
+        <Modal.Body>
+          {preview?.html ? (
+            <iframe
+              title={COPY.editor.previewTitle}
+              srcDoc={preview.html}
+              sandbox=""
+              className="ton-flow-preview"
+            />
+          ) : (
+            <Text font="main-ui-body" color="text-04">
+              {COPY.editor.previewNothing}
             </Text>
           )}
-        </div>
-        <Button size="sm" prominence="tertiary" icon={SvgX} aria-label={COPY.editor.closePreview} onClick={onClose} />
-      </div>
-      {preview.html ? (
-        <iframe
-          title={COPY.editor.previewTitle}
-          srcDoc={preview.html}
-          sandbox=""
-          className="ton-flow-preview"
-        />
-      ) : (
-        <Text font="secondary-body" color="text-04">
-          {COPY.editor.previewNothing}
-        </Text>
-      )}
-    </div>
+        </Modal.Body>
+      </Modal.Content>
+    </Modal>
   );
 }
 
@@ -782,7 +827,7 @@ function Preview({ preview, onClose }: { preview: PreviewView; onClose: () => vo
 // Editor
 // ---------------------------------------------------------------------------
 
-function addressTexts(definition: FlowDefinition): Record<Branch, Record<AddressField, string>> {
+function addressTexts(definition: FlowDefinition) {
   const join = (action: EmailAction) => ({
     to: action.to.join(", "),
     cc: action.cc.join(", "),
@@ -790,6 +835,13 @@ function addressTexts(definition: FlowDefinition): Record<Branch, Record<Address
   });
   return { yes: join(definition.on_yes), no: join(definition.on_no) };
 }
+
+const PANEL_TITLES = {
+  trigger: COPY.editor.when,
+  condition: COPY.editor.if,
+  yes: `${COPY.editor.action} · ${COPY.editor.yes}`,
+  no: `${COPY.editor.action} · ${COPY.editor.no}`,
+} satisfies Record<NodeId, string>;
 
 function Editor({
   flow,
@@ -806,9 +858,11 @@ function Editor({
     flow?.definition ?? newDefinition()
   );
   const [addresses, setAddresses] = useState(addressTexts(flow?.definition ?? newDefinition()));
-  const [selected, setSelected] = useState<NodeId>("trigger");
+  const [selected, setSelected] = useState<NodeId | null>(flow ? null : "trigger");
   const [busy, setBusy] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ tone: "error" | "ok"; text: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ tone: "error" | "ok"; text: string } | null>(
+    null
+  );
   const [preview, setPreview] = useState<PreviewView | null>(null);
 
   useEffect(() => {
@@ -877,7 +931,9 @@ function Editor({
   async function sendToMe() {
     if (!flow) return;
     const id = flow.id;
-    const result = await run("test", () => sendJson<RunView>(`${EMAIL_FLOWS_API}/${id}/test`, {}));
+    const result = await run("test", () =>
+      sendJson<RunView>(`${EMAIL_FLOWS_API}/${id}/test`, {})
+    );
     if (result) {
       const status = result.deliveries[0]
         ? COPY.deliveryStatus[result.deliveries[0].status]
@@ -888,156 +944,164 @@ function Editor({
   }
 
   const status = flow?.status;
-  const section: "trigger" | "condition" | "action" =
-    selected === "yes" || selected === "no" ? "action" : selected;
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-[16rem] flex-1 items-center gap-3">
-          <div className="min-w-[14rem] flex-1">
-            <InputTypeIn
-              aria-label={COPY.editor.namePlaceholder}
-              placeholder={COPY.editor.namePlaceholder}
-              value={name}
-              maxLength={120}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </div>
-          {status && <StatusPill tone={STATUS_TONE[status]}>{COPY.status[status]}</StatusPill>}
-          {flow && (
-            <Text font="secondary-body" color="text-03">
-              {COPY.editor.version(flow.version)}
-            </Text>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button prominence="secondary" icon={SvgEye} disabled={busy !== null} onClick={showPreview}>
-            {COPY.editor.preview}
-          </Button>
-          {flow && (
-            <Button
-              prominence="secondary"
-              icon={SvgMail}
-              disabled={busy !== null || dirty}
-              onClick={sendToMe}
-            >
-              {busy === "test" ? COPY.editor.sending : COPY.editor.sendToMe}
-            </Button>
-          )}
-          <Button
-            prominence="secondary"
-            disabled={busy !== null || !dirty || name.trim().length < 3}
-            onClick={save}
-          >
-            {busy === "save" ? COPY.editor.saving : COPY.editor.save}
-          </Button>
-          {(status === undefined || status === "PAUSED" || status === "SUGGESTED") && (
-            <Button
-              icon={SvgPlayCircle}
-              disabled={busy !== null || name.trim().length < 3}
-              onClick={() => changeStatus("activate")}
-            >
-              {status === "SUGGESTED" ? COPY.editor.register : COPY.editor.activate}
-            </Button>
-          )}
-          {status === "ACTIVE" && (
-            <Button icon={SvgPauseCircle} prominence="secondary" disabled={busy !== null} onClick={() => changeStatus("pause")}>
-              {COPY.editor.pause}
-            </Button>
-          )}
-          {(status === "SUGGESTED" || status === "PAUSED") && (
-            <Button prominence="tertiary" disabled={busy !== null} onClick={() => changeStatus("discard")}>
-              {COPY.editor.discard}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {(feedback || (flow && dirty)) && (
-        <Text font="secondary-body" color={feedback?.tone === "error" ? "text-05" : "text-03"}>
-          {feedback?.text ?? COPY.editor.unsaved}
-        </Text>
-      )}
-      {flow?.status === "SUGGESTED" && flow.suggestion_reason && (
-        <Text font="secondary-body" color="text-04">
-          {`${COPY.editor.suggestedBy}: ${flow.suggestion_reason}`}
-        </Text>
-      )}
-      {flow?.approved_by && flow.approved_at && (
-        <Text font="secondary-body" color="text-03">
-          {[
+  const branch: Branch = selected === "no" ? "no" : "yes";
+  const subtitle =
+    flow?.status === "SUGGESTED" && flow.suggestion_reason
+      ? flow.suggestion_reason
+      : flow?.approved_by && flow.approved_at
+        ? [
             COPY.editor.approvedBy(flow.approved_by, formatDateTime(flow.approved_at)),
             flow.next_run_at ? COPY.editor.nextRun(formatDateTime(flow.next_run_at)) : null,
           ]
             .filter(Boolean)
-            .join(" · ")}
-        </Text>
-      )}
+            .join(" · ")
+        : null;
 
-      <div className="ton-flow-workspace">
-        <Canvas definition={definition} catalog={catalog} selected={selected} onSelect={setSelected} />
-        <aside className="ton-flow-builder" aria-label={COPY.editor.builder}>
-          <div className="flex flex-col gap-1 px-4 pt-4 pb-2">
-            <Text font="main-ui-action" color="text-05">
-              {COPY.editor.builder}
-            </Text>
-            <Text font="secondary-body" color="text-03">
-              {COPY.editor.builderHint}
-            </Text>
+  return (
+    <div className="flex flex-col gap-5">
+      <header className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-[18rem] flex-1 items-center gap-3">
+            <div className="ton-flow-name min-w-0 flex-1">
+              <InputTypeIn
+                aria-label={COPY.editor.namePlaceholder}
+                placeholder={COPY.editor.namePlaceholder}
+                value={name}
+                maxLength={120}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </div>
+            {status && <StatusPill tone={STATUS_TONE[status]}>{COPY.status[status]}</StatusPill>}
           </div>
-          <Section title={COPY.editor.trigger} open={section === "trigger"} onOpen={() => setSelected("trigger")}>
-            <TriggerFields definition={definition} catalog={catalog} onChange={setDefinition} />
-          </Section>
-          <Section title={COPY.editor.condition} open={section === "condition"} onOpen={() => setSelected("condition")}>
-            <ConditionFields definition={definition} catalog={catalog} onChange={setDefinition} />
-          </Section>
-          <Section
-            title={`${COPY.editor.action} · ${selected === "no" ? COPY.editor.no : COPY.editor.yes}`}
-            open={section === "action"}
-            onOpen={() => setSelected(selected === "no" ? "no" : "yes")}
-          >
-            <span className="flex gap-1.5">
-              {(["yes", "no"] as const).map((branch) => (
-                <Button
-                  key={branch}
-                  size="sm"
-                  prominence={selected === branch ? "primary" : "secondary"}
-                  onClick={() => setSelected(branch)}
-                >
-                  {branch === "yes" ? COPY.editor.yes : COPY.editor.no}
-                </Button>
-              ))}
-            </span>
-            <ActionFields
-              key={selected}
-              branch={selected === "no" ? "no" : "yes"}
-              definition={definition}
-              catalog={catalog}
-              addressText={addresses[selected === "no" ? "no" : "yes"]}
-              onAddressText={(field, value) => {
-                const branch = selected === "no" ? "no" : "yes";
-                setAddresses((current) => ({
-                  ...current,
-                  [branch]: { ...current[branch], [field]: value },
-                }));
-              }}
-              onChange={setDefinition}
-            />
-          </Section>
-        </aside>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              prominence="tertiary"
+              icon={SvgEye}
+              disabled={busy !== null}
+              onClick={showPreview}
+            >
+              {COPY.editor.preview}
+            </Button>
+            {flow && (
+              <Button
+                prominence="tertiary"
+                icon={SvgMail}
+                disabled={busy !== null || dirty}
+                onClick={sendToMe}
+              >
+                {busy === "test" ? COPY.editor.sending : COPY.editor.sendToMe}
+              </Button>
+            )}
+            <Button
+              prominence="secondary"
+              disabled={busy !== null || !dirty || name.trim().length < 3}
+              onClick={save}
+            >
+              {busy === "save" ? COPY.editor.saving : COPY.editor.save}
+            </Button>
+            {status === "ACTIVE" ? (
+              <Button
+                icon={SvgPauseCircle}
+                prominence="secondary"
+                disabled={busy !== null}
+                onClick={() => changeStatus("pause")}
+              >
+                {COPY.editor.pause}
+              </Button>
+            ) : (
+              <Button
+                icon={SvgPlayCircle}
+                disabled={busy !== null || name.trim().length < 3}
+                onClick={() => changeStatus("activate")}
+              >
+                {status === "SUGGESTED" ? COPY.editor.register : COPY.editor.activate}
+              </Button>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {subtitle && (
+            <Text font="secondary-body" color="text-03">
+              {subtitle}
+            </Text>
+          )}
+          {(feedback || (flow && dirty)) && (
+            <Text
+              font="secondary-action"
+              color={feedback?.tone === "error" ? "text-05" : "text-04"}
+            >
+              {feedback?.text ?? COPY.editor.unsaved}
+            </Text>
+          )}
+          {(status === "SUGGESTED" || status === "PAUSED") && (
+            <Button
+              size="sm"
+              prominence="tertiary"
+              disabled={busy !== null}
+              onClick={() => changeStatus("discard")}
+            >
+              {COPY.editor.discard}
+            </Button>
+          )}
+        </div>
+      </header>
+
+      <div className="ton-flow-canvas" data-panel={selected ? true : undefined}>
+        <Canvas
+          definition={definition}
+          catalog={catalog}
+          selected={selected}
+          onSelect={setSelected}
+        />
+        {!selected && (
+          <span className="ton-flow-hint">
+            <Text font="secondary-body" color="text-03">
+              {COPY.editor.clickHint}
+            </Text>
+          </span>
+        )}
+        {selected && (
+          <NodePanel title={PANEL_TITLES[selected]} onClose={() => setSelected(null)}>
+            {selected === "trigger" && (
+              <TriggerFields definition={definition} catalog={catalog} onChange={setDefinition} />
+            )}
+            {selected === "condition" && (
+              <ConditionFields
+                definition={definition}
+                catalog={catalog}
+                onChange={setDefinition}
+              />
+            )}
+            {(selected === "yes" || selected === "no") && (
+              <ActionFields
+                key={selected}
+                branch={branch}
+                definition={definition}
+                catalog={catalog}
+                addressText={addresses[branch]}
+                onAddressText={(field, value) =>
+                  setAddresses((current) => ({
+                    ...current,
+                    [branch]: { ...current[branch], [field]: value },
+                  }))
+                }
+                onChange={setDefinition}
+              />
+            )}
+          </NodePanel>
+        )}
       </div>
 
-      {preview && <Preview preview={preview} onClose={() => setPreview(null)} />}
-
       {flow && (
-        <div className="flex flex-col gap-2">
+        <section className="flex flex-col gap-2">
           <Text font="main-ui-action" color="text-05">
             {COPY.editor.history}
           </Text>
           <History runs={flow.runs} />
-        </div>
+        </section>
       )}
+
+      <PreviewModal preview={preview} onClose={() => setPreview(null)} />
     </div>
   );
 }
@@ -1054,7 +1118,13 @@ export default function FlowEditorPage({ flowId }: { flowId: string }) {
     <PageContainer>
       <BackLink href={"/ton/fluxos" as Route} label={COPY.back} />
       {error ? (
-        <ErrorState message={COPY.error} onRetry={() => { catalog.mutate(); detail.mutate(); }} />
+        <ErrorState
+          message={COPY.error}
+          onRetry={() => {
+            catalog.mutate();
+            detail.mutate();
+          }}
+        />
       ) : !catalog.data || (!isNew && !flow) ? (
         <div className="ton-card p-5">
           <LoadingBlock label={COPY.loading} lines={5} />
@@ -1073,4 +1143,3 @@ export default function FlowEditorPage({ flowId }: { flowId: string }) {
     </PageContainer>
   );
 }
-

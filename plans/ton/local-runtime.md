@@ -297,3 +297,45 @@ Queda simultânea de **todos** os containers, com mistura de 0/137/143 e
 `OOMKilled=false`, não é OOM de container: é a VM do WSL2 ou o Docker Desktop
 reiniciando. Aconteceu uma vez durante este trabalho, com o host em 2,4 GB
 livres. Causa não determinada.
+
+---
+
+## 8. Procedimento de rebuild com dado real (validado em 2026-10-05)
+
+Usado para subir `email-flows` (migração `e5b8c2d4f1a7`) sobre a base real da Vale
+Norte. Nada depende de `docker cp`: o código entra só pela imagem.
+
+1. **Backup com só o banco no ar.**
+   ```bash
+   docker start onyx-relational_db-1
+   docker exec onyx-relational_db-1 pg_dump -U postgres -d postgres -Fc \
+     > ~/Documents/onyx-backups/onyx-postgres-<data>-before-<mudança>.dump
+   ```
+   Restaurar: `pg_restore -U postgres -d postgres --clean --if-exists` dentro do
+   container, com a stack parada.
+2. **Parar tudo**, inclusive o banco, antes de construir (§7: o build do Next com a
+   stack no ar já derrubou o WSL).
+3. **Marcar as imagens atuais** para rollback instantâneo:
+   `docker tag onyxdotapp/onyx-backend:latest onyxdotapp/onyx-backend:backup-before-<mudança>`
+   (idem `onyx-web-server`).
+4. **`*.sh` em LF** (§3), build do backend, e devolver a árvore:
+   ```bash
+   docker compose -f docker-compose.yml -f docker-compose.dev.yml build api_server
+   git checkout -- backend
+   ```
+   Conferir na imagem: migração presente e shebang sem `\r`.
+5. **Build do web** (§2) ainda com a stack parada.
+6. **Subir um a um**, conferindo cada etapa:
+   `relational_db` → `cache` → `opensearch` → `inference_model_server` →
+   `indexing_model_server` → `code-interpreter` → `api_server` (aplica as migrações
+   no start: procurar `Running upgrade` e `Application startup complete`) →
+   `background` → `web_server` → `nginx`. Comando base:
+   ```bash
+   C="docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.local-tuning.yml"
+   $C up -d --no-deps <serviço>
+   ```
+7. **Conferir** `select version_num from alembic_version` e abrir
+   `http://localhost:3000`.
+
+Para rebuild só do web com a stack no ar, pare antes `background`, `opensearch`,
+`web_server` e `nginx` (os maiores consumidores) e suba-os de novo depois.

@@ -349,3 +349,22 @@ def test_dre_event_groups_months_and_units_in_one_notice() -> None:
     assert "Meses recalculados: 01/2026 a 09/2026" in email.html
     assert "Meses recalculados: 01/2026 a 09/2026" in email.text
     assert "Mês de competência" not in email.text
+
+
+def test_suggestions_forgive_nested_params_and_loose_lists() -> None:
+    text = """{"suggestions": [
+      {"name": "Novas ou reaparecidas", "reason": "Avisar cedo",
+       "definition": {"trigger": {"kind": "NG_OCCURRENCE_CHANGED", "params": {"changes": "NEW, REAPPEARED"}},
+         "conditions": {"field": "itens", "operator": "GT", "value": 0},
+         "on_yes": {"kind": "EMAIL", "to": "luyla@valenorte.com.br", "subject": "Novas ({total})",
+                    "template": "INCONSISTENCY_REPORT"}}},
+      {"name": "Lembrete diário", "reason": "Rotina",
+       "definition": {"trigger": {"kind": "SCHEDULE", "params": {"frequency": "DAILY", "time": "07:30"}},
+         "on_yes": {"kind": "EMAIL", "to": [], "subject": "Abertas", "template": "SIMPLE_NOTICE"}}}
+    ]}"""
+    outcome = parse_suggestions(text, [])
+    assert outcome.rejected == []
+    first, second = outcome.suggestions
+    assert first.definition.trigger.changes == [ItemState.NEW, ItemState.REAPPEARED]
+    assert first.definition.on_yes.to == ["luyla@valenorte.com.br"]
+    assert second.definition.trigger.time == "07:30"

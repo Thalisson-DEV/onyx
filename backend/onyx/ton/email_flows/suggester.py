@@ -41,7 +41,13 @@ Não invente destinatários: use apenas os endereços conhecidos informados, ou 
 "to" vazio para a pessoa preencher. O texto do e-mail é gerado pelo sistema; você só \
 escolhe o modelo e escreve um assunto curto. Responda apenas com JSON no formato \
 {"suggestions": [{"name": "...", "reason": "uma frase dizendo por que ajuda", \
-"definition": {"trigger": {...}, "conditions": [...], "on_yes": {...}, "on_no": {...}}}]}."""
+"definition": {...}}]}. Exemplo de definition válida (os parâmetros do gatilho ficam \
+direto no objeto trigger): {"trigger": {"kind": "SCHEDULE", "frequency": "WEEKLY", \
+"weekday": 0, "time": "08:00", "changes": []}, "conditions": [{"field": "itens", \
+"operator": "GT", "value": 0}], "on_yes": {"kind": "EMAIL", "to": [], "cc": [], "bcc": [], \
+"subject": "Inconsistências ({total})", "template": "INCONSISTENCY_REPORT"}, "on_no": \
+{"kind": "NONE"}}. Para NG_OCCURRENCE_CHANGED use "changes": ["NEW", "REAPPEARED"] \
+(ou "CORRECTED")."""
 
 
 @dataclass
@@ -111,6 +117,50 @@ def build_prompt(
     return json.dumps(context, ensure_ascii=False)
 
 
+def _as_list(value: Any) -> list[Any]:
+    if value is None or value == "":
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        return [item.strip() for item in re.split(r"[,;]", value) if item.strip()]
+    return [value]
+
+
+def _normalize(raw: Any) -> Any:
+    """Forgive the near-misses models make in otherwise valid proposals:
+    trigger parameters nested under "params", a single condition or address
+    given outside a list. Anything else is left for the validator to reject."""
+    if not isinstance(raw, dict):
+        return raw
+    definition = dict(raw)
+    trigger = definition.get("trigger")
+    if isinstance(trigger, dict):
+        trigger = dict(trigger)
+        params = trigger.pop("params", None) or trigger.pop("parameters", None)
+        if isinstance(params, dict):
+            trigger = {**params, **trigger}
+        if "changes" in trigger:
+            trigger["changes"] = _as_list(trigger["changes"])
+        definition["trigger"] = trigger
+    conditions = definition.get("conditions")
+    if isinstance(conditions, dict):
+        definition["conditions"] = [conditions]
+    elif conditions is None:
+        definition["conditions"] = []
+    for key in ("on_yes", "on_no"):
+        action = definition.get(key)
+        if isinstance(action, dict):
+            action = dict(action)
+            for field in ("to", "cc", "bcc"):
+                if field in action:
+                    action[field] = _as_list(action[field])
+            definition[key] = action
+        elif action is None and key == "on_no":
+            definition[key] = {"kind": "NONE"}
+    return definition
+
+
 def parse_suggestions(text: str, existing: Sequence[str]) -> SuggestionOutcome:
     outcome = SuggestionOutcome()
     match = re.search(r"\{.*\}", text, re.DOTALL)
@@ -132,7 +182,9 @@ def parse_suggestions(text: str, existing: Sequence[str]) -> SuggestionOutcome:
             outcome.rejected.append(name or "sem nome")
             continue
         try:
-            definition = FlowDefinition.model_validate(entry.get("definition") or {})
+            definition = FlowDefinition.model_validate(
+                _normalize(entry.get("definition") or {})
+            )
         except ValidationError as error:
             outcome.rejected.append(f"{name}: {error.errors()[0].get('msg', 'inválido')}")
             continue

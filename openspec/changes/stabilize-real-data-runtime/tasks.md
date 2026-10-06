@@ -1,10 +1,10 @@
 ## 1. Runtime reprodutível
 
-- [ ] 1.1 Fazer backup do banco local (`pg_dump` para `Documents/onyx_backups/`)
-- [ ] 1.2 Normalizar `*.sh` para LF e reconstruir `onyx-backend` com a stack parada
-- [ ] 1.3 Reconstruir `onyx-web-server` com a stack parada (memória WSL)
-- [ ] 1.4 Subir os contêineres um a um e confirmar saúde; registrar o procedimento em `plans/ton/local-runtime.md`
-- [ ] 1.5 Confirmar que nenhuma alteração depende de `docker cp` (comparar código da imagem com `main`)
+- [x] 1.1 Fazer backup do banco local (`pg_dump` para `Documents/onyx_backups/`) — 2026-10-05: `Documents/onyx-backups/onyx-postgres-20261005-2032-before-email-flows.dump` (pg_dump -Fc, em `c4f2a9e6b1d3`)
+- [x] 1.2 Normalizar `*.sh` para LF e reconstruir `onyx-backend` com a stack parada — 2026-10-05, imagem da `main` `b2d5d0dc37`; anteriores marcadas `:backup-before-email-flows`
+- [x] 1.3 Reconstruir `onyx-web-server` com a stack parada (memória WSL) — 2026-10-05
+- [x] 1.4 Subir os contêineres um a um e confirmar saúde; registrar o procedimento em `plans/ton/local-runtime.md` — 10 contêineres no ar em 2026-10-05 (db, cache, opensearch, model servers, code-interpreter, api_server, background, web, nginx); procedimento em `plans/ton/local-runtime.md` §8
+- [x] 1.5 Confirmar que nenhuma alteração depende de `docker cp` (comparar código da imagem com `main`) — imagens construídas da `main`; o api_server aplicou `d7a1e4c9b2f6` e `e5b8c2d4f1a7` ao subir
 
 ## 2. Assistente
 

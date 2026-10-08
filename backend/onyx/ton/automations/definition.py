@@ -231,6 +231,8 @@ class AutomationDefinition(BaseModel):
     variables: list[VariableDecl] = Field(default_factory=list)
     steps: list[Node] = Field(default_factory=list)
     settings: Settings = Field(default_factory=Settings)
+    # Canvas offsets of nodes the user moved by hand (id -> {x, y}). Display only.
+    layout: dict[str, Any] = Field(default_factory=dict)
 
     model_config = {"populate_by_name": True}
 
@@ -257,10 +259,24 @@ class AutomationDefinition(BaseModel):
         walk(self.steps, 1)
         if count > MAX_NODES:
             raise ValueError(f"No máximo {MAX_NODES} passos por automação")
+        known = ids | {"trigger"}
+        self.layout = {
+            key: {"x": _clamp(value.get("x", 0)), "y": _clamp(value.get("y", 0))}
+            for key, value in self.layout.items()
+            if key in known and isinstance(value, dict)
+        }
         return self
 
     def dump(self) -> dict[str, Any]:
         return self.model_dump(mode="json", by_alias=True, exclude_none=True)
+
+
+def _clamp(value: Any) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return round(max(-20_000.0, min(20_000.0, number)), 1)
 
 
 def iter_nodes(nodes: list[Node]) -> Iterator[Node]:

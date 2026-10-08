@@ -341,7 +341,10 @@ class TonDraftAutomationTool(TonDomainTool):
                 if user is None or not user.is_active:
                     raise ValueError("Usuário indisponível")
                 result = automation_drafter.draft_automation(session, user, request[:4000], automation_id)
-                data = {"kind": "automation_draft", **result.model_dump(mode="json", exclude={"definition"})}
+                dumped = result.model_dump(mode="json", exclude={"definition"})
+                # "kind" tells the chat which card to draw; the automation's own
+                # kind (E-mail, Alerta…) travels as automation_kind.
+                data = {**dumped, "kind": "automation_draft", "automation_kind": dumped["kind"]}
         except OnyxError as error:
             raise ToolCallException(
                 "TON automation draft rejected",

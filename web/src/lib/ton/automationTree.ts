@@ -281,6 +281,7 @@ export function normalizeDefinition(raw: Definition): Definition {
     ...raw,
     variables: raw.variables ?? [],
     settings: raw.settings ?? { notify_on_failure: [], timeout_hours: 168 },
+    layout: raw.layout ?? {},
   };
 }
 

@@ -34,8 +34,21 @@
 - [x] 5.2 Detalhe: dados, histórico de execuções, ativar/pausar, executar
 - [x] 5.3 Designer: canvas vertical, adicionar ação, arrastar e soltar, painel de configuração, conteúdo dinâmico, verificador ao vivo, desfazer/refazer, testar, salvar
 - [x] 5.4 Execução no canvas: estado e duração por etapa, entradas/saídas, reenviar, cancelar
-- [ ] 5.5 Validação no navegador (Chrome) com dado real
+- [x] 5.5 Validação no navegador (Chrome) com dado real
 
 ## 6. Fechamento
 
 - [x] 6.1 Atualizar `openspec/roadmap.md` e `plans/ton/context`
+
+## 7. Polimento de UI/UX (validação de 08/10/2026)
+
+- [x] 7.1 Canvas: blocos movidos livremente (posição guardada em `layout`), soltar sobre um + muda a ordem, botão Reorganizar
+- [x] 7.2 Corrigir cliques em "Adicionar ação" e nos passos da execução (React Flow desliga eventos em nós não arrastáveis)
+- [x] 7.3 Soltar da paleta inseria a ação duas vezes (evento subia ao canvas)
+- [x] 7.4 Cores suavizadas por grupo, mais espaço entre blocos, barra superior compacta
+- [x] 7.5 Campos com fichas de dados no lugar de `{{ ... }}`; seletor e tipos em português; "Valores guardados" no lugar de variáveis
+- [x] 7.6 Configurações e "Pedir ao TON" como painéis laterais; o ajuste do TON entra no desfazer; desfazer preservado ao salvar
+- [x] 7.7 Lista de automações em linhas, sem rolagem lateral
+- [x] 7.8 Execução: entradas e saídas legíveis, dados técnicos sob demanda
+- [x] 7.9 Chat: agente provisionado recebe ferramentas e prompt novos; cartão do rascunho aparecia vazio (campo `kind` sobrescrito)
+- [x] 7.10 Drafter recebe o significado das opções (dias da semana: 0 = segunda)

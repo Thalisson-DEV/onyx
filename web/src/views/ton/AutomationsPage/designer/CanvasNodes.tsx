@@ -47,7 +47,10 @@ export interface CanvasApi {
   issues: Map<string, { errors: number; warnings: number }>;
   readOnly: boolean;
   run: Map<string, NodeRunState> | null;
+  /** A new action is being dragged from the palette. */
   dragging: boolean;
+  /** A card on the canvas is being moved. */
+  reordering: boolean;
   hoverKey: string | null;
   summary: (nodeId: string) => string;
   onSelect: (id: string) => void;
@@ -110,6 +113,8 @@ function dropProps(api: CanvasApi, target: InsertTarget) {
     onDragLeave: () => api.hoverKey === key && api.onHover(null),
     onDrop: (event: DragEvent) => {
       event.preventDefault();
+      // The canvas also handles drops (nearest "+"); this one already did.
+      event.stopPropagation();
       const payload = event.dataTransfer.getData("application/ton-node");
       api.onHover(null);
       if (payload) api.onDropAt(target, payload);
@@ -125,7 +130,8 @@ export function StepNode({ id, data }: NodeProps<CanvasNode>) {
   const spec = api.specs.get(type);
   const Icon = nodeIcon(spec?.icon);
   const title = isTrigger ? spec?.label ?? D.addTrigger : node?.label || spec?.label || type;
-  const subtitle = api.summary(id);
+  const summary = api.summary(id);
+  const subtitle = summary === title ? "" : summary;
   const issues = api.issues.get(id);
   const run = api.run?.get(id);
   const collapsed = data.kind === "step" && data.collapsed;
@@ -138,6 +144,7 @@ export function StepNode({ id, data }: NodeProps<CanvasNode>) {
       data-error={issues?.errors ? true : undefined}
       data-run={run?.status}
       data-unknown={!spec || undefined}
+      data-trigger={isTrigger || undefined}
       onClick={() => api.onSelect(id)}
       role="button"
       tabIndex={0}
@@ -151,6 +158,7 @@ export function StepNode({ id, data }: NodeProps<CanvasNode>) {
         <Icon size={18} />
       </span>
       <span className="ton-auto-node-text">
+        {isTrigger && <span className="ton-auto-node-eyebrow">{D.startsWhen}</span>}
         <span className="ton-auto-node-title">{title}</span>
         {subtitle && <span className="ton-auto-node-sub">{subtitle}</span>}
         {collapsed && data.kind === "step" && <span className="ton-auto-node-sub ton-auto-node-count">{D.actions(data.childCount)}</span>}
@@ -223,7 +231,7 @@ export function SlotNode({ data }: NodeProps<CanvasNode>) {
   return (
     <div
       className={cn("ton-auto-slot", small && "ton-auto-slot-round")}
-      data-dragging={api.dragging || undefined}
+      data-dragging={(api.dragging || api.reordering) || undefined}
       data-hover={api.hoverKey === key || undefined}
       role="button"
       tabIndex={0}
@@ -234,7 +242,7 @@ export function SlotNode({ data }: NodeProps<CanvasNode>) {
     >
       <Handle type="target" position={Position.Top} className="ton-auto-handle" isConnectable={false} />
       <SvgPlus size={small ? 14 : 16} />
-      {!small && <span>{api.dragging ? D.dropHere : D.addAction}</span>}
+      {!small && <span>{(api.dragging || api.reordering) ? D.dropHere : D.addAction}</span>}
       <Handle type="source" position={Position.Bottom} className="ton-auto-handle" isConnectable={false} />
     </div>
   );
@@ -262,7 +270,7 @@ export function EndNode({ data }: NodeProps<CanvasNode>) {
   return (
     <div
       className="ton-auto-end"
-      data-dragging={api.dragging || undefined}
+      data-dragging={(api.dragging || api.reordering) || undefined}
       data-hover={api.hoverKey === key || undefined}
       role="button"
       tabIndex={0}
@@ -272,7 +280,7 @@ export function EndNode({ data }: NodeProps<CanvasNode>) {
     >
       <Handle type="target" position={Position.Top} className="ton-auto-handle" isConnectable={false} />
       <SvgPlus size={14} />
-      <span>{api.dragging ? D.dropHere : D.addAction}</span>
+      <span>{(api.dragging || api.reordering) ? D.dropHere : D.addAction}</span>
     </div>
   );
 }
@@ -294,7 +302,7 @@ export function FlowEdge({ sourceX, sourceY, targetX, targetY, data }: EdgeProps
         <EdgeLabelRenderer>
           <div
             className="ton-auto-insert nodrag nopan"
-            data-dragging={api.dragging || undefined}
+            data-dragging={(api.dragging || api.reordering) || undefined}
             data-hover={api.hoverKey === key || undefined}
             style={{ transform: `translate(-50%, -50%) translate(${plusX}px, ${plusY}px)` }}
             role="button"
@@ -306,7 +314,7 @@ export function FlowEdge({ sourceX, sourceY, targetX, targetY, data }: EdgeProps
             {...dropProps(api, target)}
           >
             <SvgPlus size={12} />
-            {api.dragging && <span>{D.dropHere}</span>}
+            {(api.dragging || api.reordering) && <span>{D.dropHere}</span>}
           </div>
         </EdgeLabelRenderer>
       )}

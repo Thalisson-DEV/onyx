@@ -55,7 +55,7 @@ export default function AutomationDraftCard({ draft }: { draft: DraftResult }) {
             {active ? CARD.active : draft.created ? CARD.created : CARD.updated}
           </Text>
         </span>
-        <span className="ton-auto-kind-pill">{KIND_LABELS[draft.kind]}</span>
+        <span className="ton-auto-kind-pill">{KIND_LABELS[draft.automation_kind ?? draft.kind]}</span>
       </div>
       {draft.summary && (
         <Text font="secondary-body" color="text-04">

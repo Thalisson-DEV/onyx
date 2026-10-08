@@ -20,7 +20,6 @@ import {
   AUTOMATIONS_API,
   COPY,
   DESIGNER_COPY as D,
-  KIND_LABELS,
   STATUS_LABELS,
   send,
   useAutomation,
@@ -52,7 +51,7 @@ import { ErrorState, LoadingBlock, StatusPill, type TonTone } from "@/views/ton/
 import AddPanel from "@/views/ton/AutomationsPage/designer/AddPanel";
 import Canvas from "@/views/ton/AutomationsPage/designer/Canvas";
 import ConfigPanel from "@/views/ton/AutomationsPage/designer/ConfigPanel";
-import { AskPanel, RunModal, SettingsModal } from "@/views/ton/AutomationsPage/designer/dialogs";
+import { AskPanel, RunModal, SettingsPanel } from "@/views/ton/AutomationsPage/designer/dialogs";
 import { specMap } from "@/views/ton/AutomationsPage/designer/dynamic";
 import { nodeSummary } from "@/views/ton/AutomationsPage/designer/summary";
 
@@ -72,7 +71,12 @@ interface History {
   future: Snapshot[];
 }
 
-type Side = { kind: "config"; id: string } | { kind: "add"; mode: "action" | "trigger"; target: InsertTarget | null } | { kind: "ask" } | null;
+type Side =
+  | { kind: "config"; id: string }
+  | { kind: "add"; mode: "action" | "trigger"; target: InsertTarget | null }
+  | { kind: "ask" }
+  | { kind: "settings" }
+  | null;
 
 function useDebounced<T>(value: T, delay: number): T {
   const [current, setCurrent] = useState(value);
@@ -94,9 +98,9 @@ function Editor({ detail, onSaved, onRefresh }: { detail: AutomationDetail; onSa
   const specs = useMemo(() => (catalog.data ? specMap(catalog.data) : new Map<string, NodeTypeView>()), [catalog.data]);
   const initial: Snapshot = useMemo(
     () => ({ definition: normalizeDefinition(detail.definition), name: detail.name, description: detail.description ?? "", kind: detail.kind }),
-    // Reset only when another automation or version loads.
+    // Reset only when another automation loads: saving keeps the undo history.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [detail.id, detail.version]
+    [detail.id]
   );
   const [history, setHistory] = useState<History>({ past: [], present: initial, future: [] });
   const state = history.present;
@@ -105,7 +109,6 @@ function Editor({ detail, onSaved, onRefresh }: { detail: AutomationDetail; onSa
   const [saved, setSaved] = useState<Snapshot>(initial);
   const [side, setSide] = useState<Side>(initial.definition.steps.length ? null : { kind: "config", id: "trigger" });
   const [paletteDragging, setPaletteDragging] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [runModal, setRunModal] = useState<"test" | "run" | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -221,8 +224,8 @@ function Editor({ detail, onSaved, onRefresh }: { detail: AutomationDetail; onSa
   }
 
   function insertAt(target: InsertTarget, spec: NodeTypeView) {
-    const node = newNode(spec, allIds(state.definition));
-    setDefinition((definition) => insertNode(definition, target, node));
+    const node = newNode(spec, allIds(history.present.definition));
+    setDefinition((definition) => (allIds(definition).has(node.id) ? definition : insertNode(definition, target, node)));
     setSide({ kind: "config", id: node.id });
     setFocus({ id: node.id, nonce: Date.now() });
   }
@@ -287,36 +290,38 @@ function Editor({ detail, onSaved, onRefresh }: { detail: AutomationDetail; onSa
   return (
     <div className="ton-auto-designer">
       <header className="ton-auto-topbar">
-        <Button size="sm" prominence="tertiary" icon={SvgArrowLeft} href={`/ton/automacoes/${detail.id}`} aria-label={D.back}>
-          {D.back}
-        </Button>
-        <input
-          className="ton-auto-name ton-focusable"
-          aria-label={COPY.name}
-          value={state.name}
-          maxLength={120}
-          onChange={(event) => commit((current) => ({ ...current, name: event.target.value }))}
-        />
-        <span className="ton-auto-kind-pill" title={D.kind}>
-          {KIND_LABELS[state.kind]}
-        </span>
-        <StatusPill tone={STATUS_TONE[detail.status] ?? "neutral"}>{STATUS_LABELS[detail.status]}</StatusPill>
+        <Button size="sm" prominence="tertiary" icon={SvgArrowLeft} href={`/ton/automacoes/${detail.id}`} aria-label={D.back} tooltip={D.back} />
+        <div className="ton-auto-topbar-title">
+          <input
+            className="ton-auto-name ton-focusable"
+            aria-label={COPY.name}
+            value={state.name}
+            maxLength={120}
+            onChange={(event) => commit((current) => ({ ...current, name: event.target.value }))}
+          />
+          <span className="ton-auto-topbar-meta">
+            <StatusPill tone={STATUS_TONE[detail.status] ?? "neutral"}>{STATUS_LABELS[detail.status]}</StatusPill>
+            <span className="ton-auto-save-state" data-dirty={dirty || undefined}>
+              {busy === "save" ? D.saving : dirty ? D.unsaved : D.saved}
+            </span>
+          </span>
+        </div>
         <span className="flex-1" />
-        <Text font="secondary-body" color="text-03">
-          {busy === "save" ? D.saving : dirty ? D.unsaved : D.saved}
-        </Text>
-        <Button size="sm" prominence="tertiary" icon={SvgRevert} tooltip={D.undo} aria-label={D.undo} disabled={!past.length} onClick={undo} />
-        <Button size="sm" prominence="tertiary" icon={SvgRefreshCw} tooltip={D.redo} aria-label={D.redo} disabled={!future.length} onClick={redo} />
+        <div className="ton-auto-topbar-group">
+          <Button size="sm" prominence="tertiary" icon={SvgRevert} tooltip={`${D.undo} (Ctrl+Z)`} aria-label={D.undo} disabled={!past.length} onClick={undo} />
+          <Button size="sm" prominence="tertiary" icon={SvgRefreshCw} tooltip={`${D.redo} (Ctrl+Y)`} aria-label={D.redo} disabled={!future.length} onClick={redo} />
+        </div>
         <Popover>
           <Popover.Trigger asChild>
-            <Button size="sm" prominence="tertiary" icon={errors ? SvgAlertCircle : SvgCheckCircle} variant={errors ? "danger" : "default"}>
-              {errors || warnings ? `${errors ? D.errors(errors) : ""}${errors && warnings ? " · " : ""}${warnings ? D.warnings(warnings) : ""}` : D.checker}
-            </Button>
+            <button type="button" className="ton-auto-check ton-focusable" data-state={errors ? "error" : warnings ? "warning" : "ok"}>
+              {errors ? <SvgAlertCircle size={14} /> : <SvgCheckCircle size={14} />}
+              <span>{errors || warnings ? `${errors ? D.errors(errors) : ""}${errors && warnings ? " · " : ""}${warnings ? D.warnings(warnings) : ""}` : D.checker}</span>
+            </button>
           </Popover.Trigger>
           <Popover.Content width="xl" align="end">
             <div className="ton-auto-checker">
               <Text font="main-ui-action" color="text-05">
-                {D.checker}
+                {D.checkerTitle}
               </Text>
               {check?.structure_error && (
                 <div className="ton-auto-checker-item" data-severity="error">
@@ -343,7 +348,7 @@ function Editor({ detail, onSaved, onRefresh }: { detail: AutomationDetail; onSa
                     }
                   }}
                 >
-                  <span className="ton-auto-checker-node">{issue.node_id && issue.node_id !== "trigger" ? findNode(state.definition, issue.node_id)?.label || issue.node_id : D.trigger}</span>
+                  <span className="ton-auto-checker-node">{issue.node_id && issue.node_id !== "trigger" ? findNode(state.definition, issue.node_id)?.label || specs.get(findNode(state.definition, issue.node_id)?.type ?? "")?.label || D.trigger : D.startsWhen}</span>
                   <span>{issue.message}</span>
                 </button>
               ))}
@@ -355,17 +360,20 @@ function Editor({ detail, onSaved, onRefresh }: { detail: AutomationDetail; onSa
             </div>
           </Popover.Content>
         </Popover>
-        <Button size="sm" prominence="tertiary" icon={SvgSettings} onClick={() => setSettingsOpen(true)}>
-          {D.settings}
-        </Button>
-        <Button size="sm" prominence="tertiary" icon={SvgSparkle} onClick={() => setSide({ kind: "ask" })}>
+        <Button
+          size="sm"
+          prominence={side?.kind === "settings" ? "secondary" : "tertiary"}
+          icon={SvgSettings}
+          tooltip={D.settings}
+          aria-label={D.settings}
+          onClick={() => setSide(side?.kind === "settings" ? null : { kind: "settings" })}
+        />
+        <Button size="sm" prominence={side?.kind === "ask" ? "secondary" : "tertiary"} icon={SvgSparkle} onClick={() => setSide(side?.kind === "ask" ? null : { kind: "ask" })}>
           {D.ask}
         </Button>
+        <span className="ton-auto-topbar-divider" aria-hidden />
         <Button size="sm" prominence="secondary" icon={SvgZap} disabled={busy !== null || errors > 0} onClick={() => setRunModal("test")} tooltip={errors ? D.errors(errors) : COPY.testHint}>
           {D.test}
-        </Button>
-        <Button size="sm" disabled={busy !== null || !dirty} onClick={() => void save()}>
-          {busy === "save" ? D.saving : D.save}
         </Button>
         {canActivate ? (
           <Button size="sm" prominence="secondary" icon={SvgPlayCircle} disabled={busy !== null || errors > 0 || kindProblems.length > 0} onClick={() => void setStatus("ACTIVE")}>
@@ -376,6 +384,9 @@ function Editor({ detail, onSaved, onRefresh }: { detail: AutomationDetail; onSa
             {COPY.pause}
           </Button>
         ) : null}
+        <Button size="sm" disabled={busy !== null || !dirty} onClick={() => void save()}>
+          {busy === "save" ? D.saving : D.save}
+        </Button>
       </header>
       {error && (
         <div className="ton-auto-banner" data-tone="error">
@@ -419,6 +430,8 @@ function Editor({ detail, onSaved, onRefresh }: { detail: AutomationDetail; onSa
             if (spec) insertAt(target, spec);
           }}
           onMove={(id, target) => setDefinition((definition) => moveNode(definition, id, target))}
+          onPlace={(id, offset) => setDefinition((definition) => ({ ...definition, layout: { ...definition.layout, [id]: offset } }))}
+          onResetLayout={() => setDefinition((definition) => ({ ...definition, layout: {} }))}
         />
         {side?.kind === "config" && (
           <ConfigPanel
@@ -449,28 +462,33 @@ function Editor({ detail, onSaved, onRefresh }: { detail: AutomationDetail; onSa
             onClose={() => setSide(null)}
             onApplied={(result: DraftResult) => {
               if (!result.definition) return;
-              // The draft is saved as a new version; reload it.
+              // The adjustment is already saved as a new version: put it on the
+              // canvas as one undoable change and mark it as saved.
+              const applied: Snapshot = { ...state, definition: normalizeDefinition(result.definition), name: result.name, kind: result.kind, description: result.summary || state.description };
+              commit(applied);
+              setSaved(applied);
               onRefresh();
             }}
           />
         )}
+        {side?.kind === "settings" && (
+          <SettingsPanel
+            definition={state.definition}
+            catalog={data}
+            kind={state.kind}
+            description={state.description}
+            onClose={() => setSide(null)}
+            onChange={(patch) =>
+              commit((current) => ({
+                ...current,
+                definition: patch.definition ?? current.definition,
+                kind: patch.kind ?? current.kind,
+                description: patch.description ?? current.description,
+              }))
+            }
+          />
+        )}
       </div>
-      <SettingsModal
-        open={settingsOpen}
-        definition={state.definition}
-        catalog={data}
-        kind={state.kind}
-        description={state.description}
-        onClose={() => setSettingsOpen(false)}
-        onChange={(patch) =>
-          commit((current) => ({
-            ...current,
-            definition: patch.definition ?? current.definition,
-            kind: patch.kind ?? current.kind,
-            description: patch.description ?? current.description,
-          }))
-        }
-      />
       <RunModal
         open={runModal !== null}
         test={runModal === "test"}

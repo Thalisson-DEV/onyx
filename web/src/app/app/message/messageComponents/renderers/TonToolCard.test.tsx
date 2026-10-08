@@ -64,3 +64,26 @@ it("summarizes what changed and points to pending recomputes", () => {
     screen.getByRole("link", { name: "Recalcular agora" })
   ).toHaveAttribute("href", "/ton/pendencias");
 });
+
+it("shows the automation draft card, also for drafts saved before the card kind fix", () => {
+  const draft = {
+    automation_id: "bf6c04a7-ece9-429a-8fd0-d8ab662049b3",
+    name: "Aviso semanal de contas sem classificação",
+    status: "DRAFT",
+    created: true,
+    summary: "Toda sexta às 17h avisa no TON.",
+    when: "Toda sexta às 17:00",
+    steps_text: ["Quando: Recorrência", "• Buscar contas sem classificação"],
+    problems: [],
+    missing: [],
+    editor_url: "/ton/automacoes/bf6c04a7-ece9-429a-8fd0-d8ab662049b3/editar",
+  };
+  const { unmount } = render(
+    <TonToolCard toolName="ton_draft_automation" data={{ ...draft, kind: "automation_draft", automation_kind: "ALERT" }} />
+  );
+  expect(screen.getByText("Aviso semanal de contas sem classificação")).toBeInTheDocument();
+  expect(screen.getByText("Alerta")).toBeInTheDocument();
+  unmount();
+  render(<TonToolCard toolName="ton_draft_automation" data={{ ...draft, kind: "ALERT" }} />);
+  expect(screen.getByText("Aviso semanal de contas sem classificação")).toBeInTheDocument();
+});

@@ -135,7 +135,7 @@ register(
         description="Publica um aviso no sino do TON para a equipe, com link para a tela certa.",
         icon="bell",
         params=(
-            ParamSpec("title", "Título", "text", required=True, placeholder="{{ trigger.outputs.count }} inconsistências novas"),
+            ParamSpec("title", "Título", "text", required=True, placeholder="Ex.: Inconsistências novas no NG"),
             ParamSpec("message", "Mensagem", "textarea"),
             ParamSpec("severity", "Importância", "select", default="INFO", dynamic=False, options=(("INFO", "Informativo"), ("WARNING", "Atenção"), ("CRITICAL", "Crítico"))),
             ParamSpec("link", "Link", "text", placeholder="/ton/pendencias"),

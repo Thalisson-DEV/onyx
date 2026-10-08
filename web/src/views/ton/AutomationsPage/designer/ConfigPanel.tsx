@@ -17,7 +17,7 @@ import {
 import { uniqueId, allIds } from "@/lib/ton/automationTree";
 import { nodeIcon } from "@/views/ton/AutomationsPage/designer/icons";
 import ParamForm from "@/views/ton/AutomationsPage/designer/ParamForm";
-import { Field, Select } from "@/views/ton/AutomationsPage/designer/fields";
+import { Field, Select, typeLabel } from "@/views/ton/AutomationsPage/designer/fields";
 
 type Tab = "params" | "settings" | "outputs";
 
@@ -106,34 +106,42 @@ function Settings({ node, spec, onChange }: { node: FlowNode; spec: NodeTypeView
   );
 }
 
-function Outputs({ nodeId, spec }: { nodeId: string; spec: NodeTypeView }) {
-  const prefix = nodeId === "trigger" ? "trigger.outputs" : `steps.${nodeId}.outputs`;
+function Outputs({ spec }: { spec: NodeTypeView }) {
   if (!spec.outputs.length) {
     return (
       <Text font="secondary-body" color="text-03">
-        {"—"}
+        {D.outputsEmpty}
       </Text>
     );
   }
   return (
-    <ul className="ton-auto-outputs">
-      {spec.outputs.map((output) => (
-        <li key={output.key}>
-          <span className="flex flex-col">
-            <Text font="secondary-action" color="text-05">
-              {output.label}
-            </Text>
-            <code>{`{{ ${prefix}.${output.key} }}`}</code>
-            {output.item_fields.length > 0 && (
-              <Text font="secondary-body" color="text-03">
-                {output.item_fields.map((field) => field.key).join(", ")}
+    <div className="flex flex-col gap-3">
+      <Text font="secondary-body" color="text-03">
+        {D.outputsHint}
+      </Text>
+      <ul className="ton-auto-outputs">
+        {spec.outputs.map((output) => (
+          <li key={output.key}>
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <Text font="secondary-action" color="text-05">
+                {output.label}
               </Text>
-            )}
-          </span>
-          <span className="ton-auto-dyn-type">{output.type}</span>
-        </li>
-      ))}
-    </ul>
+              {output.description && (
+                <Text font="secondary-body" color="text-03">
+                  {output.description}
+                </Text>
+              )}
+              {output.item_fields.length > 0 && (
+                <Text font="secondary-body" color="text-03">
+                  {output.item_fields.map((field) => field.label).join(" · ")}
+                </Text>
+              )}
+            </span>
+            <span className="ton-auto-dyn-type">{typeLabel(output.type)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -253,7 +261,7 @@ export default function ConfigPanel({
             />
           )}
           <Text font="secondary-body" color="text-03">
-            {isTrigger ? D.trigger : `${spec.label} · ${selectedId}`}
+            {isTrigger ? D.startsWhen : spec.label}
           </Text>
         </div>
         {isTrigger ? (
@@ -290,7 +298,7 @@ export default function ConfigPanel({
         ))}
       </div>
       <div className="ton-auto-panel-body">
-        <IssueList issues={own} />
+        <IssueList issues={tab === "params" ? own.filter((issue) => !issue.param) : own} />
         {tab === "params" && (
           <>
             <ParamForm
@@ -309,7 +317,7 @@ export default function ConfigPanel({
           </>
         )}
         {tab === "settings" && node && <Settings node={node} spec={spec} onChange={(next) => onChangeNode(node.id, next)} />}
-        {tab === "outputs" && <Outputs nodeId={selectedId} spec={spec} />}
+        {tab === "outputs" && <Outputs spec={spec} />}
       </div>
     </aside>
   );

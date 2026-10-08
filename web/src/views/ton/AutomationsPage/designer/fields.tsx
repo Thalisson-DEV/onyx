@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Button,
   InputSingleSelect,
@@ -51,9 +51,7 @@ export function Field({ label, required, hint, error, children }: FieldProps) {
       </span>
       {children}
       {error ? (
-        <Text font="secondary-body" color="text-05">
-          {error}
-        </Text>
+        <span className="ton-auto-field-error">{error}</span>
       ) : (
         hint && (
           <Text font="secondary-body" color="text-03">
@@ -103,29 +101,31 @@ interface DynamicPickerProps {
   onPick: (expression: string) => void;
 }
 
+export function typeLabel(type: string): string {
+  return D.typeLabels[type] ?? D.typeLabels.any ?? type;
+}
+
 function GroupList({ group, query, onPick }: { group: DynamicGroup; query: string; onPick: (expression: string) => void }) {
   const [open, setOpen] = useState(true);
   const Icon = nodeIcon(group.icon);
-  const items = group.items.filter(
-    (item) => !query || `${item.label} ${item.expression} ${group.title}`.toLowerCase().includes(query.toLowerCase())
-  );
+  const items = group.items.filter((item) => !query || `${item.label} ${group.title}`.toLowerCase().includes(query.toLowerCase()));
   if (!items.length) return null;
   return (
     <div className="ton-auto-dyn-group" data-group={group.group}>
       <button type="button" className="ton-auto-dyn-head ton-focusable" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-        {open ? <SvgChevronDown size={14} /> : <SvgChevronRight size={14} />}
         <span className="ton-auto-dyn-icon">
           <Icon size={13} />
         </span>
         <span className="ton-auto-dyn-title">{group.title}</span>
+        {open ? <SvgChevronDown size={14} /> : <SvgChevronRight size={14} />}
       </button>
       {open && (
         <ul>
           {items.map((item) => (
             <li key={item.expression}>
-              <button type="button" className="ton-auto-dyn-item ton-focusable" onClick={() => onPick(item.expression)} title={item.description || item.expression}>
+              <button type="button" className="ton-auto-dyn-item ton-focusable" onClick={() => onPick(item.expression)} title={item.description || undefined}>
                 <span className="ton-auto-dyn-label">{item.label}</span>
-                <span className="ton-auto-dyn-type">{item.type}</span>
+                <span className="ton-auto-dyn-type">{typeLabel(item.type)}</span>
               </button>
             </li>
           ))}
@@ -145,17 +145,17 @@ export function DynamicPicker({ context, onPick }: DynamicPickerProps) {
   );
   return (
     <div className="ton-auto-dyn">
-      <div className="ton-auto-dyn-tabs" role="tablist">
-        <button type="button" role="tab" aria-selected={tab === "content"} className="ton-focusable" onClick={() => setTab("content")}>
-          {D.dynamic}
-        </button>
-        <button type="button" role="tab" aria-selected={tab === "expression"} className="ton-focusable" onClick={() => setTab("expression")}>
-          {D.expression}
+      <div className="ton-auto-dyn-top">
+        <Text font="main-ui-action" color="text-05">
+          {tab === "content" ? D.pickerTitle : D.expression}
+        </Text>
+        <button type="button" className="ton-auto-link ton-focusable" onClick={() => setTab(tab === "content" ? "expression" : "content")}>
+          {tab === "content" ? D.expression : D.dynamicShort}
         </button>
       </div>
       {tab === "content" ? (
         <>
-          <InputTypeIn searchIcon placeholder={D.search} value={query} onChange={(event) => setQuery(event.target.value)} />
+          <InputTypeIn searchIcon placeholder={D.searchData} value={query} onChange={(event) => setQuery(event.target.value)} />
           <div className="ton-auto-dyn-list">
             {groups.length === 0 && (
               <Text font="secondary-body" color="text-03">
@@ -169,6 +169,9 @@ export function DynamicPicker({ context, onPick }: DynamicPickerProps) {
         </>
       ) : (
         <div className="flex flex-col gap-2">
+          <Text font="secondary-body" color="text-03">
+            {D.expressionHint}
+          </Text>
           <InputTextArea
             rows={3}
             autoResize
@@ -201,19 +204,45 @@ export function DynamicPicker({ context, onPick }: DynamicPickerProps) {
   );
 }
 
-export function TokenChips({ value, context }: { value: string; context: DynamicContext }) {
-  const tokens = segments(value).filter((part) => part.expression !== undefined);
-  if (!tokens.length) return null;
-  return (
-    <span className="ton-auto-tokens">
-      {tokens.map((part, index) => (
-        <span key={`${part.expression}-${index}`} className="ton-auto-token" title={`{{ ${part.expression} }}`}>
-          <SvgZap size={11} />
-          {describeExpression(part.expression ?? "", context.definition, context.catalog)}
-        </span>
-      ))}
-    </span>
-  );
+// ---------------------------------------------------------------------------
+// Token field: text where each {{ expression }} shows as a friendly chip
+// ---------------------------------------------------------------------------
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function tokenHtml(expression: string, label: string): string {
+  return `<span class="ton-auto-token" contenteditable="false" data-expr="${escapeHtml(expression)}" title="${escapeHtml(label)}">${escapeHtml(label)}</span>`;
+}
+
+function renderTokens(value: string, describe: (expression: string) => string): string {
+  return segments(value)
+    .map((part) => (part.expression !== undefined ? tokenHtml(part.expression, describe(part.expression)) : escapeHtml(part.text).replace(/\n/g, "<br>")))
+    .join("")
+    .concat(value.endsWith("\n") ? "<br>" : "");
+}
+
+function serializeTokens(root: Node): string {
+  let out = "";
+  root.childNodes.forEach((child, index) => {
+    if (child.nodeType === Node.TEXT_NODE) {
+      out += (child.textContent ?? "").replace(/ /g, " ");
+      return;
+    }
+    if (!(child instanceof HTMLElement)) return;
+    if (child.dataset.expr !== undefined) {
+      out += `{{ ${child.dataset.expr} }}`;
+    } else if (child.tagName === "BR") {
+      // A trailing <br> only keeps the empty last line visible.
+      if (index < root.childNodes.length - 1) out += "\n";
+    } else {
+      const block = child.tagName === "DIV" || child.tagName === "P";
+      if (block && out && !out.endsWith("\n")) out += "\n";
+      out += serializeTokens(child);
+    }
+  });
+  return out;
 }
 
 interface ExpressionInputProps {
@@ -227,24 +256,54 @@ interface ExpressionInputProps {
   invalid?: boolean;
 }
 
-/** Text with {{ expressions }}: the ⚡ button inserts dynamic content at the cursor. */
+/** Text with dynamic data: the ⚡ button inserts a chip at the cursor. */
 export function ExpressionInput({ value, onChange, context, label, placeholder, multiline, dynamic = true, invalid }: ExpressionInputProps) {
   const [open, setOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const areaRef = useRef<HTMLTextAreaElement>(null);
-  const cursor = useRef<number | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  const range = useRef<Range | null>(null);
+  const describe = useCallback((expression: string) => describeExpression(expression, context.definition, context.catalog), [context.definition, context.catalog]);
+  const html = useMemo(() => renderTokens(value, describe), [value, describe]);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    const focused = document.activeElement === element;
+    if (serializeTokens(element) !== value || (!focused && element.innerHTML !== html)) element.innerHTML = html;
+  }, [value, html]);
 
   function remember() {
-    const element = multiline ? areaRef.current : inputRef.current;
-    cursor.current = element?.selectionStart ?? null;
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount && ref.current?.contains(selection.anchorNode)) range.current = selection.getRangeAt(0).cloneRange();
+  }
+
+  function emit() {
+    if (ref.current) onChange(serializeTokens(ref.current));
   }
 
   function insert(expression: string) {
-    const token = `{{ ${expression} }}`;
-    const at = cursor.current ?? value.length;
-    onChange(`${value.slice(0, at)}${token}${value.slice(at)}`);
-    cursor.current = at + token.length;
+    const element = ref.current;
     setOpen(false);
+    if (!element) return;
+    const holder = document.createElement("span");
+    holder.innerHTML = tokenHtml(expression, describe(expression));
+    const token = holder.firstChild as HTMLElement;
+    const space = document.createTextNode(" ");
+    const at = range.current && element.contains(range.current.startContainer) ? range.current : null;
+    if (at) {
+      at.deleteContents();
+      at.insertNode(space);
+      at.insertNode(token);
+    } else {
+      element.append(token, space);
+    }
+    const selection = window.getSelection();
+    const after = document.createRange();
+    after.setStartAfter(space);
+    after.collapse(true);
+    selection?.removeAllRanges();
+    selection?.addRange(after);
+    range.current = after.cloneRange();
+    emit();
   }
 
   const picker = dynamic && context.nodeId !== "trigger" && (
@@ -252,43 +311,44 @@ export function ExpressionInput({ value, onChange, context, label, placeholder, 
       <Popover.Trigger asChild>
         <Button size="sm" prominence="tertiary" icon={SvgZap} tooltip={D.dynamic} aria-label={D.dynamic} onMouseDown={remember} />
       </Popover.Trigger>
-      <Popover.Content width="lg" align="end">
+      <Popover.Content width="xl" align="end">
         <DynamicPicker context={context} onPick={insert} />
       </Popover.Content>
     </Popover>
   );
 
   return (
-    <div className="flex flex-col gap-1">
-      {multiline ? (
-        <InputTextArea
-          ref={areaRef}
-          aria-label={label}
-          variant={invalid ? "error" : "primary"}
-          rows={3}
-          autoResize
-          maxRows={14}
-          placeholder={placeholder ?? undefined}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onSelect={remember}
-          onBlur={remember}
-          rightSection={picker || undefined}
-        />
-      ) : (
-        <InputTypeIn
-          ref={inputRef}
-          aria-label={label}
-          variant={invalid ? "error" : "primary"}
-          placeholder={placeholder ?? undefined}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onSelect={remember}
-          onBlur={remember}
-          rightChildren={picker || undefined}
-        />
-      )}
-      <TokenChips value={value} context={context} />
+    <div className="ton-auto-tokenfield" data-invalid={invalid || undefined} data-multiline={multiline || undefined}>
+      <div
+        ref={ref}
+        className="ton-auto-tokenfield-input"
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-label={label}
+        aria-multiline={multiline || undefined}
+        aria-invalid={invalid || undefined}
+        data-placeholder={placeholder ?? ""}
+        tabIndex={0}
+        onInput={emit}
+        onKeyUp={remember}
+        onMouseUp={remember}
+        onBlur={remember}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          if (multiline) {
+            document.execCommand("insertLineBreak");
+            emit();
+          }
+        }}
+        onPaste={(event) => {
+          event.preventDefault();
+          const text = event.clipboardData.getData("text/plain");
+          document.execCommand("insertText", false, multiline ? text : text.replace(/\s*\n\s*/g, " "));
+        }}
+      />
+      {picker && <span className="ton-auto-tokenfield-action">{picker}</span>}
     </div>
   );
 }
@@ -365,7 +425,7 @@ export function ChipsInput({ values, onChange, label, placeholder, context, vali
           <Popover.Trigger asChild>
             <Button size="sm" prominence="tertiary" icon={SvgZap} tooltip={D.dynamic} aria-label={D.dynamic} />
           </Popover.Trigger>
-          <Popover.Content width="lg" align="end">
+          <Popover.Content width="xl" align="end">
             <DynamicPicker
               context={context}
               onPick={(expression) => {

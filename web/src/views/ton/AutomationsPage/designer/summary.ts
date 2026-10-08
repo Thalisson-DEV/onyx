@@ -1,6 +1,6 @@
 import type { CatalogView, Definition, FlowNode, NodeTypeView, Params } from "@/lib/ton/automations";
 import { asList, asText } from "@/lib/ton/automationTree";
-import { describeExpression, segments } from "@/views/ton/AutomationsPage/designer/dynamic";
+import { describeExpression, prettyName, segments } from "@/views/ton/AutomationsPage/designer/dynamic";
 
 const WEEKDAYS = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
 
@@ -66,7 +66,7 @@ export function nodeSummary(node: FlowNode | null, spec: NodeTypeView | undefine
     case "variable.set":
     case "variable.increment":
     case "variable.append":
-      return asText(params.name) ? `vars.${asText(params.name)}` : spec.label;
+      return asText(params.name) ? prettyName(asText(params.name)) : spec.label;
     case "ai.prompt":
       return cut(asText(params.instructions) || spec.label);
     default:

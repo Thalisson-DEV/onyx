@@ -26,6 +26,7 @@ from onyx.ton.automations.definition import (
     AutomationOrigin,
     AutomationStatus,
     Node,
+    iter_nodes,
     unique_id,
 )
 from onyx.ton.automations.expressions import FUNCTION_HELP
@@ -92,7 +93,8 @@ def _spec_for_prompt(spec: NodeSpec) -> dict[str, Any]:
         if param.required:
             entry["required"] = True
         if param.options:
-            entry["options"] = [key for key, _ in param.options]
+            # Value -> meaning (e.g. weekdays: "0" -> "Segunda"), so the model does not guess.
+            entry["options"] = {key: label for key, label in param.options}
         if param.item_fields:
             entry["fields"] = [field.key for field in param.item_fields]
         if param.default not in (None, "", [], {}):
@@ -299,6 +301,10 @@ def draft_automation(
     )
     raw, definition, model_name = generate(request, current=base, current_name=existing.name if existing else None)
     definition = service._clean(definition)
+    if base and isinstance(base.get("layout"), dict):
+        # Keep where the user placed the nodes that survived the adjustment.
+        known = {node.id for node in iter_nodes(definition.steps)} | {"trigger"}
+        definition.layout = {key: value for key, value in base["layout"].items() if key in known}
     try:
         kind = AutomationKind(str(raw.get("kind") or ""))
     except ValueError:

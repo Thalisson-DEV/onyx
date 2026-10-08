@@ -337,6 +337,19 @@ def test_structure_rejects_duplicate_ids() -> None:
         _definition([{"id": "a", "type": "data.compose"}, {"id": "a", "type": "data.compose"}])
 
 
+def test_layout_keeps_only_known_nodes_and_clamps() -> None:
+    definition = AutomationDefinition.model_validate(
+        {
+            "schema": 3,
+            "trigger": {"type": "trigger.manual", "params": {}},
+            "steps": [{"id": "a", "type": "data.compose"}],
+            "layout": {"a": {"x": 40, "y": "12.5"}, "trigger": {"x": 99999999}, "gone": {"x": 1, "y": 1}, "bad": 3},
+        }
+    )
+    assert definition.layout == {"a": {"x": 40.0, "y": 12.5}, "trigger": {"x": 20000.0, "y": 0.0}}
+    assert definition.dump()["layout"]["a"] == {"x": 40.0, "y": 12.5}
+
+
 # -- schedule ------------------------------------------------------------------------
 
 

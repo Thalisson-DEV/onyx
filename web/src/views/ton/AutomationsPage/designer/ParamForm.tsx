@@ -16,6 +16,7 @@ import {
   type Params,
 } from "@/lib/ton/automations";
 import { asList, asText } from "@/lib/ton/automationTree";
+import { describeExpression, prettyName } from "@/views/ton/AutomationsPage/designer/dynamic";
 import ConditionBuilder from "@/views/ton/AutomationsPage/designer/ConditionBuilder";
 import EmailBodyEditor from "@/views/ton/AutomationsPage/designer/EmailBodyEditor";
 import {
@@ -40,10 +41,14 @@ function visible(param: ParamView, params: Params, spec: NodeTypeView): boolean 
   return values.includes(asText(current));
 }
 
-function stripHtml(html: string): string {
+/** Plain-text preview of the e-mail body, with data and blocks named as the user sees them. */
+function previewText(html: string, catalog: CatalogView, definition: Definition): string {
   return html
-    .replace(/<div data-block="([^"]+)"[^>]*><\/div>/g, " [$1] ")
+    .replace(/<span[^>]*data-expr="([^"]*)"[^>]*>[\s\S]*?<\/span>/g, (_match, expression: string) => ` ${describeExpression(expression.replace(/&amp;/g, "&"), definition, catalog)} `)
+    .replace(/<div[^>]*data-block="([^"]+)"[^>]*>[\s\S]*?<\/div>/g, (_match, block: string) => ` ▦ ${catalog.blocks[block] ?? block} `)
+    .replace(/<\/(p|div|li|h\d)>/g, " ")
     .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -118,7 +123,7 @@ function ParamInput({ param, value, nodeType, params, context, catalog, definiti
     case "select": {
       const options =
         param.key === "name" && nodeType.startsWith("variable.")
-          ? definition.variables.map((variable): [string, string] => [variable.name, variable.name])
+          ? definition.variables.map((variable): [string, string] => [variable.name, variable.description || prettyName(variable.name)])
           : param.options;
       return <Select value={asText(value)} label={param.label} options={options} onChange={onChange} />;
     }
@@ -168,7 +173,7 @@ function ParamInput({ param, value, nodeType, params, context, catalog, definiti
     case "json":
       return <InputTextArea aria-label={param.label} rows={5} autoResize maxRows={16} value={asText(value)} onChange={(event) => onChange(event.target.value)} />;
     case "html": {
-      const text = stripHtml(asText(value));
+      const text = previewText(asText(value), catalog, definition);
       return (
         <div className="ton-auto-html-preview">
           <Text font="secondary-body" color={text ? "text-04" : "text-03"}>
@@ -211,7 +216,7 @@ export default function ParamForm({ spec, nodeId, node, params, issues, definiti
   function render(param: ParamView) {
     const issue = issues.find((item) => item.param === param.key);
     return (
-      <Field key={param.key} label={param.label} required={param.required} hint={param.help} error={issue?.severity === "error" ? issue.message : null}>
+      <Field key={param.key} label={param.label} required={param.required} hint={param.help} error={issue?.message ?? null}>
         <ParamInput
           param={param}
           value={params[param.key] ?? param.default}

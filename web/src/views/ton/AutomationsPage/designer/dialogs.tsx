@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button, InputSwitch, InputTextArea, InputTypeIn, Modal, Text } from "@opal/components";
-import { SvgPlayCircle, SvgPlus, SvgSettings, SvgSparkle, SvgTrash, SvgX } from "@opal/icons";
+import { SvgArrowUp, SvgPlayCircle, SvgPlus, SvgSettings, SvgSparkle, SvgTrash, SvgX } from "@opal/icons";
 import {
   AUTOMATIONS_API,
   COPY,
@@ -13,18 +13,60 @@ import {
   type CatalogView,
   type Definition,
   type DraftResult,
+  type FlowNode,
   type JsonValue,
+  type Params,
   type VariableDecl,
 } from "@/lib/ton/automations";
 import { asText } from "@/lib/ton/automationTree";
+import { prettyName } from "@/views/ton/AutomationsPage/designer/dynamic";
 import { ChipsInput, Field, Select } from "@/views/ton/AutomationsPage/designer/fields";
 
 // ---------------------------------------------------------------------------
-// Variables and settings
+// Settings (side panel)
 // ---------------------------------------------------------------------------
 
-interface SettingsModalProps {
-  open: boolean;
+function slug(text: string): string {
+  const base = text
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40);
+  return /^[a-z]/.test(base) ? base : `valor_${base}`.slice(0, 40);
+}
+
+function renameIn(value: JsonValue, from: RegExp, to: string): JsonValue {
+  if (typeof value === "string") return value.replace(from, to);
+  if (Array.isArray(value)) return value.map((item) => renameIn(item, from, to));
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, renameIn(item, from, to)]));
+  return value;
+}
+
+/** Rename a variable everywhere it is read or written. */
+function renameVariable(definition: Definition, from: string, to: string): Definition {
+  if (from === to) return definition;
+  const pattern = new RegExp(`\\bvars\\.${from}\\b`, "g");
+  const walk = (nodes: FlowNode[]): FlowNode[] =>
+    nodes.map((node) => {
+      let params = renameIn(node.params, pattern, `vars.${to}`) as Params;
+      if (node.type.startsWith("variable.") && params.name === from) params = { ...params, name: to };
+      return {
+        ...node,
+        params,
+        then: node.then && walk(node.then),
+        else: node.else && walk(node.else),
+        default: node.default && walk(node.default),
+        steps: node.steps && walk(node.steps),
+        cases: node.cases?.map((item) => ({ ...item, steps: walk(item.steps) })),
+        branches: node.branches?.map((branch) => ({ ...branch, steps: walk(branch.steps) })),
+      };
+    });
+  return { ...definition, steps: walk(definition.steps) };
+}
+
+interface SettingsPanelProps {
   definition: Definition;
   catalog: CatalogView;
   kind: AutomationKind;
@@ -33,97 +75,119 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-export function SettingsModal({ open, definition, catalog, kind, description, onChange, onClose }: SettingsModalProps) {
+export function SettingsPanel({ definition, catalog, kind, description, onChange, onClose }: SettingsPanelProps) {
   const variables = definition.variables;
-  function setVariables(next: VariableDecl[]) {
-    onChange({ definition: { ...definition, variables: next } });
+  const kindInfo = catalog.kinds.find((item) => item.key === kind);
+  function setVariable(index: number, patch: Partial<VariableDecl>) {
+    const current = variables[index]!;
+    let next: Definition = { ...definition, variables: variables.map((item, i) => (i === index ? { ...item, ...patch } : item)) };
+    if (patch.name && patch.name !== current.name) next = renameVariable(next, current.name, patch.name);
+    onChange({ definition: next });
+  }
+  function addVariable() {
+    const taken = new Set(variables.map((item) => item.name));
+    let index = variables.length + 1;
+    while (taken.has(`valor_${index}`)) index += 1;
+    onChange({ definition: { ...definition, variables: [...variables, { name: `valor_${index}`, description: `Valor ${index}`, type: "string", value: "" }] } });
   }
   const context = { definition, catalog, nodeId: "trigger" };
   return (
-    <Modal open={open} onOpenChange={(value) => !value && onClose()}>
-      <Modal.Content width="lg" height="lg">
-        <Modal.Header icon={SvgSettings} title={D.settings} onClose={onClose} />
-        <Modal.Body>
-          <div className="flex flex-col gap-5">
-            <Field label={D.kind}>
-              <Select value={kind} label={D.kind} options={catalog.kinds.map((item): [string, string] => [item.key, `${item.label} — ${item.description}`])} onChange={(value) => onChange({ kind: value as AutomationKind })} />
-            </Field>
-            <Field label={D.description}>
-              <InputTextArea rows={2} autoResize maxRows={5} aria-label={D.description} value={description} onChange={(event) => onChange({ description: event.target.value })} />
-            </Field>
-            <div className="flex flex-col gap-2">
-              <Text font="main-ui-action" color="text-05">
-                {D.variables}
-              </Text>
-              {variables.map((variable, index) => (
-                <div key={index} className="ton-auto-row">
-                  <div className="ton-auto-row-fields">
-                    <div className="ton-auto-row-cell">
-                      <InputTypeIn
-                        aria-label={D.variableName}
-                        placeholder={D.variableName}
-                        value={variable.name}
-                        onChange={(event) => setVariables(variables.map((item, i) => (i === index ? { ...item, name: event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_") } : item)))}
-                      />
-                    </div>
-                    <div className="ton-auto-row-cell">
-                      <Select
-                        value={variable.type}
-                        label={D.variableType}
-                        options={Object.entries(D.variableTypes)}
-                        onChange={(type) => setVariables(variables.map((item, i) => (i === index ? { ...item, type: type as VariableDecl["type"] } : item)))}
-                      />
-                    </div>
-                    <div className="ton-auto-row-cell ton-auto-row-wide">
-                      <InputTypeIn
-                        aria-label={D.variableValue}
-                        placeholder={D.variableValue}
-                        value={asText(variable.value)}
-                        onChange={(event) => setVariables(variables.map((item, i) => (i === index ? { ...item, value: event.target.value } : item)))}
-                      />
-                    </div>
-                  </div>
-                  <Button size="sm" prominence="tertiary" icon={SvgTrash} aria-label={D.remove} onClick={() => setVariables(variables.filter((_, i) => i !== index))} />
-                </div>
-              ))}
-              <div>
-                <Button size="sm" prominence="secondary" icon={SvgPlus} onClick={() => setVariables([...variables, { name: `variavel_${variables.length + 1}`, type: "string", value: "" }])}>
-                  {D.addVariable}
-                </Button>
+    <aside className="ton-auto-panel" aria-label={D.settings} data-group="trigger">
+      <header className="ton-auto-panel-head">
+        <span className="ton-auto-node-icon">
+          <SvgSettings size={18} />
+        </span>
+        <Text font="main-ui-action" color="text-05">
+          {D.settings}
+        </Text>
+        <span className="flex-1" />
+        <Button size="sm" prominence="tertiary" icon={SvgX} aria-label={D.closePanel} onClick={onClose} />
+      </header>
+      <div className="ton-auto-panel-body ton-auto-sections">
+        <section className="ton-auto-section">
+          <Text as="h3" font="secondary-action" color="text-04">
+            {D.settingsAbout}
+          </Text>
+          <Field label={D.kind} hint={kindInfo?.description}>
+            <Select value={kind} label={D.kind} options={catalog.kinds.map((item): [string, string] => [item.key, item.label])} onChange={(value) => onChange({ kind: value as AutomationKind })} />
+          </Field>
+          <Field label={D.description}>
+            <InputTextArea rows={2} autoResize maxRows={5} aria-label={D.description} placeholder={D.descriptionPlaceholder} value={description} onChange={(event) => onChange({ description: event.target.value })} />
+          </Field>
+        </section>
+        <section className="ton-auto-section">
+          <Text as="h3" font="secondary-action" color="text-04">
+            {D.variables}
+          </Text>
+          <Text font="secondary-body" color="text-03">
+            {D.variablesHint}
+          </Text>
+          {variables.map((variable, index) => (
+            <div key={index} className="ton-auto-variable">
+              <div className="ton-auto-variable-grid">
+                <InputTypeIn
+                  aria-label={D.variableName}
+                  placeholder={D.variableName}
+                  value={variable.description ?? prettyName(variable.name)}
+                  onChange={(event) => {
+                    const text = event.target.value;
+                    const name = slug(text || variable.name);
+                    const clash = variables.some((item, i) => i !== index && item.name === name);
+                    setVariable(index, { description: text, name: clash ? variable.name : name });
+                  }}
+                />
+                <Select value={variable.type} label={D.variableType} options={Object.entries(D.variableTypes)} onChange={(type) => setVariable(index, { type: type as VariableDecl["type"] })} />
+              </div>
+              <div className="ton-auto-variable-grid">
+                <InputTypeIn aria-label={D.variableValue} placeholder={D.variableValue} value={asText(variable.value)} onChange={(event) => setVariable(index, { value: event.target.value })} />
+                <Button size="sm" prominence="tertiary" icon={SvgTrash} aria-label={D.remove} tooltip={D.remove} onClick={() => onChange({ definition: { ...definition, variables: variables.filter((_, i) => i !== index) } })} />
               </div>
             </div>
-            <Field label={D.notifyOnFailure}>
-              <ChipsInput
-                values={definition.settings.notify_on_failure}
-                onChange={(values) => onChange({ definition: { ...definition, settings: { ...definition.settings, notify_on_failure: values } } })}
-                label={D.notifyOnFailure}
-                placeholder="nome@valenorte.com.br"
-                context={context}
-              />
-            </Field>
-            <Field label={D.timeoutHours}>
-              <InputTypeIn
-                type="number"
-                min={1}
-                max={720}
-                aria-label={D.timeoutHours}
-                value={String(definition.settings.timeout_hours)}
-                onChange={(event) => onChange({ definition: { ...definition, settings: { ...definition.settings, timeout_hours: Number(event.target.value) || 168 } } })}
-              />
-            </Field>
+          ))}
+          <div>
+            <Button size="sm" prominence="secondary" icon={SvgPlus} onClick={addVariable}>
+              {D.addVariable}
+            </Button>
           </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button onClick={onClose}>{D.done}</Button>
-        </Modal.Footer>
-      </Modal.Content>
-    </Modal>
+        </section>
+        <section className="ton-auto-section">
+          <Text as="h3" font="secondary-action" color="text-04">
+            {D.settingsFailure}
+          </Text>
+          <Field label={D.notifyOnFailure}>
+            <ChipsInput
+              values={definition.settings.notify_on_failure}
+              onChange={(values) => onChange({ definition: { ...definition, settings: { ...definition.settings, notify_on_failure: values } } })}
+              label={D.notifyOnFailure}
+              placeholder="nome@valenorte.com.br"
+              context={context}
+            />
+          </Field>
+          <Field label={D.timeoutHours}>
+            <InputTypeIn
+              type="number"
+              min={1}
+              max={720}
+              aria-label={D.timeoutHours}
+              value={String(definition.settings.timeout_hours)}
+              onChange={(event) => onChange({ definition: { ...definition, settings: { ...definition.settings, timeout_hours: Number(event.target.value) || 168 } } })}
+            />
+          </Field>
+        </section>
+      </div>
+    </aside>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Ask TON
+// Ask TON (side panel, chat-like)
 // ---------------------------------------------------------------------------
+
+interface AskEntry {
+  request: string;
+  result: DraftResult | null;
+  error: string | null;
+}
 
 interface AskPanelProps {
   automationId: string;
@@ -135,68 +199,109 @@ interface AskPanelProps {
 export function AskPanel({ automationId, definition, onApplied, onClose }: AskPanelProps) {
   const [request, setRequest] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<DraftResult | null>(null);
-  async function submit() {
+  const [entries, setEntries] = useState<AskEntry[]>([]);
+  async function submit(text: string) {
+    const asked = text.trim();
+    if (asked.length < 5 || busy) return;
     setBusy(true);
-    setError(null);
+    setRequest("");
+    setEntries((current) => [...current, { request: asked, result: null, error: null }]);
+    let entry: AskEntry;
     try {
-      const result = await send<DraftResult>(`${AUTOMATIONS_API}/drafts`, { request, automation_id: automationId, definition });
-      setDone(result);
-      setRequest("");
+      const result = await send<DraftResult>(`${AUTOMATIONS_API}/drafts`, { request: asked, automation_id: automationId, definition });
+      entry = { request: asked, result, error: null };
       onApplied(result);
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : String(failure));
+      entry = { request: asked, result: null, error: failure instanceof Error ? failure.message : String(failure) };
     } finally {
       setBusy(false);
     }
+    setEntries((current) => [...current.slice(0, -1), entry]);
   }
   return (
-    <aside className="ton-auto-panel" aria-label={D.ask} data-group="ai">
+    <aside className="ton-auto-panel ton-auto-ask" aria-label={D.askTitle} data-group="ai">
       <header className="ton-auto-panel-head">
         <span className="ton-auto-node-icon">
           <SvgSparkle size={18} />
         </span>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <Text font="main-ui-action" color="text-05">
-            {D.ask}
-          </Text>
-          <Text font="secondary-body" color="text-03">
-            {COPY.askTonHint}
-          </Text>
-        </div>
+        <Text font="main-ui-action" color="text-05">
+          {D.askTitle}
+        </Text>
+        <span className="flex-1" />
         <Button size="sm" prominence="tertiary" icon={SvgX} aria-label={D.closePanel} onClick={onClose} />
       </header>
       <div className="ton-auto-panel-body">
-        <InputTextArea rows={6} autoResize maxRows={14} aria-label={D.ask} placeholder={D.askPlaceholder} value={request} onChange={(event) => setRequest(event.target.value)} />
-        <div className="flex justify-end">
-          <Button icon={SvgSparkle} disabled={busy || request.trim().length < 5} onClick={submit}>
-            {busy ? D.asking : D.askSubmit}
-          </Button>
-        </div>
-        {error && (
-          <Text font="secondary-body" color="text-05">
-            {error}
-          </Text>
-        )}
-        {done && (
-          <div className="ton-auto-ask-result">
-            <Text font="secondary-action" color="text-05">
-              {D.askApplied}
+        {entries.length === 0 ? (
+          <div className="ton-auto-ask-empty">
+            <Text font="secondary-body" color="text-03">
+              {D.askIntro}
             </Text>
-            {done.summary && (
-              <Text font="secondary-body" color="text-04">
-                {done.summary}
-              </Text>
-            )}
-            {[...done.missing, ...done.problems].slice(0, 6).map((item) => (
-              <Text key={item} font="secondary-body" color="text-03">
-                {`• ${item}`}
-              </Text>
-            ))}
+            <div className="ton-auto-ask-examples">
+              {D.askExamples.map((example) => (
+                <button key={example} type="button" className="ton-auto-ask-example ton-focusable" onClick={() => setRequest(example)}>
+                  {example}
+                </button>
+              ))}
+            </div>
           </div>
+        ) : (
+          <ol className="ton-auto-ask-thread">
+            {entries.map((entry, index) => (
+              <li key={index} className="flex flex-col gap-2">
+                <div className="ton-auto-ask-bubble" data-from="user">
+                  {entry.request}
+                </div>
+                {entry.result ? (
+                  <div className="ton-auto-ask-bubble" data-from="ton">
+                    <strong>{D.askApplied}</strong>
+                    {entry.result.summary && <span>{entry.result.summary}</span>}
+                    {[...entry.result.missing, ...entry.result.problems].length > 0 && (
+                      <span className="flex flex-col gap-0.5">
+                        <span className="ton-auto-ask-missing">{D.askMissing}</span>
+                        {[...entry.result.missing, ...entry.result.problems].slice(0, 6).map((item) => (
+                          <span key={item}>{`• ${item}`}</span>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                ) : entry.error ? (
+                  <div className="ton-auto-ask-bubble" data-from="error">
+                    {entry.error}
+                  </div>
+                ) : (
+                  <div className="ton-auto-ask-bubble" data-from="ton" data-busy>
+                    {D.asking}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
         )}
       </div>
+      <form
+        className="ton-auto-ask-composer"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit(request);
+        }}
+      >
+        <InputTextArea
+          rows={2}
+          autoResize
+          maxRows={8}
+          aria-label={D.askTitle}
+          placeholder={D.askPlaceholder}
+          value={request}
+          onChange={(event) => setRequest(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              void submit(request);
+            }
+          }}
+        />
+        <Button type="submit" icon={SvgArrowUp} disabled={busy || request.trim().length < 5} aria-label={D.askSubmit} tooltip={D.askSubmit} />
+      </form>
     </aside>
   );
 }
@@ -276,6 +381,3 @@ export function RunModal({ open, test, definition, busy, error, onRun, onClose }
   );
 }
 
-export function kindLabel(kind: AutomationKind): string {
-  return KIND_LABELS[kind];
-}

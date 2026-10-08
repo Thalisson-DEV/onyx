@@ -66,10 +66,15 @@ export default function AddPanel({ catalog, mode, onPick, onClose, onDragState }
 
   return (
     <aside className="ton-auto-add" aria-label={mode === "trigger" ? D.addTrigger : D.addAction}>
-      <header className="flex items-center justify-between gap-2">
-        <Text font="main-ui-action" color="text-05">
-          {mode === "trigger" ? D.addTrigger : D.addAction}
-        </Text>
+      <header className="flex items-start justify-between gap-2">
+        <span className="flex flex-col gap-0.5">
+          <Text font="main-ui-action" color="text-05">
+            {mode === "trigger" ? D.addTrigger : D.addAction}
+          </Text>
+          <Text font="secondary-body" color="text-03">
+            {mode === "trigger" ? D.addTriggerHint : D.addActionHint}
+          </Text>
+        </span>
         <Button size="sm" prominence="tertiary" icon={SvgX} aria-label={D.closePanel} onClick={onClose} />
       </header>
       <InputTypeIn searchIcon placeholder={D.search} value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -81,9 +86,7 @@ export default function AddPanel({ catalog, mode, onPick, onClose, onDragState }
         )}
         {groups.map((group) => (
           <section key={group.key} className="ton-auto-add-group">
-            <Text font="secondary-action" color="text-04">
-              {group.title}
-            </Text>
+            <span className="ton-auto-add-group-title">{group.title}</span>
             <div className="ton-auto-add-grid">
               {group.items.map((spec) => (
                 <Item key={spec.type} spec={spec} draggable={mode === "action"} onPick={() => onPick(spec)} onDragState={onDragState} />

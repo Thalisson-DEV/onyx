@@ -103,7 +103,7 @@ register(
             ParamSpec("method", "Método", "select", default="POST", dynamic=False, options=(("GET", "GET"), ("POST", "POST"), ("PUT", "PUT"), ("PATCH", "PATCH"), ("DELETE", "DELETE"))),
             ParamSpec("url", "Endereço", "text", required=True, placeholder="https://..."),
             ParamSpec("headers", "Cabeçalhos", "keyvalue", default=[], item_fields=(FieldSpec("key", "Nome"), FieldSpec("value", "Valor"))),
-            ParamSpec("body", "Corpo", "textarea", placeholder='{"texto": "{{ steps.resumo.outputs.text }}"}', show_if=("method", ("POST", "PUT", "PATCH"))),
+            ParamSpec("body", "Corpo", "textarea", placeholder='{"texto": "..."}', show_if=("method", ("POST", "PUT", "PATCH"))),
             ParamSpec("fail_on_error", "Falhar quando o serviço responder erro (4xx/5xx)", "boolean", default=True, dynamic=False, advanced=True),
         ),
         outputs=(

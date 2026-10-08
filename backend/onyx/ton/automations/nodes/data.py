@@ -200,7 +200,7 @@ register(
         label="Compor",
         description="Monta um valor (texto, número, lista ou objeto) a partir de outros dados.",
         icon="compose",
-        params=(ParamSpec("value", "Valor", "textarea", required=True, placeholder="Total: {{ format_money(steps.buscar.outputs.total) }}"),),
+        params=(ParamSpec("value", "Valor", "textarea", required=True, placeholder="Escreva o texto e use ⚡ para incluir dados"),),
         outputs=(OutputSpec("value", "Valor", "any"),),
         executor=lambda ctx, params: {"value": params.get("value")},
         keywords=("compose", "montar", "texto", "fórmula", "expressão"),
@@ -267,7 +267,7 @@ register(
         description="Mantém só os itens que atendem às regras. Nas regras, use {{ item.campo }}.",
         icon="filter",
         params=(
-            ParamSpec("items", "Lista", "expression", required=True, resolve=False, placeholder="{{ steps.buscar.outputs.items }}"),
+            ParamSpec("items", "Lista", "expression", required=True, resolve=False, placeholder="Use ⚡ para escolher a lista"),
             ParamSpec("condition", "Manter quando", "condition", required=True, default={"op": "and", "rules": []}, resolve=False),
             ParamSpec("keep_rest", "Guardar também os que não atendem", "boolean", default=False, dynamic=False),
         ),
@@ -305,7 +305,7 @@ register(
         icon="columns",
         params=(
             ParamSpec("items", "Lista", "expression", required=True, resolve=False),
-            ParamSpec("mapping", "Campos", "mapping", required=True, default=[], resolve=False, item_fields=(FieldSpec("key", "Campo novo"), FieldSpec("value", "Valor", "expression", placeholder="{{ item.unidade }}"))),
+            ParamSpec("mapping", "Campos", "mapping", required=True, default=[], resolve=False, item_fields=(FieldSpec("key", "Campo novo"), FieldSpec("value", "Valor", "expression", placeholder="Use ⚡ para escolher"))),
         ),
         outputs=(OutputSpec("items", "Lista", "array"), OutputSpec("count", "Quantidade", "number")),
         executor=_select,
@@ -487,7 +487,7 @@ register(
         icon="table",
         params=(
             ParamSpec("items", "Lista", "expression", required=True, resolve=False),
-            ParamSpec("columns", "Colunas (vazio = automáticas)", "columns", default=[], resolve=False, item_fields=(FieldSpec("header", "Título"), FieldSpec("value", "Valor", "expression", placeholder="{{ item.valor_formatado }}"))),
+            ParamSpec("columns", "Colunas (vazio = automáticas)", "columns", default=[], resolve=False, item_fields=(FieldSpec("header", "Título"), FieldSpec("value", "Valor", "expression", placeholder="Use ⚡ para escolher"))),
         ),
         outputs=(
             OutputSpec("html", "Tabela HTML", "string"),

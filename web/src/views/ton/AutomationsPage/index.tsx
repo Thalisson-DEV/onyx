@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { Route } from "next";
 import { Button, Popover, Text } from "@opal/components";
-import { SvgChevronDown, SvgPlus, SvgSparkle, SvgUserCheck, SvgWorkflow, SvgBlocks } from "@opal/icons";
+import { SvgBell, SvgBlocks, SvgChevronDown, SvgChevronRight, SvgMail, SvgPlus, SvgRefreshCw, SvgSparkle, SvgUserCheck, SvgWorkflow } from "@opal/icons";
+import type { IconFunctionComponent } from "@opal/types";
 import {
   COPY,
   KIND_LABELS,
@@ -54,72 +56,69 @@ function Approvals({ approvals, onOpen }: { approvals: ApprovalView[]; onOpen: (
   );
 }
 
+const KIND_ICONS: Record<AutomationKind, IconFunctionComponent> = {
+  EMAIL: SvgMail,
+  ALERT: SvgBell,
+  ROUTINE: SvgRefreshCw,
+  APPROVAL: SvgUserCheck,
+  DATA_AI: SvgSparkle,
+  GENERAL: SvgWorkflow,
+};
+
 function Runs28({ automation }: { automation: AutomationSummary }) {
   const ok = automation.runs_28d.SUCCEEDED ?? 0;
   const failed = (automation.runs_28d.FAILED ?? 0) + (automation.runs_28d.TIMED_OUT ?? 0);
-  if (!ok && !failed) return <span className="ton-auto-muted">{"—"}</span>;
+  if (!ok && !failed) return null;
   return (
-    <span className="ton-auto-runs28">
-      {ok > 0 && <span data-tone="success">{`✓ ${ok}`}</span>}
-      {failed > 0 && <span data-tone="error">{`✕ ${failed}`}</span>}
+    <span className="ton-auto-runs28" title={COPY.columns.runs}>
+      {ok > 0 && <span data-tone="success">{COPY.runsOk(ok)}</span>}
+      {failed > 0 && <span data-tone="error">{COPY.runsFailed(failed)}</span>}
     </span>
   );
 }
 
 function Row({ automation }: { automation: AutomationSummary }) {
-  const router = useRouter();
   const href = `/ton/automacoes/${automation.id}` as Route;
+  const Icon = KIND_ICONS[automation.kind] ?? SvgWorkflow;
+  const pending = automation.problems.length > 0 && automation.status !== "ACTIVE";
   return (
-    <tr className="ton-auto-table-row" onClick={() => router.push(href)}>
-      <td>
-        <span className="flex min-w-0 flex-col gap-0.5">
-          <a href={href} className="ton-focusable" onClick={(event) => event.preventDefault()}>
-            <Text font="main-ui-action" color="text-05">
-              {automation.name}
-            </Text>
-          </a>
-          <Text font="secondary-body" color="text-03" maxLines={1}>
-            {automation.description ?? COPY.steps(automation.steps_count)}
-          </Text>
-          {automation.problems.length > 0 && automation.status !== "ACTIVE" && <span className="ton-auto-problems">{COPY.problems(automation.problems.length)}</span>}
+    <li className="ton-auto-list-row">
+      <span className="ton-auto-list-icon" data-kind={automation.kind} aria-hidden>
+        <Icon size={18} />
+      </span>
+      <span className="ton-auto-list-main">
+        <Link href={href} className="ton-auto-list-name ton-focusable">
+          {automation.name}
+        </Link>
+        <span className="ton-auto-list-desc">
+          <span className="ton-auto-list-kind">{KIND_LABELS[automation.kind]}</span>
+          <span aria-hidden>·</span>
+          <span className="truncate">{automation.description ?? COPY.steps(automation.steps_count)}</span>
         </span>
-      </td>
-      <td>
-        <span className="ton-auto-kind-pill" data-kind={automation.kind}>
-          {KIND_LABELS[automation.kind]}
-        </span>
-      </td>
-      <td>
-        <span className="flex flex-col gap-0.5">
-          <Text font="secondary-body" color="text-04">
-            {automation.when}
-          </Text>
-          {automation.next_run_at && (
-            <Text font="secondary-body" color="text-03">
-              {COPY.next(formatDateTime(automation.next_run_at))}
-            </Text>
-          )}
-        </span>
-      </td>
-      <td>
-        <StatusPill tone={STATUS_TONE[automation.status]}>{STATUS_LABELS[automation.status]}</StatusPill>
-      </td>
-      <td>
+      </span>
+      <span className="ton-auto-list-when">
+        <span className="ton-auto-list-label">{COPY.columns.trigger}</span>
+        <span>{automation.when}</span>
+        {automation.next_run_at && automation.status === "ACTIVE" && <span className="ton-auto-muted">{COPY.next(formatDateTime(automation.next_run_at))}</span>}
+      </span>
+      <span className="ton-auto-list-last">
+        <span className="ton-auto-list-label">{COPY.columns.lastRun}</span>
         {automation.last_run ? (
-          <span className="flex flex-col gap-0.5">
-            <StatusPill tone={RUN_TONE[automation.last_run.status]}>{RUN_STATUS_LABELS[automation.last_run.status]}</StatusPill>
-            <Text font="secondary-body" color="text-03">
-              {formatRelativeDateTime(automation.last_run.created_at)}
-            </Text>
+          <span className="ton-auto-list-run" data-status={automation.last_run.status}>
+            <span className="ton-auto-dot" aria-hidden />
+            {`${RUN_STATUS_LABELS[automation.last_run.status]} · ${formatRelativeDateTime(automation.last_run.created_at)}`}
           </span>
         ) : (
           <span className="ton-auto-muted">{COPY.never}</span>
         )}
-      </td>
-      <td data-numeric>
         <Runs28 automation={automation} />
-      </td>
-    </tr>
+      </span>
+      <span className="ton-auto-list-status">
+        {pending ? <span className="ton-auto-problems">{COPY.problems(automation.problems.length)}</span> : null}
+        <StatusPill tone={STATUS_TONE[automation.status]}>{STATUS_LABELS[automation.status]}</StatusPill>
+        <SvgChevronRight size={16} className="ton-auto-list-chevron" />
+      </span>
+    </li>
   );
 }
 
@@ -177,7 +176,7 @@ export default function AutomationsPage() {
         }
       />
       <Approvals approvals={table.data?.approvals ?? []} onOpen={setApproval} />
-      <div className="ton-auto-filters" role="tablist">
+      <div className="ton-auto-filters" role="tablist" aria-label={COPY.columns.kind}>
         {(["ALL", "EMAIL", "ALERT", "ROUTINE", "APPROVAL", "DATA_AI", "GENERAL"] as const).map((key) => {
           const count = key === "ALL" ? automations.length : counts.get(key) ?? 0;
           if (key !== "ALL" && !count) return null;
@@ -204,26 +203,12 @@ export default function AutomationsPage() {
       ) : shown.length === 0 ? (
         <EmptyState icon={SvgWorkflow} title={COPY.empty} description={COPY.emptyHint} />
       ) : (
-        <TonCard as="div" className="overflow-x-auto">
-          <table className="ton-auto-table">
-            <thead>
-              <tr>
-                <th scope="col">{COPY.columns.name}</th>
-                <th scope="col">{COPY.columns.kind}</th>
-                <th scope="col">{COPY.columns.trigger}</th>
-                <th scope="col">{COPY.columns.status}</th>
-                <th scope="col">{COPY.columns.lastRun}</th>
-                <th scope="col" data-numeric>
-                  {COPY.columns.runs}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((automation) => (
-                <Row key={automation.id} automation={automation} />
-              ))}
-            </tbody>
-          </table>
+        <TonCard as="div" className="ton-auto-list-card">
+          <ul className="ton-auto-list">
+            {shown.map((automation) => (
+              <Row key={automation.id} automation={automation} />
+            ))}
+          </ul>
         </TonCard>
       )}
       <NewAutomationModal mode={newMode} onClose={() => setNewMode(null)} />

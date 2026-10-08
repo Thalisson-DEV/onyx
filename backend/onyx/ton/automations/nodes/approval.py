@@ -15,7 +15,7 @@ register(
         params=(
             ParamSpec("approvers", "Quem aprova (e-mails)", "emails", required=True, default=[]),
             ParamSpec("title", "Título", "text", required=True, placeholder="Enviar o relatório ao Financeiro?"),
-            ParamSpec("details", "Detalhes", "textarea", placeholder="{{ steps.resumo.outputs.text }}"),
+            ParamSpec("details", "Detalhes", "textarea", placeholder="O que a pessoa precisa saber para decidir"),
             ParamSpec("kind", "Respostas", "select", default="approve_reject", dynamic=False, options=(("approve_reject", "Aprovar / Recusar"), ("custom", "Opções próprias"))),
             ParamSpec("options", "Opções", "list", default=[], show_if=("kind", ("custom",))),
             ParamSpec("expires_after_hours", "Prazo em horas (0 = sem prazo)", "number", default=0, min=0, max=2160),

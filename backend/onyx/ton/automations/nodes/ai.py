@@ -152,7 +152,7 @@ register(
         icon="sparkles",
         params=(
             ParamSpec("instructions", "Instruções", "textarea", required=True, placeholder="Resuma as inconsistências abaixo para a diretoria, em 5 linhas."),
-            ParamSpec("input", "Dados para a IA", "textarea", placeholder="{{ steps.buscar.outputs.items }}"),
+            ParamSpec("input", "Dados para a IA", "textarea", placeholder="Use ⚡ para escolher os dados de um passo anterior"),
             ParamSpec("output", "Resposta em", "select", default="text", dynamic=False, options=(("text", "Texto"), ("fields", "Campos estruturados"))),
             replace(_FIELDS_PARAM, show_if=("output", ("fields",))),
             ParamSpec("temperature", "Criatividade (0 a 1)", "number", default=0, dynamic=False, min=0, max=1, advanced=True),
@@ -199,7 +199,7 @@ register(
         description="Tira campos estruturados de um texto livre (e-mail, PDF, observação).",
         icon="scan",
         params=(
-            ParamSpec("input", "Texto", "textarea", required=True, placeholder="{{ steps.dados.outputs.text }}"),
+            ParamSpec("input", "Texto", "textarea", required=True, placeholder="Use ⚡ para escolher o texto de um passo anterior"),
             replace(_FIELDS_PARAM, required=True, label="Campos a extrair"),
         ),
         outputs=(

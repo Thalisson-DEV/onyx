@@ -28,7 +28,7 @@ import { ErrorState, LoadingBlock } from "@/views/ton/components/ui";
 import ApprovalModal from "@/views/ton/AutomationsPage/ApprovalModal";
 import Canvas from "@/views/ton/AutomationsPage/designer/Canvas";
 import { formatDuration, type NodeRunState } from "@/views/ton/AutomationsPage/designer/CanvasNodes";
-import { specMap } from "@/views/ton/AutomationsPage/designer/dynamic";
+import { prettyName, specMap } from "@/views/ton/AutomationsPage/designer/dynamic";
 import { nodeIcon } from "@/views/ton/AutomationsPage/designer/icons";
 import { nodeSummary } from "@/views/ton/AutomationsPage/designer/summary";
 
@@ -53,6 +53,76 @@ function aggregate(steps: StepView[]): Map<string, NodeRunState> {
 function JsonBlock({ value }: { value: JsonValue | Record<string, JsonValue> | null | undefined }) {
   const text = JSON.stringify(value ?? null, null, 2);
   return <pre className="ton-auto-json">{text.length > 60_000 ? `${text.slice(0, 60_000)}\n…` : text}</pre>;
+}
+
+function friendlyValue(value: JsonValue | undefined, options?: Map<string, string>): string {
+  if (options && (typeof value === "string" || Array.isArray(value))) {
+    const values = (Array.isArray(value) ? value : [value]).map((item) => options.get(String(item)) ?? String(item));
+    if (values.length) return values.join(", ");
+  }
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "boolean") return value ? "Sim" : "Não";
+  if (typeof value === "number") return value.toLocaleString("pt-BR");
+  if (typeof value === "string") {
+    if (/<[a-z][\s\S]*>/i.test(value)) return R.formatted;
+    return value.length > 280 ? `${value.slice(0, 278)}…` : value;
+  }
+  if (Array.isArray(value)) {
+    if (!value.length) return R.emptyList;
+    if (value.every((item) => typeof item === "string" || typeof item === "number")) return value.slice(0, 8).join(", ") + (value.length > 8 ? ` +${value.length - 8}` : "");
+    return R.items(value.length);
+  }
+  return R.record;
+}
+
+/** Inputs or outputs as label → value, named like the designer; raw data on demand. */
+function DataList({ value, labels, options }: { value: Record<string, JsonValue> | null | undefined; labels: Map<string, string>; options?: Map<string, Map<string, string>> }) {
+  const entries = Object.entries(value ?? {}).filter(([key]) => key !== "html");
+  if (!entries.length) {
+    return (
+      <Text font="secondary-body" color="text-03">
+        {"—"}
+      </Text>
+    );
+  }
+  return (
+    <dl className="ton-auto-datalist">
+      {entries.map(([key, item]) => (
+        <div key={key}>
+          <dt>{labels.get(key) ?? prettyName(key)}</dt>
+          <dd>{friendlyValue(item, options?.get(key))}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function TechnicalData({ inputs, outputs }: { inputs: JsonValue | Record<string, JsonValue> | null | undefined; outputs: JsonValue | Record<string, JsonValue> | null | undefined }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex flex-col gap-2">
+      <button type="button" className="ton-auto-link ton-focusable self-start" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+        {open ? R.hideTechnical : R.showTechnical}
+      </button>
+      {open && (
+        <>
+          <Text font="secondary-action" color="text-04">
+            {R.inputs}
+          </Text>
+          <JsonBlock value={inputs} />
+          <Text font="secondary-action" color="text-04">
+            {R.outputs}
+          </Text>
+          <JsonBlock value={outputs} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function asRecord(value: JsonValue | Record<string, JsonValue> | null | undefined): Record<string, JsonValue> | null {
+  // SAFETY: run payloads are JSON objects written by the engine.
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, JsonValue>) : null;
 }
 
 function bannerTone(run: RunSummary): string {
@@ -97,6 +167,9 @@ function StepPanel({ run, nodeId, spec, onClose, onOpenEmail, onApprove }: StepP
   const Icon = nodeIcon(spec?.icon);
   const node = nodeId === "trigger" ? null : findNode(run.definition, nodeId);
   const approval = run.approvals.find((item) => item.node_id === nodeId && item.status === "PENDING");
+  const outputLabels = new Map((spec?.outputs ?? []).map((output) => [output.key, output.label]));
+  const paramLabels = new Map((spec?.params ?? []).map((param) => [param.key, param.label]));
+  const paramOptions = new Map((spec?.params ?? []).filter((param) => param.options.length).map((param) => [param.key, new Map(param.options)]));
   return (
     <aside className="ton-auto-panel" data-group={nodeId === "trigger" ? "trigger" : spec?.group}>
       <header className="ton-auto-panel-head">
@@ -138,7 +211,8 @@ function StepPanel({ run, nodeId, spec, onClose, onOpenEmail, onApprove }: StepP
             <Text font="secondary-action" color="text-04">
               {R.triggerOutput}
             </Text>
-            <JsonBlock value={run.trigger_output} />
+            <DataList value={asRecord(run.trigger_output)} labels={outputLabels} />
+            <TechnicalData inputs={null} outputs={run.trigger_output} />
           </>
         ) : !step ? (
           <Text font="secondary-body" color="text-03">
@@ -159,13 +233,14 @@ function StepPanel({ run, nodeId, spec, onClose, onOpenEmail, onApprove }: StepP
               </Button>
             )}
             <Text font="secondary-action" color="text-04">
-              {R.inputs}
-            </Text>
-            <JsonBlock value={step.inputs} />
-            <Text font="secondary-action" color="text-04">
               {R.outputs}
             </Text>
-            <JsonBlock value={step.outputs ? Object.fromEntries(Object.entries(step.outputs).filter(([key]) => key !== "html")) : null} />
+            <DataList value={asRecord(step.outputs)} labels={outputLabels} />
+            <Text font="secondary-action" color="text-04">
+              {R.inputs}
+            </Text>
+            <DataList value={asRecord(step.inputs)} labels={paramLabels} options={paramOptions} />
+            <TechnicalData inputs={step.inputs} outputs={step.outputs ? Object.fromEntries(Object.entries(step.outputs).filter(([key]) => key !== "html")) : null} />
           </>
         )}
       </div>

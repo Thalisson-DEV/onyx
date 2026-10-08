@@ -275,10 +275,13 @@ def migrate_email_flows(session: Session) -> int:
 
 
 def ensure_defaults(session: Session) -> None:
+    from onyx.db.ton.agent import sync_agent__system
     from onyx.ton.email_flows import service as flow_service
 
     flow_service.ensure_defaults(session)
     migrate_email_flows(session)
+    # Chat drafting needs the automation tool on the agent provisioned earlier.
+    sync_agent__system(session)
 
 
 # ---------------------------------------------------------------------------
@@ -1245,8 +1248,10 @@ def check(session: Session, user: User, raw: dict[str, Any], kind: AutomationKin
         definition = AutomationDefinition.model_validate(raw)
     except ValidationError as error:
         first = error.errors()[0]
+        message = str(first.get("msg", "inválido")).removeprefix("Value error, ")
         location = ".".join(str(part) for part in first.get("loc", ()))
-        return ValidateResult(issues=[], problems=[], structure_error=f"{location}: {first.get('msg', 'inválido')}")
+        # Rule errors (ids, variables, limits) already say where; field errors need the path.
+        return ValidateResult(issues=[], problems=[], structure_error=f"{location}: {message}" if location else message)
     return ValidateResult(
         issues=[IssueView(**issue.dump()) for issue in validate(definition)],
         problems=activation_problems(definition, kind),

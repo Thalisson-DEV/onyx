@@ -82,7 +82,7 @@ register(
         description="Compara um valor com vários casos e segue pelo caso igual; senão, pelo Padrão.",
         icon="switch",
         container="switch",
-        params=(ParamSpec("on", "Valor comparado", "expression", required=True, resolve=False, placeholder="{{ item.unidade }}"),),
+        params=(ParamSpec("on", "Valor comparado", "expression", required=True, resolve=False, placeholder="Use ⚡ para escolher o valor"),),
         outputs=(OutputSpec("case", "Caso escolhido", "string"), OutputSpec("value", "Valor comparado", "string")),
         keywords=("switch", "caso", "opções"),
     )
@@ -95,7 +95,7 @@ register(
         description="Repete os passos internos para cada item de uma lista. Dentro, use {{ item }}.",
         icon="repeat",
         container="loop",
-        params=(ParamSpec("items", "Lista", "expression", required=True, resolve=False, placeholder="{{ steps.buscar.outputs.items }}"),),
+        params=(ParamSpec("items", "Lista", "expression", required=True, resolve=False, placeholder="Use ⚡ para escolher a lista"),),
         outputs=(OutputSpec("count", "Itens percorridos", "number"), OutputSpec("failed", "Itens com falha", "number")),
         keywords=("loop", "apply to each", "repetir", "cada", "lista"),
     )
@@ -152,7 +152,7 @@ register(
             ParamSpec("minutes", "Minutos", "number", default=0, min=0, max=59, show_if=("mode", ("duration",))),
             ParamSpec("weekday", "Dia", "select", default="4", options=_WEEKDAYS, show_if=("mode", ("weekday",))),
             ParamSpec("time", "Horário (Brasília)", "time", default="17:00", dynamic=False, show_if=("mode", ("weekday",))),
-            ParamSpec("until", "Data e hora", "text", placeholder="{{ add_days(now(), 2) }} ou 31/10/2026 17:00", show_if=("mode", ("datetime",))),
+            ParamSpec("until", "Data e hora", "text", placeholder="31/10/2026 17:00", show_if=("mode", ("datetime",))),
         ),
         outputs=(OutputSpec("resume_at", "Retomou em", "string"),),
         keywords=("delay", "aguardar", "pausa"),

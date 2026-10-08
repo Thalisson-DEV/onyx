@@ -463,7 +463,7 @@ export function TonToolCard({ toolName, data, subtitle }: TonToolCardProps) {
     payload.report_url.startsWith("/ton/controladoria/reports/")
       ? payload
       : null;
-  if (record(payload) && payload.kind === "automation_draft" && isAutomationDraft(payload))
+  if (record(payload) && isAutomationDraft(payload))
     return <AutomationDraftCard draft={payload} />;
   if (record(payload) && payload.kind === "flow_draft" && isDraftResult(payload))
     return <FlowDraftCard draft={payload} />;
@@ -528,7 +528,7 @@ export function TonToolCard({ toolName, data, subtitle }: TonToolCardProps) {
 export function cardNeedsAttention(data: Json | undefined): boolean {
   const payload = record(data) && "data" in data ? data.data : data;
   if (!record(payload)) return false;
-  if (payload.kind === "flow_draft" || payload.kind === "automation_draft") return true;
+  if (payload.kind === "flow_draft" || isAutomationDraft(payload)) return true;
   if (
     typeof payload.report_url === "string" &&
     payload.report_url.startsWith("/ton/controladoria/reports/")

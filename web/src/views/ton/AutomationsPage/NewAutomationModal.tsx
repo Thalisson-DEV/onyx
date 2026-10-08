@@ -63,7 +63,7 @@ export default function NewAutomationModal({ mode, onClose }: NewAutomationModal
   return (
     <Modal open={mode !== null} onOpenChange={(value) => !value && onClose()}>
       <Modal.Content width={mode === "template" ? "lg" : "md"}>
-        <Modal.Header icon={mode === "ask" ? SvgSparkle : SvgWorkflow} title={title} description={mode === "ask" ? COPY.askTonHint : COPY.blankHint} onClose={onClose} />
+        <Modal.Header icon={mode === "ask" ? SvgSparkle : SvgWorkflow} title={title} description={mode === "ask" ? COPY.askTonHint : mode === "template" ? COPY.templateHint : COPY.blankHint} onClose={onClose} />
         <Modal.Body>
           <div className="flex flex-col gap-4">
             {mode === "ask" ? (

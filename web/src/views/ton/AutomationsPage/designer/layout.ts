@@ -2,14 +2,14 @@ import type { Edge, Node } from "@xyflow/react";
 import type { Definition, FlowNode } from "@/lib/ton/automations";
 import { childLists, countNodes, type InsertTarget, type ListRef, type Slot } from "@/lib/ton/automationTree";
 
-export const CARD_W = 300;
-export const CARD_H = 64;
-const GAP = 64;
-const PAD = 28;
-const COL_GAP = 48;
+export const CARD_W = 320;
+export const CARD_H = 68;
+const GAP = 76;
+const PAD = 32;
+const COL_GAP = 64;
 const LABEL_H = 26;
-const LABEL_GAP = 28;
-const SLOT_H = 44;
+const LABEL_GAP = 32;
+const SLOT_H = 48;
 const COLLAPSED_EXTRA = 26;
 const FRAME_TOP = 0;
 const BRANCH_CONTAINERS = new Set(["control.condition", "control.switch", "control.parallel"]);
@@ -78,10 +78,17 @@ class Builder {
   nodes: CanvasNode[] = [];
   edges: CanvasEdge[] = [];
   targets: Layout["targets"] = [];
+  /** Offset of the node being placed (its own plus its ancestors'). */
+  private shift = { x: 0, y: 0 };
   constructor(
     private collapsed: Set<string>,
-    private labels: LabelFor
+    private labels: LabelFor,
+    private offsets: Record<string, { x: number; y: number }>
   ) {}
+
+  add(node: CanvasNode): void {
+    this.nodes.push({ ...node, position: { x: node.position.x + this.shift.x, y: node.position.y + this.shift.y } });
+  }
 
   measureList(list: FlowNode[]): Box {
     if (!list.length) return { w: CARD_W, h: SLOT_H };
@@ -115,11 +122,11 @@ class Builder {
   }
 
   point(id: string, x: number, y: number): void {
-    this.nodes.push({ id, type: "point", position: { x: x - 1, y: y - 1 }, data: { kind: "point" }, draggable: false, selectable: false, width: 2, height: 2 });
+    this.add({ id, type: "point", position: { x: x - 1, y: y - 1 }, data: { kind: "point" }, draggable: false, selectable: false, width: 2, height: 2 });
   }
 
   addTarget(target: InsertTarget, x: number, y: number): void {
-    this.targets.push({ target, x, y });
+    this.targets.push({ target, x: x + this.shift.x, y: y + this.shift.y });
   }
 
   /** Place a list centered on cx from y. Returns the id of its last exit. */
@@ -127,7 +134,7 @@ class Builder {
     if (!list.length) {
       const id = `slot:${ref.parentId ?? "root"}:${ref.slot}`;
       const target = { ...ref, index: 0 };
-      this.nodes.push({ id, type: "slot", position: { x: cx - CARD_W / 2, y }, data: { kind: "slot", target, inner }, draggable: false, selectable: false, width: CARD_W, height: SLOT_H });
+      this.add({ id, type: "slot", position: { x: cx - CARD_W / 2, y }, data: { kind: "slot", target, inner }, draggable: false, selectable: false, width: CARD_W, height: SLOT_H });
       this.edge(source, id);
       this.addTarget(target, cx, y + SLOT_H / 2);
       return { exit: id, bottom: y + SLOT_H };
@@ -146,6 +153,17 @@ class Builder {
   }
 
   place(node: FlowNode, ref: ListRef, index: number, cx: number, y: number): { entry: string; exit: string; bottom: number } {
+    const parent = this.shift;
+    const own = this.offsets[node.id];
+    if (own) this.shift = { x: parent.x + own.x, y: parent.y + own.y };
+    try {
+      return this.placeShifted(node, ref, index, cx, y);
+    } finally {
+      this.shift = parent;
+    }
+  }
+
+  placeShifted(node: FlowNode, ref: ListRef, index: number, cx: number, y: number): { entry: string; exit: string; bottom: number } {
     const box = this.measure(node);
     const lists = childLists(node);
     const collapsed = this.collapsed.has(node.id) && lists.length > 0;
@@ -159,11 +177,11 @@ class Builder {
       zIndex: 2,
     };
     if (collapsed || (!isFrame(node) && !isBranch(node))) {
-      this.nodes.push(card);
+      this.add(card);
       return { entry: node.id, exit: node.id, bottom: y + box.h };
     }
     const left = cx - box.w / 2;
-    this.nodes.push({
+    this.add({
       id: `frame:${node.id}`,
       type: "frame",
       position: { x: left, y: y + CARD_H / 2 },
@@ -174,7 +192,7 @@ class Builder {
       height: box.h - CARD_H / 2,
       zIndex: 0,
     });
-    this.nodes.push(card);
+    this.add(card);
     const exitId = `exit:${node.id}`;
     this.point(exitId, cx, y + box.h);
     if (isFrame(node)) {
@@ -184,7 +202,7 @@ class Builder {
         const endId = `slot:${node.id}:end`;
         const target = { ...innerRef, index: (node.steps ?? []).length };
         const endY = placed.bottom + GAP / 2 - 14;
-        this.nodes.push({ id: endId, type: "slot", position: { x: cx - 14, y: endY }, data: { kind: "slot", target, inner: true }, draggable: false, selectable: false, width: 28, height: 28 });
+        this.add({ id: endId, type: "slot", position: { x: cx - 14, y: endY }, data: { kind: "slot", target, inner: true }, draggable: false, selectable: false, width: 28, height: 28 });
         this.edge(placed.exit, endId);
         this.addTarget(target, cx, endY + 14);
       }
@@ -202,7 +220,7 @@ class Builder {
       const columnBox = boxes[position]!;
       const colCx = x + columnBox.w / 2;
       const labelId = `label:${node.id}:${column.slot}`;
-      this.nodes.push({
+      this.add({
         id: labelId,
         type: "label",
         position: { x: colCx - 60, y: labelY },
@@ -231,23 +249,24 @@ class Builder {
 }
 
 export function buildLayout(definition: Definition, collapsed: Set<string>, labels: LabelFor): Layout {
-  const builder = new Builder(collapsed, labels);
+  const offsets = definition.layout ?? {};
+  const builder = new Builder(collapsed, labels, offsets);
   const cx = 0;
+  const moved = offsets.trigger ?? { x: 0, y: 0 };
   builder.nodes.push({
     id: "trigger",
     type: "step",
-    position: { x: cx - CARD_W / 2, y: 0 },
+    position: { x: cx - CARD_W / 2 + moved.x, y: moved.y },
     data: { kind: "trigger" },
     width: CARD_W,
     height: CARD_H,
-    draggable: false,
     zIndex: 2,
   });
   const placed = builder.placeList(definition.steps, { parentId: null, slot: "steps" }, cx, CARD_H + GAP, "trigger", false);
   if (definition.steps.length) {
     const target: InsertTarget = { parentId: null, slot: "steps", index: definition.steps.length };
     const endY = placed.bottom + GAP;
-    builder.nodes.push({ id: "end", type: "end", position: { x: cx - 90, y: endY }, data: { kind: "end", target }, draggable: false, selectable: false, width: 180, height: 40 });
+    builder.nodes.push({ id: "end", type: "end", position: { x: cx - 100, y: endY }, data: { kind: "end", target }, draggable: false, selectable: false, width: 200, height: 44 });
     builder.edge(placed.exit, "end", { target });
     builder.addTarget(target, cx, placed.bottom + GAP / 2);
   }

@@ -285,14 +285,7 @@ def provision_agent(session: Session, user: User) -> Persona:
                 message="Me mostre a evidência da principal pendência.",
             ),
         ],
-        system_prompt=(
-            TON_SYSTEM_PROMPT
-            + "\n"
-            + SYNTHETIC_DATA_NOTICE
-            + "\nInforme esse aviso no início de toda análise financeira. Chame resultados de 'resultados persistidos de demonstração'."
-        )
-        if uses_synthetic_demo_data()
-        else TON_SYSTEM_PROMPT,
+        system_prompt=_agent_prompt(),
         task_prompt=None,
         datetime_aware=True,
         is_public=True,
@@ -306,6 +299,54 @@ def provision_agent(session: Session, user: User) -> Persona:
     )
     session.commit()
     return persona
+
+
+def _agent_prompt() -> str:
+    if uses_synthetic_demo_data():
+        return (
+            TON_SYSTEM_PROMPT
+            + "\n"
+            + SYNTHETIC_DATA_NOTICE
+            + "\nInforme esse aviso no início de toda análise financeira. Chame resultados de 'resultados persistidos de demonstração'."
+        )
+    return TON_SYSTEM_PROMPT
+
+
+def sync_agent__system(session: Session) -> bool:
+    """Bring an already provisioned TON agent up to date with the code: TON tools
+    added after it was set up and the current prompt. Provisioning stays an admin
+    action; this only updates the agent that already exists. Returns True when
+    something changed."""
+    persona = session.scalar(
+        sa.select(Persona).where(
+            Persona.name == "TON",
+            Persona.builtin_persona.is_(True),
+            Persona.deleted.is_(False),
+        )
+    )
+    if persona is None:
+        return False
+    have = {tool.in_code_tool_id for tool in persona.tools}
+    missing = [cls for cls in TON_TOOL_CLASSES if cls.__name__ not in have]
+    prompt = _agent_prompt()
+    if not missing and persona.system_prompt == prompt:
+        return False
+    session.execute(sa.text("SELECT pg_advisory_xact_lock(74661001)"))
+    for tool_class in missing:
+        tool = session.scalar(sa.select(Tool).where(Tool.in_code_tool_id == tool_class.__name__))
+        if tool is None:
+            tool = Tool(
+                name=tool_class.NAME,
+                description=tool_class.DESCRIPTION,
+                display_name=TON_TOOL_DISPLAY_NAMES[tool_class.NAME],
+                in_code_tool_id=tool_class.__name__,
+                enabled=True,
+            )
+            session.add(tool)
+        persona.tools.append(tool)
+    persona.system_prompt = prompt
+    session.commit()
+    return True
 
 
 def configured_agent_id(session: Session, user: User) -> int | None:

@@ -308,3 +308,10 @@ Nunca:
   (BE-004A/B). Sem sincronização para `SourceSnapshot`.
 - Arquitetura-alvo das próximas camadas (protocolo de 7 passos, baterias S/T, cadastro mestre,
   framework de rotinas, subagentes, Zeev): `openspec/changes/*/design.md`.
+- Automações (2026-10-08, change `automation-engine`): `backend/onyx/ton/automations/` — definição v3
+  (gatilho, variáveis, árvore de nós), catálogo de nós em `nodes/` (registro extensível), expressões
+  `{{ steps.x.outputs.y }}` com parser próprio, verificador, interpretador durável com uma linha por
+  etapa (`ton_automation_step_run`), fila Celery `ton_automation_execute_run` com lease e tick
+  `ton_automations_tick` (1 min). Os fluxos de e-mail v1/v2 são convertidos em automações do tipo
+  E-mail e o motor v2 não roda mais. Telas: `/ton/automacoes` (lista), `/{id}` (detalhe),
+  `/{id}/editar` (designer), `/{id}/execucoes/{run}` (execução). Chat: `ton_draft_automation`.

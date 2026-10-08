@@ -130,7 +130,7 @@ export function dynamicGroups(
   if (trigger) {
     groups.push({
       key: "trigger",
-      title: `Gatilho · ${trigger.label}`,
+      title: `Quando começa · ${trigger.label}`,
       icon: trigger.icon,
       group: "trigger",
       items: itemsOf(dynamicOutputs(definition.trigger, trigger), "trigger.outputs"),
@@ -142,17 +142,17 @@ export function dynamicGroups(
     if (!node || !spec) continue;
     const outputs = dynamicOutputs(node, spec);
     const items = itemsOf(outputs, `steps.${node.id}.outputs`);
-    items.push({ label: "Situação do passo", expression: `steps.${node.id}.status`, type: "string" }, { label: "Erro do passo", expression: `steps.${node.id}.error`, type: "string" });
+    items.push({ label: "Deu certo ou falhou", expression: `steps.${node.id}.status`, type: "string" }, { label: "Mensagem de erro", expression: `steps.${node.id}.error`, type: "string" });
     groups.push({ key: node.id, title: node.label || spec.label, icon: spec.icon, group: spec.group, items });
   }
   if (definition.variables.length) {
     groups.push({
       key: "vars",
-      title: "Variáveis",
+      title: "Valores guardados",
       icon: "variable",
       group: "variables",
       items: definition.variables.map((variable) => ({
-        label: variable.name,
+        label: variable.description || prettyName(variable.name),
         expression: `vars.${variable.name}`,
         type: variable.type,
         description: variable.description,
@@ -161,7 +161,7 @@ export function dynamicGroups(
   }
   groups.push({
     key: "run",
-    title: "Execução",
+    title: "Sobre esta execução",
     icon: "play",
     group: "trigger",
     items: [
@@ -188,13 +188,30 @@ export function describeExpression(expression: string, definition: Definition, c
   if (trigger) {
     const spec = specs.get(definition.trigger.type);
     const output = spec ? dynamicOutputs(definition.trigger, spec).find((item) => item.key === trigger[1]) : undefined;
-    return `Gatilho › ${output?.label ?? trigger[1]}`;
+    return `Início › ${output?.label ?? trigger[1]}`;
   }
   const variable = /^vars\.([a-z0-9_]+)$/.exec(text);
-  if (variable) return `Variável › ${variable[1]}`;
+  if (variable) {
+    const declared = definition.variables.find((item) => item.name === variable[1]);
+    return declared?.description || prettyName(variable[1]!);
+  }
   const item = /^item(?:\.([a-z0-9_.]+))?$/.exec(text);
-  if (item) return item[1] ? `Item › ${item[1]}` : "Item";
-  return text.length > 48 ? `${text.slice(0, 46)}…` : text;
+  if (item) return item[1] ? `Item › ${prettyName(item[1])}` : "Item da lista";
+  if (text === "run.link") return "Link da execução";
+  if (text === "automation.name") return "Nome da automação";
+  if (text === "now()") return "Agora";
+  const status = /^steps\.([a-z0-9_]+)\.(status|error)$/.exec(text);
+  if (status) {
+    const node = findNode(definition, status[1]!);
+    return `${node?.label || specs.get(node?.type ?? "")?.label || status[1]} › ${status[2] === "status" ? "Deu certo ou falhou" : "Mensagem de erro"}`;
+  }
+  return `ƒ ${text.length > 40 ? `${text.slice(0, 38)}…` : text}`;
+}
+
+/** "total_de_linhas" → "Total de linhas". */
+export function prettyName(name: string): string {
+  const text = name.replace(/_/g, " ").trim();
+  return text ? text[0]!.toUpperCase() + text.slice(1) : name;
 }
 
 export interface Segment {

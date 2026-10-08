@@ -1,6 +1,7 @@
 "use client";
 
 import "@/views/ton/shell/ton.css";
+import "@/views/ton/shell/automations.css";
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import {

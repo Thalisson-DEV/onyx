@@ -306,4 +306,5 @@ export const TON_TOOL_NAMES: Record<string, string> = {
   ton_get_readiness_evidence: "Evidência da prontidão",
   ton_get_recent_changes: "Mudanças após decisões",
   ton_draft_email_flow: "Rascunho de fluxo de e-mail",
+  ton_draft_automation: "Rascunho de automação",
 };

@@ -1,153 +1,52 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
-import useSWR from "swr";
-import { Text } from "@opal/components";
-import { SvgCalendar, SvgFileText, SvgLock, SvgShield } from "@opal/icons";
-import { errorHandlingFetcher } from "@/lib/fetcher";
+import { Button, Popover, Text } from "@opal/components";
+import { SvgChevronDown, SvgPlus, SvgSparkle, SvgUserCheck, SvgWorkflow, SvgBlocks } from "@opal/icons";
 import {
-  TON_REPORTS_RECENT,
-  useTonAccess,
-  useTonRoutines,
-} from "@/lib/ton/api";
-import { COPY, formatPeriod, formatRelativeDateTime } from "@/lib/ton/copy";
-import { getBusinessLabel } from "@/lib/ton/labels";
-import type { Publication, Routine } from "@/lib/ton/types";
-import R3Spotlight from "@/views/ton/components/R3Spotlight";
-import {
-  CardHeader,
-  ErrorState,
-  IconTile,
-  LoadingBlock,
-  PageContainer,
-  PageHeader,
-  StatusPill,
-  TonCard,
-  routineTone,
-  runTone,
-} from "@/views/ton/components/ui";
+  COPY,
+  KIND_LABELS,
+  RUN_STATUS_LABELS,
+  STATUS_LABELS,
+  useAutomationTable,
+  type ApprovalView,
+  type AutomationKind,
+  type AutomationSummary,
+} from "@/lib/ton/automations";
+import { formatDateTime, formatRelativeDateTime } from "@/lib/ton/copy";
+import { EmptyState, ErrorState, LoadingBlock, PageContainer, PageHeader, StatusPill, TonCard } from "@/views/ton/components/ui";
+import ApprovalModal from "@/views/ton/AutomationsPage/ApprovalModal";
+import { RUN_TONE, STATUS_TONE } from "@/views/ton/AutomationsPage/DetailPage";
+import NewAutomationModal, { type NewMode } from "@/views/ton/AutomationsPage/NewAutomationModal";
+import RoutinesSection from "@/views/ton/AutomationsPage/RoutinesSection";
 
-function dependency(routine: Routine): string {
-  return routine.reason
-    .replace(/^Capacidade pendente:\s*/i, "")
-    .replace(/\.$/, "");
-}
+type Filter = AutomationKind | "ALL" | "ROUTINES";
 
-const dayLabel = new Intl.DateTimeFormat("pt-BR", {
-  weekday: "short",
-  day: "2-digit",
-  month: "2-digit",
-  timeZone: "America/Sao_Paulo",
-});
-const dayKeyFormat = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "America/Sao_Paulo",
-});
-const timeLabel = new Intl.DateTimeFormat("pt-BR", {
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: "America/Sao_Paulo",
-});
-
-function dayTitle(at: string): string {
-  const key = dayKeyFormat.format(new Date(at));
-  if (key === dayKeyFormat.format(new Date())) return COPY.automations.today;
-  if (key === dayKeyFormat.format(new Date(Date.now() - 86_400_000)))
-    return COPY.automations.yesterday;
-  return dayLabel.format(new Date(at));
-}
-
-/** Persisted R3 publications, newest first, grouped by Brasília day. */
-function R3History() {
-  const { canReadReports } = useTonAccess();
-  const reports = useSWR<Publication[]>(
-    canReadReports ? TON_REPORTS_RECENT : null,
-    errorHandlingFetcher
-  );
-  const runs = (reports.data ?? [])
-    .filter((item) => item.routine_code === "R3")
-    .sort((a, b) => b.output.generated_at.localeCompare(a.output.generated_at))
-    .slice(0, 12);
-  const days = new Map<string, Publication[]>();
-  for (const run of runs) {
-    const key = dayKeyFormat.format(new Date(run.output.generated_at));
-    days.set(key, [...(days.get(key) ?? []), run]);
-  }
+function Approvals({ approvals, onOpen }: { approvals: ApprovalView[]; onOpen: (approval: ApprovalView) => void }) {
+  if (!approvals.length) return null;
   return (
-    <TonCard className="flex flex-col gap-3 p-5" labelledBy="ton-r3-history">
-      <CardHeader
-        id="ton-r3-history"
-        title={COPY.automations.history}
-        description={
-          runs.length ? COPY.automations.historyCount(runs.length) : undefined
-        }
-        action={{ href: "/ton/relatorios", label: COPY.automations.historyAll }}
-      />
-      {reports.isLoading && <LoadingBlock label={COPY.common.loading} />}
-      {reports.error && <ErrorState compact onRetry={() => reports.mutate()} />}
-      {!reports.isLoading && !reports.error && runs.length === 0 && (
-        <Text font="main-ui-body" color="text-03">
-          {COPY.automations.historyEmpty}
-        </Text>
-      )}
-      <ol className="flex flex-col gap-3">
-        {[...days.values()].map((dayRuns) => (
-          <li key={dayRuns[0]?.revision_id} className="flex flex-col gap-1">
-            <span className="ton-eyebrow">
-              {dayTitle(dayRuns[0]?.output.generated_at ?? "")}
-            </span>
-            <ul className="flex flex-col border-s-2 border-01 ms-1">
-              {dayRuns.map((run) => (
-                <li key={run.revision_id}>
-                  <Link
-                    href={run.report_url as Route}
-                    className="ton-row-link ton-focusable flex items-center gap-3 ps-3 pe-2 py-2"
-                  >
-                    <span className="tabular-nums w-12 shrink-0">
-                      <Text font="secondary-action" color="text-05">
-                        {timeLabel.format(new Date(run.output.generated_at))}
-                      </Text>
-                    </span>
-                    <span className="flex-1 min-w-0">
-                      <Text font="secondary-body" color="text-03" maxLines={1}>
-                        {`${formatPeriod(run.output.period)} · ${run.output.scope}`}
-                      </Text>
-                    </span>
-                    <StatusPill tone={runTone(run.status)}>
-                      {getBusinessLabel(run.status)}
-                    </StatusPill>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ol>
-    </TonCard>
-  );
-}
-
-function WaitingRoutines({ routines }: { routines: Routine[] }) {
-  return (
-    <TonCard as="div" className="overflow-hidden">
+    <TonCard className="flex flex-col gap-2 p-4" labelledBy="ton-auto-approvals">
+      <Text as="h2" id="ton-auto-approvals" font="main-ui-action" color="text-05">
+        {`${COPY.approvalsTitle} (${approvals.length})`}
+      </Text>
       <ul className="flex flex-col divide-y divide-border-01">
-        {routines.map((routine) => (
-          <li
-            key={routine.key}
-            className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3"
-          >
-            <span className="ton-eyebrow w-10 shrink-0">{routine.key}</span>
-            <span className="flex flex-col min-w-0 flex-1 basis-56">
-              <Text as="h3" font="main-ui-action" color="text-05">
-                {routine.name}
+        {approvals.map((approval) => (
+          <li key={approval.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+            <span className="flex min-w-0 flex-col">
+              <Text font="secondary-action" color="text-05">
+                {approval.title}
               </Text>
               <Text font="secondary-body" color="text-03">
-                {`${COPY.automations.dependsOn}: ${dependency(routine)}`}
+                {`${approval.automation_name} · ${formatRelativeDateTime(approval.created_at)}`}
               </Text>
             </span>
-            <StatusPill tone={routineTone(routine.status)}>
-              {routine.status}
-            </StatusPill>
+            {approval.can_decide && (
+              <Button size="sm" prominence="secondary" icon={SvgUserCheck} onClick={() => onOpen(approval)}>
+                {COPY.approve}
+              </Button>
+            )}
           </li>
         ))}
       </ul>
@@ -155,101 +54,180 @@ function WaitingRoutines({ routines }: { routines: Routine[] }) {
   );
 }
 
-function RoutineCard({ routine }: { routine: Routine }) {
-  const waiting = routineTone(routine.status) === "neutral";
+function Runs28({ automation }: { automation: AutomationSummary }) {
+  const ok = automation.runs_28d.SUCCEEDED ?? 0;
+  const failed = (automation.runs_28d.FAILED ?? 0) + (automation.runs_28d.TIMED_OUT ?? 0);
+  if (!ok && !failed) return <span className="ton-auto-muted">{"—"}</span>;
   return (
-    <TonCard as="article" className="flex flex-col gap-3 p-4">
-      <div className="flex items-start gap-3">
-        <IconTile
-          icon={waiting ? SvgLock : SvgCalendar}
-          tone={waiting ? "neutral" : "brand"}
-        />
-        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-          <Text as="h3" font="main-ui-action" color="text-05">
-            {routine.name}
+    <span className="ton-auto-runs28">
+      {ok > 0 && <span data-tone="success">{`✓ ${ok}`}</span>}
+      {failed > 0 && <span data-tone="error">{`✕ ${failed}`}</span>}
+    </span>
+  );
+}
+
+function Row({ automation }: { automation: AutomationSummary }) {
+  const router = useRouter();
+  const href = `/ton/automacoes/${automation.id}` as Route;
+  return (
+    <tr className="ton-auto-table-row" onClick={() => router.push(href)}>
+      <td>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <a href={href} className="ton-focusable" onClick={(event) => event.preventDefault()}>
+            <Text font="main-ui-action" color="text-05">
+              {automation.name}
+            </Text>
+          </a>
+          <Text font="secondary-body" color="text-03" maxLines={1}>
+            {automation.description ?? COPY.steps(automation.steps_count)}
           </Text>
-          <span className="ton-eyebrow">
-            {COPY.automations.code(routine.key)}
-          </span>
-        </div>
-        <StatusPill tone={routineTone(routine.status)}>
-          {routine.status}
-        </StatusPill>
-      </div>
-      {waiting ? (
-        <div className="flex flex-col gap-0.5 rounded-08 bg-background-neutral-01 px-3 py-2">
-          <span className="ton-eyebrow">{COPY.automations.dependsOn}</span>
+          {automation.problems.length > 0 && automation.status !== "ACTIVE" && <span className="ton-auto-problems">{COPY.problems(automation.problems.length)}</span>}
+        </span>
+      </td>
+      <td>
+        <span className="ton-auto-kind-pill" data-kind={automation.kind}>
+          {KIND_LABELS[automation.kind]}
+        </span>
+      </td>
+      <td>
+        <span className="flex flex-col gap-0.5">
           <Text font="secondary-body" color="text-04">
-            {dependency(routine)}
+            {automation.when}
           </Text>
-        </div>
-      ) : (
-        <Text font="secondary-body" color="text-03">
-          {routine.schedule}
-        </Text>
-      )}
-    </TonCard>
+          {automation.next_run_at && (
+            <Text font="secondary-body" color="text-03">
+              {COPY.next(formatDateTime(automation.next_run_at))}
+            </Text>
+          )}
+        </span>
+      </td>
+      <td>
+        <StatusPill tone={STATUS_TONE[automation.status]}>{STATUS_LABELS[automation.status]}</StatusPill>
+      </td>
+      <td>
+        {automation.last_run ? (
+          <span className="flex flex-col gap-0.5">
+            <StatusPill tone={RUN_TONE[automation.last_run.status]}>{RUN_STATUS_LABELS[automation.last_run.status]}</StatusPill>
+            <Text font="secondary-body" color="text-03">
+              {formatRelativeDateTime(automation.last_run.created_at)}
+            </Text>
+          </span>
+        ) : (
+          <span className="ton-auto-muted">{COPY.never}</span>
+        )}
+      </td>
+      <td data-numeric>
+        <Runs28 automation={automation} />
+      </td>
+    </tr>
   );
 }
 
 export default function AutomationsPage() {
-  const routines = useTonRoutines();
-  const list = routines.data ?? [];
-  const others = list.filter((routine) => routine.key !== "R3");
-  const active = others.filter(
-    (routine) => routineTone(routine.status) !== "neutral"
-  );
-  const waiting = others.filter(
-    (routine) => routineTone(routine.status) === "neutral"
-  );
+  const table = useAutomationTable();
+  const search = useSearchParams();
+  const [filter, setFilter] = useState<Filter>("ALL");
+  const [newMode, setNewMode] = useState<NewMode | null>(null);
+  const [approval, setApproval] = useState<ApprovalView | null>(null);
+  const automations = table.data?.automations ?? [];
+  const counts = useMemo(() => {
+    const map = new Map<AutomationKind, number>();
+    for (const item of automations) map.set(item.kind, (map.get(item.kind) ?? 0) + 1);
+    return map;
+  }, [automations]);
+  const shown = filter === "ALL" || filter === "ROUTINES" ? automations : automations.filter((item) => item.kind === filter);
+
+  useEffect(() => {
+    const wanted = search.get("aprovacao");
+    if (!wanted || !table.data) return;
+    const found = table.data.approvals.find((item) => item.id === wanted);
+    if (found) setApproval(found);
+  }, [search, table.data]);
 
   return (
     <PageContainer>
       <PageHeader
-        title={COPY.automations.title}
-        description={COPY.automations.description}
+        title={COPY.title}
+        description={COPY.description}
+        actions={
+          table.data?.can_manage ? (
+            <Popover>
+              <Popover.Trigger asChild>
+                <Button icon={SvgPlus} rightIcon={SvgChevronDown}>
+                  {COPY.newAutomation}
+                </Button>
+              </Popover.Trigger>
+              <Popover.Content align="end" width="md">
+                <Popover.Menu>
+                  {[
+                    <Button key="blank" prominence="tertiary" icon={SvgWorkflow} width="full" onClick={() => setNewMode("blank")}>
+                      {COPY.blank}
+                    </Button>,
+                    <Button key="template" prominence="tertiary" icon={SvgBlocks} width="full" onClick={() => setNewMode("template")}>
+                      {COPY.fromTemplate}
+                    </Button>,
+                    <Button key="ask" prominence="tertiary" icon={SvgSparkle} width="full" onClick={() => setNewMode("ask")}>
+                      {COPY.askTon}
+                    </Button>,
+                  ]}
+                </Popover.Menu>
+              </Popover.Content>
+            </Popover>
+          ) : undefined
+        }
       />
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-5 items-start">
-        <R3Spotlight showManageLink={false} />
-        <R3History />
+      <Approvals approvals={table.data?.approvals ?? []} onOpen={setApproval} />
+      <div className="ton-auto-filters" role="tablist">
+        {(["ALL", "EMAIL", "ALERT", "ROUTINE", "APPROVAL", "DATA_AI", "GENERAL"] as const).map((key) => {
+          const count = key === "ALL" ? automations.length : counts.get(key) ?? 0;
+          if (key !== "ALL" && !count) return null;
+          return (
+            <button key={key} type="button" role="tab" aria-selected={filter === key} className="ton-auto-filter ton-focusable" onClick={() => setFilter(key)}>
+              {key === "ALL" ? COPY.all : KIND_LABELS[key]}
+              <span>{count}</span>
+            </button>
+          );
+        })}
+        <span className="flex-1" />
+        <button type="button" role="tab" aria-selected={filter === "ROUTINES"} className="ton-auto-filter ton-focusable" onClick={() => setFilter("ROUTINES")}>
+          {COPY.routines}
+        </button>
       </div>
-      <div className="flex items-center gap-2 rounded-12 bg-background-neutral-02 px-4 py-3">
-        <SvgShield size={16} className="shrink-0" />
-        <Text font="secondary-body" color="text-04">
-          {COPY.automations.guardrail}
-        </Text>
-      </div>
-      {routines.isLoading && (
+      {filter === "ROUTINES" ? (
+        <RoutinesSection />
+      ) : table.error ? (
+        <ErrorState onRetry={() => table.mutate()} />
+      ) : !table.data ? (
         <TonCard className="p-5">
-          <LoadingBlock label={COPY.common.loading} />
+          <LoadingBlock label="…" />
+        </TonCard>
+      ) : shown.length === 0 ? (
+        <EmptyState icon={SvgWorkflow} title={COPY.empty} description={COPY.emptyHint} />
+      ) : (
+        <TonCard as="div" className="overflow-x-auto">
+          <table className="ton-auto-table">
+            <thead>
+              <tr>
+                <th scope="col">{COPY.columns.name}</th>
+                <th scope="col">{COPY.columns.kind}</th>
+                <th scope="col">{COPY.columns.trigger}</th>
+                <th scope="col">{COPY.columns.status}</th>
+                <th scope="col">{COPY.columns.lastRun}</th>
+                <th scope="col" data-numeric>
+                  {COPY.columns.runs}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((automation) => (
+                <Row key={automation.id} automation={automation} />
+              ))}
+            </tbody>
+          </table>
         </TonCard>
       )}
-      {routines.error && <ErrorState onRetry={() => routines.mutate()} />}
-      {active.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <Text as="h2" font="heading-h3" color="text-05">
-            {COPY.automations.active}
-          </Text>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {active.map((routine) => (
-              <RoutineCard key={routine.key} routine={routine} />
-            ))}
-          </div>
-        </section>
-      )}
-      {waiting.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1">
-            <Text as="h2" font="heading-h3" color="text-05">
-              {`${COPY.automations.waiting} (${waiting.length})`}
-            </Text>
-            <Text font="secondary-body" color="text-03">
-              {COPY.automations.waitingDescription}
-            </Text>
-          </div>
-          <WaitingRoutines routines={waiting} />
-        </section>
-      )}
+      <NewAutomationModal mode={newMode} onClose={() => setNewMode(null)} />
+      <ApprovalModal approval={approval} onClose={() => setApproval(null)} onDecided={() => void table.mutate()} />
     </PageContainer>
   );
 }

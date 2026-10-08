@@ -3,7 +3,7 @@
 import { render, screen, setupUser, within } from "@tests/setup/test-utils";
 import useSWR from "swr";
 import SourcesPage from "@/views/ton/SourcesPage";
-import AutomationsPage from "@/views/ton/AutomationsPage";
+import RoutinesSection from "@/views/ton/AutomationsPage/RoutinesSection";
 
 jest.mock("swr", () => ({
   __esModule: true,
@@ -110,7 +110,7 @@ it("shows NG as file-fed with direct integration still pending", async () => {
 });
 
 it("separates the scheduled flagship from routines waiting on capabilities", () => {
-  render(<AutomationsPage />);
+  render(<RoutinesSection />);
   expect(screen.getByText("Aguardando capacidade (1)")).toBeInTheDocument();
   expect(
     screen.getByText("Depende de: Frota e abastecimento integrados")

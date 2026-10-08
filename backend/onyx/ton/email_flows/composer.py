@@ -41,10 +41,10 @@ _ALLOWED_TAGS: dict[str, set[str]] = {
     "ol": set(),
     "li": {"style"},
     "a": {"href"},
-    "span": {"style", "data-variable"},
+    "span": {"style", "data-variable", "data-expr"},
     "mark": {"style", "data-color"},
     "img": {"data-asset-id", "alt", "width"},
-    "div": {"data-block"},
+    "div": {"data-block", "data-source"},
 }
 _STYLE_RULES = {
     "color": re.compile(r"^(#[0-9a-fA-F]{3,8}|rgba?\([\d\s.,%]+\))$"),
@@ -60,7 +60,18 @@ BLOCKS: dict[str, str] = {
     "account_table": "Lista de contas sem classificação",
     "summary": "Resumo em números",
     "ton_button": "Botão “Abrir no TON”",
+    "items_table": "Tabela de uma lista",
 }
+
+
+def _valid_expression(text: str) -> bool:
+    from onyx.ton.automations.expressions import ExpressionError, parse
+
+    try:
+        parse(text)
+    except ExpressionError:
+        return False
+    return True
 
 
 def _clean_style(value: str) -> str:
@@ -117,6 +128,12 @@ def sanitize(body: str) -> str:
         if tag == "span" and "data-variable" in element.attrib:
             if not _VARIABLE.match(element.attrib["data-variable"]):
                 del element.attrib["data-variable"]
+        if tag == "span" and "data-expr" in element.attrib:
+            if not _valid_expression(element.attrib["data-expr"]):
+                del element.attrib["data-expr"]
+        if tag == "div" and "data-source" in element.attrib:
+            if not _valid_expression(element.attrib["data-source"]):
+                del element.attrib["data-source"]
         if tag == "div" and element.attrib.get("data-block") not in BLOCKS:
             element.drop_tag()
     inner = (root.text or "") and escape(root.text or "")
@@ -164,6 +181,10 @@ class RenderContext:
     image_mode: str = "cid"
     asset_url: Callable[[str], str] = lambda asset_id: f"/api/ton/email-flows/assets/{asset_id}"
     used_assets: list[str] = field(default_factory=list)
+    # Automations: text of a {{ expression }} chip, and the list a data
+    # block reads (None = the default list of the step).
+    resolve: Callable[[str], str] | None = None
+    items_for: Callable[[str | None], tuple[Sequence[FlowItem], Mapping[str, Any]]] | None = None
 
 
 @dataclass(frozen=True)
@@ -244,6 +265,25 @@ def _account_block(ctx: RenderContext) -> str:
     return _table(["Conta", "Descrição", "Lançamentos", "Valor"], rows, {2, 3})
 
 
+def _items_block(ctx: RenderContext) -> str:
+    if not ctx.items:
+        return f'<p style="{_INLINE["p"]}">Nenhum item.</p>'
+    keys: list[str] = []
+    for item in ctx.items[:50]:
+        for key in item.fields:
+            if key not in keys and not key.startswith("_"):
+                keys.append(key)
+    keys = keys[:10]
+    rows = [
+        [
+            str(item.fields.get(key)) if item.fields.get(key) is not None else ""
+            for key in keys
+        ]
+        for item in ctx.items
+    ]
+    return _table(keys, rows, set())
+
+
 def _summary_block(ctx: RenderContext, color: str) -> str:
     total = ctx.fields.get("itens", len(ctx.items))
     amount = format_money(ctx.fields.get("valor_total"))
@@ -284,6 +324,12 @@ def render_body(body: str, ctx: RenderContext, layout: EmailLayout) -> str:
         if element is root or not isinstance(element.tag, str):
             continue
         tag = element.tag
+        if tag == "span" and "data-expr" in element.attrib and ctx.resolve is not None:
+            resolved = ctx.resolve(element.attrib["data-expr"])
+            replacement = lxml_html.fragment_fromstring(f"<span>{escape(resolved)}</span>")
+            replacement.tail = element.tail
+            element.getparent().replace(element, replacement)
+            continue
         if tag == "span" and "data-variable" in element.attrib:
             name = element.attrib["data-variable"]
             value = ctx.variables.get(name)
@@ -295,11 +341,25 @@ def render_body(body: str, ctx: RenderContext, layout: EmailLayout) -> str:
             continue
         if tag == "div" and "data-block" in element.attrib:
             block = element.attrib["data-block"]
+            block_ctx = ctx
+            if ctx.items_for is not None:
+                items, fields = ctx.items_for(element.attrib.get("data-source"))
+                block_ctx = RenderContext(
+                    variables=ctx.variables,
+                    items=items,
+                    fields=fields,
+                    ton_url=ctx.ton_url,
+                    note=ctx.note,
+                    image_mode=ctx.image_mode,
+                    asset_url=ctx.asset_url,
+                    used_assets=ctx.used_assets,
+                )
             markup = {
-                "inconsistency_table": lambda: _inconsistency_block(ctx, color),
-                "account_table": lambda: _account_block(ctx),
-                "summary": lambda: _summary_block(ctx, color),
-                "ton_button": lambda: _button_block(ctx, color),
+                "inconsistency_table": lambda: _inconsistency_block(block_ctx, color),
+                "account_table": lambda: _account_block(block_ctx),
+                "summary": lambda: _summary_block(block_ctx, color),
+                "ton_button": lambda: _button_block(block_ctx, color),
+                "items_table": lambda: _items_block(block_ctx),
             }[block]()
             replacement = lxml_html.fragment_fromstring(markup, create_parent="div")
             replacement.tail = element.tail

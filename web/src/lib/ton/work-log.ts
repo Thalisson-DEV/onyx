@@ -337,6 +337,7 @@ export function querySummary(
       if (!isObject(body)) break;
       return W.overdue(sum(body.items));
     }
+    case "ton_draft_automation":
     case "ton_draft_email_flow": {
       if (!isObject(body) || typeof body.name !== "string") break;
       return `Rascunho “${body.name}”`;

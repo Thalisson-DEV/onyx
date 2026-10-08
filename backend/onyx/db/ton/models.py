@@ -4517,3 +4517,318 @@ class EmailAsset(Base):
         ),
         CheckConstraint("size_bytes <= 1048576", name="ck_ton_email_asset_size"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Automations (definition v3): durable runs with one row per step
+# ---------------------------------------------------------------------------
+
+
+class TonAutomation(Base):
+    """A workflow built in the canvas. The definition lives in immutable
+    :class:`TonAutomationVersion` rows; this row carries the lifecycle."""
+
+    __tablename__ = "ton_automation"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(1000))
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    origin: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    trigger_type: Mapped[str] = mapped_column(String(48), nullable=False)
+    current_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    seed_key: Mapped[str | None] = mapped_column(String(64), unique=True)
+    # The e-mail flow this automation was converted from.
+    legacy_flow_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), unique=True
+    )
+    suggestion_reason: Mapped[str | None] = mapped_column(String(1000))
+    suggestion_model: Mapped[str | None] = mapped_column(String(200))
+    # Runs read data with the visibility of whoever activated it.
+    owner_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    active_since: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    updated_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('EMAIL', 'ALERT', 'ROUTINE', 'APPROVAL', 'DATA_AI', 'GENERAL')",
+            name="ck_ton_automation_kind",
+        ),
+        CheckConstraint(
+            "origin IN ('USER', 'TON_SUGGESTED', 'SYSTEM', 'MIGRATED')",
+            name="ck_ton_automation_origin",
+        ),
+        CheckConstraint(
+            "status IN ('DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED')",
+            name="ck_ton_automation_status",
+        ),
+        Index("ix_ton_automation_status_trigger", "status", "trigger_type"),
+    )
+
+
+class TonAutomationVersion(Base):
+    """Immutable automation definition. Every save appends a version."""
+
+    __tablename__ = "ton_automation_version"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    automation_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_automation.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    note: Mapped[str | None] = mapped_column(String(300))
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        UniqueConstraint(
+            "automation_id", "version", name="uq_ton_automation_version"
+        ),
+    )
+
+
+class TonAutomationRun(Base):
+    """One execution. ``trigger_output`` is frozen at creation, so resuming
+    sees the same data; the step rows are the checkpoints."""
+
+    __tablename__ = "ton_automation_run"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    automation_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_automation.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    version_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_automation_version.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    trigger_key: Mapped[str] = mapped_column(String(240), nullable=False)
+    mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    trigger_output: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    error: Mapped[str | None] = mapped_column(String(1000))
+    message: Mapped[str | None] = mapped_column(String(500))
+    waiting_on: Mapped[str | None] = mapped_column(String(16))
+    triggered_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    resubmitted_from: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    started_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    resume_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    # A worker owns the run until the lease expires.
+    lease_until: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    lease_owner: Mapped[str | None] = mapped_column(String(80))
+    executions: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    __table_args__ = (
+        CheckConstraint(
+            "mode IN ('LIVE', 'MANUAL', 'TEST', 'RESUBMIT')",
+            name="ck_ton_automation_run_mode",
+        ),
+        CheckConstraint(
+            "status IN ('QUEUED', 'RUNNING', 'WAITING', 'SUCCEEDED', 'FAILED', "
+            "'CANCELLED', 'TIMED_OUT')",
+            name="ck_ton_automation_run_status",
+        ),
+        # A trigger window or event starts a live run once.
+        Index(
+            "uq_ton_automation_run_trigger",
+            "automation_id",
+            "trigger_key",
+            unique=True,
+            postgresql_where=text("mode = 'LIVE'"),
+        ),
+        Index(
+            "ix_ton_automation_run_open",
+            "status",
+            "resume_at",
+            postgresql_where=text("status IN ('QUEUED', 'RUNNING', 'WAITING')"),
+        ),
+        Index("ix_ton_automation_run_automation", "automation_id", "created_at"),
+    )
+
+
+class TonAutomationStepRun(Base):
+    """One node execution (per loop iteration): inputs, outputs, attempts."""
+
+    __tablename__ = "ton_automation_step_run"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_automation_run.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    node_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    iteration: Mapped[str] = mapped_column(String(400), nullable=False, default="")
+    node_type: Mapped[str] = mapped_column(String(48), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    inputs: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    outputs: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    error: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    finished_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    next_retry_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('RUNNING', 'WAITING', 'SUCCEEDED', 'FAILED', 'SKIPPED', "
+            "'TIMED_OUT', 'CANCELLED')",
+            name="ck_ton_automation_step_run_status",
+        ),
+        UniqueConstraint(
+            "run_id", "node_id", "iteration", name="uq_ton_automation_step_run"
+        ),
+    )
+
+
+class TonAutomationApproval(Base):
+    """A run paused at "Pedir aprovação"."""
+
+    __tablename__ = "ton_automation_approval"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    automation_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_automation.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    run_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_automation_run.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    node_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    iteration: Mapped[str] = mapped_column(String(400), nullable=False, default="")
+    approvers: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    details: Mapped[str | None] = mapped_column(Text)
+    options: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    outcome: Mapped[str | None] = mapped_column(String(120))
+    comment: Mapped[str | None] = mapped_column(String(1000))
+    decided_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    decided_by_email: Mapped[str | None] = mapped_column(String(320))
+    decided_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('PENDING', 'DONE', 'EXPIRED', 'CANCELLED')",
+            name="ck_ton_automation_approval_status",
+        ),
+        Index(
+            "ix_ton_automation_approval_pending",
+            "created_at",
+            postgresql_where=text("status = 'PENDING'"),
+        ),
+    )
+
+
+class TonAutomationNotice(Base):
+    """A notice an automation published in the TON bell."""
+
+    __tablename__ = "ton_automation_notice"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    automation_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_automation.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    run_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_automation_run.id", ondelete="SET NULL"),
+    )
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    message: Mapped[str | None] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(String(16), nullable=False)
+    link: Mapped[str | None] = mapped_column(String(500))
+    is_test: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "severity IN ('INFO', 'WARNING', 'CRITICAL')",
+            name="ck_ton_automation_notice_severity",
+        ),
+        Index("ix_ton_automation_notice_created", "created_at"),
+    )
+
+
+class TonAutomationFile(Base):
+    """A file attached to an "Inserir dados" step (5 MB at most)."""
+
+    __tablename__ = "ton_automation_file"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint("size_bytes <= 5242880", name="ck_ton_automation_file_size"),
+    )

@@ -51,6 +51,7 @@ const CARD_TOOLS = [
   "ton_get_dre_readiness",
   "ton_get_recent_changes",
   "ton_draft_email_flow",
+  "ton_draft_automation",
   "ton_get_finding",
   "ton_get_readiness_evidence",
   "ton_generate_closing_report",

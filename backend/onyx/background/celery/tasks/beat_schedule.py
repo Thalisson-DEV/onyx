@@ -51,12 +51,12 @@ beat_task_templates: list[dict] = [
         },
     },
     {
-        "name": "ton-email-flows-tick",
-        "task": OnyxCeleryTask.TON_EMAIL_FLOWS_TICK,
-        "schedule": timedelta(minutes=2),
+        "name": "ton-automations-tick",
+        "task": OnyxCeleryTask.TON_AUTOMATIONS_TICK,
+        "schedule": timedelta(minutes=1),
         "options": {
             "priority": OnyxCeleryPriority.MEDIUM,
-            "expires": 120,
+            "expires": 60,
             "queue": OnyxCeleryQueues.PRIMARY,
         },
     },

@@ -15,6 +15,7 @@ import {
   useReadinessChanges,
 } from "@/lib/ton/decisions";
 import { getBusinessLabel } from "@/lib/ton/labels";
+import { useAutomationNotices } from "@/lib/ton/automations";
 
 export type ActivityKind =
   | "report"
@@ -22,7 +23,8 @@ export type ActivityKind =
   | "importFailed"
   | "specialists"
   | "decision"
-  | "readiness";
+  | "readiness"
+  | "automation";
 
 export interface ActivityEvent {
   key: string;
@@ -47,6 +49,7 @@ export function useTonActivity(enabled = true) {
   const specialists = useTonSpecialists(enabled);
   const decisions = useDecisionLog();
   const closing = useTonClosing(undefined, enabled);
+  const notices = useAutomationNotices(enabled);
   const changes = useReadinessChanges(
     closing.data?.normalization_run_id,
     closing.data?.structure_version_id,
@@ -157,6 +160,17 @@ export function useTonActivity(enabled = true) {
         attention: nowReady,
       });
     }
+  }
+  for (const notice of notices.data ?? []) {
+    events.push({
+      key: `automation-${notice.id}`,
+      kind: "automation",
+      at: notice.created_at,
+      title: notice.title,
+      detail: notice.message ? `${notice.automation_name} · ${notice.message}` : notice.automation_name,
+      href: (notice.link ?? `/ton/automacoes/${notice.automation_id}`) as Route,
+      attention: notice.severity !== "INFO",
+    });
   }
   events.sort((a, b) => b.at.localeCompare(a.at));
 

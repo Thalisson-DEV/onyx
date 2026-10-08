@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-export { default } from "@/views/ton/EmailFlowsPage";
-
-export const metadata: Metadata = { title: "Fluxos de e-mail" };
+/** E-mail flows are automations of type E-mail now. */
+export default function Page() {
+  redirect("/ton/automacoes");
+}

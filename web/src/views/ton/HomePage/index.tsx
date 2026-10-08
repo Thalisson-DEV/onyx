@@ -19,6 +19,7 @@ import {
   SvgSparkle,
   SvgUploadCloud,
   SvgUsers,
+  SvgWorkflow,
 } from "@opal/icons";
 import type { IconFunctionComponent } from "@opal/types";
 import { useUser } from "@/providers/UserProvider";
@@ -272,6 +273,7 @@ const ACTIVITY_ICONS: Record<ActivityKind, IconFunctionComponent> = {
   specialists: SvgUsers,
   decision: SvgShield,
   readiness: SvgRefreshCw,
+  automation: SvgWorkflow,
 };
 
 function ActivityFeed() {

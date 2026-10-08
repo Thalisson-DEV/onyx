@@ -156,6 +156,9 @@ class AuditAction(str, Enum):
     TON_EMAIL_FLOW_CHANGE = "ton_email_flow.change"
     TON_EMAIL_FLOW_SEND = "ton_email_flow.send"
     TON_EMAIL_FLOW_SUGGEST = "ton_email_flow.suggest"
+    TON_AUTOMATION_CHANGE = "ton_automation.change"
+    TON_AUTOMATION_RUN = "ton_automation.run"
+    TON_AUTOMATION_SUGGEST = "ton_automation.suggest"
     TON_FINANCIAL_AUTHORITY_VERSION = "ton_financial.authority_version"
     TON_FINANCIAL_DERIVATION_VERSION = "ton_financial.derivation_version"
     TON_DRE_STRUCTURE_VERSION = "ton_dre.structure_version"
@@ -256,6 +259,9 @@ _OCSF_CLASS_BY_ACTION: dict[AuditAction, OCSFEventClass] = {
     AuditAction.TON_EMAIL_FLOW_CHANGE: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_EMAIL_FLOW_SEND: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_EMAIL_FLOW_SUGGEST: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_AUTOMATION_CHANGE: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_AUTOMATION_RUN: OCSFEventClass.API_ACTIVITY,
+    AuditAction.TON_AUTOMATION_SUGGEST: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_FINANCIAL_AUTHORITY_VERSION: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_FINANCIAL_DERIVATION_VERSION: OCSFEventClass.API_ACTIVITY,
     AuditAction.TON_DRE_STRUCTURE_VERSION: OCSFEventClass.API_ACTIVITY,

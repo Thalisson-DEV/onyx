@@ -20,7 +20,7 @@ from onyx.ton.agent.labels import humanize
 from onyx.ton.agent.models import ToolQuery
 from onyx.ton.agent.policy import SYNTHETIC_DATA_NOTICE, uses_synthetic_demo_data
 from onyx.ton.agent.service import query_domain
-from onyx.ton.email_flows import service as email_flow_service
+from onyx.ton.automations import drafter as automation_drafter
 from onyx.tools.interface import Tool
 from onyx.tools.models import CustomToolCallSummary, ToolCallException, ToolResponse
 from shared_configs.contextvars import get_current_tenant_id
@@ -46,7 +46,7 @@ TON_TOOL_DISPLAY_NAMES = {
     "ton_list_overdue_actions": "Ações vencidas",
     "ton_get_readiness_evidence": "Evidência da prontidão",
     "ton_get_recent_changes": "Mudanças após decisões",
-    "ton_draft_email_flow": "Rascunho de fluxo de e-mail",
+    "ton_draft_automation": "Rascunho de automação",
 }
 
 
@@ -288,18 +288,18 @@ class TonRecentChangesTool(TonDomainTool):
     FIELDS = ("normalization_run_id", "structure_version_id", "unit_id", "limit")
 
 
-class TonDraftEmailFlowTool(TonDomainTool):
-    """Turns a chat request into an e-mail flow draft. Writes only a draft
-    (a TON suggestion); nothing is sent until a person activates it."""
+class TonDraftAutomationTool(TonDomainTool):
+    """Turns a chat request into an automation draft. Writes only a draft
+    (a TON suggestion); nothing runs until a person activates it."""
 
-    NAME = "ton_draft_email_flow"
+    NAME = "ton_draft_automation"
     DESCRIPTION = (
-        "Criar ou ajustar um RASCUNHO de fluxo de e-mail automático quando a pessoa pedir algo como "
-        "'quando acontecer X, envie um e-mail para Y'. Passe o pedido completo em 'request', em "
-        "português, com gatilho, condições, destinatários e o que o e-mail deve dizer. Para ajustar um "
-        "rascunho já criado nesta conversa, passe também 'flow_id'. O rascunho não envia nada: a pessoa "
-        "revisa e ativa no cartão ou no editor. Depois de chamar, resuma os passos e o que falta "
-        "(ex.: e-mail de destinatário), sem inventar endereços."
+        "Criar ou ajustar um RASCUNHO de automação (workflow) quando a pessoa pedir algo como "
+        "'quando acontecer X, faça Y', 'toda segunda envie...', 'avise quando...', 'leia este "
+        "documento e...'. Passe o pedido completo em 'request', em português, com gatilho, condições, "
+        "ações, destinatários e o texto desejado. Para ajustar um rascunho já criado nesta conversa, passe "
+        "também 'automation_id'. O rascunho não roda: a pessoa revisa e ativa no editor. Depois de chamar, "
+        "resuma os passos e o que falta (ex.: e-mail de destinatário), sem inventar endereços."
     )
 
     def tool_definition(self) -> dict[str, Any]:
@@ -315,9 +315,9 @@ class TonDraftEmailFlowTool(TonDomainTool):
                             "type": "string",
                             "description": "O pedido da pessoa, completo, em português.",
                         },
-                        "flow_id": {
+                        "automation_id": {
                             "type": "string",
-                            "description": "Id do rascunho a ajustar (opcional).",
+                            "description": "Id da automação a ajustar (opcional).",
                         },
                     },
                     "required": ["request"],
@@ -331,26 +331,26 @@ class TonDraftEmailFlowTool(TonDomainTool):
     ) -> ToolResponse:
         del override_kwargs
         request = str(llm_kwargs.get("request") or "").strip()
-        raw_flow_id = llm_kwargs.get("flow_id")
+        raw_id = llm_kwargs.get("automation_id")
         try:
-            if set(llm_kwargs) - {"request", "flow_id"} or len(request) < 5:
+            if set(llm_kwargs) - {"request", "automation_id"} or len(request) < 5:
                 raise ValueError("Pedido inválido")
-            flow_id = UUID(str(raw_flow_id)) if raw_flow_id else None
+            automation_id = UUID(str(raw_id)) if raw_id else None
             with get_session_with_tenant(tenant_id=self._tenant_id) as session:
                 user = session.get(User, self._user_id)
                 if user is None or not user.is_active:
                     raise ValueError("Usuário indisponível")
-                result = email_flow_service.draft_flow(session, user, request[:4000], flow_id)
-                data = {"kind": "flow_draft", **result.model_dump(mode="json")}
+                result = automation_drafter.draft_automation(session, user, request[:4000], automation_id)
+                data = {"kind": "automation_draft", **result.model_dump(mode="json", exclude={"definition"})}
         except OnyxError as error:
             raise ToolCallException(
-                "TON flow draft rejected",
+                "TON automation draft rejected",
                 f"Não foi possível criar o rascunho: {error.detail}. Explique à pessoa e peça o que faltar.",
             ) from error
         except (ValidationError, ValueError) as error:
             raise ToolCallException(
-                "TON flow draft rejected",
-                "Pedido inválido para rascunho de fluxo. Peça à pessoa o gatilho, a condição e os destinatários.",
+                "TON automation draft rejected",
+                "Pedido inválido para rascunho de automação. Peça à pessoa o gatilho, as ações e os destinatários.",
             ) from error
         self.emitter.emit(
             Packet(
@@ -392,5 +392,5 @@ TON_TOOL_CLASSES = (
     TonOverdueActionsTool,
     TonReadinessEvidenceTool,
     TonRecentChangesTool,
-    TonDraftEmailFlowTool,
+    TonDraftAutomationTool,
 )

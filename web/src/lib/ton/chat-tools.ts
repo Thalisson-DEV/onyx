@@ -12,6 +12,7 @@ import {
   SvgBlocks,
   SvgServer,
   SvgWallet,
+  SvgWorkflow,
 } from "@opal/icons";
 import type { Route } from "next";
 import type { IconFunctionComponent } from "@opal/types";
@@ -103,6 +104,13 @@ export const TON_TOOLS: Record<string, TonToolDescriptor> = {
     href: "/ton/pendencias",
     icon: SvgClipboard,
     kind: "findings",
+  },
+  ton_draft_automation: {
+    doing: "Montando o rascunho da automação",
+    label: "Rascunho de automação",
+    href: "/ton/automacoes",
+    icon: SvgWorkflow,
+    kind: "activity",
   },
   ton_draft_email_flow: {
     doing: "Montando o rascunho do fluxo de e-mail",

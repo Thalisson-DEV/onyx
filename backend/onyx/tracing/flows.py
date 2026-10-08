@@ -50,6 +50,8 @@ class LLMFlow(StrEnum):
 
     # TON
     TON_EMAIL_FLOW_SUGGESTION = "ton_email_flow_suggestion"
+    TON_AUTOMATION_DRAFT = "ton_automation_draft"
+    TON_AUTOMATION_AI_STEP = "ton_automation_ai_step"
 
     # Image generation
     IMAGE_GENERATION = "image_generation"

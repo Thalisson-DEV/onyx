@@ -1,13 +1,6 @@
-import type { Metadata } from "next";
-import FlowEditorPage from "@/views/ton/EmailFlowsPage/FlowEditor";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Fluxo de e-mail" };
-
-export default async function Page({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  return <FlowEditorPage flowId={id} />;
+/** E-mail flows are automations of type E-mail now. */
+export default function Page() {
+  redirect("/ton/automacoes");
 }

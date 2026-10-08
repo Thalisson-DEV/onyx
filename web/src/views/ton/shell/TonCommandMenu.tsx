@@ -17,7 +17,6 @@ import {
   SvgSparkle,
   SvgUsers,
   SvgWorkflow,
-  SvgMail,
 } from "@opal/icons";
 import type { IconFunctionComponent } from "@opal/types";
 import CommandMenu from "@/refresh-components/commandmenu/CommandMenu";
@@ -125,14 +124,7 @@ export default function TonCommandMenu({ trigger }: TonCommandMenuProps) {
         label: items.automations,
         icon: SvgWorkflow,
         href: "/ton/automacoes",
-        keywords: "rotinas r3 agenda",
-      },
-      {
-        key: "emailFlows",
-        label: items.emailFlows,
-        icon: SvgMail,
-        href: "/ton/fluxos",
-        keywords: "fluxos email e-mail inconsistencias financeiro",
+        keywords: "rotinas r3 agenda fluxos email e-mail workflow alerta aprovacao",
       },
       {
         key: "reports",

@@ -280,7 +280,7 @@ it("recalculates only on explicit action and reports the outcome", async () => {
   });
   render(<DreWorkspaceView />);
   expect(global.fetch).not.toHaveBeenCalled();
-  await user.click(screen.getByRole("button", { name: "Recalcular DRE" }));
+  await user.click(screen.getByRole("button", { name: "Calcular DRE do ano" }));
   await waitFor(() =>
     expect(global.fetch).toHaveBeenCalledWith(
       "/api/ton/dre/calculations",

@@ -288,6 +288,8 @@ def test_blank_row_inside_sheet_is_classified() -> None:
         ("Abr ok", 4),
         ("JUN OK", 6),
         ("Mai-ok", 5),
+        ("Jan Fin", 1),
+        ("SET FIN", 9),
     ],
 )
 def test_monthly_sheet_discovery(name: str, month: int) -> None:
@@ -307,11 +309,13 @@ def test_payroll_and_other_sheets_are_skipped_unread() -> None:
                 "Plan1": [],
                 "Jan": tree_rows(),
                 "Janeiro": tree_rows(),
+                "Jan revisar": tree_rows(),
+                "Resumo": [],
             }
         )
     )
     skipped = [sheet.name for sheet in result.sheets if not sheet.accepted]
-    assert skipped == ["JanFG", "Jan-f", "Plan1", "Janeiro"]
+    assert skipped == ["JanFG", "Jan-f", "Plan1", "Janeiro", "Jan revisar", "Resumo"]
     assert {record.locator.sheet_name for record in result.records} == {"Jan"}
     assert [
         item.sheet_name

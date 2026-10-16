@@ -1219,3 +1219,95 @@ html:has(.ton-shell) body {
   border-radius: 10px;
   background: #ffffff;
 }
+
+/* ── Decision dialog: the case at a glance, option cards, ready-made reasons ── */
+.ton-fact-card {
+  padding: 1rem;
+  border-radius: var(--ton-radius-card);
+  border: 1px solid var(--border-01);
+  background: var(--background-neutral-01);
+}
+.ton-fact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem 1rem;
+  margin: 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-01);
+}
+.ton-fact-grid dd {
+  margin: 0;
+}
+.ton-fact-value {
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.ton-option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--ton-radius-card);
+  border: 1px solid var(--border-02);
+  background: var(--background-neutral-00);
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease;
+}
+.ton-option-card:hover {
+  background: var(--background-neutral-01);
+}
+.ton-option-card.is-selected {
+  border-color: var(--ton-brand);
+  background: color-mix(in srgb, var(--ton-brand) 6%, transparent);
+}
+.ton-option-dot {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.125rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-04);
+}
+.ton-option-card.is-selected .ton-option-dot {
+  border: 5px solid var(--ton-brand);
+}
+
+.ton-apply-all {
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--ton-radius-card);
+  background: color-mix(in srgb, var(--ton-brand) 6%, transparent);
+  cursor: pointer;
+}
+.ton-apply-all input {
+  margin-top: 0.1875rem;
+  accent-color: var(--ton-brand);
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+
+.ton-chip {
+  padding: 0.1875rem 0.625rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-02);
+  background: var(--background-neutral-00);
+  color: var(--text-04);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  transition: background-color 120ms ease;
+}
+.ton-chip:hover {
+  background: var(--background-neutral-02);
+  color: var(--text-05);
+}
+
+.ton-queue-row:hover {
+  background: var(--background-neutral-01);
+}
+.ton-queue-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

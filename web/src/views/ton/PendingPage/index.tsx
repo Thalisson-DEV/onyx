@@ -5,7 +5,6 @@ import useSWR from "swr";
 import { useSearchParams } from "next/navigation";
 import { Button, InputTypeIn, Text } from "@opal/components";
 import {
-  SvgAlertTriangle,
   SvgArrowRight,
   SvgCheckCircle,
   SvgChevronDown,
@@ -75,7 +74,7 @@ const TRIAGE_TONE = {
 } as const;
 
 function rowKey(row: BlockerRow): string {
-  return `${row.source_id}:${row.source_key}:${row.item_id}:${row.account_id}`;
+  return `${row.source_id}:${row.source_key}:${row.item_id}:${row.account_id}:${row.occurrence_id ?? ""}`;
 }
 
 function rowAmount(row: BlockerRow): string | null {
@@ -270,7 +269,7 @@ export default function PendingPage() {
 
   const blockerUrl =
     scopeReady && category && runId && version.data
-      ? `/api/ton/financial-domain/normalizations/${runId}/readiness/blockers/${category.blocker}?structure_version_id=${version.data.id}&limit=${PAGE}&offset=${offset}&search=${encodeURIComponent(search)}${unitId ? `&unit_id=${unitId}` : ""}`
+      ? `/api/ton/financial-domain/normalizations/${runId}/readiness/blockers/${category.blocker}?structure_version_id=${version.data.id}&limit=${PAGE}&offset=${offset}&search=${encodeURIComponent(search)}${unitId ? `&unit_id=${unitId}` : ""}${period ? `&period=${period.scope.period}` : ""}`
       : null;
   const blockers = useSWR<BlockerPage>(blockerUrl, errorHandlingFetcher);
 
@@ -518,42 +517,43 @@ export default function PendingPage() {
                   return (
                     <li
                       key={rowKey(row)}
-                      className="flex flex-wrap items-center gap-3 p-3.5"
+                      className="ton-queue-row flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3"
                     >
-                      <IconTile
-                        icon={SvgAlertTriangle}
-                        tone="warning"
-                        size="sm"
-                      />
-                      <div className="flex flex-col gap-1 min-w-0 flex-1">
+                      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <Text font="main-ui-action" color="text-05">
-                            {rowTitle(row, category)}
+                            {hint ?? rowTitle(row, category)}
                           </Text>
-                          <StatusPill
-                            tone={TRIAGE_TONE[triageOf(row, category)]}
-                          >
-                            {COPY.decisionLoop.triage[triageOf(row, category)]}
-                          </StatusPill>
+                          {triageOf(row, category) === "evidence" && (
+                            <StatusPill tone={TRIAGE_TONE.evidence}>
+                              {COPY.decisionLoop.triage.evidence}
+                            </StatusPill>
+                          )}
                         </div>
                         <Text font="secondary-body" color="text-03">
                           {[
-                            hint,
-                            amount,
-                            COPY.pending.affected(row.record_count),
+                            hint ? rowTitle(row, category) : null,
+                            row.evidence &&
+                            !row.candidate &&
+                            !row.legacy_evidence
+                              ? rowDetail(row, category)
+                              : rowSuggestion(row),
                             rowPeriods(row),
+                            row.record_count > 1
+                              ? COPY.pending.affected(row.record_count)
+                              : null,
                           ]
                             .filter(Boolean)
                             .join(" · ")}
                         </Text>
-                        <Text font="secondary-body" color="text-03">
-                          {row.evidence &&
-                          !row.candidate &&
-                          !row.legacy_evidence
-                            ? rowDetail(row, category)
-                            : rowSuggestion(row)}
-                        </Text>
                       </div>
+                      {amount && (
+                        <span className="ton-queue-amount">
+                          <Text font="main-ui-action" color="text-05">
+                            {amount}
+                          </Text>
+                        </span>
+                      )}
                       <Button
                         size="md"
                         prominence="secondary"

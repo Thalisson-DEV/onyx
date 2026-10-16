@@ -102,6 +102,8 @@ export const PENDING_CATEGORIES: {
     key: "reconciliationAmbiguous",
     blocker: "SOURCE_RECONCILIATION_AMBIGUOUS",
   },
+  { key: "review", blocker: "REVIEW_UNRESOLVED" },
+  { key: "excludedRows", blocker: "EXCLUDED_SOURCE_ROWS" },
 ];
 
 export function categoryKeyFor(blocker: string): PendingCategoryKey {

@@ -380,8 +380,10 @@ export const COPY = {
       "A base foi importada, mas decisões humanas ou dados faltantes impedem um resultado oficial. Nenhum valor é estimado enquanto houver bloqueio.",
     resolve: "Resolver",
     resolveAll: "Resolver pendências",
-    recalculate: "Recalcular DRE",
-    recalculating: "Recalculando…",
+    recalculate: "Calcular DRE do ano",
+    recalculating: "Calculando…",
+    recalculatingMonth: (done: number, total: number) =>
+      `Calculando ${done + 1} de ${total} meses…`,
     recalcBlocked:
       "Recálculo concluído: a DRE continua bloqueada pelos itens abaixo.",
     recalcReady: "Recálculo concluído: a DRE está pronta.",
@@ -569,6 +571,20 @@ export const COPY = {
         action: "Classifique a correspondência entre os lançamentos.",
         rowTitle: "Correspondência",
       },
+      review: {
+        label: "Revisão financeira",
+        description:
+          "Lançamentos do NG que a revisão do TON segurou: duplicidade, unidade ausente e outros.",
+        action: "Decida o que fazer com cada caso.",
+        rowTitle: "Caso da revisão",
+      },
+      excludedRows: {
+        label: "Linhas rejeitadas na importação",
+        description:
+          "Linhas do arquivo do NG que não puderam ser lidas, por exemplo com colunas deslocadas.",
+        action: "Decida se a linha pode ficar de fora ou se o arquivo precisa ser corrigido.",
+        rowTitle: "Linha rejeitada",
+      },
       other: {
         label: "Outros",
         description: "Itens que exigem dados adicionais.",
@@ -582,6 +598,44 @@ export const COPY = {
       action: "Importe em Fontes os lançamentos revisados do NG desses meses.",
       cta: "Abrir Fontes",
     },
+    reviewDecisions: {
+      JUSTIFY_EXCEPTION: "Aceitar com justificativa",
+      MARK_FALSE_POSITIVE: "Não é um problema",
+      REQUEST_SOURCE_CORRECTION: "Corrigir no NG",
+    } as Record<string, string>,
+    reviewDecisionHelp: {
+      JUSTIFY_EXCEPTION:
+        "O caso é conhecido e o lançamento entra na DRE como está. Fica registrado quem aceitou e por quê.",
+      MARK_FALSE_POSITIVE:
+        "A regra apontou algo que não é um problema. O lançamento entra na DRE normalmente.",
+      REQUEST_SOURCE_CORRECTION:
+        "O lançamento está errado no NG. Ele fica fora da DRE até o arquivo corrigido ser importado de novo.",
+    } as Record<string, string>,
+    justification: {
+      label: "Motivo da aceitação",
+      BUSINESS_EXCEPTION: "Regra da Controladoria",
+      LEGITIMATE_REPETITION: "Repetição legítima",
+      EXPORT_ARTIFACT: "Defeito do export do NG",
+      IMMATERIAL: "Valor sem relevância",
+      OTHER: "Outro",
+    } as Record<string, string>,
+    quickReasons: {
+      review: [
+        "Conforme decisão da Controladoria",
+        "Lançamento conferido no NG",
+        "Será corrigido no NG pelo Financeiro",
+      ],
+      excludedRows: [
+        "Quebra de linha no export do NG",
+        "Linha sem valor relevante",
+      ],
+      reconciliation: [
+        "Mesma nota com número diferente no NG",
+        "Unidade diferente entre NG e faturamento",
+        "Nota de outro período",
+      ],
+      reconciliationAmbiguous: ["Mesma nota conferida no NG e no faturamento"],
+    } as Record<string, string[] | undefined>,
     decisions: {
       SUPPLEMENTAL: "Lançamento complementar",
       EXPECTED_DIFFERENCE: "Diferença esperada",
@@ -596,6 +650,25 @@ export const COPY = {
       decision: "O que precisa ser decidido",
       reason: "Justificativa",
       reasonPlaceholder: "Motivo ou referência do documento",
+      quickReasons: "Textos prontos",
+      applyToAll: (count: number, rule: string) =>
+        `Aplicar a mesma decisão aos ${formatNumber(count)} casos de “${rule}”`,
+      applyToList: (count: number) =>
+        `Aplicar a mesma decisão aos ${formatNumber(count)} itens desta lista`,
+      applyToAllHint:
+        "Cada caso fica registrado separadamente, com a mesma justificativa. A prontidão é recalculada uma vez no final.",
+      recordingMany: (done: number, total: number) =>
+        `Registrando ${formatNumber(done)} de ${formatNumber(total)} decisões…`,
+      authorization: "Quem autorizou",
+      authorizationPlaceholder: "Ex.: Controladoria, reunião de 16/10",
+      authorizationDefault: "Controladoria",
+      facts: {
+        document: "Documento",
+        unit: "Unidade",
+        date: "Emissão",
+        amount: "Valor",
+        where: "Onde está",
+      },
       searchTarget: "Buscar destino",
       accountCode: "Código da conta",
       accountLabel: "Nome da conta",
@@ -691,6 +764,7 @@ export const COPY = {
           : `A linha de orçamento passa a valer a partir de ${start}.`,
       reconciliation: (decision: string) =>
         `O item passa a ser classificado como “${decision}”.`,
+      review: (decision: string) => `O caso passa a ser “${decision}”.`,
       scope: (records: string, periods: string | null) =>
         periods ? `Afeta ${records} em ${periods}.` : `Afeta ${records}.`,
       recompute:
@@ -859,6 +933,20 @@ export const COPY = {
           effect:
             "O realizado da DRE vem só do NG. A decisão registra qual relação vale e libera o item.",
           changes: false,
+        },
+        review: {
+          question:
+            "A revisão do TON encontrou algo nestes lançamentos e os segurou fora da DRE até alguém decidir.",
+          effect:
+            "Aceitar libera os lançamentos para a DRE; corrigir no NG mantém fora até a reimportação.",
+          changes: true,
+        },
+        excludedRows: {
+          question:
+            "Esta linha do arquivo do NG não pôde ser lida, então o mês fica incompleto.",
+          effect:
+            "Aceitar libera o mês sem esta linha; corrigir no NG pede um arquivo novo.",
+          changes: true,
         },
       } as Record<
         string,
@@ -1064,6 +1152,7 @@ export const COPY = {
     hideDetails: (name: string) => `Ocultar detalhes de ${name}`,
     health: {
       healthy: "Fontes configuradas estão atualizadas",
+      empty: "Nenhuma fonte importada ainda",
       attention: (count: number) =>
         count === 1
           ? "1 fonte exige atenção"
@@ -1122,6 +1211,27 @@ export const COPY = {
     askPrompt: (name: string, objective: string) =>
       `Com foco no ${name} (${objective.replace(/\.$/, "")}), o que precisa da minha atenção agora?`,
     policy: "Consultar e recomendar. Decisões e aprovações exigem uma pessoa.",
+  },
+  chatFile: {
+    open: "Abrir",
+    download: "Baixar",
+    generated: "Gerado pelo TON",
+    kinds: {
+      pdf: "PDF",
+      xlsx: "Planilha Excel",
+      xls: "Planilha Excel",
+      csv: "Planilha CSV",
+      docx: "Documento Word",
+      pptx: "Apresentação",
+      txt: "Texto",
+      json: "Dados JSON",
+      zip: "Arquivo compactado",
+      png: "Imagem",
+      jpg: "Imagem",
+      jpeg: "Imagem",
+      svg: "Imagem",
+    } as Record<string, string>,
+    fallbackKind: "Arquivo",
   },
   analysis: {
     running: "TON está analisando…",
@@ -1295,6 +1405,10 @@ export const COPY = {
       showCode: "Ver código",
       files: (count: number) =>
         plural(count, "arquivo gerado", "arquivos gerados"),
+      language: "Python",
+      output: "Resultado",
+      lines: (count: number) => plural(count, "linha", "linhas"),
+      copy: "Copiar",
     },
     file: {
       title: (name: string) => `Leu o arquivo ${name}`,

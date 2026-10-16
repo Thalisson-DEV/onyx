@@ -37,7 +37,9 @@ PROFILE_KEY = "ng_financial_export"
 PROFILE_VERSION = 1
 SOURCE_KEY = "financial_launches"
 MAX_WORKBOOK_BYTES = 10 * 1024 * 1024
-MAX_SHEETS = 24
+# The controller's workbook keeps, per month, the reviewed sheet ("Jan Fin" or
+# "Jan ok") next to the raw export ("Jul revisar"), payroll and FG sheets.
+MAX_SHEETS = 64
 MAX_ROWS_PER_SHEET = 10_000
 MAX_TOTAL_ROWS = 50_000
 MAX_COLUMNS = 32
@@ -60,7 +62,8 @@ MONTHS = {
     "dez": 12,
 }
 SHEET_PATTERN = re.compile(
-    r"^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)(?:[ ._-]+ok)?$", re.I
+    r"^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)(?:[ ._-]+(?:ok|fin))?$",
+    re.I,
 )
 ACCOUNT_PATTERN = re.compile(r"^\s*(\d+(?:\.\d+)*)\s*-\s*(\S.*)$", re.S)
 # pt-BR only: dot groups thousands, comma separates decimals.

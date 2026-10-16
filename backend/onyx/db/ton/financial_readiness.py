@@ -1,6 +1,9 @@
 """Paged, tenant-scoped financial readiness evidence."""
 
 from datetime import date
+from datetime import datetime
+from datetime import timedelta
+from datetime import timezone
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -26,11 +29,19 @@ from onyx.db.ton.models import (
     FinancialReconciliationItem,
     OperationalSourceRecord,
     ParsedSourceRecord,
+    ReviewRun,
 )
+from onyx.db.ton.financial_review import load_finding_states
 from onyx.db.ton.sources import check_page, get_source
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.ton.dre.models import DreScope
+from onyx.ton.financial_review.catalog import DEFAULT_CATALOG
+from onyx.ton.financial_review.dataset import FindingState, finding_disposition
+from onyx.ton.financial_review.models import (
+    DOWNSTREAM_SAFE_DISPOSITIONS,
+    ReviewDisposition,
+)
 from onyx.ton.financial_domain.readiness_models import (
     BlockerPage,
     BlockerRow,
@@ -485,6 +496,126 @@ def import_legacy_candidates(
     return count
 
 
+_RECONCILIATION_STATUS_TEXT = {
+    "BILLING_ONLY": "Nota no faturamento sem lançamento correspondente no NG",
+    "UNMAPPED": "Registro sem unidade ou natureza vinculada no TON",
+    "AMBIGUOUS": "Mais de uma correspondência possível entre NG e faturamento",
+}
+
+
+def _reconciliation_evidence(
+    status: str,
+    actual: FinancialActualFact | None,
+    billing: FinancialBillingFact | None,
+) -> str:
+    fact = actual or billing
+    parts = [_RECONCILIATION_STATUS_TEXT.get(status, status)]
+    if fact is not None and fact.unit_id is None:
+        parts.append("unidade sem vínculo")
+    if fact is not None and fact.account_id is None:
+        parts.append("natureza sem vínculo")
+    return ". ".join(parts[:1]) + (f" ({', '.join(parts[1:])})" if parts[1:] else "") + "."
+
+
+def _review_blockers(
+    session: Session, review_run_id: UUID, blocker: str, limit: int, offset: int
+) -> tuple[int, list[BlockerRow]]:
+    """Review cases that still keep NG records (or rejected rows) out of the DRE.
+
+    Uses the normalization's disposition policy evaluated now, so a case leaves
+    the list as soon as it is decided, before the base is updated.
+    """
+    review = session.get(ReviewRun, review_run_id)
+    if review is None:
+        return 0, []
+    states, _ = load_finding_states(session, review, datetime.now(timezone.utc))
+    blocking: dict[UUID, list[FindingState]] = {}
+    for state in states:
+        disposition = finding_disposition(state)
+        if disposition in DOWNSTREAM_SAFE_DISPOSITIONS:
+            continue
+        rejected_row = not state.record_ids and state.scope in (
+            "DIAGNOSTIC",
+            "EXECUTION",
+        )
+        if (blocker == "EXCLUDED_SOURCE_ROWS") != rejected_row:
+            continue
+        if blocker == "REVIEW_UNRESOLVED" and not state.record_ids:
+            continue
+        # A confirmed document-format duplicate is excluded, not blocking.
+        if (
+            disposition is ReviewDisposition.CORRECTION_REQUIRED
+            and state.rule_key == financial_domain.DUPLICATE_DOCUMENT_RULE
+        ):
+            continue
+        blocking.setdefault(state.occurrence_id, []).append(state)
+    occurrence_ids = sorted(
+        blocking,
+        key=lambda item: (
+            min(state.sheet_month or 0 for state in blocking[item]),
+            blocking[item][0].rule_key,
+            str(item),
+        ),
+    )
+    page = occurrence_ids[offset : offset + limit]
+    record_ids = {
+        record_id
+        for occurrence_id in page
+        for state in blocking[occurrence_id]
+        for record_id in state.record_ids
+    }
+    records = (
+        {
+            record.id: record
+            for record in session.scalars(
+                sa.select(ParsedSourceRecord).where(
+                    ParsedSourceRecord.id.in_(record_ids)
+                )
+            )
+        }
+        if record_ids
+        else {}
+    )
+    rows: list[BlockerRow] = []
+    for occurrence_id in page:
+        states_of = blocking[occurrence_id]
+        rule_key = states_of[0].rule_key
+        try:
+            title = DEFAULT_CATALOG.get(rule_key).name
+        except KeyError:
+            title = rule_key
+        ids = [rid for state in states_of for rid in state.record_ids]
+        year = next(
+            (
+                records[rid].emission_date.year
+                for rid in ids
+                if rid in records and records[rid].emission_date is not None
+            ),
+            datetime.now(timezone.utc).year,
+        )
+        months = sorted(
+            {state.sheet_month for state in states_of if state.sheet_month}
+        )
+        rows.append(
+            BlockerRow(
+                source_key=rule_key,
+                record_count=max(len(ids), 1),
+                periods=[date(year, month, 1) for month in months],
+                status="UNRESOLVED",
+                evidence=title,
+                occurrence_id=occurrence_id,
+                rule_key=rule_key,
+                rule_title=title,
+                records=[
+                    ng_evidence(records[rid], None)
+                    for rid in ids[:EVIDENCE_SAMPLE]
+                    if rid in records
+                ],
+            )
+        )
+    return len(occurrence_ids), rows
+
+
 def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query
     session: Session,
     user: User,
@@ -495,6 +626,7 @@ def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query
     offset: int,
     search: str | None,
     unit_id: UUID | None = None,
+    period: date | None = None,
 ) -> BlockerPage:
     run = financial_domain.get_run(session, user, run_id)
     version = dre.get_version(session, user, version_id)
@@ -719,7 +851,7 @@ def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query
                 periods=sorted(periods),
                 status="UNRESOLVED",
                 evidence=(
-                    "Approve an account mapping before choosing an amount basis"
+                    "Defina primeiro a natureza da conta; depois, a base do realizado"
                     if account_id is None
                     else f"MOVEMENT present {movement_present}/{count}; "
                     f"FINAL present {final_present}/{count}; "
@@ -956,6 +1088,24 @@ def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query
                     FinancialBillingFact.unit_id == unit_id,
                 )
             )
+        if period is not None:
+            # The DRE of a month accumulates January to that month, and each
+            # reconciliation item counts in its emission month (see
+            # financial_domain.readiness). List exactly the items it counts.
+            year_start = period.replace(month=1, day=1)
+            next_period = (period + timedelta(days=32)).replace(day=1)
+            query = query.where(
+                sa.or_(
+                    sa.and_(
+                        FinancialActualFact.calendar_period >= year_start,
+                        FinancialActualFact.calendar_period <= period,
+                    ),
+                    sa.and_(
+                        FinancialBillingFact.emission_date >= year_start,
+                        FinancialBillingFact.emission_date < next_period,
+                    ),
+                )
+            )
         total = int(
             session.scalar(sa.select(sa.func.count()).select_from(query.subquery()))
             or 0
@@ -974,14 +1124,7 @@ def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query
                 if billing and billing.competence_period
                 else [],
                 status="UNRESOLVED",
-                evidence=(
-                    f"{item.status}; NG {'yes' if actual else 'no'}; "
-                    f"billing {'yes' if billing else 'no'}; "
-                    f"account mapped {'yes' if (actual or billing) and (actual or billing).account_id else 'no'}; "
-                    f"unit mapped {'yes' if (actual or billing) and (actual or billing).unit_id else 'no'}; "
-                    f"document match {'yes' if record and record.document_number and billing and record.document_number.strip() == billing.invoice_number.strip() else 'unknown'}; "
-                    "amount relation unverified"
-                ),
+                evidence=_reconciliation_evidence(item.status, actual, billing),
                 records=[
                     *(
                         [ng_evidence(record, actual.calendar_period)]
@@ -1033,6 +1176,10 @@ def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query
             offset=offset,
             rows=rows,
             covered_periods=covered,
+        )
+    elif blocker in ("REVIEW_UNRESOLVED", "EXCLUDED_SOURCE_ROWS"):
+        total, rows = _review_blockers(
+            session, run.review_run_id, blocker, limit, offset
         )
     elif blocker in SUMMARY_BLOCKERS:
         periods = overview(session, user, run_id, version_id, unit_id).periods

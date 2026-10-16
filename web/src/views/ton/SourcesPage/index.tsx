@@ -56,7 +56,11 @@ function HealthSummary({
     .filter((value): value is string => !!value)
     .sort()
     .at(-1);
-  const healthy = configured.length > 0 && attention.length === 0;
+  const healthy =
+    configured.length > 0 &&
+    attention.length === 0 &&
+    current.length === configured.length;
+  const empty = current.length === 0 && attention.length === 0;
   return (
     <TonCard className="flex flex-col gap-5 p-5 sm:p-6">
       <div className="flex items-start gap-4">
@@ -69,7 +73,9 @@ function HealthSummary({
           <Text as="h2" font="heading-h3" color="text-05">
             {healthy
               ? COPY.sources.health.healthy
-              : COPY.sources.health.attention(attention.length)}
+              : empty
+                ? COPY.sources.health.empty
+                : COPY.sources.health.attention(attention.length)}
           </Text>
           <Text as="p" font="secondary-body" color="text-03">
             {COPY.sources.health.body}

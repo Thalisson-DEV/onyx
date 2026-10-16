@@ -122,7 +122,12 @@ export function buildWorkQueue(input: WorkInputs): WorkItem[] {
       detail: source.latest?.failure_reason ?? null,
       owner: null,
       deadline: null,
-      href: "/ton/fontes",
+      // Warnings of the NG import are decided in the review queue; a failed
+      // import (or another source) is fixed by importing again.
+      href:
+        source.status === "ATTENTION" && source.key === "financial_launches"
+          ? pendingQueueHref({ ...scope, blocker: "REVIEW_UNRESOLVED" })
+          : "/ton/fontes",
       action: QUEUE.review,
     });
   }

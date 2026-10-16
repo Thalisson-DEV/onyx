@@ -14450,7 +14450,7 @@
     "downstreamTitle": "Dados financeiros após a importação",
     "reviewAffected": "A revisão financeira deste arquivo NG foi atualizada.",
     "readinessUpdated": "A prontidão financeira foi recalculada com os arquivos atuais. Revise as pendências.",
-    "readinessPending": "A prontidão financeira será atualizada quando houver arquivos de NG, faturamento e orçamento.",
+    "readinessPending": "A prontidão financeira será atualizada quando houver arquivos de NG e de faturamento.",
     "readinessFailed": "O arquivo foi importado, mas não foi possível atualizar a prontidão financeira. Revise as pendências.",
     "readinessUnknown": "Abra a prontidão financeira para ver o resultado atual destes arquivos.",
     "dreAffected": "A DRE usa a prontidão financeira atual. Esta importação não aprovou decisões.",

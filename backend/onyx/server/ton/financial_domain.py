@@ -287,6 +287,7 @@ def financial_readiness_blockers(
     offset: int = Query(0, ge=0),
     search: str | None = Query(None, max_length=100),
     unit_id: UUID | None = None,
+    period: datetime.date | None = None,
     user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
     session: Session = Depends(get_session),
 ) -> BlockerPage:
@@ -300,6 +301,7 @@ def financial_readiness_blockers(
         offset,
         search,
         unit_id,
+        period,
     )
 
 

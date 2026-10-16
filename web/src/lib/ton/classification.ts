@@ -183,7 +183,7 @@ export const CLASSIFICATION_COPY = {
     description: "Descrição no NG",
     nature: "Natureza",
     assistant: "Assistente",
-    total: "Jan–jun",
+    total: "No ano",
   },
   noNature: "Sem natureza",
   newNatureOption: "+ Nova natureza…",

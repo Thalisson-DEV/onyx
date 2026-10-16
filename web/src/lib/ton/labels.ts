@@ -23,7 +23,7 @@ export const BUSINESS_LABELS: Record<string, string> = {
   IN_PROGRESS: "Parcial",
   "IN PROGRESS": "Parcial",
   NOT_IMPLEMENTED: "Não implementada",
-  UNCONFIGURED: "Não configurada",
+  UNCONFIGURED: "Nunca importada",
   MONTHLY_CLOSE: "Fechamento preliminar mensal",
   EXECUTIVE: "Resumo executivo",
   UNMAPPED: "Não vinculado",

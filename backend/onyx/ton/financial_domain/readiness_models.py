@@ -77,6 +77,10 @@ class BlockerRow(BaseModel):
     paired: bool | None = None
     evidence: str | None = None
     records: list[EvidenceRecordView] = Field(default_factory=list)
+    # Financial review blockers: the case to decide and its rule.
+    occurrence_id: UUID | None = None
+    rule_key: str | None = None
+    rule_title: str | None = None
 
 
 class BlockerPage(BaseModel):

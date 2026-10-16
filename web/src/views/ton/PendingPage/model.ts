@@ -56,6 +56,9 @@ export interface BlockerRow {
   paired: boolean | null;
   evidence: string | null;
   records: EvidenceRecord[];
+  occurrence_id?: string | null;
+  rule_key?: string | null;
+  rule_title?: string | null;
 }
 
 export interface BlockerPage {
@@ -90,6 +93,28 @@ export interface QueueCategory {
   rowTitle: string;
   count: number;
   noActual: boolean;
+}
+
+export const REVIEW_DECISIONS = [
+  "JUSTIFY_EXCEPTION",
+  "REQUEST_SOURCE_CORRECTION",
+  "MARK_FALSE_POSITIVE",
+] as const;
+
+export type ReviewDecision = (typeof REVIEW_DECISIONS)[number];
+
+export const JUSTIFICATIONS = [
+  "BUSINESS_EXCEPTION",
+  "EXPORT_ARTIFACT",
+  "LEGITIMATE_REPETITION",
+  "IMMATERIAL",
+  "OTHER",
+] as const;
+
+export type Justification = (typeof JUSTIFICATIONS)[number];
+
+export function isReviewCategory(category: QueueCategory): boolean {
+  return category.key === "review" || category.key === "excludedRows";
 }
 
 export const RECONCILIATION_DECISIONS = [
@@ -150,6 +175,7 @@ export function describeCategory(
 
 export function rowTitle(row: BlockerRow, category: QueueCategory): string {
   if (category.noActual) return category.rowTitle;
+  if (row.rule_title) return row.rule_title;
   if (row.source_key && !UUID.test(row.source_key))
     return getBusinessLabel(row.source_key);
   // Reconciliation items carry no readable key; the first sentence of the
@@ -161,6 +187,7 @@ export function rowTitle(row: BlockerRow, category: QueueCategory): string {
 
 /** Evidence text without the sentence already used as the row title. */
 export function rowDetail(row: BlockerRow, category: QueueCategory): string {
+  if (row.rule_title) return "";
   const evidence = row.evidence ? getBusinessLabel(row.evidence) : "";
   const title = rowTitle(row, category);
   return evidence.startsWith(title)

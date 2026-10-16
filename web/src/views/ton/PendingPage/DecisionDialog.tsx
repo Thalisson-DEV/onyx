@@ -10,6 +10,7 @@ import { cn } from "@opal/utils";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import {
   COPY,
+  formatCurrency,
   formatPeriod,
   formatRelativeDateTime,
   plural,
@@ -27,14 +28,19 @@ import ReadinessDelta from "@/views/ton/components/ReadinessDelta";
 import { LoadingBlock, StatusPill } from "@/views/ton/components/ui";
 import {
   type BlockerRow,
+  JUSTIFICATIONS,
+  type Justification,
   MAPPING_KEYS,
   type Overview,
   type PeriodReadiness,
   type QueueCategory,
   RECONCILIATION_DECISIONS,
+  REVIEW_DECISIONS,
   type ReconciliationDecision,
+  type ReviewDecision,
   type Target,
   type Version,
+  isReviewCategory,
   readinessUrl,
   rowDetail,
   rowPeriods,
@@ -146,6 +152,111 @@ function Explanation({ category }: { category: QueueCategory }) {
   );
 }
 
+/** The case at a glance: what it is and the facts a person checks first. */
+function FactCard({
+  row,
+  category,
+}: {
+  row: BlockerRow;
+  category: QueueCategory;
+}) {
+  const first = row.records[0];
+  const amount = first
+    ? (first.movement_amount ?? first.final_amount ?? first.service_amount)
+    : null;
+  const facts = first
+    ? [
+        [DIALOG.facts.document, first.document],
+        [DIALOG.facts.unit, first.unit ?? first.counterparty],
+        [
+          DIALOG.facts.date,
+          first.emission_date
+            ? first.emission_date.slice(0, 10).split("-").reverse().join("/")
+            : null,
+        ],
+        [DIALOG.facts.amount, amount ? formatCurrency(amount) : null],
+        [
+          DIALOG.facts.where,
+          first.sheet && first.row
+            ? LOOP.location(first.sheet, first.row)
+            : null,
+        ],
+      ].filter((item): item is [string, string] => Boolean(item[1]))
+    : [];
+  const detail = row.evidence ? rowDetail(row, category) : "";
+  return (
+    <section className="ton-fact-card flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <span className="ton-eyebrow">{category.label}</span>
+        <Text as="h3" font="heading-h3" color="text-05">
+          {rowTitle(row, category)}
+        </Text>
+        {detail && (
+          <Text font="main-ui-body" color="text-04">
+            {detail}
+          </Text>
+        )}
+        <Text font="secondary-body" color="text-03">
+          {[COPY.pending.affected(row.record_count), rowPeriods(row)]
+            .filter(Boolean)
+            .join(" · ")}
+        </Text>
+      </div>
+      {facts.length > 0 && (
+        <dl className="ton-fact-grid">
+          {facts.map(([label, value]) => (
+            <div key={label} className="flex flex-col gap-0.5 min-w-0">
+              <dt>
+                <Text font="secondary-body" color="text-03">
+                  {label}
+                </Text>
+              </dt>
+              <dd className="ton-fact-value">
+                <Text font="main-ui-action" color="text-05">
+                  {value}
+                </Text>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </section>
+  );
+}
+
+function OptionCard({
+  selected,
+  title,
+  help,
+  onSelect,
+}: {
+  selected: boolean;
+  title: string;
+  help: string;
+  onSelect: () => void;
+}) {
+  return (
+    // Selectable option card: title plus what it means.
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={cn("ton-option-card ton-focusable", selected && "is-selected")}
+    >
+      <span className="ton-option-dot" aria-hidden />
+      <span className="flex flex-col gap-0.5 min-w-0 text-start">
+        <Text font="main-ui-action" color="text-05">
+          {title}
+        </Text>
+        <Text font="secondary-body" color="text-03">
+          {help}
+        </Text>
+      </span>
+    </button>
+  );
+}
+
 function evidenceBasis(row: BlockerRow): string | null {
   if (row.candidate) return LOOP.evidenceReady[row.candidate.evidence];
   if (row.legacy_evidence) return LOOP.evidenceReady.LEGACY;
@@ -213,6 +324,19 @@ export default function DecisionDialog({
   const [endMonth, setEndMonth] = useState("");
   // No default: a reconciliation outcome must be an explicit human choice.
   const [decision, setDecision] = useState<ReconciliationDecision | null>(null);
+  const [reviewDecision, setReviewDecision] = useState<ReviewDecision | null>(
+    null
+  );
+  const [justification, setJustification] =
+    useState<Justification>("BUSINESS_EXCEPTION");
+  const [authorization, setAuthorization] = useState<string>(
+    DIALOG.authorizationDefault
+  );
+  const [applyToAll, setApplyToAll] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
   const [phase, setPhase] = useState<Phase>("edit");
   const [failed, setFailed] = useState(false);
   const [rejected, setRejected] = useState(false);
@@ -223,6 +347,27 @@ export default function DecisionDialog({
   const isDre =
     category.key === "dreAssignment" || category.key === "drePending";
   const isReconciliation = category.key.startsWith("reconciliation");
+  const isReview = isReviewCategory(category);
+  // Cases of the same rule: one decision can settle all of them.
+  // Reconciliation items of the same closing month: one reason can settle a
+  // whole list (for example every August note with a different number).
+  const siblings = useSWR<{ rows: BlockerRow[] }>(
+    (isReview && row.rule_key) || (isReconciliation && row.item_id)
+      ? `/api/ton/financial-domain/normalizations/${scope.runId}/readiness/blockers/${category.blocker}?structure_version_id=${scope.version.id}&limit=100${isReconciliation ? `&period=${scope.period.scope.period}` : ""}${scope.unitId ? `&unit_id=${scope.unitId}` : ""}`
+      : null,
+    errorHandlingFetcher
+  );
+  const sameRule = (siblings.data?.rows ?? []).filter((item) =>
+    isReview
+      ? item.rule_key === row.rule_key && item.occurrence_id
+      : Boolean(item.item_id)
+  );
+  const batchLabel = isReview
+    ? DIALOG.applyToAll(
+        sameRule.length,
+        row.rule_title ?? rowTitle(row, category)
+      )
+    : DIALOG.applyToList(sameRule.length);
   const targetType = ["units", "budgetUnits"].includes(category.key)
     ? "units"
     : "accounts";
@@ -236,7 +381,10 @@ export default function DecisionDialog({
   const canEdit =
     category.key === "other"
       ? false
-      : isMapping || category.key === "budgetPeriods" || isReconciliation
+      : isMapping ||
+          category.key === "budgetPeriods" ||
+          isReconciliation ||
+          isReview
         ? access.canManage
         : access.canConfigure;
   // DRE classification changes the structure version, which readiness reads
@@ -252,7 +400,9 @@ export default function DecisionDialog({
           ? Boolean(startMonth)
           : isReconciliation
             ? Boolean(decision)
-            : false;
+            : isReview
+              ? Boolean(reviewDecision) && Boolean(authorization.trim())
+              : false;
   const busy = phase === "recording" || phase === "recomputing";
 
   const allTargets = [...createdTargets, ...(targets.data ?? [])];
@@ -289,6 +439,10 @@ export default function DecisionDialog({
       );
     if (isReconciliation && decision)
       return LOOP.preview.reconciliation(COPY.pending.decisions[decision]);
+    if (isReview && reviewDecision)
+      return LOOP.preview.review(
+        COPY.pending.reviewDecisions[reviewDecision] ?? reviewDecision
+      );
     return null;
   }
 
@@ -327,11 +481,42 @@ export default function DecisionDialog({
         effective_to: endMonth ? `${endMonth}-01` : null,
         reason,
       });
+    } else if (isReview && reviewDecision && row.occurrence_id) {
+      const targets =
+        applyToAll && sameRule.length > 1
+          ? sameRule.map((item) => item.occurrence_id as string)
+          : [row.occurrence_id];
+      for (const [index, occurrenceId] of targets.entries()) {
+        if (targets.length > 1)
+          setBatchProgress({ done: index, total: targets.length });
+        await postTonJson(
+          `/api/ton/financial-review/occurrences/${occurrenceId}/decisions`,
+          {
+            kind: reviewDecision,
+            reason,
+            authorization_reference: authorization.trim(),
+            justification_category:
+              reviewDecision === "JUSTIFY_EXCEPTION" ? justification : null,
+          }
+        );
+      }
+      setBatchProgress(null);
     } else if (decision && row.item_id) {
-      await postTonJson(
-        `/api/ton/financial-domain/normalizations/${scope.runId}/reconciliation/items/${row.item_id}/decision`,
-        { decision, reason }
-      );
+      const targets =
+        applyToAll && sameRule.length > 1
+          ? sameRule
+              .filter((item) => decision !== "NG_AUTHORITATIVE" || item.paired)
+              .map((item) => item.item_id as string)
+          : [row.item_id];
+      for (const [index, itemId] of targets.entries()) {
+        if (targets.length > 1)
+          setBatchProgress({ done: index, total: targets.length });
+        await postTonJson(
+          `/api/ton/financial-domain/normalizations/${scope.runId}/reconciliation/items/${itemId}/decision`,
+          { decision, reason }
+        );
+      }
+      setBatchProgress(null);
     }
   }
 
@@ -471,26 +656,7 @@ export default function DecisionDialog({
 
             {phase !== "result" && (
               <>
-                <Section title={DIALOG.found}>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Text font="main-ui-action" color="text-05">
-                      {rowTitle(row, category)}
-                    </Text>
-                    <StatusPill tone="warning">
-                      {getBusinessLabel(row.status)}
-                    </StatusPill>
-                  </div>
-                  {row.evidence && rowDetail(row, category) && (
-                    <Text font="main-ui-body" color="text-04">
-                      {rowDetail(row, category)}
-                    </Text>
-                  )}
-                  <Text font="secondary-body" color="text-03">
-                    {[COPY.pending.affected(row.record_count), rowPeriods(row)]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </Text>
-                </Section>
+                <FactCard row={row} category={category} />
 
                 <Explanation category={category} />
 
@@ -524,6 +690,7 @@ export default function DecisionDialog({
                   </section>
                 ) : (
                   !isReconciliation &&
+                  !isReview &&
                   !category.noActual && (
                     <Section title={DIALOG.suggestion}>
                       <Text font="main-ui-body" color="text-04">
@@ -700,28 +867,54 @@ export default function DecisionDialog({
                         {RECONCILIATION_DECISIONS.filter(
                           (value) => value !== "NG_AUTHORITATIVE" || row.paired
                         ).map((value) => (
-                          // Selectable option card: title plus what it means.
-                          <button
+                          <OptionCard
                             key={value}
-                            type="button"
-                            role="radio"
-                            aria-checked={decision === value}
-                            onClick={() => setDecision(value)}
-                            className={cn(
-                              "ton-focusable flex flex-col gap-0.5 rounded-12 border px-3 py-2 text-start",
-                              decision === value
-                                ? "border-action-selection-05 bg-background-tint-01"
-                                : "border-02 hover:bg-background-neutral-01"
-                            )}
-                          >
-                            <Text font="main-ui-action" color="text-05">
-                              {COPY.pending.decisions[value]}
-                            </Text>
-                            <Text font="secondary-body" color="text-03">
-                              {LOOP.explain.options[value]}
-                            </Text>
-                          </button>
+                            selected={decision === value}
+                            title={COPY.pending.decisions[value]}
+                            help={LOOP.explain.options[value]}
+                            onSelect={() => setDecision(value)}
+                          />
                         ))}
+                      </div>
+                    )}
+                    {isReview && (
+                      <div
+                        role="radiogroup"
+                        aria-label={DIALOG.decision}
+                        className="flex flex-col gap-2"
+                      >
+                        {REVIEW_DECISIONS.map((value) => (
+                          <OptionCard
+                            key={value}
+                            selected={reviewDecision === value}
+                            title={COPY.pending.reviewDecisions[value] ?? value}
+                            help={COPY.pending.reviewDecisionHelp[value] ?? ""}
+                            onSelect={() => setReviewDecision(value)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {isReview && reviewDecision === "JUSTIFY_EXCEPTION" && (
+                      <div className="flex flex-col gap-1.5">
+                        <Text font="secondary-action" color="text-04">
+                          {COPY.pending.justification.label}
+                        </Text>
+                        <div className="flex flex-wrap gap-2">
+                          {JUSTIFICATIONS.map((value) => (
+                            <Button
+                              key={value}
+                              size="sm"
+                              prominence={
+                                justification === value
+                                  ? "primary"
+                                  : "secondary"
+                              }
+                              onClick={() => setJustification(value)}
+                            >
+                              {COPY.pending.justification[value] ?? value}
+                            </Button>
+                          ))}
+                        </div>
                       </div>
                     )}
                     <label className="flex flex-col gap-1">
@@ -735,6 +928,60 @@ export default function DecisionDialog({
                         aria-label={DIALOG.reason}
                       />
                     </label>
+                    {(COPY.pending.quickReasons[category.key] ?? []).length >
+                      0 && (
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Text font="secondary-body" color="text-03">
+                          {DIALOG.quickReasons}
+                        </Text>
+                        {(COPY.pending.quickReasons[category.key] ?? []).map(
+                          (text) => (
+                            <button
+                              key={text}
+                              type="button"
+                              className="ton-chip ton-focusable"
+                              onClick={() => setReason(text)}
+                            >
+                              {text}
+                            </button>
+                          )
+                        )}
+                      </div>
+                    )}
+                    {(isReview || isReconciliation) && sameRule.length > 1 && (
+                      <label className="ton-apply-all flex items-start gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={applyToAll}
+                          onChange={(event) =>
+                            setApplyToAll(event.target.checked)
+                          }
+                        />
+                        <span className="flex flex-col gap-0.5">
+                          <Text font="main-ui-action" color="text-05">
+                            {batchLabel}
+                          </Text>
+                          <Text font="secondary-body" color="text-03">
+                            {DIALOG.applyToAllHint}
+                          </Text>
+                        </span>
+                      </label>
+                    )}
+                    {isReview && (
+                      <label className="flex flex-col gap-1">
+                        <Text font="secondary-action" color="text-04">
+                          {DIALOG.authorization}
+                        </Text>
+                        <InputTypeIn
+                          value={authorization}
+                          onChange={(event) =>
+                            setAuthorization(event.target.value)
+                          }
+                          placeholder={DIALOG.authorizationPlaceholder}
+                          aria-label={DIALOG.authorization}
+                        />
+                      </label>
+                    )}
                   </Section>
                 )}
 
@@ -758,10 +1005,12 @@ export default function DecisionDialog({
                       </Text>
                     )}
                     <Text font="secondary-body" color="text-04">
-                      {LOOP.preview.scope(
-                        plural(row.record_count, "registro", "registros"),
-                        rowPeriods(row)
-                      )}
+                      {applyToAll && sameRule.length > 1
+                        ? batchLabel
+                        : LOOP.preview.scope(
+                            plural(row.record_count, "registro", "registros"),
+                            rowPeriods(row)
+                          )}
                     </Text>
                     {phase !== "edit" && reason.trim() && (
                       <Text font="secondary-body" color="text-04">
@@ -778,7 +1027,12 @@ export default function DecisionDialog({
                   <LoadingBlock
                     label={
                       phase === "recording"
-                        ? LOOP.working.recording
+                        ? batchProgress
+                          ? DIALOG.recordingMany(
+                              batchProgress.done + 1,
+                              batchProgress.total
+                            )
+                          : LOOP.working.recording
                         : LOOP.working.recomputing
                     }
                     lines={1}

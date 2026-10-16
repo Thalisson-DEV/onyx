@@ -45,6 +45,10 @@ export function useDreWorkspace() {
   const [factType, setFactType] = useState<"ACTUAL" | "BUDGET">("ACTUAL");
   const [offset, setOffset] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
   const [calculation, setCalculation] = useState<
     "idle" | "failed" | "blocked" | "ready"
   >("idle");
@@ -150,28 +154,42 @@ export function useDreWorkspace() {
     setCalculation("idle");
   }
 
+  /** Calculates every month from January to the selected one, in order. */
   async function recalculate() {
     if (!normalizationId || !version.data || !periodValue || !unitId) return;
+    const [year, month] = periodValue.split("-").map(Number) as [
+      number,
+      number,
+    ];
+    const months = Array.from(
+      { length: month },
+      (_, index) => `${year}-${String(index + 1).padStart(2, "0")}-01`
+    );
     setBusy(true);
     setCalculation("idle");
     try {
-      const response = await fetch("/api/ton/dre/calculations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          normalization_run_id: normalizationId,
-          structure_version_id: version.data.id,
-          period: periodValue,
-          unit_id: unitId === CONSOLIDATED ? null : unitId,
-        }),
-      });
-      if (!response.ok) throw new Error(String(response.status));
-      const run: DreRun = await response.json();
-      setCalculation(run.status === "READY" ? "ready" : "blocked");
+      let last: DreRun | null = null;
+      for (const [index, value] of months.entries()) {
+        setProgress({ done: index, total: months.length });
+        const response = await fetch("/api/ton/dre/calculations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            normalization_run_id: normalizationId,
+            structure_version_id: version.data.id,
+            period: value,
+            unit_id: unitId === CONSOLIDATED ? null : unitId,
+          }),
+        });
+        if (!response.ok) throw new Error(String(response.status));
+        last = await response.json();
+      }
+      setCalculation(last?.status === "READY" ? "ready" : "blocked");
       await Promise.all([revisions.mutate(), overview.mutate()]);
     } catch {
       setCalculation("failed");
     } finally {
+      setProgress(null);
       setBusy(false);
     }
   }
@@ -244,6 +262,7 @@ export function useDreWorkspace() {
     busy,
     calculation,
     recalculate,
+    progress,
     exportCsv,
     exportExcel,
     select: {

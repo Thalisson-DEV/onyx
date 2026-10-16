@@ -225,7 +225,11 @@ function RecalculateButton({ dre }: { dre: DreWorkspace }) {
       disabled={dre.busy}
       onClick={() => void dre.recalculate()}
     >
-      {dre.busy ? COPY.dre.recalculating : COPY.dre.recalculate}
+      {dre.busy
+        ? dre.progress
+          ? COPY.dre.recalculatingMonth(dre.progress.done, dre.progress.total)
+          : COPY.dre.recalculating
+        : COPY.dre.recalculate}
     </Button>
   );
 }

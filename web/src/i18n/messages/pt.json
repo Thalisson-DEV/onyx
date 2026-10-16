@@ -4504,7 +4504,7 @@
           "message": "Falha na validação da chave de API"
         },
         "authMethod": {
-          "idle": "Escolha como o Onyx deve se autenticar no Google Vertex AI.",
+          "idle": "Escolha como o TON deve se autenticar no Google Vertex AI.",
           "label": "Método de autenticação",
           "required": "O método de autenticação é obrigatório",
           "serviceAccount": {
@@ -5180,7 +5180,7 @@
         "title": "Nova configuração de LLM temporariamente indisponível."
       },
       "defaultModel": {
-        "description": "Este modelo será usado pelo Onyx por padrão nos seus chats.",
+        "description": "Este modelo será usado pelo TON por padrão nos seus chats.",
         "title": "Modelo padrão"
       },
       "deleteModal": {
@@ -5194,7 +5194,7 @@
       },
       "groups": {
         "addProvider": {
-          "description": "O Onyx é compatível com provedores populares e modelos auto-hospedados.",
+          "description": "O TON é compatível com provedores populares e modelos auto-hospedados.",
           "title": "Adicionar provedor"
         },
         "gateways": {
@@ -5272,7 +5272,7 @@
               "description": "Para ambientes fora da AWS",
               "label": "Chave de acesso"
             },
-            "description": "Escolha como o Onyx deve se autenticar no Bedrock.",
+            "description": "Escolha como o TON deve se autenticar no Bedrock.",
             "iam": {
               "description": "Recomendado para ambientes da AWS",
               "label": "Função IAM do ambiente"
@@ -5284,7 +5284,7 @@
             "title": "Método de autenticação"
           },
           "iamNotice": {
-            "title": "O Onyx vai usar a função IAM associada ao ambiente em que está sendo executado para se autenticar."
+            "title": "O TON vai usar a função IAM associada ao ambiente em que está sendo executado para se autenticar."
           },
           "longTermApiKeyField": {
             "placeholder": "Sua chave de API de longo prazo",
@@ -5555,7 +5555,7 @@
         },
         "setup": {
           "apiBaseField": {
-            "containerizedNote": "Com o Onyx em execução em um contêiner, use `host.docker.internal` no lugar de `localhost` para alcançar um serviço no seu host.",
+            "containerizedNote": "Com o TON em execução em um contêiner, use `host.docker.internal` no lugar de `localhost` para alcançar um serviço no seu host.",
             "title": "URL base da API"
           },
           "apiKeyField": {
@@ -5608,7 +5608,7 @@
         },
         "vertexAi": {
           "authMethodField": {
-            "description": "Escolha como o Onyx deve se autenticar no Google Vertex AI.",
+            "description": "Escolha como o TON deve se autenticar no Google Vertex AI.",
             "serviceAccount": {
               "description": "Envie um arquivo JSON de chave de conta de serviço do GCP",
               "label": "JSON da conta de serviço"
@@ -5637,7 +5637,7 @@
             "projectRequired": "O ID do projeto do GCP é obrigatório"
           },
           "workloadIdentityNotice": {
-            "title": "O Onyx vai usar as credenciais ambientes do Google Cloud no pod (via google.auth.default). Confirme que a ServiceAccount do Kubernetes está vinculada a uma conta de serviço do GCP com acesso ao Vertex AI."
+            "title": "O TON vai usar as credenciais ambientes do Google Cloud no pod (via google.auth.default). Confirme que a ServiceAccount do Kubernetes está vinculada a uma conta de serviço do GCP com acesso ao Vertex AI."
           }
         }
       },
@@ -13153,7 +13153,7 @@
         "title": "Modo padrão do aplicativo"
       },
       "defaultModel": {
-        "description": "Este modelo será usado pelo Onyx por padrão nos seus chats.",
+        "description": "Este modelo será usado pelo TON por padrão nos seus chats.",
         "title": "Modelo padrão"
       },
       "defaultReasoningLevel": {

@@ -12,6 +12,7 @@ import { errorHandlingFetcher } from "@/lib/fetcher";
 import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/lib/types";
 import { COPY, formatNumber } from "@/lib/ton/copy";
+import { SHOW_UPSTREAM_SCREENS } from "@/lib/ton/product-surface";
 import { IMPORT_DIAGNOSTIC_KEYS } from "@/lib/ton/import-diagnostics";
 import { useUser } from "@/providers/UserProvider";
 import { TonStatusTag } from "@/views/ton/components/TonStatusTag";
@@ -466,16 +467,18 @@ export function ImportDetail({ result }: { result: ClientImport }) {
         </Text>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button
-          href={
-            result.readiness_run_id
-              ? `/admin/financial-readiness?normalization=${result.readiness_run_id}`
-              : "/admin/financial-readiness"
-          }
-          prominence="secondary"
-        >
-          {t("readiness")}
-        </Button>
+        {SHOW_UPSTREAM_SCREENS && (
+          <Button
+            href={
+              result.readiness_run_id
+                ? `/admin/financial-readiness?normalization=${result.readiness_run_id}`
+                : "/admin/financial-readiness"
+            }
+            prominence="secondary"
+          >
+            {t("readiness")}
+          </Button>
+        )}
         <Button href="/ton/dre" prominence="secondary">
           {t("dre")}
         </Button>

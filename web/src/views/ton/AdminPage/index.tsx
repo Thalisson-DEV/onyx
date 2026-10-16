@@ -13,6 +13,7 @@ import {
   SvgCalendar,
   SvgChevronRight,
   SvgClipboard,
+  SvgCpu,
   SvgFileText,
   SvgFilter,
   SvgServer,
@@ -25,6 +26,7 @@ import {
 import type { IconFunctionComponent } from "@opal/types";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { getFirstPermittedAdminRoute } from "@/lib/permissions";
+import { useAdminLLMProviders } from "@/lib/languageModels/hooks";
 import { useUser } from "@/providers/UserProvider";
 import {
   useTonDataSources,
@@ -37,6 +39,7 @@ import {
   useClassificationTable,
 } from "@/lib/ton/classification";
 import { COPY, formatRelativeDateTime } from "@/lib/ton/copy";
+import { SHOW_UPSTREAM_SCREENS } from "@/lib/ton/product-surface";
 import { TREATMENTS_COPY, useTreatmentTable } from "@/lib/ton/treatments";
 import {
   CardHeader,
@@ -115,6 +118,7 @@ function AdminEntry({
 export default function TonAdminPage() {
   const { hasAdminAccess, adminCapabilities } = useUser();
   const sources = useTonDataSources();
+  const llm = useAdminLLMProviders();
   const specialists = useTonSpecialists();
   const reports = useTonReportGroups();
   const persona = useTonPersona();
@@ -166,13 +170,15 @@ export default function TonAdminPage() {
           {COPY.admin.productSection}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <AdminEntry
-            icon={SvgUsers}
-            title={COPY.admin.access.title}
-            description={COPY.admin.access.description}
-            href={"/admin/users" as Route}
-            technical
-          />
+          {SHOW_UPSTREAM_SCREENS && (
+            <AdminEntry
+              icon={SvgUsers}
+              title={COPY.admin.access.title}
+              description={COPY.admin.access.description}
+              href={"/admin/users" as Route}
+              technical
+            />
+          )}
           <AdminEntry
             icon={SvgServer}
             title={COPY.admin.sources.title}
@@ -189,6 +195,23 @@ export default function TonAdminPage() {
                     label: COPY.admin.sources.status(
                       current.length,
                       configured.length
+                    ),
+                  }
+                : null
+            }
+          />
+          <AdminEntry
+            icon={SvgCpu}
+            title={COPY.admin.models.title}
+            description={COPY.admin.models.description}
+            href={"/ton/administracao/modelos" as Route}
+            status={
+              llm.llmProviders
+                ? {
+                    tone: llm.llmProviders.length ? "success" : "warning",
+                    label: COPY.admin.models.status(
+                      llm.llmProviders.length,
+                      llm.defaultText?.model_name ?? null
                     ),
                   }
                 : null
@@ -271,20 +294,24 @@ export default function TonAdminPage() {
                 : null
             }
           />
-          <AdminEntry
-            icon={SvgShield}
-            title={COPY.admin.readiness.title}
-            description={COPY.admin.readiness.description}
-            href={"/admin/financial-readiness" as Route}
-            technical
-          />
-          <AdminEntry
-            icon={SvgClipboard}
-            title={COPY.admin.dre.title}
-            description={COPY.admin.dre.description}
-            href={"/admin/dre" as Route}
-            technical
-          />
+          {SHOW_UPSTREAM_SCREENS && (
+            <AdminEntry
+              icon={SvgShield}
+              title={COPY.admin.readiness.title}
+              description={COPY.admin.readiness.description}
+              href={"/admin/financial-readiness" as Route}
+              technical
+            />
+          )}
+          {SHOW_UPSTREAM_SCREENS && (
+            <AdminEntry
+              icon={SvgClipboard}
+              title={COPY.admin.dre.title}
+              description={COPY.admin.dre.description}
+              href={"/admin/dre" as Route}
+              technical
+            />
+          )}
           <AdminEntry
             icon={SvgFileText}
             title={COPY.admin.reports.title}
@@ -339,34 +366,36 @@ export default function TonAdminPage() {
         {decisions.data && <DecisionLogList entries={decisions.data.entries} />}
       </TonCard>
 
-      <section
-        aria-labelledby="ton-admin-technical"
-        className="ton-card flex flex-col sm:flex-row sm:items-center gap-4 p-5"
-      >
-        <IconTile icon={SvgServer} tone="neutral" size="lg" />
-        <div className="flex flex-col gap-1 min-w-0 flex-1">
-          <Text
-            as="h2"
-            id="ton-admin-technical"
-            font="heading-h3"
-            color="text-05"
-          >
-            {COPY.admin.technical.title}
-          </Text>
-          <Text as="p" font="secondary-body" color="text-03">
-            {COPY.admin.technical.description}
-          </Text>
-        </div>
-        <Link
-          href={technicalRoute}
-          className="ton-focusable ton-brand-text flex items-center gap-1 shrink-0 rounded-08 px-1"
+      {SHOW_UPSTREAM_SCREENS && (
+        <section
+          aria-labelledby="ton-admin-technical"
+          className="ton-card flex flex-col sm:flex-row sm:items-center gap-4 p-5"
         >
-          <Text font="secondary-action" color="inherit">
-            {COPY.admin.technical.open}
-          </Text>
-          <SvgArrowUpRight size={14} />
-        </Link>
-      </section>
+          <IconTile icon={SvgServer} tone="neutral" size="lg" />
+          <div className="flex flex-col gap-1 min-w-0 flex-1">
+            <Text
+              as="h2"
+              id="ton-admin-technical"
+              font="heading-h3"
+              color="text-05"
+            >
+              {COPY.admin.technical.title}
+            </Text>
+            <Text as="p" font="secondary-body" color="text-03">
+              {COPY.admin.technical.description}
+            </Text>
+          </div>
+          <Link
+            href={technicalRoute}
+            className="ton-focusable ton-brand-text flex items-center gap-1 shrink-0 rounded-08 px-1"
+          >
+            <Text font="secondary-action" color="inherit">
+              {COPY.admin.technical.open}
+            </Text>
+            <SvgArrowUpRight size={14} />
+          </Link>
+        </section>
+      )}
     </PageContainer>
   );
 }

@@ -16,6 +16,21 @@ const PROTECTED_ROUTES = ["/admin", "/agents", "/connector"];
 // Public route prefixes (no authentication required)
 const PUBLIC_ROUTES = ["/auth", "/anonymous", "/_next", "/api"];
 
+// TON is the only product surface. Every other page (the upstream chat, agents,
+// admin panel, craft…) redirects to /ton. The operator can reopen them for
+// maintenance with TON_UPSTREAM_SCREENS_ENABLED=true (runtime, no rebuild).
+const upstreamScreensEnabled =
+  process.env.TON_UPSTREAM_SCREENS_ENABLED?.toLowerCase() === "true";
+const TON_SURFACE_ROUTES = ["/ton", "/auth", "/api", "/_next", "/ph_ingest"];
+
+function isTonSurface(pathname: string): boolean {
+  // Files served from /public (logos, manifest, robots.txt) carry an extension.
+  if (/\.[a-z0-9]+$/i.test(pathname)) return true;
+  return TON_SURFACE_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+}
+
 // The CSP is emitted here, not in next.config.js `headers()` (which is baked
 // into the build), so WEB_FRAME_PROTECTION_ENABLED is read at runtime and
 // applies on restart without a rebuild.
@@ -123,6 +138,12 @@ function withSecurityHeaders(response: NextResponse): NextResponse {
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  if (!upstreamScreensEnabled && !isTonSurface(pathname)) {
+    return withSecurityHeaders(
+      NextResponse.redirect(new URL("/ton", request.url))
+    );
+  }
 
   // Auth Check: Fast-fail at edge if no cookie (defense in depth)
   // Note: Layouts still do full verification (token validity, roles, etc.)

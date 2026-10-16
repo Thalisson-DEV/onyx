@@ -1462,7 +1462,7 @@ export const COPY = {
     eyebrow: "Configuração",
     title: "Administração do TON",
     description:
-      "Acesso, fontes, automações e controles do produto para a Vale Norte. Configurações de infraestrutura ficam na administração técnica.",
+      "Fontes, automações e controles do produto para a Vale Norte.",
     productSection: "Produto",
     technicalBadge: "Técnica",
     technicalHint: "Abre na administração técnica",
@@ -1494,6 +1494,20 @@ export const COPY = {
         "Disponibilidade dos nove especialistas e as fontes de que cada um depende.",
       status: (active: number, total: number) =>
         `${formatNumber(active)} de ${formatNumber(total)} atuando`,
+    },
+    models: {
+      title: "Provedor de IA",
+      description:
+        "Qual serviço de IA o assistente do TON usa, as chaves de acesso e o modelo padrão.",
+      eyebrow: "Administração",
+      pageDescription:
+        "Conecte um provedor (OpenAI, Anthropic, Google, Azure e outros), escolha os modelos disponíveis e o modelo padrão do assistente.",
+      status: (count: number, model: string | null) =>
+        count === 0
+          ? "Nenhum provedor configurado"
+          : model
+            ? `Padrão: ${model}`
+            : plural(count, "provedor configurado", "provedores configurados"),
     },
     readiness: {
       title: "Controles de prontidão financeira",

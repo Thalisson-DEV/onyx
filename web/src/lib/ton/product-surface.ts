@@ -45,6 +45,14 @@ export const SHOW_COMMERCE_SURFACES = false;
 export const SHOW_BUILDER_PRODUCT_ENTRY = false;
 
 /**
+ * Links from the TON shell into the inherited upstream screens (chat, agents,
+ * the technical admin panel). The routes themselves are closed at the edge by
+ * `web/src/proxy.ts` unless the operator sets TON_UPSTREAM_SCREENS_ENABLED=true
+ * at runtime; this flag only keeps the TON screens from linking to them.
+ */
+export const SHOW_UPSTREAM_SCREENS = false;
+
+/**
  * TON ships in Brazilian Portuguese only. The request locale is pinned to this
  * value and the language picker is hidden. The next-intl catalogs stay as the
  * rendering mechanism for inherited screens; TON screens use `lib/ton/copy`.

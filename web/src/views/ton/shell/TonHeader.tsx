@@ -34,6 +34,7 @@ import {
 } from "@/lib/ton/api";
 import { COPY, formatRelativeDateTime } from "@/lib/ton/copy";
 import { getFirstPermittedAdminRoute } from "@/lib/permissions";
+import { SHOW_UPSTREAM_SCREENS } from "@/lib/ton/product-surface";
 import { readSeenAt, useTonActivity, writeSeenAt } from "@/lib/ton/activity";
 import TonCommandMenu from "@/views/ton/shell/TonCommandMenu";
 
@@ -164,7 +165,7 @@ function AccountMenu() {
                 href="/ton/administracao"
               />
             ),
-            adminRoute && (
+            adminRoute && SHOW_UPSTREAM_SCREENS && (
               <LineItemButton
                 key="technical"
                 sizePreset="main-ui"

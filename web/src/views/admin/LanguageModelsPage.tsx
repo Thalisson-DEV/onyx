@@ -102,110 +102,110 @@ function ExistingProviderCard({
   return (
     <>
       {isOpen && (
-        <Modal existingLlmProvider={provider} onOpenChange={setIsOpen} />
+    <Modal existingLlmProvider={provider} onOpenChange={setIsOpen} />
       )}
 
       {deleteModal.isOpen && (
-        <ConfirmationModalLayout
-          icon={SvgTrash}
-          title={markdown(
-            t("deleteModal.title", { provider: providerDisplayName(provider) })
-          )}
-          onClose={() => deleteModal.toggle(false)}
-          submit={
-            <Button
-              variant="danger"
-              onClick={handleDelete}
-              disabled={isDefault && !isLastProvider}
-            >
-              {t("deleteModal.submit.label")}
-            </Button>
-          }
+    <ConfirmationModalLayout
+      icon={SvgTrash}
+      title={markdown(
+        t("deleteModal.title", { provider: providerDisplayName(provider) })
+      )}
+      onClose={() => deleteModal.toggle(false)}
+      submit={
+        <Button
+          variant="danger"
+          onClick={handleDelete}
+          disabled={isDefault && !isLastProvider}
         >
-          <Section alignItems="start" gap={2}>
-            {isDefault && !isLastProvider ? (
+          {t("deleteModal.submit.label")}
+        </Button>
+      }
+    >
+      <Section alignItems="start" gap={2}>
+        {isDefault && !isLastProvider ? (
+          <Text font="main-ui-body" color="text-03">
+            {t("deleteModal.defaultProviderWarning")}
+          </Text>
+        ) : (
+          <>
+            <Text font="main-ui-body" color="text-03">
+              {markdown(
+                t("deleteModal.description", {
+                  provider: providerDisplayName(provider),
+                })
+              )}
+            </Text>
+            {isLastProvider && (
               <Text font="main-ui-body" color="text-03">
-                {t("deleteModal.defaultProviderWarning")}
+                {t("deleteModal.lastProviderNote")}
               </Text>
-            ) : (
-              <>
-                <Text font="main-ui-body" color="text-03">
-                  {markdown(
-                    t("deleteModal.description", {
-                      provider: providerDisplayName(provider),
-                    })
-                  )}
-                </Text>
-                {isLastProvider && (
-                  <Text font="main-ui-body" color="text-03">
-                    {t("deleteModal.lastProviderNote")}
-                  </Text>
-                )}
-              </>
             )}
-          </Section>
-        </ConfirmationModalLayout>
+          </>
+        )}
+      </Section>
+    </ConfirmationModalLayout>
       )}
 
       <Hoverable.Root
-        group="ExistingProviderCard"
-        interaction={deleteModal.isOpen ? "hover" : "rest"}
+    group="ExistingProviderCard"
+    interaction={deleteModal.isOpen ? "hover" : "rest"}
       >
-        <SelectCard
-          state="filled"
-          padding={2}
-          rounding={4}
-          // A name to select the card by. The Edit and Delete buttons inside
-          // are labelled "Edit <name>" / "Delete <name>", so an exact match on
-          // the bare name reaches the card alone.
-          aria-label={providerDisplayName(provider)}
-          onClick={() => setIsOpen(true)}
-        >
-          <ContentAction
-            icon={icon}
-            title={providerDisplayName(provider)}
-            description={companyName}
-            sizePreset="main-ui"
-            variant="section"
-            padding={2}
-            tag={
-              isDefault
-                ? { title: t("providerCard.defaultTag.label"), color: "blue" }
-                : undefined
-            }
-            rightChildren={
-              <div className="flex flex-row">
-                <Hoverable.Item
-                  group="ExistingProviderCard"
-                  variant="appear-on-hover"
-                >
-                  <Button
-                    icon={SvgTrash}
-                    prominence="tertiary"
-                    aria-label={t("providerCard.deleteButton.ariaLabel", {
-                      provider: providerDisplayName(provider),
-                    })}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteModal.toggle(true);
-                    }}
-                  />
-                </Hoverable.Item>
-                <Button
-                  icon={SvgSettings}
-                  prominence="tertiary"
-                  aria-label={t("providerCard.editButton.ariaLabel", {
-                    provider: providerDisplayName(provider),
-                  })}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsOpen(true);
-                  }}
-                />
-              </div>
-            }
-          />
-        </SelectCard>
+    <SelectCard
+      state="filled"
+      padding={2}
+      rounding={4}
+      // A name to select the card by. The Edit and Delete buttons inside
+      // are labelled "Edit <name>" / "Delete <name>", so an exact match on
+      // the bare name reaches the card alone.
+      aria-label={providerDisplayName(provider)}
+      onClick={() => setIsOpen(true)}
+    >
+      <ContentAction
+        icon={icon}
+        title={providerDisplayName(provider)}
+        description={companyName}
+        sizePreset="main-ui"
+        variant="section"
+        padding={2}
+        tag={
+          isDefault
+            ? { title: t("providerCard.defaultTag.label"), color: "blue" }
+            : undefined
+        }
+        rightChildren={
+          <div className="flex flex-row">
+            <Hoverable.Item
+              group="ExistingProviderCard"
+              variant="appear-on-hover"
+            >
+              <Button
+                icon={SvgTrash}
+                prominence="tertiary"
+                aria-label={t("providerCard.deleteButton.ariaLabel", {
+                  provider: providerDisplayName(provider),
+                })}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteModal.toggle(true);
+                }}
+              />
+            </Hoverable.Item>
+            <Button
+              icon={SvgSettings}
+              prominence="tertiary"
+              aria-label={t("providerCard.editButton.ariaLabel", {
+                provider: providerDisplayName(provider),
+              })}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsOpen(true);
+              }}
+            />
+          </div>
+        }
+      />
+    </SelectCard>
       </Hoverable.Root>
     </>
   );
@@ -322,12 +322,17 @@ function NewCustomProviderCard({
 }
 
 // ============================================================================
-// LanguageModelsPage — main page component
+// LanguageModelsSettings — page body, also mounted inside the TON shell
 // ============================================================================
 
-export default function LanguageModelsPage() {
+interface LanguageModelsSettingsProps {
+  showCostOverrides?: boolean;
+}
+
+export function LanguageModelsSettings({
+  showCostOverrides = true,
+}: LanguageModelsSettingsProps) {
   const t = useTranslations("admin.languageModels");
-  const adminRouteTitle = useAdminRouteTitle();
   const { mutate } = useSWRConfig();
   const settings = useSettings();
   // Optimistic value while the save is in flight. It also locks the switch so
@@ -454,14 +459,7 @@ export default function LanguageModelsPage() {
   }
 
   return (
-    <SettingsLayouts.Root>
-      <SettingsLayouts.Header
-        icon={route.icon}
-        title={adminRouteTitle(route)}
-        divider
-      />
-
-      <SettingsLayouts.Body>
+    <>
         {hasProviders ? (
           <Card border="solid" rounding={4}>
             <Section alignItems="stretch">
@@ -594,10 +592,35 @@ export default function LanguageModelsPage() {
           </div>
         </Disabled>
 
-        <Divider paddingParallel={0} paddingPerpendicular={0} />
+        {showCostOverrides && (
+          <>
+            <Divider paddingParallel={0} paddingPerpendicular={0} />
 
-        {/* ── Cost Overrides — negotiated per-model rates for usage costing ── */}
-        <CostOverridesPanel />
+            {/* ── Cost Overrides — negotiated per-model rates for usage costing ── */}
+            <CostOverridesPanel />
+          </>
+        )}
+    </>
+  );
+}
+
+// ============================================================================
+// LanguageModelsPage — main page component
+// ============================================================================
+
+export default function LanguageModelsPage() {
+  const adminRouteTitle = useAdminRouteTitle();
+
+  return (
+    <SettingsLayouts.Root>
+      <SettingsLayouts.Header
+        icon={route.icon}
+        title={adminRouteTitle(route)}
+        divider
+      />
+
+      <SettingsLayouts.Body>
+        <LanguageModelsSettings />
       </SettingsLayouts.Body>
     </SettingsLayouts.Root>
   );

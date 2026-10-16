@@ -34,6 +34,7 @@ import {
 import TonMark from "@/views/ton/chat/TonMark";
 import SpecialistMark from "@/views/ton/chat/SpecialistMark";
 import DataPreviewView from "@/views/ton/chat/DataPreviewView";
+import TonCodeBlock from "@/views/ton/chat/TonCodeBlock";
 
 const WORK = COPY.work;
 
@@ -235,9 +236,10 @@ function PythonStep({
       </div>
       {view !== "none" && (
         <div className="ton-query-detail">
-          <pre className="ton-code">
-            {view === "output" ? step.output : step.code}
-          </pre>
+          <TonCodeBlock
+            kind={view === "output" ? "output" : "python"}
+            text={view === "output" ? step.output : step.code}
+          />
         </div>
       )}
     </>

@@ -1,4 +1,11 @@
-import React, { memo, JSX, useMemo, useCallback } from "react";
+import React, {
+  createContext,
+  memo,
+  JSX,
+  useCallback,
+  useContext,
+  useMemo,
+} from "react";
 import { extractChatImageFileId } from "@/app/app/components/files/images/utils";
 import type { ExtraProps } from "react-markdown";
 import { SourceIcon } from "@/components/SourceIcon";
@@ -18,6 +25,16 @@ import {
 import { openDocument } from "@/lib/search/utils";
 import { ensureHrefProtocol } from "@/lib/utils";
 import { useTranslations } from "next-intl";
+import ChatFileCard from "@/app/app/message/ChatFileCard";
+
+const CHAT_FILE_PATH = "/api/chat/file/";
+
+/**
+ * True inside a paragraph that holds only generated-file links (the assistant
+ * lists its outputs as `[a.pdf](…) · [b.png](…)`). Those links render as file
+ * cards; a file link inside running prose stays an inline link.
+ */
+const ChatFileBlockContext = createContext(false);
 
 interface DocumentCardProps {
   document: OnyxDocument;
@@ -143,6 +160,7 @@ export const MemoizedLink = memo(
       children?: React.ReactNode;
     }) => {
     const t = useTranslations("chat.messages");
+    const inFileBlock = useContext(ChatFileBlockContext);
     const value = rest.children;
 
     // Convert document to SourceInfo for SourceTag
@@ -197,6 +215,20 @@ export const MemoizedLink = memo(
     if (isChatFile && updatePresentingDocument) {
       const fileId = url!.split("/api/chat/file/")[1]?.split(/[?#]/)[0] || "";
       const filename = value?.toString() || "download";
+      if (inFileBlock) {
+        return (
+          <ChatFileCard
+            fileId={fileId}
+            fileName={filename}
+            onOpen={() =>
+              updatePresentingDocument({
+                document_id: fileId,
+                semantic_identifier: filename,
+              })
+            }
+          />
+        );
+      }
       return (
         <button
           type="button"
@@ -265,12 +297,48 @@ function containsImage(node: MarkdownNode | undefined): boolean {
   );
 }
 
+const SEPARATOR_ONLY = /^[\s·•|,;–-]*$/;
+
+function isChatFileLink(node: MarkdownNode): boolean {
+  return (
+    node.type === "element" &&
+    node.tagName === "a" &&
+    typeof node.properties?.href === "string" &&
+    node.properties.href.includes(CHAT_FILE_PATH)
+  );
+}
+
+/** A paragraph made only of chat-file links and separators like " · ". */
+function isFileList(node: MarkdownNode | undefined): boolean {
+  const children = node?.children ?? [];
+  return (
+    children.some(isChatFileLink) &&
+    children.every(
+      (child) =>
+        isChatFileLink(child) ||
+        (child.type === "text" && SEPARATOR_ONLY.test(child.value ?? ""))
+    )
+  );
+}
+
 export const MemoizedParagraph = memo(function MemoizedParagraph({
   className,
   dir,
   children,
   node,
 }: MemoizedParagraphProps) {
+  if (isFileList(node)) {
+    return (
+      <ChatFileBlockContext.Provider value>
+        <div dir={dir} className="flex flex-col gap-2 my-1">
+          {React.Children.toArray(children).filter(
+            (child) =>
+              !(typeof child === "string" && SEPARATOR_ONLY.test(child))
+          )}
+        </div>
+      </ChatFileBlockContext.Provider>
+    );
+  }
   // Images render as block previews, which a <p> may not contain.
   if (containsImage(node)) {
     return (

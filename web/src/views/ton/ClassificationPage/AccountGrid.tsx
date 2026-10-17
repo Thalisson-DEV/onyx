@@ -186,14 +186,14 @@ function ChangeRow({
             autoFocus
             onChange={(event) => onReason(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" && draft.reason.trim().length >= 3) onSave();
+              if (event.key === "Enter") onSave();
               if (event.key === "Escape") onCancel();
             }}
           />
         </div>
         <Button
           size="sm"
-          disabled={busy || draft.reason.trim().length < 3}
+          disabled={busy}
           onClick={onSave}
         >
           {busy ? COPY.saving : COPY.change.save}

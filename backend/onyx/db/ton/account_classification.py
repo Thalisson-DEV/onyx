@@ -588,12 +588,15 @@ def confirm_classification(
     )
 
 
+DEFAULT_CHANGE_REASON = "Natureza alterada pela Controladoria"
+
+
 def change_classification(
     session: Session, user: User, source_id: UUID, request: ClassificationChange
 ) -> AccountClassificationReview:
     """New natureza for a code: a new mapping version plus a confirmed review."""
     _require_admin(user)
-    reason = request.reason.strip()
+    reason = request.reason.strip() or DEFAULT_CHANGE_REASON
     mapping = create_mapping(
         session,
         user,
@@ -928,7 +931,11 @@ def create_nature(session: Session, user: User, request: NatureCreate) -> Nature
         DreVersionCreate(
             lines=sorted(shifted, key=lambda line: line.position),
             assignments=assignments,
-            reason=f"Nova natureza {name}: {request.reason.strip()}"[:500],
+            reason=(
+                f"Nova natureza {name}: {request.reason.strip()}"
+                if request.reason.strip()
+                else f"Nova natureza {name}"
+            )[:500],
         ),
     )
     return NatureView(

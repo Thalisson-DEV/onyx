@@ -209,7 +209,7 @@ export const CLASSIFICATION_COPY = {
   change: {
     title: (from: string | null, to: string) =>
       from ? `Mudar de ${from} para ${to}` : `Classificar como ${to}`,
-    reason: "Justificativa",
+    reason: "Justificativa (opcional)",
     quickReasons: [
       "Conforme o Banco de Dados da Controladoria",
       "Decisão da Controladoria",
@@ -236,7 +236,7 @@ export const CLASSIFICATION_COPY = {
     name: "Nome",
     namePlaceholder: "Ex.: BENEFÍCIOS A EMPREGADOS",
     group: "Grupo da DRE",
-    reason: "Por que criar",
+    reason: "Por que criar (opcional)",
     save: "Criar natureza",
     created: (name: string) => `Natureza ${name} criada.`,
     failed:

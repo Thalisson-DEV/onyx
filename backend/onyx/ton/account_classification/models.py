@@ -108,7 +108,8 @@ class ClassificationConfirm(BaseModel):
 class ClassificationChange(BaseModel):
     account_code: str = Field(min_length=1, max_length=100)
     account_id: UUID
-    reason: str = Field(min_length=3, max_length=500)
+    # Optional: the Controladoria asked not to be forced to explain each change.
+    reason: str = Field("", max_length=500)
 
 
 class ClassificationConfirmBatch(BaseModel):
@@ -121,7 +122,7 @@ class NatureCreate(BaseModel):
 
     natureza: str = Field(min_length=2, max_length=100)
     dre_group_code: str = Field(min_length=1, max_length=100)
-    reason: str = Field(min_length=3, max_length=500)
+    reason: str = Field("", max_length=500)
 
 
 class EntryView(BaseModel):

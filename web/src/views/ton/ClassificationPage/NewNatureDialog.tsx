@@ -39,7 +39,7 @@ export default function NewNatureDialog({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const ready =
-    name.trim().length >= 2 && group !== "" && reason.trim().length >= 3;
+    name.trim().length >= 2 && group !== "";
 
   async function save() {
     setBusy(true);

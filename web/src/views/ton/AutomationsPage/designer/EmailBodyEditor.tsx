@@ -376,7 +376,7 @@ export default function EmailBodyEditor({ open, node, definition, catalog, autom
       <Modal.Content width="full" height="full">
         <Modal.Header icon={SvgMail} title={C.title} description={asText(node.params.subject) || undefined} onClose={onClose} />
         <Modal.Body twoTone={false}>
-          <div className="ton-email-composer">
+          <div className="w-full ton-email-composer">
             <div className="ton-email-composer-main">
               <ExpressionInput
                 value={asText(node.params.subject)}

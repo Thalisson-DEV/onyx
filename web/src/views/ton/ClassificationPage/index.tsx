@@ -105,9 +105,12 @@ function Actions({
   const [busy, setBusy] = useState(false);
   const open = table.rows.filter(isOpen);
   const agreeing = open.filter(agrees);
+  // Re-analysing accounts that already have a suggestion takes minutes and
+  // rarely changes the answer: ask only about the ones without one.
+  const unsuggested = open.filter((row) => !row.suggestion);
 
   async function suggest() {
-    const codes = open.map((row) => row.account_code);
+    const codes = unsuggested.map((row) => row.account_code);
     const queue: string[][] = [];
     for (let index = 0; index < codes.length; index += CHUNK) {
       queue.push(codes.slice(index, index + CHUNK));
@@ -196,7 +199,7 @@ function Actions({
           {COPY.batch(agreeing.length)}
         </Button>
       )}
-      {open.length > 0 && (
+      {unsuggested.length > 0 && (
         <Button
           size="sm"
           prominence="secondary"
@@ -205,8 +208,8 @@ function Actions({
           onClick={() => void suggest()}
         >
           {progress !== null
-            ? COPY.suggesting(progress, open.length)
-            : COPY.suggest}
+            ? COPY.suggesting(progress, unsuggested.length)
+            : COPY.suggestFor(unsuggested.length)}
         </Button>
       )}
     </span>

@@ -40,6 +40,7 @@ import {
 } from "@/lib/ton/classification";
 import { COPY, formatRelativeDateTime } from "@/lib/ton/copy";
 import { SHOW_UPSTREAM_SCREENS } from "@/lib/ton/product-surface";
+import { summarizeSources } from "@/lib/ton/sources";
 import { TREATMENTS_COPY, useTreatmentTable } from "@/lib/ton/treatments";
 import {
   CardHeader,
@@ -143,8 +144,9 @@ export default function TonAdminPage() {
 
   const technicalRoute = (getFirstPermittedAdminRoute(adminCapabilities) ||
     "/admin/language-models") as Route;
-  const configured = sources.data?.filter((source) => source.source_id) ?? [];
-  const current = configured.filter((source) => source.status === "CURRENT");
+  const summary = summarizeSources(sources.data ?? []);
+  const current = summary.imported;
+  const configured = summary.required;
   const decisions = useDecisionLog();
   const operational = (specialists.data ?? []).filter(
     (item) => specialistTone(item.status) !== "neutral"

@@ -24,3 +24,18 @@ export const IMPORT_DIAGNOSTIC_KEYS = {
   FORMULA_CACHE_MISSING: "formulaCacheMissing",
   COMPETENCE_YEAR_GAP: "competenceYearGap",
 } as const;
+
+// Structure the reader handled on its own: sheets outside January–December,
+// summary rows and repeated headers. Shown as notes, never as pending items.
+const INFORMATIONAL = new Set<string>([
+  "SHEET_OUT_OF_SCOPE",
+  "MONTH_SHEET_EMPTY",
+  "ACCOUNT_SECTION_REPEATED",
+  "PARENT_ROW_WITHOUT_CHILD_MATCH",
+  "CHILD_ROW_WITHOUT_PARENT_MATCH",
+  "CELL_OUTSIDE_CONTRACT",
+]);
+
+export function isInformationalDiagnostic(code: string): boolean {
+  return INFORMATIONAL.has(code);
+}

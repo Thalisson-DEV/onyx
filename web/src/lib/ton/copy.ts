@@ -160,8 +160,10 @@ export const COPY = {
     demo: "Ambiente de demonstração — dados sintéticos",
     demoShort: "Demonstração",
     demoTiny: "Demo",
-    sourcesCurrent: "Fontes atualizadas",
-    sourcesAttention: "Fontes exigem atenção",
+    sourcesCurrent: "Fontes importadas",
+    sourcesMissing: (imported: number, total: number) =>
+      `${formatNumber(imported)}/${formatNumber(total)} fontes importadas`,
+    sourcesAttention: "Fontes com linhas rejeitadas",
     sourcesLastImport: (date: string) => `Última importação: ${date}`,
     account: "Conta",
     preferences: "Preferências",
@@ -252,8 +254,8 @@ export const COPY = {
       sources: "Fontes",
       sourcesDetail: (count: number) =>
         count === 1
-          ? "1 fonte atualizada por arquivo"
-          : `${formatNumber(count)} fontes atualizadas por arquivo`,
+          ? "1 fonte da DRE importada"
+          : `${formatNumber(count)} fontes da DRE importadas`,
       nextAutomation: "Próxima automação",
       nextAutomationNone: "Nenhuma automação agendada",
     },
@@ -708,7 +710,8 @@ export const COPY = {
     owner: (owner: string) => `Responsável: ${owner}`,
     deadline: (date: string) => `Prazo: ${date}`,
     sourceFailed: (name: string) => `Importação falhou — ${name}`,
-    sourceAttention: (name: string) => `Importação com avisos — ${name}`,
+    sourceAttention: (name: string) =>
+      `Linhas rejeitadas na importação — ${name}`,
     overdue: (reference: string) => `Ocorrência ${reference} com prazo vencido`,
     overduePrompt: (reference: string) =>
       `Mostre a ocorrência ${reference}: o que foi detectado, o responsável, o prazo e o critério de verificação.`,
@@ -1120,6 +1123,12 @@ export const COPY = {
       check: "Ver o que muda",
       confirm: "Confirmar importação",
       title: "O que muda com este arquivo",
+      billingRecords: (imported: number, rejected: number) =>
+        `${formatNumber(imported)} notas lidas · ${formatNumber(rejected)} rejeitadas`,
+      previousImport: (count: number) =>
+        `Na importação anterior: ${formatNumber(count)} notas.`,
+      billingOnly:
+        "O faturamento não muda os lançamentos da DRE. Ele serve para conferir as notas com o NG na conciliação.",
       records: (imported: number, rejected: number) =>
         `${formatNumber(imported)} lançamentos lidos · ${formatNumber(rejected)} rejeitados`,
       carriedOver: "Decisões mantidas (mesma evidência)",
@@ -1129,15 +1138,28 @@ export const COPY = {
       stillOpen: "Continuam pendentes",
       notDetected: "Não aparecem mais neste arquivo",
       firstImport: (count: number) =>
-        `Primeira importação desta fonte: ${formatNumber(count)} pendências para revisar.`,
+        `Primeira importação desta fonte: ${plural(count, "caso", "casos")} para revisar em Pendências. Um caso pode envolver mais de um lançamento.`,
       toDecide: (count: number) =>
         count === 1
-          ? "1 item vai precisar de decisão depois da importação."
-          : `${formatNumber(count)} itens vão precisar de decisão depois da importação.`,
+          ? "1 caso vai precisar de decisão depois da importação."
+          : `${formatNumber(count)} casos vão precisar de decisão depois da importação.`,
       nothingToDecide: "Nenhuma decisão nova será necessária.",
     },
     history: "Histórico de importações",
     hideHistory: "Ocultar histórico",
+    detail: {
+      imported: "Importados",
+      rejected: "Rejeitados",
+      toDecide: "Lançamentos aguardando decisão",
+      actionableTitle: "Linhas com problema",
+      informational: (count: number) =>
+        `${plural(count, "observação da leitura", "observações da leitura")} que não exigem ação`,
+      nextNg:
+        "Os lançamentos que aguardam decisão ficam fora da DRE até alguém decidir em Pendências.",
+      nextOther: "A conferência com o NG foi atualizada. Veja em Pendências.",
+      openPending: "Resolver pendências",
+      openDre: "Abrir DRE",
+    },
     directTitle: "Integração direta",
     directPending: "Aguardando acesso VPN/API",
     directNotConfigured: "Não configurada",
@@ -1148,18 +1170,27 @@ export const COPY = {
     pendingAccess: "Pendente de acesso",
     listTitle: "Fontes",
     updatedShort: "Atualização",
+    rejectedShort: "Rejeitados",
     showDetails: (name: string) => `Mostrar detalhes de ${name}`,
     hideDetails: (name: string) => `Ocultar detalhes de ${name}`,
     health: {
-      healthy: "Fontes configuradas estão atualizadas",
+      healthy: "Fontes da DRE importadas",
+      missing: (count: number) =>
+        count === 1
+          ? "Falta importar 1 fonte da DRE"
+          : `Faltam importar ${formatNumber(count)} fontes da DRE`,
+      withRejections: (count: number) =>
+        count === 1
+          ? "1 com linhas rejeitadas"
+          : `${formatNumber(count)} com linhas rejeitadas`,
       empty: "Nenhuma fonte importada ainda",
       attention: (count: number) =>
         count === 1
-          ? "1 fonte exige atenção"
-          : `${formatNumber(count)} fontes exigem atenção`,
+          ? "1 fonte teve linhas rejeitadas"
+          : `${formatNumber(count)} fontes tiveram linhas rejeitadas`,
       body: "Estado real de cada importação. O TON só analisa o que foi importado; o que falta integrar aparece como pendente.",
-      configured: "Fontes atualizadas",
-      current: "configuradas com importação válida",
+      configured: "Fontes da DRE",
+      current: "importadas (orçamento é opcional)",
       manual: "Arquivo exportado",
       manualDetail: "Importação manual (XLSX/XLS)",
       ngDirect: "Integração direta NG",
@@ -1593,7 +1624,7 @@ export const COPY = {
       description:
         "Importações, modo de aquisição e estado da integração direta com o NG/Keevo.",
       status: (current: number, total: number) =>
-        `${formatNumber(current)} de ${formatNumber(total)} fontes atualizadas`,
+        `${formatNumber(current)} de ${formatNumber(total)} fontes da DRE importadas`,
     },
     automations: {
       title: "Automações",

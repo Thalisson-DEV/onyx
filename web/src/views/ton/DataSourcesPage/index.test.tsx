@@ -84,26 +84,49 @@ it("shows a financial source and links to readiness and DRE", () => {
   );
 });
 
-it("shows a partial result with translated diagnostics", async () => {
+it("previews a billing file, then shows the result with its diagnostics", async () => {
   const user = setupUser();
-  (global.fetch as jest.Mock).mockResolvedValue({
-    ok: true,
-    status: 200,
-    json: async () => result,
-  });
+  (global.fetch as jest.Mock)
+    .mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        imported: 2,
+        rejected: 1,
+        has_previous_review: false,
+        carried_over: 0,
+        evidence_changed: 0,
+        still_open: 0,
+        reopened: 0,
+        new: 0,
+        not_detected: 0,
+        changes_actuals: false,
+      }),
+    })
+    .mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => result,
+    });
   render(<DataSourcesPage />);
   await user.click(screen.getByRole("button", { name: "Add file" }));
   const file = new File(["synthetic"], "synthetic.xls", {
     type: "application/vnd.ms-excel",
   });
   await user.upload(screen.getByLabelText("Choose file"), file);
-  await user.click(screen.getByRole("button", { name: "Import file" }));
+  await user.click(screen.getByRole("button", { name: "Ver o que muda" }));
+  expect(
+    await screen.findByText("2 notas lidas · 1 rejeitadas")
+  ).toBeInTheDocument();
+  await user.click(
+    screen.getByRole("button", { name: "Confirmar importação" })
+  );
   await waitFor(() =>
     expect(screen.getByText("Needs attention")).toBeInTheDocument()
   );
   expect(screen.getByText("Invalid amount")).toBeInTheDocument();
-  expect(screen.getByText("Records rejected")).toBeInTheDocument();
-  expect(screen.getByText("XLS · 2026-01-01 · 1 KB")).toBeInTheDocument();
+  expect(screen.getByText("Rejeitados")).toBeInTheDocument();
+  expect(screen.getByText(/^synthetic\.xls · .* · 1 KB$/)).toBeInTheDocument();
 });
 
 it("explains an unsupported structure", async () => {
@@ -115,7 +138,7 @@ it("explains an unsupported structure", async () => {
     type: "application/vnd.ms-excel",
   });
   await user.upload(screen.getByLabelText("Choose file"), file);
-  await user.click(screen.getByRole("button", { name: "Import file" }));
+  await user.click(screen.getByRole("button", { name: "Ver o que muda" }));
   await waitFor(() =>
     expect(
       screen.getByText(

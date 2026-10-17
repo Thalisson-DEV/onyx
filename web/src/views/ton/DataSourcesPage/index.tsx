@@ -11,9 +11,13 @@ import { cn } from "@opal/utils";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/lib/types";
-import { COPY, formatNumber } from "@/lib/ton/copy";
+import { COPY, formatNumber, formatRelativeDateTime } from "@/lib/ton/copy";
+import { pendingQueueHref } from "@/lib/ton/decisions";
 import { SHOW_UPSTREAM_SCREENS } from "@/lib/ton/product-surface";
-import { IMPORT_DIAGNOSTIC_KEYS } from "@/lib/ton/import-diagnostics";
+import {
+  IMPORT_DIAGNOSTIC_KEYS,
+  isInformationalDiagnostic,
+} from "@/lib/ton/import-diagnostics";
 import { useUser } from "@/providers/UserProvider";
 import { TonStatusTag } from "@/views/ton/components/TonStatusTag";
 
@@ -59,8 +63,8 @@ interface ClientSource {
 }
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
-/** Only the NG export changes the actual base, so only it gets a preview. */
-const PREVIEWED_SOURCE = "financial_launches";
+/** NG gets the decision preview; billing only reports what was read. */
+const PREVIEWED_SOURCES = new Set(["financial_launches", "billing_invoices"]);
 
 interface ReimportPreview {
   imported: number;
@@ -72,6 +76,7 @@ interface ReimportPreview {
   reopened: number;
   new: number;
   not_detected: number;
+  changes_actuals: boolean;
 }
 
 function isReimportPreview(value: unknown): value is ReimportPreview {
@@ -86,8 +91,33 @@ function isReimportPreview(value: unknown): value is ReimportPreview {
   );
 }
 
-function PreviewSummary({ preview }: { preview: ReimportPreview }) {
+function PreviewSummary({
+  preview,
+  previous,
+}: {
+  preview: ReimportPreview;
+  previous: ClientImport | null;
+}) {
   const copy = COPY.sources.preview;
+  if (!preview.changes_actuals)
+    return (
+      <section aria-label={copy.title} className="flex flex-col gap-2">
+        <Text as="h3" font="main-ui-action" color="text-05">
+          {copy.title}
+        </Text>
+        <Text as="p" font="main-ui-body" color="text-04">
+          {copy.billingRecords(preview.imported, preview.rejected)}
+        </Text>
+        {previous && (
+          <Text as="p" font="secondary-body" color="text-03">
+            {copy.previousImport(previous.imported)}
+          </Text>
+        )}
+        <Text as="p" font="secondary-body" color="text-03">
+          {copy.billingOnly}
+        </Text>
+      </section>
+    );
   const toDecide = preview.new + preview.evidence_changed + preview.reopened;
   const rows: [string, number][] = [
     [copy.carriedOver, preview.carried_over],
@@ -98,7 +128,7 @@ function PreviewSummary({ preview }: { preview: ReimportPreview }) {
     [copy.notDetected, preview.not_detected],
   ];
   return (
-    <section aria-label={copy.title} className="flex flex-col gap-3 pt-4">
+    <section aria-label={copy.title} className="flex flex-col gap-3">
       <Text as="h3" font="main-ui-action" color="text-05">
         {copy.title}
       </Text>
@@ -171,7 +201,7 @@ export function SourceUpload({
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<ReimportPreview | null>(null);
   const extension = source.format.toLowerCase();
-  const needsPreview = source.key === PREVIEWED_SOURCE;
+  const needsPreview = PREVIEWED_SOURCES.has(source.key);
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     multiple: false,
     noClick: true,
@@ -263,12 +293,11 @@ export function SourceUpload({
           onClose={() => !busy && onClose()}
         />
         <Modal.Body>
+          <div className="flex w-full flex-col gap-4">
           {guidance && (
-            <div className="pb-4">
-              <Text font="main-ui-body" color="text-04">
-                {guidance}
-              </Text>
-            </div>
+            <Text as="p" font="main-ui-body" color="text-04">
+              {guidance}
+            </Text>
           )}
           <div
             {...getRootProps()}
@@ -288,18 +317,15 @@ export function SourceUpload({
             <Button prominence="secondary" onClick={open} disabled={busy}>
               {t("chooseFile")}
             </Button>
-            <Text font="secondary-body" color="text-03">
+            <Text font="secondary-body" color={file ? "text-05" : "text-03"}>
               {file ? file.name : t("dropFile")}
             </Text>
-            {file && (
-              <Text font="secondary-body" color="text-03">
-                {t("fileReady")}
-              </Text>
-            )}
           </div>
-          {preview && <PreviewSummary preview={preview} />}
+          {preview && (
+            <PreviewSummary preview={preview} previous={source.latest} />
+          )}
           {busy && (
-            <div role="status" className="flex items-center gap-2 pt-4">
+            <div role="status" className="flex items-center gap-2">
               <SvgSimpleLoader />
               <Text font="main-ui-body" color="text-03">
                 {t("processing")}
@@ -307,12 +333,13 @@ export function SourceUpload({
             </div>
           )}
           {error && (
-            <div role="alert" className="pt-4">
+            <div role="alert">
               <Text font="main-ui-body" color="status-error-05">
                 {error}
               </Text>
             </div>
           )}
+          </div>
         </Modal.Body>
         <Modal.Footer>
           <BasicModalFooter
@@ -342,6 +369,8 @@ export function SourceUpload({
 export function ImportDetail({ result }: { result: ClientImport }) {
   const t = useTranslations("dataSources");
   const format = useFormatter();
+  const copy = COPY.sources.detail;
+  const isNg = result.downstream.includes("financial_review");
   const fileSize =
     result.size_bytes >= 1024 * 1024
       ? `${format.number(result.size_bytes / (1024 * 1024), {
@@ -353,11 +382,9 @@ export function ImportDetail({ result }: { result: ClientImport }) {
           })} KB`
         : `${format.number(result.size_bytes)} B`;
   const metadata = [
-    result.format,
-    format.dateTime(new Date(result.started_at), {
-      dateStyle: "short",
-      timeStyle: "short",
-    }),
+    result.filename || t("unprocessedFile"),
+    // Browser time zone, like every other date on the screen.
+    formatRelativeDateTime(result.finished_at ?? result.started_at),
     result.size_bytes > 0 ? fileSize : "",
   ]
     .filter(Boolean)
@@ -370,20 +397,42 @@ export function ImportDetail({ result }: { result: ClientImport }) {
         : result.status === "FAILED"
           ? t("failed")
           : t("attention");
+  const labelled = result.diagnostics.map((item) => {
+    const key = Object.entries(IMPORT_DIAGNOSTIC_KEYS).find(
+      ([code]) => code === item.code
+    )?.[1];
+    return {
+      ...item,
+      label: key ? t(`diagnostics.${key}`) : t("diagnostics.other"),
+    };
+  });
+  // What the reader skipped on purpose is not a pending item.
+  const actionable = labelled.filter(
+    (item) => !isInformationalDiagnostic(item.code)
+  );
+  const informational = labelled.filter((item) =>
+    isInformationalDiagnostic(item.code)
+  );
+  const toDecide = result.needs_review;
+  const metrics: [string, number | null][] = [
+    [copy.imported, result.imported],
+    [copy.rejected, result.rejected],
+    // Only the upload response knows the count; history rows do not.
+    ...(isNg && toDecide !== null
+      ? ([[copy.toDecide, toDecide]] as [string, number | null][])
+      : []),
+  ];
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
         <Text as="h2" font="heading-h3" color="text-05">
           {status}
         </Text>
         <Text font="secondary-body" color="text-03">
-          {result.filename || t("unprocessedFile")}
+          {metadata}
         </Text>
       </div>
-      <Text font="secondary-body" color="text-03">
-        {metadata}
-      </Text>
       {result.status === "FAILED" && (
         <Text font="main-ui-body" color="status-error-05">
           {result.failure_reason === "INVALID_FILE"
@@ -391,81 +440,72 @@ export function ImportDetail({ result }: { result: ClientImport }) {
             : t("processingFailure")}
         </Text>
       )}
-      <div className="grid grid-cols-2 gap-4 border-y border-01 py-4 md:grid-cols-4">
-        {(
-          [
-            ["imported", result.imported],
-            ["rejected", result.rejected],
-            ["warnings", result.warnings],
-            ["needsReview", result.needs_review],
-          ] as const
-        ).map(([label, count]) => (
-          <div key={label} className="flex flex-col gap-1">
-            <Text font="heading-h3" color="text-05">
-              {count === null ? "—" : format.number(count)}
-            </Text>
-            <Text font="secondary-body" color="text-03">
-              {t(label)}
-            </Text>
+      <dl className="flex flex-wrap gap-x-8 gap-y-3">
+        {metrics.map(([label, count]) => (
+          <div key={label} className="flex flex-col">
+            <dt className="ton-eyebrow">{label}</dt>
+            <dd>
+              <Text font="heading-h3" color="text-05">
+                {count === null ? "—" : format.number(count)}
+              </Text>
+            </dd>
           </div>
         ))}
-      </div>
-      {result.available_for_analysis !== null && (
-        <Text font="main-ui-body" color="text-05">
-          {t("available", { count: result.available_for_analysis })}
-        </Text>
-      )}
-      <div className="flex flex-col gap-2">
-        <Text as="h3" font="main-ui-action" color="text-05">
-          {t("diagnosticsTitle")}
-        </Text>
-        {result.diagnostics.length === 0 ? (
-          <Text font="main-ui-body" color="text-03">
-            {t("noDiagnostics")}
+      </dl>
+      {actionable.length > 0 && (
+        <section className="flex flex-col gap-1.5">
+          <Text as="h3" font="main-ui-action" color="text-05">
+            {copy.actionableTitle}
           </Text>
-        ) : (
-          result.diagnostics.map((item) => {
-            const key = Object.entries(IMPORT_DIAGNOSTIC_KEYS).find(
-              ([code]) => code === item.code
-            )?.[1];
-            return (
-              <div
+          <ul className="flex flex-col divide-y divide-border-01 rounded-12 border border-01">
+            {actionable.map((item) => (
+              <li
                 key={item.code}
-                className="flex justify-between gap-4 border-b border-01 py-2"
+                className="flex justify-between gap-4 px-3 py-2"
               >
                 <Text font="main-ui-body" color="text-05">
-                  {key ? t(`diagnostics.${key}`) : t("diagnostics.other")}
+                  {item.label}
                 </Text>
-                <Text font="main-ui-body" color="text-03">
+                <Text font="main-ui-action" color="text-04">
                   {format.number(item.count)}
                 </Text>
-              </div>
-            );
-          })
-        )}
-      </div>
-      <div className="flex flex-col gap-2">
-        <Text as="h3" font="main-ui-action" color="text-05">
-          {t("downstreamTitle")}
-        </Text>
-        {result.downstream.includes("financial_review") && (
-          <Text font="main-ui-body" color="text-03">
-            {t("reviewAffected")}
-          </Text>
-        )}
-        <Text font="main-ui-body" color="text-03">
-          {result.readiness_status === "UPDATED"
-            ? t("readinessUpdated")
-            : result.readiness_status === "PENDING_INPUTS"
-              ? t("readinessPending")
-              : result.readiness_status === "FAILED"
-                ? t("readinessFailed")
-                : t("readinessUnknown")}
-        </Text>
-        <Text font="main-ui-body" color="text-03">
-          {t("dreAffected")}
-        </Text>
-      </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {informational.length > 0 && (
+        <details className="ton-import-notes">
+          <summary className="ton-focusable">
+            <Text font="secondary-action" color="text-03">
+              {copy.informational(
+                informational.reduce((sum, item) => sum + item.count, 0)
+              )}
+            </Text>
+          </summary>
+          <ul className="flex flex-col gap-1 pt-2">
+            {informational.map((item) => (
+              <li key={item.code} className="flex justify-between gap-4">
+                <Text font="secondary-body" color="text-03">
+                  {item.label}
+                </Text>
+                <Text font="secondary-body" color="text-03">
+                  {format.number(item.count)}
+                </Text>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+      <Text as="p" font="secondary-body" color="text-03">
+        {result.readiness_status === "PENDING_INPUTS"
+          ? t("readinessPending")
+          : result.readiness_status === "FAILED"
+            ? t("readinessFailed")
+            : isNg
+              ? copy.nextNg
+              : copy.nextOther}
+      </Text>
       <div className="flex flex-wrap gap-2">
         {SHOW_UPSTREAM_SCREENS && (
           <Button
@@ -479,8 +519,22 @@ export function ImportDetail({ result }: { result: ClientImport }) {
             {t("readiness")}
           </Button>
         )}
-        <Button href="/ton/dre" prominence="secondary">
-          {t("dre")}
+        {result.status !== "FAILED" && (
+          <Button
+            href={
+              isNg
+                ? pendingQueueHref({ blocker: "REVIEW_UNRESOLVED" })
+                : pendingQueueHref({})
+            }
+          >
+            {copy.openPending}
+          </Button>
+        )}
+        <Button
+          href="/ton/dre"
+          prominence={result.status !== "FAILED" ? "secondary" : "primary"}
+        >
+          {copy.openDre}
         </Button>
       </div>
     </div>

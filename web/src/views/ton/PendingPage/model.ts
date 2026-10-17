@@ -59,6 +59,8 @@ export interface BlockerRow {
   occurrence_id?: string | null;
   rule_key?: string | null;
   rule_title?: string | null;
+  /** Workbook cells of rows rejected before they became records. */
+  locations?: string[];
 }
 
 export interface BlockerPage {
@@ -215,7 +217,7 @@ export function rowSuggestion(row: BlockerRow): string {
 /** The one-line identity of a source record used in the queue row. */
 export function rowRecordHint(row: BlockerRow): string | null {
   const first = row.records[0];
-  if (!first) return null;
+  if (!first) return row.locations?.length ? row.locations.join(" ; ") : null;
   return [first.document, first.counterparty ?? first.account]
     .filter(Boolean)
     .join(" · ");

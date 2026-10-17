@@ -81,6 +81,8 @@ class BlockerRow(BaseModel):
     occurrence_id: UUID | None = None
     rule_key: str | None = None
     rule_title: str | None = None
+    # Rejected rows have no parsed record: where they are in the workbook.
+    locations: list[str] = Field(default_factory=list)
 
 
 class BlockerPage(BaseModel):

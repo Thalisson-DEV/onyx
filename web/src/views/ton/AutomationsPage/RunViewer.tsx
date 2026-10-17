@@ -349,7 +349,7 @@ export default function RunViewer({ automationId, runId }: { automationId: strin
       <Modal open={email !== null} onOpenChange={(value) => !value && setEmail(null)}>
         <Modal.Content width="lg" height="lg">
           <Modal.Header icon={SvgMail} title={email?.outputs && typeof email.outputs.subject === "string" ? email.outputs.subject : R.openEmail} onClose={() => setEmail(null)} />
-          <Modal.Body>
+          <Modal.Body alignItems="stretch">
             {email && (
               <iframe
                 title={R.openEmail}

@@ -202,6 +202,19 @@ function ChangeRow({
           {COPY.change.cancel}
         </Button>
       </div>
+      <div className="flex flex-wrap gap-1.5">
+        {COPY.change.quickReasons.map((text) => (
+          <button
+            key={text}
+            type="button"
+            className="ton-chip ton-focusable"
+            aria-pressed={draft.reason === text}
+            onClick={() => onReason(text)}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -85,7 +85,7 @@ export function useTonActivity(enabled = true) {
           at: run.finished_at,
           title: COPY.home.activity.sourceImported(source.name),
           detail: `${plural(run.imported, "registro", "registros")} · ${run.filename}`,
-          href: "/ton/fontes",
+          href: `/ton/fontes?detalhe=${source.key}` as Route,
           attention: false,
         });
       } else if (run.status === "FAILED") {
@@ -95,7 +95,7 @@ export function useTonActivity(enabled = true) {
           at: run.finished_at,
           title: COPY.activity.importFailed(source.name),
           detail: run.filename,
-          href: "/ton/fontes",
+          href: `/ton/fontes?detalhe=${source.key}` as Route,
           attention: true,
         });
       }

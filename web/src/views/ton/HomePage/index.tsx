@@ -46,6 +46,7 @@ import type { ClosingOutput } from "@/lib/ton/types";
 import R3Spotlight from "@/views/ton/components/R3Spotlight";
 import WorkQueue from "@/views/ton/components/WorkQueue";
 import { useWorkQueue } from "@/lib/ton/workQueue";
+import { summarizeSources } from "@/lib/ton/sources";
 import {
   CardHeader,
   ErrorState,
@@ -187,10 +188,9 @@ function ExecutiveStrip({ closing }: { closing: ClosingOutput }) {
   const routines = useTonRoutines();
   const total = totalBlockers(closing.blockers);
   const groups = groupBlockers(closing.blockers);
-  const current =
-    sources.data?.filter((source) => source.status === "CURRENT").length ?? 0;
-  const configured =
-    sources.data?.filter((source) => source.source_id).length ?? 0;
+  const summary = summarizeSources(sources.data ?? []);
+  const current = summary.imported.length;
+  const configured = summary.required.length;
   const next = routines.data
     ?.filter((routine) => routine.next_run)
     .sort((a, b) => (a.next_run ?? "").localeCompare(b.next_run ?? ""))[0];

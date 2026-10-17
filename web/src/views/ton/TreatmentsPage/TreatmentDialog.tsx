@@ -159,12 +159,11 @@ export default function TreatmentDialog({
       <Modal.Content width="md">
         <Modal.Header
           title={base ? COPY.versionTitle(base.title) : COPY.createTitle}
+          description={COPY.intro}
+          onClose={() => !busy && onClose()}
         />
         <Modal.Body>
-          <div className="flex flex-col gap-4">
-            <Text as="p" font="secondary-body" color="text-03">
-              {COPY.intro}
-            </Text>
+          <div className="w-full flex flex-col gap-4">
             <Field label={COPY.title}>
               <InputTypeIn
                 value={title}

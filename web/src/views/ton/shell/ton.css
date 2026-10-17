@@ -1311,3 +1311,29 @@ html:has(.ton-shell) body {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+.ton-chip[aria-pressed="true"] {
+  border-color: var(--ton-brand);
+  background: color-mix(in srgb, var(--ton-brand) 10%, transparent);
+  color: var(--text-05);
+}
+
+/* Reader notes of an import: collapsed, they never read as pending work. */
+.ton-import-notes > summary {
+  cursor: pointer;
+  list-style: none;
+  border-radius: 0.375rem;
+}
+.ton-import-notes > summary::-webkit-details-marker {
+  display: none;
+}
+.ton-import-notes > summary::before {
+  content: "›";
+  display: inline-block;
+  width: 1rem;
+  color: var(--text-03);
+  transition: transform 120ms ease;
+}
+.ton-import-notes[open] > summary::before {
+  transform: rotate(90deg);
+}

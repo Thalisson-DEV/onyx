@@ -35,6 +35,7 @@ import {
 import { COPY, formatRelativeDateTime } from "@/lib/ton/copy";
 import { getFirstPermittedAdminRoute } from "@/lib/permissions";
 import { SHOW_UPSTREAM_SCREENS } from "@/lib/ton/product-surface";
+import { summarizeSources } from "@/lib/ton/sources";
 import { readSeenAt, useTonActivity, writeSeenAt } from "@/lib/ton/activity";
 import TonCommandMenu from "@/views/ton/shell/TonCommandMenu";
 
@@ -51,13 +52,10 @@ function initials(name: string): string {
 function SourcesStatus() {
   const sources = useTonDataSources();
   if (!sources.data || sources.data.length === 0) return null;
-  const configured = sources.data.filter((source) => source.source_id);
-  const healthy = configured.every((source) => source.status === "CURRENT");
-  const latest = configured
-    .map((source) => source.last_success_at)
-    .filter((value): value is string => !!value)
-    .sort()
-    .at(-1);
+  const { required, imported, healthy, latest } = summarizeSources(
+    sources.data
+  );
+  const missing = required.length - imported.length;
   return (
     <Tooltip
       tooltip={
@@ -73,7 +71,11 @@ function SourcesStatus() {
       >
         <span className="ton-dot" data-tone={healthy ? "success" : "warning"} />
         <Text font="secondary-action" color="inherit" maxLines={1}>
-          {healthy ? COPY.shell.sourcesCurrent : COPY.shell.sourcesAttention}
+          {healthy
+            ? COPY.shell.sourcesCurrent
+            : missing > 0
+              ? COPY.shell.sourcesMissing(imported.length, required.length)
+              : COPY.shell.sourcesAttention}
         </Text>
       </Link>
     </Tooltip>

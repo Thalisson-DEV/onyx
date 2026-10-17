@@ -318,11 +318,25 @@ export default function PendingPage() {
       openRow(next);
       return;
     }
-    setDialog(null);
     const other = categories.find(
       (item) => item.blocker !== category?.blocker && item.count > 0
     );
-    if (other) chooseCategory(other.blocker);
+    if (!other || !runId || !version.data) {
+      setDialog(null);
+      if (other) chooseCategory(other.blocker);
+      return;
+    }
+    // Open the first case of the next category instead of a bare list.
+    chooseCategory(other.blocker);
+    try {
+      const first = await errorHandlingFetcher<BlockerPage>(
+        `/api/ton/financial-domain/normalizations/${runId}/readiness/blockers/${other.blocker}?structure_version_id=${version.data.id}&limit=1&offset=0${unitId ? `&unit_id=${unitId}` : ""}${period ? `&period=${period.scope.period}` : ""}`
+      );
+      const row = first.rows[0];
+      if (row) openRow(row, other);
+    } catch {
+      // The list of the new category is already on screen.
+    }
   }
 
   async function applyPendingDecisions() {

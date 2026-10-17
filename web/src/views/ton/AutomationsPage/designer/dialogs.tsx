@@ -331,7 +331,7 @@ export function RunModal({ open, test, definition, busy, error, onRun, onClose }
       <Modal.Content width="md">
         <Modal.Header icon={SvgPlayCircle} title={test ? COPY.testTitle : COPY.inputsTitle} description={test ? COPY.testHint : COPY.runHint} onClose={onClose} />
         <Modal.Body>
-          <div className="flex flex-col gap-4">
+          <div className="w-full flex flex-col gap-4">
             {fields.map((field) => {
               const name = asText(field.name);
               const label = asText(field.label) || name;

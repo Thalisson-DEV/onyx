@@ -43,6 +43,7 @@ ACTION_PLACES = {
     "DATA_OR_CONFIGURATION_FIX": "Fontes ou Administração (corrigir dado ou configuração)",
 }
 FINDINGS_SHOWN = 5
+REVIEW_BLOCKERS = frozenset({"REVIEW_UNRESOLVED", "EXCLUDED_SOURCE_ROWS"})
 FINDINGS_SCANNED = 200
 
 
@@ -219,7 +220,17 @@ def closing_overview(
         overview.limitacoes.append(
             "Não há DRE calculada para este período e escopo; não há valores de DRE."
         )
-    _add_findings(session, user, base.source_id, base.review_run_id, overview)
+    _add_findings(
+        session,
+        user,
+        base.source_id,
+        base.review_run_id,
+        overview,
+        review_blocks=any(
+            code in REVIEW_BLOCKERS and count > 0
+            for code, count in readiness.blockers.items()
+        ),
+    )
     return overview
 
 
@@ -229,6 +240,7 @@ def _add_findings(
     source_id: UUID,
     review_run_id: UUID,
     overview: ClosingOverview,
+    review_blocks: bool,
 ) -> None:
     summary = review_service.dataset_summary(session, user, source_id, review_run_id)
     overview.registros_na_base = summary.total_records
@@ -250,11 +262,16 @@ def _add_findings(
         )
     open_findings.sort(key=lambda item: (not item.blocking, -item.record_count))
     overview.achados_abertos_na_revisao = len(open_findings)
-    overview.achados_que_impedem_dre = sum(item.blocking for item in open_findings)
+    # A blocking rule only holds the DRE while readiness still reports a review
+    # blocker: a decided case (for example a correction requested in the NG,
+    # whose rows are excluded) stays open in the review without blocking.
+    overview.achados_que_impedem_dre = (
+        sum(item.blocking for item in open_findings) if review_blocks else 0
+    )
     overview.principais_achados = [
         OverviewFinding(
             titulo=item.explanation,
-            impede_dre=item.blocking,
+            impede_dre=item.blocking and review_blocks,
             situacao=business_label(item.occurrence_status.value),
             registros=item.record_count,
         )

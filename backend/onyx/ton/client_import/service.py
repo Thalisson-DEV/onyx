@@ -43,6 +43,7 @@ from onyx.ton.financial_review.service import dataset_summary, execute_review
 from onyx.ton.ng_financial.models import ProfileExecutionStatus
 from onyx.ton.ng_financial.parser import NgFinancialExportParser
 from onyx.ton.ng_financial.service import execute_ng_profile
+from onyx.ton.operational_import.parser import BillingParser
 from onyx.ton.operational_import.parser import identify_profile
 from onyx.ton.operational_import.service import execute_operational_profile
 from onyx.ton.sources.models import (
@@ -175,7 +176,9 @@ def list_client_sources(session: Session, user: User) -> list[ClientSourceView]:
             if latest is not None and latest.status == "FAILED"
             else "ATTENTION"
             if latest is not None
-            and (latest.status == "PARTIAL" or latest.warnings > 0)
+            # Rejected rows need a person; reader notes such as skipped sheets
+            # do not, and they already reach the review as pending items.
+            and (latest.status == "PARTIAL" or latest.rejected > 0)
             else "CURRENT"
             if latest is not None
             else "UNCONFIGURED"
@@ -457,7 +460,19 @@ def preview_client_import(
     try:
         if key != "financial_launches":
             identify_profile(validated.content, validated.format)
-            return _empty_preview(key, filename)
+            view = _empty_preview(key, filename)
+            if validated.format != SourceFormat.XLS:
+                return view
+            # Billing does not touch the actual base: only report what was read.
+            billing = operational_import.statistics(
+                BillingParser().parse(validated.content, UUID(int=0))
+            )
+            return view.model_copy(
+                update={
+                    "imported": billing.get("detail_records_parsed", 0),
+                    "rejected": billing.get("records_rejected", 0),
+                }
+            )
         parsed = NgFinancialExportParser().parse(validated.content, UUID(int=0))
     except OnyxError:
         raise OnyxError(

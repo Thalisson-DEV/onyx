@@ -27,6 +27,7 @@ from onyx.db.ton.models import (
     FinancialMapping,
     FinancialMappingRevision,
     FinancialReconciliationItem,
+    FindingEvidence,
     OperationalSourceRecord,
     ParsedSourceRecord,
     ReviewRun,
@@ -576,6 +577,25 @@ def _review_blockers(
         if record_ids
         else {}
     )
+    # Rejected rows never became records; their evidence points at the cell.
+    locations: dict[UUID, list[str]] = {}
+    finding_ids = {
+        state.finding_id: occurrence_id
+        for occurrence_id in page
+        for state in blocking[occurrence_id]
+        if not state.record_ids
+    }
+    if finding_ids:
+        for finding_id, locator in session.execute(
+            sa.select(FindingEvidence.finding_id, FindingEvidence.locator).where(
+                FindingEvidence.finding_id.in_(finding_ids),
+                FindingEvidence.parsed_record_id.is_(None),
+            )
+        ).all():
+            text = _cell_location(locator)
+            bucket = locations.setdefault(finding_ids[finding_id], [])
+            if text and text not in bucket:
+                bucket.append(text)
     rows: list[BlockerRow] = []
     for occurrence_id in page:
         states_of = blocking[occurrence_id]
@@ -611,9 +631,22 @@ def _review_blockers(
                     for rid in ids[:EVIDENCE_SAMPLE]
                     if rid in records
                 ],
+                locations=locations.get(occurrence_id, [])[:EVIDENCE_SAMPLE],
             )
         )
     return len(occurrence_ids), rows
+
+
+def _cell_location(locator: dict[str, object]) -> str | None:
+    sheet = locator.get("sheet")
+    if not isinstance(sheet, str):
+        return None
+    parts = [f"aba {sheet}"]
+    if isinstance(locator.get("row"), int):
+        parts.append(f"linha {locator['row']}")
+    if isinstance(locator.get("column"), str):
+        parts.append(f"coluna {locator['column']}")
+    return " · ".join(parts)
 
 
 def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query

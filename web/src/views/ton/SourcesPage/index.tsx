@@ -22,6 +22,7 @@ import {
   formatRelativeDateTime,
 } from "@/lib/ton/copy";
 import { getBusinessLabel } from "@/lib/ton/labels";
+import { summarizeSources } from "@/lib/ton/sources";
 import type { ClientImport, ClientSource } from "@/lib/ton/types";
 import { ImportDetail, SourceUpload } from "@/views/ton/DataSourcesPage";
 import {
@@ -46,21 +47,10 @@ function HealthSummary({
   sources: ClientSource[];
   ngDirect: string | undefined;
 }) {
-  const configured = sources.filter((source) => source.source_id);
-  const current = configured.filter((source) => source.status === "CURRENT");
-  const attention = configured.filter(
-    (source) => source.status === "ATTENTION" || source.status === "FAILED"
-  );
-  const latest = configured
-    .map((source) => source.last_success_at)
-    .filter((value): value is string => !!value)
-    .sort()
-    .at(-1);
-  const healthy =
-    configured.length > 0 &&
-    attention.length === 0 &&
-    current.length === configured.length;
-  const empty = current.length === 0 && attention.length === 0;
+  const { required, imported, attention, latest, healthy } =
+    summarizeSources(sources);
+  const empty = imported.length === 0;
+  const missing = required.length - imported.length;
   return (
     <TonCard className="flex flex-col gap-5 p-5 sm:p-6">
       <div className="flex items-start gap-4">
@@ -75,7 +65,9 @@ function HealthSummary({
               ? COPY.sources.health.healthy
               : empty
                 ? COPY.sources.health.empty
-                : COPY.sources.health.attention(attention.length)}
+                : missing > 0
+                  ? COPY.sources.health.missing(missing)
+                  : COPY.sources.health.attention(attention.length)}
           </Text>
           <Text as="p" font="secondary-body" color="text-03">
             {COPY.sources.health.body}
@@ -85,9 +77,13 @@ function HealthSummary({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Metric
           label={COPY.sources.health.configured}
-          value={`${formatNumber(current.length)}/${formatNumber(configured.length)}`}
-          detail={COPY.sources.health.current}
-          tone={healthy ? "success" : "warning"}
+          value={`${formatNumber(imported.length)}/${formatNumber(required.length)}`}
+          detail={
+            attention.length > 0
+              ? COPY.sources.health.withRejections(attention.length)
+              : COPY.sources.health.current
+          }
+          tone={imported.length === required.length ? "success" : "warning"}
         />
         <Metric
           label={COPY.sources.lastUpdate}
@@ -151,6 +147,8 @@ interface SourceRowProps {
   directIntegration: string | undefined;
   onUpload: (source: ClientSource) => void;
   justImported: ClientImport | null;
+  /** Opened from a link that asks for this source's latest import. */
+  focused: boolean;
 }
 
 function SourceRow({
@@ -158,16 +156,27 @@ function SourceRow({
   directIntegration,
   onUpload,
   justImported,
+  focused,
 }: SourceRowProps) {
-  const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<ClientImport | null>(null);
+  const [open, setOpen] = useState(focused);
+  const [selected, setSelected] = useState<ClientImport | null>(
+    focused ? source.latest : null
+  );
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (focused) ref.current?.scrollIntoView({ block: "start" });
+  }, [focused]);
   const latest = source.latest;
   const isNg = source.key === NG_SOURCE;
   const detail = justImported ?? selected;
-  const issues = latest ? latest.warnings + latest.errors : 0;
+  // Rejected rows are what a person must look at; reader notes are not.
+  const issues = latest ? latest.rejected : 0;
   return (
     <TonCard as="article" className="flex flex-col">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 p-4 sm:p-5">
+      <div
+        ref={ref}
+        className="flex flex-wrap items-center gap-x-5 gap-y-3 p-4 sm:p-5 scroll-mt-20"
+      >
         <div className="flex items-center gap-3 min-w-0 flex-1 basis-64">
           <IconTile icon={SvgServer} />
           <div className="flex flex-col min-w-0">
@@ -199,7 +208,7 @@ function SourceRow({
             </dd>
           </div>
           <div className="flex flex-col">
-            <dt className="ton-eyebrow">{COPY.sources.warnings}</dt>
+            <dt className="ton-eyebrow">{COPY.sources.rejectedShort}</dt>
             <dd>
               <span className={cn(issues > 0 && "text-status-warning-05")}>
                 <Text
@@ -338,6 +347,7 @@ export default function SourcesPage() {
   const searchParams = useSearchParams();
   const requested = searchParams.get("importar");
   const until = searchParams.get("ate");
+  const focusedKey = searchParams.get("detalhe");
   const opened = useRef(false);
   // Workflows such as missing actuals link straight to the right upload.
   useEffect(() => {
@@ -394,6 +404,7 @@ export default function SourcesPage() {
                 justImported={
                   imported?.key === source.key ? imported.result : null
                 }
+                focused={focusedKey === source.key}
               />
             ))}
           </section>

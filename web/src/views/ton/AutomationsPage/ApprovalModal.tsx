@@ -35,7 +35,7 @@ export default function ApprovalModal({ approval, onClose, onDecided }: Approval
       <Modal.Content width="md">
         <Modal.Header icon={SvgUserCheck} title={approval?.title ?? ""} description={approval?.automation_name} onClose={onClose} />
         <Modal.Body>
-          <div className="flex flex-col gap-3">
+          <div className="w-full flex flex-col gap-3">
             {approval?.details && (
               <div className="ton-auto-approval-details">
                 <Text font="main-ui-body" color="text-04">

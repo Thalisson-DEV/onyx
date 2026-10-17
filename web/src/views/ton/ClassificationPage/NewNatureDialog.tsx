@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  BasicModalFooter,
   Button,
   InputSingleSelect,
   InputTextArea,
@@ -65,12 +66,13 @@ export default function NewNatureDialog({
       }}
     >
       <Modal.Content width="sm">
-        <Modal.Header title={COPY.dialogTitle} />
+        <Modal.Header
+          title={COPY.dialogTitle}
+          description={COPY.dialogIntro}
+          onClose={() => !busy && onClose()}
+        />
         <Modal.Body>
-          <div className="flex flex-col gap-4">
-            <Text as="p" font="secondary-body" color="text-03">
-              {COPY.dialogIntro}
-            </Text>
+          <div className="flex w-full flex-col gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="ton-eyebrow">{COPY.name}</span>
               <InputTypeIn
@@ -112,16 +114,22 @@ export default function NewNatureDialog({
                 </Text>
               </span>
             )}
-            <div className="flex justify-end gap-2">
-              <Button prominence="tertiary" disabled={busy} onClick={onClose}>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <BasicModalFooter
+            cancel={
+              <Button prominence="secondary" disabled={busy} onClick={onClose}>
                 {CLASSIFICATION_COPY.change.cancel}
               </Button>
+            }
+            submit={
               <Button disabled={!ready || busy} onClick={() => void save()}>
                 {busy ? CLASSIFICATION_COPY.saving : COPY.save}
               </Button>
-            </div>
-          </div>
-        </Modal.Body>
+            }
+          />
+        </Modal.Footer>
       </Modal.Content>
     </Modal>
   );

@@ -182,7 +182,9 @@ function FactCard({
             : null,
         ],
       ].filter((item): item is [string, string] => Boolean(item[1]))
-    : [];
+    : row.locations?.length
+      ? [[DIALOG.facts.where, row.locations.join(" ; ")] as [string, string]]
+      : [];
   const detail = row.evidence ? rowDetail(row, category) : "";
   return (
     <section className="ton-fact-card flex flex-col gap-3">
@@ -631,9 +633,10 @@ export default function DecisionDialog({
       <Modal.Content width="lg">
         <Modal.Header
           title={phase === "result" ? LOOP.result.title : DIALOG.title}
+          onClose={() => !busy && onClose()}
         />
         <Modal.Body>
-          <div className="flex flex-col gap-5">
+          <div className="w-full flex flex-col gap-5">
             {canEdit && <DecisionSteps current={step} />}
 
             {phase === "result" && rejected && (

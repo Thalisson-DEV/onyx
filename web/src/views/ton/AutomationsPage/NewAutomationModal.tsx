@@ -65,7 +65,7 @@ export default function NewAutomationModal({ mode, onClose }: NewAutomationModal
       <Modal.Content width={mode === "template" ? "lg" : "md"}>
         <Modal.Header icon={mode === "ask" ? SvgSparkle : SvgWorkflow} title={title} description={mode === "ask" ? COPY.askTonHint : mode === "template" ? COPY.templateHint : COPY.blankHint} onClose={onClose} />
         <Modal.Body>
-          <div className="flex flex-col gap-4">
+          <div className="w-full flex flex-col gap-4">
             {mode === "ask" ? (
               <InputTextArea rows={6} autoResize maxRows={14} aria-label={COPY.askTon} placeholder={COPY.draftPlaceholder} value={request} onChange={(event) => setRequest(event.target.value)} />
             ) : (

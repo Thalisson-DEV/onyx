@@ -159,6 +159,10 @@ export const CLASSIFICATION_COPY = {
   },
   search: "Buscar código, descrição ou natureza",
   suggest: "Pedir sugestões ao assistente",
+  suggestFor: (count: number) =>
+    count === 1
+      ? "Pedir sugestão para 1 conta sem sugestão"
+      : `Pedir sugestões para ${count} contas sem sugestão`,
   suggesting: (done: number, total: number) =>
     `Analisando ${Math.min(done, total)} de ${total}…`,
   suggestDone: (result: { suggested: number; requested: number }) =>
@@ -206,6 +210,11 @@ export const CLASSIFICATION_COPY = {
     title: (from: string | null, to: string) =>
       from ? `Mudar de ${from} para ${to}` : `Classificar como ${to}`,
     reason: "Justificativa",
+    quickReasons: [
+      "Conforme o Banco de Dados da Controladoria",
+      "Decisão da Controladoria",
+      "Conta nova do NG, classificação provisória",
+    ],
     reasonFromSuggestion: (rationale: string) =>
       `Sugestão do assistente conferida: ${rationale}`,
     save: "Salvar",

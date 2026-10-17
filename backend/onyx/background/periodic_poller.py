@@ -116,7 +116,27 @@ def _run_scheduled_eval() -> None:
             )
 
 
+def _run_ton_automations_tick() -> None:
+    from onyx.db.engine.sql_engine import get_session_with_current_tenant
+    from onyx.ton.automations import service as automations
+    from shared_configs.contextvars import get_current_tenant_id
+
+    with get_session_with_current_tenant() as session:
+        automations.tick(session, tenant_id=get_current_tenant_id())
+
+
+def _run_ton_r3_dispatch() -> None:
+    from onyx.db.engine.sql_engine import get_session_with_current_tenant
+    from onyx.db.ton.routine_schedule import dispatch_due_r3
+
+    with get_session_with_current_tenant() as session:
+        dispatch_due_r3(session)
+
+
 _CACHE_CLEANUP_INTERVAL_SECONDS = 300
+# TON automations and the R3 routine: Celery Beat ticks every minute; without
+# Celery this thread keeps the same cadence.
+_TON_TICK_INTERVAL_SECONDS = 60
 # The lead-up reclaim rate. No beat runs here, so this thread sets the cadence.
 _LICENSE_RECLAIM_INTERVAL_SECONDS = 6 * 3600
 
@@ -159,6 +179,22 @@ def _build_periodic_tasks() -> list[_PeriodicTaskDef]:
                 run_fn=_run_scheduled_eval,
             )
         )
+    tasks.append(
+        _PeriodicTaskDef(
+            name="ton-automations-tick",
+            interval_seconds=_TON_TICK_INTERVAL_SECONDS,
+            lock_id=PERIODIC_TASK_LOCK_BASE + 4,
+            run_fn=_run_ton_automations_tick,
+        )
+    )
+    tasks.append(
+        _PeriodicTaskDef(
+            name="ton-r3-dispatch",
+            interval_seconds=_TON_TICK_INTERVAL_SECONDS,
+            lock_id=PERIODIC_TASK_LOCK_BASE + 5,
+            run_fn=_run_ton_r3_dispatch,
+        )
+    )
     # EE-only: no license exists elsewhere. This deployment runs no Celery
     # worker, so neither beat nor the point-of-use scheduler can renew.
     if global_version.is_ee_version():

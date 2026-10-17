@@ -515,6 +515,12 @@ def enqueue(run_ids: list[UUID], *, tenant_id: str | None = None, countdown: flo
     queues every runnable run again."""
     if not run_ids:
         return
+    from onyx.configs.app_configs import DISABLE_VECTOR_DB
+
+    if DISABLE_VECTOR_DB:
+        # Lite deployments run no Celery worker: execute in this process.
+        _run_in_process(run_ids, tenant_id=tenant_id, countdown=countdown)
+        return
     try:
         from onyx.background.celery.versioned_apps.client import app as client_app
         from onyx.configs.constants import OnyxCeleryPriority, OnyxCeleryQueues, OnyxCeleryTask
@@ -531,6 +537,29 @@ def enqueue(run_ids: list[UUID], *, tenant_id: str | None = None, countdown: flo
             )
     except Exception as error:  # noqa: BLE001 - the tick recovers queued runs
         logger.warning("TON automation enqueue failed, the tick will retry: %s", error)
+
+
+def _run_in_process(run_ids: list[UUID], *, tenant_id: str | None, countdown: float | None) -> None:
+    import threading
+
+    from onyx.db.engine.sql_engine import get_session_with_tenant
+    from shared_configs.contextvars import get_current_tenant_id
+
+    tenant = tenant_id or get_current_tenant_id()
+
+    def work() -> None:
+        for run_id in run_ids:
+            try:
+                with get_session_with_tenant(tenant_id=tenant) as session:
+                    execute_run(session, run_id, tenant_id=tenant)
+            except Exception:  # noqa: BLE001 - the tick retries runnable runs
+                logger.exception("TON automation in-process run failed run_id=%s", run_id)
+
+    worker = (
+        threading.Timer(countdown, work) if countdown else threading.Thread(target=work)
+    )
+    worker.daemon = True
+    worker.start()
 
 
 def _finish(session: Session, run: TonAutomationRun, status: RunStatus, error: str | None, now: datetime.datetime) -> None:

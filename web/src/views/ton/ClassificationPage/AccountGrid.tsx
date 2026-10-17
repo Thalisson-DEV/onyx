@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useState } from "react";
 import {
   Button,
-  InputSingleSelect,
+  InputComboBox,
   InputTypeIn,
   Text,
 } from "@opal/components";
@@ -232,6 +232,14 @@ export default function AccountGrid({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const base = `${CLASSIFICATION_API}/${table.source_id}`;
+  const natureOptions = [
+    ...table.natures.map((item) => ({
+      value: item.account_id,
+      label: item.natureza,
+      description: item.dre_group,
+    })),
+    { value: NEW_NATURE, label: COPY.newNatureOption },
+  ];
 
   useEffect(() => {
     if (!pending) return;
@@ -315,8 +323,14 @@ export default function AccountGrid({
                     </Text>
                   </td>
                   <td onClick={(event) => event.stopPropagation()}>
-                    <InputSingleSelect
+                    {/* Type to filter: the controller has dozens of naturezas. */}
+                    <InputComboBox
+                      strict
+                      searchIcon
                       value={changing?.accountId ?? row.account_id ?? ""}
+                      placeholder={COPY.noNature}
+                      aria-label={`${COPY.columns.nature} ${row.account_code}`}
+                      options={natureOptions}
                       onValueChange={(value) => {
                         if (value === NEW_NATURE) {
                           onNewNature(row.account_code);
@@ -329,25 +343,7 @@ export default function AccountGrid({
                           });
                         }
                       }}
-                    >
-                      <InputSingleSelect.Trigger
-                        placeholder={COPY.noNature}
-                        aria-label={`${COPY.columns.nature} ${row.account_code}`}
-                      />
-                      <InputSingleSelect.Content>
-                        {table.natures.map((item) => (
-                          <InputSingleSelect.Item
-                            key={item.account_id}
-                            value={item.account_id}
-                          >
-                            {item.natureza}
-                          </InputSingleSelect.Item>
-                        ))}
-                        <InputSingleSelect.Item value={NEW_NATURE}>
-                          {COPY.newNatureOption}
-                        </InputSingleSelect.Item>
-                      </InputSingleSelect.Content>
-                    </InputSingleSelect>
+                    />
                   </td>
                   <td>
                     <AssistantCell

@@ -653,6 +653,10 @@ export const COPY = {
       reason: "Justificativa",
       reasonPlaceholder: "Motivo ou referência do documento",
       quickReasons: "Textos prontos",
+      reasonOptional: "Motivo (opcional)",
+      defaultReason: (decision: string) =>
+        `${decision} (decisão da Controladoria)`,
+      defaultMappingReason: "Aprovado pela Controladoria",
       applyToAll: (count: number, rule: string) =>
         `Aplicar a mesma decisão aos ${formatNumber(count)} casos de “${rule}”`,
       applyToList: (count: number) =>

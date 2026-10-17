@@ -319,7 +319,7 @@ export default function DecisionDialog({
   const [accountLabel, setAccountLabel] = useState(
     row.legacy_evidence?.suggested_label ?? ""
   );
-  const [reason, setReason] = useState("");
+  const [reasonInput, setReason] = useState("");
   const [basis, setBasis] = useState<"MOVEMENT" | "FINAL">("MOVEMENT");
   const [lineCode, setLineCode] = useState(row.line_candidate ?? "");
   const [startMonth, setStartMonth] = useState("");
@@ -350,6 +350,23 @@ export default function DecisionDialog({
     category.key === "dreAssignment" || category.key === "drePending";
   const isReconciliation = category.key.startsWith("reconciliation");
   const isReview = isReviewCategory(category);
+  // The Controladoria may skip the reason on review, reconciliation and
+  // mapping decisions; the history then records the decision itself.
+  const defaultReason = isReview
+    ? reviewDecision
+      ? DIALOG.defaultReason(
+          COPY.pending.reviewDecisions[reviewDecision] ?? reviewDecision
+        )
+      : ""
+    : isReconciliation
+      ? decision
+        ? DIALOG.defaultReason(COPY.pending.decisions[decision])
+        : ""
+      : isMapping
+        ? DIALOG.defaultMappingReason
+        : "";
+  const reasonOptional = isReview || isReconciliation || isMapping;
+  const reason = reasonInput.trim() || defaultReason;
   // Cases of the same rule: one decision can settle all of them.
   // Reconciliation items of the same closing month: one reason can settle a
   // whole list (for example every August note with a different number).
@@ -403,7 +420,7 @@ export default function DecisionDialog({
           : isReconciliation
             ? Boolean(decision)
             : isReview
-              ? Boolean(reviewDecision) && Boolean(authorization.trim())
+              ? Boolean(reviewDecision)
               : false;
   const busy = phase === "recording" || phase === "recomputing";
 
@@ -496,7 +513,8 @@ export default function DecisionDialog({
           {
             kind: reviewDecision,
             reason,
-            authorization_reference: authorization.trim(),
+            authorization_reference:
+              authorization.trim() || DIALOG.authorizationDefault,
             justification_category:
               reviewDecision === "JUSTIFY_EXCEPTION" ? justification : null,
           }
@@ -922,10 +940,10 @@ export default function DecisionDialog({
                     )}
                     <label className="flex flex-col gap-1">
                       <Text font="secondary-action" color="text-04">
-                        {DIALOG.reason}
+                        {reasonOptional ? DIALOG.reasonOptional : DIALOG.reason}
                       </Text>
                       <InputTypeIn
-                        value={reason}
+                        value={reasonInput}
                         onChange={(event) => setReason(event.target.value)}
                         placeholder={DIALOG.reasonPlaceholder}
                         aria-label={DIALOG.reason}

@@ -83,6 +83,10 @@ class BlockerRow(BaseModel):
     rule_title: str | None = None
     # Rejected rows have no parsed record: where they are in the workbook.
     locations: list[str] = Field(default_factory=list)
+    # Reconciliation: items of the same invoice key (NG and billing sides).
+    group_key: str | None = None
+    # Document-format duplicates: the earlier row that stays in the DRE.
+    kept_records: list[EvidenceRecordView] = Field(default_factory=list)
 
 
 class BlockerPage(BaseModel):

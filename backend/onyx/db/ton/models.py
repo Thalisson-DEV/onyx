@@ -4832,3 +4832,46 @@ class TonAutomationFile(Base):
     __table_args__ = (
         CheckConstraint("size_bytes <= 5242880", name="ck_ton_automation_file_size"),
     )
+
+
+class RecordUnitAssignment(Base):
+    """A unit the Controladoria assigned to an NG entry that has none.
+
+    Append-only: the latest row per (source, record key) is in force and a row
+    without a unit undoes the assignment. The record key is the review's
+    content identity (no sheet or row), so a re-import keeps the assignment
+    and a corrected export, which carries the unit, no longer matches it.
+    """
+
+    __tablename__ = "ton_record_unit_assignment"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    source_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_source.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    record_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    unit_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_business_unit.id", ondelete="RESTRICT")
+    )
+    occurrence_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_occurrence.id", ondelete="RESTRICT")
+    )
+    reason: Mapped[str] = mapped_column(String(500), nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        Index(
+            "ix_ton_record_unit_assignment_key",
+            "source_id",
+            "record_key",
+            "created_at",
+        ),
+    )

@@ -118,8 +118,13 @@ Regras:
 - Responda apenas com a natureza exatamente como aparece na lista de naturezas.
 - Use o padrão da Controladoria: contas já confirmadas por ela, o prefixo do código \
 e os históricos dos lançamentos. Explique qual evidência pesou.
-- Mútuos, repasses de terceiros, adiantamentos de caixa e outros movimentos que não \
-são receita nem custo vão para MOVIMENTOS NÃO GERENCIAIS.
+- Descontos da folha repassados a terceiros (empréstimo consignado, pensão \
+alimentícia, contribuição sindical, IR retido na folha) e adiantamento de salário \
+ou de 13º são custo de pessoal: use a natureza de folha, nunca movimentos não \
+gerenciais (decisão da Controladoria em 17/10/2026).
+- MOVIMENTOS NÃO GERENCIAIS é só o que não é receita nem custo da empresa: mútuos \
+entre empresas do grupo, transferências entre contas próprias, valores a receber \
+de terceiros e adiantamentos de caixa ainda sem prestação de contas.
 - Se a evidência for fraca ou contraditória, diga isso e use confiança BAIXA.
 - A sugestão será revisada por uma pessoa da Controladoria; não invente fatos.
 - Escreva a justificativa em português do Brasil, em até duas frases, sem jargão \

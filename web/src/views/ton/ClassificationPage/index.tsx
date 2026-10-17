@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   Button,
@@ -39,7 +40,8 @@ import {
 } from "@/views/ton/components/ui";
 import AccountGrid from "./AccountGrid";
 import NaturesTab from "./NaturesTab";
-import NewNatureDialog from "./NewNatureDialog";
+import UnitsTab from "./UnitsTab";
+import NewNatureDialog, { NEW_GROUP } from "./NewNatureDialog";
 
 type Filter = "open" | "confirmed" | "all";
 type Feedback = { tone: "success" | "error"; text: string } | null;
@@ -93,10 +95,14 @@ function FeedbackLine({ feedback }: { feedback: Feedback }) {
 
 function Actions({
   table,
+  selected,
+  onClearSelection,
   onChanged,
   onFeedback,
 }: {
   table: ClassificationTable;
+  selected: string[];
+  onClearSelection: () => void;
   onChanged: () => Promise<unknown>;
   onFeedback: (feedback: Feedback) => void;
 }) {
@@ -108,9 +114,16 @@ function Actions({
   // Re-analysing accounts that already have a suggestion takes minutes and
   // rarely changes the answer: ask only about the ones without one.
   const unsuggested = open.filter((row) => !row.suggestion);
+  // Suggestions that disagree with the current natureza can be asked again,
+  // for example after the classification rules changed.
+  const disagreeing = open.filter(
+    (row) => row.suggestion && !row.suggestion.agrees_with_current
+  );
+  const [running, setRunning] = useState(0);
 
-  async function suggest() {
-    const codes = unsuggested.map((row) => row.account_code);
+  async function suggest(rows = unsuggested) {
+    const codes = rows.map((row) => row.account_code);
+    setRunning(codes.length);
     const queue: string[][] = [];
     for (let index = 0; index < codes.length; index += CHUNK) {
       queue.push(codes.slice(index, index + CHUNK));
@@ -150,15 +163,16 @@ function Actions({
     await onChanged();
   }
 
-  async function confirmAgreeing() {
+  async function confirmCodes(codes: string[], note: string | null) {
     setBusy(true);
     try {
       const result = await postJson<{ confirmed: number }>(
         `${CLASSIFICATION_API}/${table.source_id}/confirm-batch`,
-        { account_codes: agreeing.map((row) => row.account_code) }
+        { account_codes: codes, note }
       );
       onFeedback({ tone: "success", text: COPY.batchDone(result.confirmed) });
       setAsking(false);
+      onClearSelection();
       await onChanged();
     } catch {
       onFeedback({ tone: "error", text: COPY.failed });
@@ -177,7 +191,12 @@ function Actions({
           size="sm"
           icon={SvgCheckCircle}
           disabled={busy}
-          onClick={() => void confirmAgreeing()}
+          onClick={() =>
+            void confirmCodes(
+              agreeing.map((row) => row.account_code),
+              null
+            )
+          }
         >
           {busy ? COPY.saving : COPY.batchYes}
         </Button>
@@ -192,6 +211,28 @@ function Actions({
       </span>
     );
   }
+  if (selected.length > 0) {
+    return (
+      <span className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          icon={SvgCheckCircle}
+          disabled={busy}
+          onClick={() => void confirmCodes(selected, COPY.selectedNote)}
+        >
+          {busy ? COPY.saving : COPY.selectedConfirm(selected.length)}
+        </Button>
+        <Button
+          size="sm"
+          prominence="tertiary"
+          disabled={busy}
+          onClick={onClearSelection}
+        >
+          {COPY.clearSelection}
+        </Button>
+      </span>
+    );
+  }
   return (
     <span className="flex flex-wrap items-center gap-2">
       {agreeing.length > 0 && (
@@ -199,18 +240,33 @@ function Actions({
           {COPY.batch(agreeing.length)}
         </Button>
       )}
-      {unsuggested.length > 0 && (
-        <Button
-          size="sm"
-          prominence="secondary"
-          icon={SvgSparkle}
-          disabled={progress !== null}
-          onClick={() => void suggest()}
-        >
-          {progress !== null
-            ? COPY.suggesting(progress, unsuggested.length)
-            : COPY.suggestFor(unsuggested.length)}
+      {progress !== null ? (
+        <Button size="sm" prominence="secondary" icon={SvgSparkle} disabled>
+          {COPY.suggesting(progress, running)}
         </Button>
+      ) : (
+        <>
+          {unsuggested.length > 0 && (
+            <Button
+              size="sm"
+              prominence="secondary"
+              icon={SvgSparkle}
+              onClick={() => void suggest()}
+            >
+              {COPY.suggestFor(unsuggested.length)}
+            </Button>
+          )}
+          {disagreeing.length > 0 && (
+            <Button
+              size="sm"
+              prominence="tertiary"
+              icon={SvgSparkle}
+              onClick={() => void suggest(disagreeing)}
+            >
+              {COPY.reanalyze(disagreeing.length)}
+            </Button>
+          )}
+        </>
       )}
     </span>
   );
@@ -271,10 +327,13 @@ function RecomputeLink({
 
 export default function ClassificationPage() {
   const { hasAdminAccess } = useUser();
+  const fromPending = useSearchParams().get("voltar") === "pendencias";
   const table = useClassificationTable(hasAdminAccess);
   const [tab, setTab] = useState("accounts");
   const [filter, setFilter] = useState<Filter>("open");
   const [query, setQuery] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newGroup, setNewGroup] = useState(false);
   const [creatingFor, setCreatingFor] = useState<string | null | undefined>(
     undefined
   );
@@ -283,6 +342,7 @@ export default function ClassificationPage() {
     accountId: string;
   } | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [selected, setSelected] = useState<string[]>([]);
 
   const rows = useMemo(() => table.data?.rows ?? [], [table.data]);
   const counts = {
@@ -336,7 +396,11 @@ export default function ClassificationPage() {
 
   return (
     <PageContainer className="max-w-[1280px]">
-      <BackLink href="/ton/administracao" label={COPY.back} />
+      {fromPending ? (
+        <BackLink href="/ton/pendencias" label={COPY.backToPending} />
+      ) : (
+        <BackLink href="/ton/administracao" label={COPY.back} />
+      )}
       <PageHeader
         eyebrow={COPY.eyebrow}
         title={COPY.title}
@@ -367,6 +431,7 @@ export default function ClassificationPage() {
           <Tabs.List>
             <Tabs.Trigger value="accounts">{COPY.tabs.accounts}</Tabs.Trigger>
             <Tabs.Trigger value="natures">{COPY.tabs.natures}</Tabs.Trigger>
+            <Tabs.Trigger value="units">{COPY.tabs.units}</Tabs.Trigger>
           </Tabs.List>
           <Tabs.Content value="accounts">
             <div className="flex flex-col gap-3 pt-4">
@@ -405,6 +470,10 @@ export default function ClassificationPage() {
                 <span className="ms-auto">
                   <Actions
                     table={table.data}
+                    selected={selected.filter((code) =>
+                      visible.some((row) => row.account_code === code)
+                    )}
+                    onClearSelection={() => setSelected([])}
                     onChanged={table.mutate}
                     onFeedback={setFeedback}
                   />
@@ -419,18 +488,33 @@ export default function ClassificationPage() {
               <AccountGrid
                 table={table.data}
                 rows={visible}
-                onNewNature={(code) => setCreatingFor(code)}
+                onNewNature={(code, name) => {
+                  setNewName(name ?? "");
+                  setNewGroup(false);
+                  setCreatingFor(code);
+                }}
                 onSaved={table.mutate}
                 pending={pending}
                 onPendingUsed={() => setPending(null)}
+                selected={selected}
+                onSelect={setSelected}
               />
+            </div>
+          </Tabs.Content>
+          <Tabs.Content value="units">
+            <div className="pt-4">
+              <UnitsTab />
             </div>
           </Tabs.Content>
           <Tabs.Content value="natures">
             <div className="pt-4">
               <NaturesTab
                 table={table.data}
-                onCreate={() => setCreatingFor(null)}
+                onCreate={(withGroup) => {
+                  setNewName("");
+                  setNewGroup(Boolean(withGroup));
+                  setCreatingFor(null);
+                }}
               />
             </div>
           </Tabs.Content>
@@ -440,7 +524,9 @@ export default function ClassificationPage() {
         <NewNatureDialog
           groups={table.data.groups}
           defaultGroup={
-            creatingFor
+            newGroup
+              ? NEW_GROUP
+              : creatingFor
               ? (table.data.natures.find(
                   (item) =>
                     item.account_id ===
@@ -449,6 +535,7 @@ export default function ClassificationPage() {
                 )?.dre_group_code ?? null)
               : null
           }
+          initialName={newName}
           onClose={() => setCreatingFor(undefined)}
           onCreated={natureCreated}
         />

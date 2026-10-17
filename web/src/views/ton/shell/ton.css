@@ -1337,3 +1337,487 @@ html:has(.ton-shell) body {
 .ton-import-notes[open] > summary::before {
   transform: rotate(90deg);
 }
+
+/* DRE year view */
+.ton-statement-scroll {
+  max-height: min(72vh, 900px);
+  overflow: auto;
+  border: 1px solid var(--border-01);
+  border-radius: var(--ton-radius-card, 12px);
+}
+.ton-matrix thead th {
+  z-index: 2;
+}
+.ton-matrix thead th:first-child {
+  inset-inline-start: 0;
+  z-index: 3;
+}
+.ton-matrix tbody th {
+  z-index: 1;
+  min-width: 14rem;
+  max-width: 20rem;
+}
+.ton-matrix td,
+.ton-matrix thead th {
+  min-width: 7rem;
+  padding-inline: 0.5rem;
+}
+.ton-statement thead th:first-child {
+  text-align: start;
+}
+.ton-statement td[aria-selected="true"] {
+  background: var(--ton-brand-soft);
+}
+.ton-cell-drill {
+  width: 100%;
+  text-align: end;
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  margin: -0.125rem -0.25rem;
+}
+.ton-cell-drill:hover {
+  background: var(--ton-brand-soft);
+  color: var(--ton-brand);
+}
+.ton-amount-negative {
+  color: var(--status-error-05);
+}
+.ton-amount-zero,
+.ton-amount-empty {
+  color: var(--text-02);
+}
+.ton-month-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ton-link-button {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ton-brand);
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+}
+.ton-link-button:hover {
+  text-decoration: underline;
+}
+.ton-month-block {
+  border: 1px solid var(--border-01);
+  border-radius: var(--ton-radius-card, 12px);
+  background: var(--ton-surface);
+  overflow: hidden;
+}
+.ton-month-block-header {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  color: var(--text-03);
+  background: var(--background-neutral-01);
+}
+.ton-month-block-header[aria-expanded="true"] {
+  border-bottom: 1px solid var(--border-01);
+}
+.ton-month-block-header:hover {
+  color: var(--text-05);
+}
+.ton-month-block-total {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-05);
+}
+.ton-summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2.5rem;
+}
+.ton-summary-strip dt {
+  font-size: 0.75rem;
+  color: var(--text-03);
+}
+.ton-summary-strip dd {
+  font-size: 1.375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-05);
+}
+
+/* Decision dialog: the case on the left, the decision on the right. */
+.ton-decision-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .ton-decision-layout {
+    grid-template-columns: minmax(0, 1.15fr) minmax(20rem, 1fr);
+  }
+}
+.ton-decision-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: var(--ton-radius-card);
+  border: 1px solid var(--border-02);
+  background: var(--ton-surface);
+}
+@media (min-width: 1024px) {
+  .ton-decision-panel {
+    position: sticky;
+    top: 0;
+  }
+}
+.ton-decision-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding-top: 0.875rem;
+  border-top: 1px solid var(--border-01);
+}
+.ton-choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  max-height: 16rem;
+  overflow: auto;
+}
+.ton-option-card.is-compact {
+  padding: 0.5rem 0.75rem;
+  align-items: center;
+}
+.ton-option-card.is-compact .ton-option-dot {
+  margin-top: 0;
+}
+.ton-chip[aria-pressed="true"] {
+  border-color: var(--ton-brand);
+  background: var(--ton-brand-soft);
+  color: var(--ton-brand);
+}
+.ton-more summary {
+  cursor: pointer;
+  width: fit-content;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-03);
+}
+.ton-more summary:hover {
+  color: var(--text-05);
+}
+
+/* Pending queue as a table with bulk selection. */
+.ton-queue-table-wrap {
+  border: 1px solid var(--border-01);
+  border-radius: var(--ton-radius-card);
+  overflow-x: auto;
+}
+.ton-queue-table {
+  font-size: 0.875rem;
+}
+.ton-queue-table th {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-03);
+  background: var(--background-neutral-01);
+  border-bottom: 1px solid var(--border-01);
+}
+.ton-queue-table td {
+  padding: 0.625rem 0.75rem;
+  vertical-align: middle;
+  border-top: 1px solid var(--border-01);
+}
+.ton-queue-table tbody tr:first-child td {
+  border-top: 0;
+}
+.ton-queue-table tbody tr {
+  cursor: pointer;
+}
+.ton-queue-table tbody tr:hover td {
+  background: var(--background-neutral-01);
+}
+.ton-queue-table tbody tr[aria-selected="true"] td {
+  background: var(--ton-brand-soft);
+}
+.ton-queue-table input[type="checkbox"] {
+  accent-color: var(--ton-brand);
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+.ton-queue-item {
+  min-width: 18rem;
+}
+.ton-queue-detail {
+  display: block;
+  padding-top: 0.125rem;
+  font-size: 0.8125rem;
+  color: var(--text-03);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ton-queue-table .ton-queue-amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ton-bulk-bar {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  border-radius: var(--ton-radius-card);
+  border: 1px solid var(--ton-brand-line);
+  background: var(--ton-brand-soft);
+}
+
+.ton-checkbox {
+  accent-color: var(--ton-brand);
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+
+/* DRE structure editor */
+.ton-structure {
+  font-size: 0.875rem;
+}
+.ton-structure th {
+  padding: 0.5rem;
+  text-align: start;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-03);
+  border-bottom: 1px solid var(--border-02);
+}
+.ton-structure td {
+  padding: 0.375rem 0.5rem;
+  vertical-align: middle;
+  border-top: 1px solid var(--border-01);
+}
+.ton-structure tr[data-kind="group"] td {
+  background: var(--background-neutral-01);
+  border-top: 1px solid var(--border-02);
+}
+.ton-structure tr[data-kind="total"] td {
+  background: var(--ton-brand-soft);
+  border-top: 2px solid var(--border-03);
+}
+.ton-structure-child {
+  display: block;
+  padding-inline-start: 1.5rem;
+}
+.ton-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  color: var(--text-03);
+}
+.ton-icon-button:hover:not(:disabled) {
+  background: var(--background-neutral-02);
+  color: var(--text-05);
+}
+.ton-icon-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.ton-select {
+  width: 100%;
+  height: 2.25rem;
+  padding: 0 0.5rem;
+  border-radius: var(--ton-radius-control);
+  border: 1px solid var(--border-02);
+  background: var(--background-neutral-00);
+  color: var(--text-05);
+  font-size: 0.8125rem;
+}
+
+/* Pending: classification guide and duplicate comparison */
+.ton-guide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--ton-radius-card);
+  border: 1px solid var(--ton-brand-line);
+  background: var(--ton-brand-soft);
+}
+.ton-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.ton-compare table {
+  font-size: 0.8125rem;
+  border: 1px solid var(--border-01);
+  border-radius: var(--ton-radius-card);
+  overflow: hidden;
+}
+.ton-compare th,
+.ton-compare td {
+  padding: 0.5rem 0.625rem;
+  text-align: start;
+  vertical-align: top;
+  border-top: 1px solid var(--border-01);
+  overflow-wrap: anywhere;
+}
+.ton-compare thead th {
+  border-top: 0;
+  background: var(--background-neutral-01);
+  font-weight: 600;
+  color: var(--text-05);
+}
+.ton-compare tbody th {
+  width: 7rem;
+  white-space: nowrap;
+}
+.ton-compare tr[data-differs] td {
+  background: color-mix(in srgb, var(--status-warning-05) 8%, transparent);
+  font-weight: 600;
+}
+
+
+/* Decision dialog: the confirm button stays in view; batches read as a list. */
+.ton-decision-footer {
+  position: sticky;
+  bottom: -1rem;
+  margin-inline: -1rem;
+  margin-bottom: -1rem;
+  padding: 0.875rem 1rem 1rem;
+  background: var(--ton-surface);
+  border-bottom-left-radius: var(--ton-radius-card);
+  border-bottom-right-radius: var(--ton-radius-card);
+}
+.ton-batch-table {
+  max-height: 24rem;
+  overflow: auto;
+  border: 1px solid var(--border-01);
+  border-radius: var(--ton-radius-card);
+}
+.ton-batch-table table {
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+.ton-batch-table td {
+  padding: 0.5rem 0.625rem;
+  vertical-align: top;
+  border-top: 1px solid var(--border-01);
+  color: var(--text-05);
+}
+.ton-batch-table tr:first-child td {
+  border-top: 0;
+}
+.ton-batch-history {
+  display: block;
+  color: var(--text-03);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 22rem;
+}
+
+
+/* Unit picker */
+.ton-picker-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: var(--ton-radius-control);
+  border: 1px solid var(--border-02);
+  background: var(--background-neutral-00);
+  color: var(--text-05);
+  font-size: 0.875rem;
+  text-align: start;
+}
+.ton-picker-panel {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  inset-inline-start: 0;
+  z-index: 30;
+  width: 24rem;
+  border-radius: var(--ton-radius-card);
+  border: 1px solid var(--border-02);
+  background: var(--ton-surface);
+  box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.25);
+  padding-top: 0.25rem;
+}
+.ton-picker-list {
+  max-height: 18rem;
+  overflow: auto;
+  padding: 0.25rem;
+}
+.ton-picker-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  text-align: start;
+}
+.ton-picker-row:hover {
+  background: var(--background-neutral-01);
+}
+.ton-picker-row.is-current {
+  background: var(--ton-brand-soft);
+}
+
+/* New DRE group inside the natureza dialog */
+.ton-new-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  border-radius: var(--ton-radius-card);
+  border: 1px solid var(--ton-brand-line);
+  background: var(--ton-brand-soft);
+}
+
+
+/* Reconciliation comparison */
+.ton-compare-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--ton-radius-card);
+  background: var(--background-neutral-01);
+}
+.ton-compare-summary > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+@media (min-width: 1024px) {
+  .ton-decision-layout {
+    grid-template-columns: minmax(0, 1.6fr) minmax(22rem, 1fr);
+  }
+}
+
+/* Comparison columns share the width; the field names keep a narrow column. */
+.ton-compare table {
+  table-layout: fixed;
+}
+.ton-compare thead th:first-child,
+.ton-compare tbody th {
+  width: 9rem;
+}

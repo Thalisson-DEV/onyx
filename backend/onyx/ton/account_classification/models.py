@@ -121,8 +121,13 @@ class NatureCreate(BaseModel):
     """A natureza the Controladoria adds, as in the AUXILIARES sheet."""
 
     natureza: str = Field(min_length=2, max_length=100)
-    dre_group_code: str = Field(min_length=1, max_length=100)
+    # An existing group, or empty when ``new_group_label`` creates one.
+    dre_group_code: str = Field("", max_length=100)
     reason: str = Field("", max_length=500)
+    # A DRE group created together with its first natureza (a group needs at
+    # least one line under it), as the Controladoria did for "Mútuo".
+    new_group_label: str | None = Field(None, min_length=2, max_length=100)
+    new_group_in_result: bool = True
 
 
 class EntryView(BaseModel):

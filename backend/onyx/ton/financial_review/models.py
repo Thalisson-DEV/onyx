@@ -14,6 +14,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from onyx.ton.financial_domain.readiness_models import EvidenceRecordView
+
 from onyx.db.ton.enums import (
     OccurrenceCriticality,
     OccurrenceStatus,
@@ -453,6 +455,30 @@ class ReviewDecisionRequest(BaseModel):
     authorization_reference: str | None = Field(
         default=None, min_length=1, max_length=200
     )
+
+
+class UnitAssignmentRequest(BaseModel):
+    """The unit an NG entry without one belongs to, with an optional reason."""
+
+    model_config = ConfigDict(extra="forbid")
+    # None undoes an earlier assignment: the entry goes back to no unit.
+    unit_id: UUID | None
+    reason: str = Field("", max_length=500)
+
+
+class UnitMissingItemView(BaseModel):
+    """An NG entry without a unit and the unit assigned to it, if any."""
+
+    occurrence_id: UUID
+    open: bool
+    records: list[EvidenceRecordView]
+    assigned_unit_id: UUID | None
+
+
+class UnitAssignmentView(BaseModel):
+    occurrence_id: UUID
+    unit_id: UUID | None
+    records: int
 
 
 class ReviewDecisionView(BaseModel):

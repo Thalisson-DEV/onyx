@@ -35,11 +35,18 @@ export default function ClosingFrame({
 }: ClosingFrameProps) {
   // Only the eyebrow needs it; the page under the frame loads first.
   const closing = useTonClosing(undefined, useDeferredStart());
+  // The DRE picks its own unit; the closing scope would contradict it there.
   const eyebrow = closing.data
-    ? `${COPY.closing.eyebrow} · ${formatPeriod(closing.data.period)} · ${closing.data.scope}`
+    ? [
+        COPY.closing.eyebrow,
+        formatPeriod(closing.data.period),
+        active === "dre" ? null : closing.data.scope,
+      ]
+        .filter(Boolean)
+        .join(" · ")
     : COPY.closing.eyebrow;
   return (
-    <PageContainer className={wide ? "max-w-[1360px]" : undefined}>
+    <PageContainer className={wide ? "max-w-[1760px]" : undefined}>
       <PageHeader
         eyebrow={eyebrow}
         title={title}

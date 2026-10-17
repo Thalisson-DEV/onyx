@@ -39,6 +39,19 @@ class UnitView(BaseModel):
     id: UUID
     code: str
     name: str
+    kind: str
+    is_active: bool
+
+
+class UnitActivation(BaseModel):
+    """Inactive units leave the pickers; their history stays untouched.
+
+    The kind (operational, implantation, non-operational) is the Controladoria's
+    to keep current: "only the operating units" in the DRE reads it.
+    """
+
+    is_active: bool | None = None
+    kind: Literal["OPERATIONAL", "IMPLANTATION", "NON_OPERATIONAL"] | None = None
 
 
 class MappingCreate(BaseModel):

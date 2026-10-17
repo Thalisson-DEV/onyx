@@ -147,9 +147,64 @@ export const CLASSIFICATION_COPY = {
   loading: "Carregando contas…",
   exportExcel: "Baixar Excel",
   exportFailed: "Não foi possível gerar o Excel. Tente novamente.",
+  backToPending: "Voltar para as pendências",
+  createNature: "Criar natureza",
   tabs: {
     accounts: "Contas do NG",
     natures: "Naturezas",
+    units: "Unidades",
+  },
+  unitless: {
+    title: "Lançamentos sem unidade no NG",
+    intro: (total: number, assigned: number) =>
+      `${total} lançamentos vieram do NG sem unidade administrativa; ${assigned} já têm a unidade atribuída aqui. A atribuição vale até o NG trazer a unidade, e continua valendo quando o arquivo é importado de novo.`,
+    loading: "Carregando lançamentos sem unidade…",
+    columns: {
+      entry: "Lançamento",
+      date: "Emissão",
+      amount: "Valor",
+      unit: "Unidade",
+    },
+    open: "Pendente",
+    accepted: "Aceito sem unidade",
+    noUnit: "Sem unidade",
+    chooseUnit: "Escolha a unidade",
+    bulkUnit: "Unidade dos lançamentos selecionados",
+    assign: "Atribuir",
+    selectAll: "Selecionar todos os lançamentos sem unidade",
+    selectRow: (document: string) => `Selecionar o lançamento ${document}`,
+    unitOf: (document: string) => `Unidade do lançamento ${document}`,
+    selected: (count: number) =>
+      count === 1 ? "1 lançamento selecionado" : `${count} lançamentos selecionados`,
+    pending: (count: number) =>
+      count === 1
+        ? "1 atribuição nova: recalcule a base para ela valer na DRE."
+        : `${count} atribuições novas: recalcule a base para elas valerem na DRE.`,
+    recalculate: "Recalcular a base",
+    recalculated:
+      "Base recalculada: abra a DRE e use Calcular DRE do ano se ela pedir.",
+    failed: "Não foi possível salvar. Tente novamente.",
+  },
+  units: {
+    intro:
+      "Desative as unidades que não operam mais (por exemplo Natal e Macau) e mantenha o tipo de cada uma em dia: o atalho \u201cOperacionais ativas\u201d da DRE segue este cadastro. Nada é excluído; o histórico continua guardado.",
+    loading: "Carregando unidades…",
+    columns: {
+      code: "Código",
+      name: "Unidade",
+      kind: "Tipo",
+      status: "Situação",
+    },
+    kinds: {
+      OPERATIONAL: "Operacional",
+      IMPLANTATION: "Em implantação",
+      NON_OPERATIONAL: "Não operacional",
+    } as Record<string, string>,
+    active: "Ativa",
+    inactive: "Inativa",
+    toggle: (unit: string) => `Unidade ${unit} ativa`,
+    kindOf: (unit: string) => `Tipo da unidade ${unit}`,
+    failed: "Não foi possível salvar. Tente novamente.",
   },
   filters: {
     label: "Mostrar",
@@ -159,6 +214,10 @@ export const CLASSIFICATION_COPY = {
   },
   search: "Buscar código, descrição ou natureza",
   suggest: "Pedir sugestões ao assistente",
+  reanalyze: (count: number) =>
+    count === 1
+      ? "Reanalisar 1 em que o assistente discorda"
+      : `Reanalisar ${count} em que o assistente discorda`,
   suggestFor: (count: number) =>
     count === 1
       ? "Pedir sugestão para 1 conta sem sugestão"
@@ -174,6 +233,12 @@ export const CLASSIFICATION_COPY = {
   batchYes: "Confirmar",
   batchNo: "Cancelar",
   batchDone: (count: number) => `${count} contas confirmadas.`,
+  selectedConfirm: (count: number) =>
+    count === 1 ? "Confirmar 1 selecionada" : `Confirmar ${count} selecionadas`,
+  selectedNote: "Confirmada em lote pela Controladoria (itens selecionados)",
+  clearSelection: "Limpar seleção",
+  selectAll: "Selecionar todas as contas confirmáveis",
+  selectRow: (code: string) => `Selecionar ${code}`,
   recompute: {
     text: (count: number) =>
       `${count} ${count === 1 ? "decisão ainda não está" : "decisões ainda não estão"} na DRE.`,
@@ -230,9 +295,25 @@ export const CLASSIFICATION_COPY = {
       accounts: "Códigos do NG",
     },
     create: "Nova natureza",
+    createGroup: "Novo grupo da DRE",
+    groupDialogTitle: "Novo grupo da DRE",
+    firstNature: "Primeira natureza do grupo",
+    groupDialogIntro:
+      "Todo grupo nasce com a primeira natureza dele. Depois dá para mover outras naturezas para o grupo na Classificação ou em Editar estrutura, na DRE.",
+    saveWithGroup: "Criar grupo e natureza",
     dialogTitle: "Nova natureza",
     dialogIntro:
       "A natureza nova ganha uma linha própria na DRE, dentro do grupo escolhido.",
+    newGroupOption: "+ Novo grupo da DRE…",
+    groupName: "Nome do novo grupo",
+    groupNamePlaceholder: "Ex.: MÚTUO",
+    groupResult: "O grupo entra no resultado?",
+    inResult: "Entra no resultado",
+    inResultHelp:
+      "Fica acima do resultado após financiamento e é somado nele.",
+    outOfResult: "Fica fora do resultado",
+    outOfResultHelp:
+      "Aparece no fim da DRE, sem mexer no resultado (como Mútuo e Movimentos não gerenciais).",
     name: "Nome",
     namePlaceholder: "Ex.: BENEFÍCIOS A EMPREGADOS",
     group: "Grupo da DRE",

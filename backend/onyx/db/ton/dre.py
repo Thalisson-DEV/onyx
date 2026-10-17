@@ -61,6 +61,10 @@ from onyx.ton.dre.models import (
     DreStructureView,
     DreVersionCreate,
     DreVersionView,
+    DreUnitsYearMonth,
+    DreUnitsYearView,
+    DreYearMonth,
+    DreYearView,
 )
 from onyx.ton.dre.xlsx_export import (
     BaseEntry,
@@ -431,6 +435,53 @@ def _formula_blocker(error: ValueError) -> str:
 
 def readiness(session: Session, user: User, scope: DreScope) -> DreReadinessView:
     version, run, datasets = _inputs(session, user, scope, write=False)
+    return _readiness_view(scope, version, run, datasets)
+
+
+def readiness_by_period(
+    session: Session,
+    user: User,
+    normalization_run_id: UUID,
+    structure_version_id: UUID,
+    periods: list[datetime.date],
+    unit_id: UUID | None,
+) -> list[DreReadinessView]:
+    """Readiness of several months, loading each month's data once.
+
+    Each month's readiness reads January up to that month; computing them one
+    by one loaded January nine times for September.
+    """
+    views: list[DreReadinessView] = []
+    by_year: dict[int, list[datetime.date]] = defaultdict(list)
+    for period in periods:
+        by_year[period.year].append(period)
+    for year in sorted(by_year):
+        months = sorted(by_year[year])
+        last = DreScope(
+            normalization_run_id=normalization_run_id,
+            structure_version_id=structure_version_id,
+            period=months[-1],
+            unit_id=unit_id,
+        )
+        version, run, datasets = _inputs(session, user, last, write=False)
+        for period in months:
+            views.append(
+                _readiness_view(
+                    last.model_copy(update={"period": period}),
+                    version,
+                    run,
+                    datasets[: period.month],
+                )
+            )
+    return views
+
+
+def _readiness_view(
+    scope: DreScope,
+    version: DreVersionView,
+    run: FinancialNormalizationRun,
+    datasets: list[DreInputDataset],
+) -> DreReadinessView:
     blockers = _blockers(version, run, datasets, scope.unit_id)
     if not blockers:
         try:
@@ -487,11 +538,51 @@ def _stored_result_line(run_id: UUID, line: DreResultLineView) -> DreResultLine:
 
 
 def execute(session: Session, user: User, scope: DreScope) -> DreRunView:
-    started_at = datetime.datetime.now(datetime.timezone.utc)
     version, normalization, datasets = _inputs(session, user, scope, write=True)
+    return _execute_loaded(session, user, scope, version, normalization, datasets)
+
+
+def execute_year(session: Session, user: User, scope: DreScope) -> list[DreRunView]:
+    """January up to the scope's month, loading each month's data once."""
+    version, normalization, datasets = _inputs(session, user, scope, write=True)
+    return [
+        _execute_loaded(
+            session,
+            user,
+            scope.model_copy(update={"period": scope.period.replace(month=month)}),
+            version,
+            normalization,
+            datasets[:month],
+        )
+        for month in range(1, scope.period.month + 1)
+    ]
+
+
+def _execute_loaded(
+    session: Session,
+    user: User,
+    scope: DreScope,
+    version: DreVersionView,
+    normalization: FinancialNormalizationRun,
+    datasets: list[DreInputDataset],
+) -> DreRunView:
+    started_at = datetime.datetime.now(datetime.timezone.utc)
+    blockers = _blockers(version, normalization, datasets, scope.unit_id)
+    result_lines: list[DreResultLineView] = []
+    if not blockers:
+        try:
+            result_lines = _calculated_lines(version, datasets, scope.period.month)
+        except ValueError as error:
+            blockers[_formula_blocker(error)] = 1
+    # The blockers are part of the identity: a scope that was blocked and is
+    # ready now (a rule fixed, say) gets a new result instead of the old one.
     digest = hashlib.sha256(
         json.dumps(
-            {"scope": scope.model_dump(mode="json"), "engine": ENGINE_VERSION},
+            {
+                "scope": scope.model_dump(mode="json"),
+                "engine": ENGINE_VERSION,
+                "blockers": blockers,
+            },
             sort_keys=True,
         ).encode()
     ).hexdigest()
@@ -504,13 +595,6 @@ def execute(session: Session, user: User, scope: DreScope) -> DreRunView:
     )
     if previous is not None:
         return _run_view(previous)
-    blockers = _blockers(version, normalization, datasets, scope.unit_id)
-    result_lines: list[DreResultLineView] = []
-    if not blockers:
-        try:
-            result_lines = _calculated_lines(version, datasets, scope.period.month)
-        except ValueError as error:
-            blockers[_formula_blocker(error)] = 1
     review = session.get(ReviewRun, normalization.review_run_id)
     assert review is not None
     executions = [
@@ -646,15 +730,9 @@ def get_statement(session: Session, user: User, run_id: UUID) -> DreStatementVie
     return DreStatementView(run=run, version=version, lines=lines)
 
 
-def get_period_series(
-    session: Session,
-    user: User,
-    normalization_run_id: UUID,
-    structure_version_id: UUID,
-    year: int,
-    unit_id: UUID | None,
-    line_code: str,
-) -> list[DrePeriodPoint]:
+def _check_scope_access(
+    session: Session, user: User, normalization_run_id: UUID, unit_id: UUID | None
+) -> None:
     financial_domain.get_run(session, user, normalization_run_id)
     if unit_id is None and not is_ton_administrator(user):
         raise OnyxError(
@@ -670,6 +748,172 @@ def get_period_series(
         is None
     ):
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "Business unit not found")
+
+
+def get_year(
+    session: Session,
+    user: User,
+    normalization_run_id: UUID,
+    structure_version_id: UUID,
+    year: int,
+    unit_id: UUID | None,
+) -> DreYearView:
+    """The latest READY result of each month of the year, for one scope."""
+    _check_scope_access(session, user, normalization_run_id, unit_id)
+    version = get_version(session, user, structure_version_id)
+    runs = session.scalars(
+        sa.select(DreCalculationRun)
+        .where(
+            DreCalculationRun.normalization_run_id == normalization_run_id,
+            DreCalculationRun.structure_version_id == structure_version_id,
+            DreCalculationRun.unit_id == unit_id,
+            DreCalculationRun.status == "READY",
+            DreCalculationRun.period >= datetime.date(year, 1, 1),
+            DreCalculationRun.period < datetime.date(year + 1, 1, 1),
+        )
+        .order_by(
+            DreCalculationRun.period,
+            DreCalculationRun.finished_at.desc(),
+            DreCalculationRun.id.desc(),
+        )
+    )
+    latest: dict[datetime.date, DreCalculationRun] = {}
+    for run in runs:
+        latest.setdefault(run.period, run)
+    lines_by_run: dict[UUID, list[DreResultLineView]] = defaultdict(list)
+    if latest:
+        for line in session.scalars(
+            sa.select(DreResultLine)
+            .where(DreResultLine.run_id.in_([run.id for run in latest.values()]))
+            .order_by(DreResultLine.position)
+        ):
+            lines_by_run[line.run_id].append(
+                DreResultLineView.model_validate(line, from_attributes=True)
+            )
+    return DreYearView(
+        version=version,
+        months=[
+            DreYearMonth(run=_run_view(run), lines=lines_by_run[run.id])
+            for _, run in sorted(latest.items())
+        ],
+    )
+
+
+def _latest_ready_runs(
+    session: Session,
+    normalization_run_id: UUID,
+    structure_version_id: UUID,
+    year: int,
+    unit_ids: list[UUID],
+) -> dict[tuple[UUID, datetime.date], DreCalculationRun]:
+    latest: dict[tuple[UUID, datetime.date], DreCalculationRun] = {}
+    for run in session.scalars(
+        sa.select(DreCalculationRun)
+        .where(
+            DreCalculationRun.normalization_run_id == normalization_run_id,
+            DreCalculationRun.structure_version_id == structure_version_id,
+            DreCalculationRun.unit_id.in_(unit_ids),
+            DreCalculationRun.status == "READY",
+            DreCalculationRun.period >= datetime.date(year, 1, 1),
+            DreCalculationRun.period < datetime.date(year + 1, 1, 1),
+        )
+        .order_by(
+            DreCalculationRun.finished_at.desc(), DreCalculationRun.id.desc()
+        )
+    ):
+        assert run.unit_id is not None
+        latest.setdefault((run.unit_id, run.period), run)
+    return latest
+
+
+_SUMMED_FIELDS = (
+    "realizado",
+    "orcado",
+    "variance",
+    "realizado_ytd",
+    "orcado_ytd",
+    "variance_ytd",
+)
+
+
+def get_units_year(
+    session: Session,
+    user: User,
+    normalization_run_id: UUID,
+    structure_version_id: UUID,
+    year: int,
+    unit_ids: list[UUID],
+) -> DreUnitsYearView:
+    """The DRE of a set of units: per month, the sum of their results."""
+    unique = list(dict.fromkeys(unit_ids))
+    if not unique:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Choose at least one unit")
+    for unit_id in unique:
+        _check_scope_access(session, user, normalization_run_id, unit_id)
+    version = get_version(session, user, structure_version_id)
+    if any(line.operation == DreOperation.RATIO for line in version.lines):
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            "Ratio lines cannot be summed across units",
+        )
+    latest = _latest_ready_runs(
+        session, normalization_run_id, structure_version_id, year, unique
+    )
+    lines_by_run: dict[UUID, list[DreResultLine]] = defaultdict(list)
+    if latest:
+        for line in session.scalars(
+            sa.select(DreResultLine).where(
+                DreResultLine.run_id.in_([run.id for run in latest.values()])
+            )
+        ):
+            lines_by_run[line.run_id].append(line)
+    ordered = sorted(version.lines, key=lambda item: item.position)
+    months: list[DreUnitsYearMonth] = []
+    for period in sorted({period for _, period in latest}):
+        ready = [unit for unit in unique if (unit, period) in latest]
+        totals: dict[str, dict[str, Decimal]] = defaultdict(
+            lambda: defaultdict(Decimal)
+        )
+        for unit in ready:
+            for line in lines_by_run[latest[(unit, period)].id]:
+                for field in _SUMMED_FIELDS:
+                    totals[line.code][field] += getattr(line, field)
+        months.append(
+            DreUnitsYearMonth(
+                period=period,
+                ready_unit_ids=ready,
+                missing_unit_ids=[unit for unit in unique if unit not in ready],
+                lines=[
+                    DreResultLineView(
+                        code=line.code,
+                        label=line.label,
+                        position=line.position,
+                        realizado=totals[line.code]["realizado"],
+                        orcado=totals[line.code]["orcado"],
+                        variance=totals[line.code]["variance"],
+                        variance_percent=None,
+                        realizado_ytd=totals[line.code]["realizado_ytd"],
+                        orcado_ytd=totals[line.code]["orcado_ytd"],
+                        variance_ytd=totals[line.code]["variance_ytd"],
+                        variance_percent_ytd=None,
+                    )
+                    for line in ordered
+                ],
+            )
+        )
+    return DreUnitsYearView(version=version, unit_ids=unique, months=months)
+
+
+def get_period_series(
+    session: Session,
+    user: User,
+    normalization_run_id: UUID,
+    structure_version_id: UUID,
+    year: int,
+    unit_id: UUID | None,
+    line_code: str,
+) -> list[DrePeriodPoint]:
+    _check_scope_access(session, user, normalization_run_id, unit_id)
     start = datetime.date(year, 1, 1)
     end = datetime.date(year + 1, 1, 1)
     rows = session.execute(
@@ -916,23 +1160,26 @@ def list_contributors(
 def _export_entries(
     session: Session,
     user: User,
-    run: DreRunView,
+    scope: DreScope,
     lines: dict[str, DreLineDefinition],
+    unit_ids: list[UUID] | None = None,
 ) -> list[BaseEntry]:
     """Every ACTUAL fact of the year to date that a source line sums."""
-    normalization = session.get(
-        FinancialNormalizationRun, run.scope.normalization_run_id
-    )
+    normalization = session.get(FinancialNormalizationRun, scope.normalization_run_id)
     assert normalization is not None
     conditions = [
-        FinancialActualFact.run_id == run.scope.normalization_run_id,
-        FinancialActualFact.calendar_period >= run.scope.period.replace(month=1),
-        FinancialActualFact.calendar_period <= run.scope.period,
-        DreAccountMapping.version_id == run.scope.structure_version_id,
+        FinancialActualFact.run_id == scope.normalization_run_id,
+        FinancialActualFact.calendar_period >= scope.period.replace(month=1),
+        FinancialActualFact.calendar_period <= scope.period,
+        DreAccountMapping.version_id == scope.structure_version_id,
         DreAccountMapping.status == "APPROVED",
     ]
     if not is_ton_administrator(user):
         conditions.append(business_unit_visible_clause(user))
+    if scope.unit_id is not None:
+        conditions.append(FinancialActualFact.unit_id == scope.unit_id)
+    if unit_ids is not None:
+        conditions.append(FinancialActualFact.unit_id.in_(unit_ids))
     rows = session.execute(
         sa.select(
             FinancialActualFact,
@@ -1107,7 +1354,11 @@ def _export_premises(
 def export_workbook(
     session: Session, user: User, run_id: UUID
 ) -> tuple[DreRunView, bytes]:
-    """Excel of the year to date for the run's base: consolidated and units."""
+    """Excel of the year to date for the run's base.
+
+    A unit run exports only that unit, so it can go to the unit's manager. A
+    consolidated run exports the consolidated block and then every unit.
+    """
     anchor = get_calculation(session, user, run_id)
     if anchor.status != "READY":
         raise OnyxError(
@@ -1136,7 +1387,7 @@ def export_workbook(
             .order_by(DreCalculationRun.finished_at.desc())
         )
     )
-    entries = _export_entries(session, user, anchor, lines)
+    entries = _export_entries(session, user, anchor.scope, lines)
     unit_rows = session.execute(
         sa.select(BusinessUnit.id, BusinessUnit.code, BusinessUnit.name)
         .where(
@@ -1152,7 +1403,7 @@ def export_workbook(
         run_by_scope.setdefault((run.unit_id, run.period.month), run)
     scopes: list[ScopeBlock] = []
     scope_units: list[UUID | None] = []
-    if is_ton_administrator(user):
+    if anchor.scope.unit_id is None and is_ton_administrator(user):
         scopes.append(
             ScopeBlock(
                 unit_code=None,
@@ -1239,6 +1490,121 @@ def export_workbook(
         ),
     )
     return anchor, build_workbook(data)
+
+
+def export_units_workbook(
+    session: Session,
+    user: User,
+    normalization_run_id: UUID,
+    structure_version_id: UUID,
+    period: datetime.date,
+    unit_ids: list[UUID],
+) -> bytes:
+    """Excel of a set of units: their sum first, then each unit."""
+    unique = list(dict.fromkeys(unit_ids))
+    if not unique:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Choose at least one unit")
+    for unit_id in unique:
+        _check_scope_access(session, user, normalization_run_id, unit_id)
+    version = get_version(session, user, structure_version_id)
+    structure = session.get(DreStructure, version.structure_id)
+    normalization = session.get(FinancialNormalizationRun, normalization_run_id)
+    assert structure is not None and normalization is not None
+    lines = {line.code: line for line in version.lines}
+    scope = DreScope(
+        normalization_run_id=normalization_run_id,
+        structure_version_id=structure_version_id,
+        period=period,
+        unit_id=None,
+    )
+    entries = _export_entries(session, user, scope, lines, unit_ids=unique)
+    latest = {
+        key: run
+        for key, run in _latest_ready_runs(
+            session, normalization_run_id, structure_version_id, period.year, unique
+        ).items()
+        if key[1] <= period
+    }
+    units = session.execute(
+        sa.select(BusinessUnit.id, BusinessUnit.code, BusinessUnit.name)
+        .where(BusinessUnit.id.in_(unique))
+        .order_by(BusinessUnit.code)
+    ).all()
+    months_of = {
+        unit_id: frozenset(month.month for unit, month in latest if unit == unit_id)
+        for unit_id in unique
+    }
+    all_ready = frozenset.intersection(*months_of.values()) if months_of else frozenset()
+    scopes = [
+        ScopeBlock(
+            unit_code=None,
+            label=f"Unidades selecionadas ({len(unique)}): "
+            + ", ".join(name for _, _, name in units),
+            ready_months=all_ready,
+            title="Soma",
+        ),
+        *(
+            ScopeBlock(unit_code=code, label=name, ready_months=months_of[unit_id])
+            for unit_id, code, name in units
+        ),
+    ]
+    data = DreWorkbookInput(
+        structure_label=structure.label,
+        structure_version=version.number,
+        lines=version.lines,
+        year=period.year,
+        last_month=period.month,
+        scopes=scopes,
+        entries=entries,
+        header=[],
+    )
+    expected = expected_values(data)
+    cent = Decimal("0.01")
+    budget_present = False
+    for unit_id, code, _ in units:
+        for month in months_of[unit_id]:
+            run = latest[(unit_id, datetime.date(period.year, month, 1))]
+            for stored in session.scalars(
+                sa.select(DreResultLine).where(DreResultLine.run_id == run.id)
+            ):
+                budget_present = budget_present or bool(
+                    stored.orcado or stored.orcado_ytd
+                )
+                value = expected[code][(month, stored.code)]
+                if value is None or value.quantize(cent) != stored.realizado.quantize(
+                    cent
+                ):
+                    raise OnyxError(
+                        OnyxErrorCode.CONFLICT,
+                        "DRE export does not match the persisted calculation",
+                    )
+    local_now = datetime.datetime.now(SAO_PAULO)
+    as_of = normalization.dataset_as_of.astimezone(SAO_PAULO)
+    header = [
+        (
+            "Período",
+            f"{month_label(1)} a {month_label(period.month)}/{period.year}"
+            if period.month > 1
+            else f"{month_label(1)}/{period.year}",
+        ),
+        ("Unidades", ", ".join(name for _, _, name in units)),
+        ("Importação NG", as_of.strftime("%d/%m/%Y %H:%M")),
+        ("Estrutura", f"{structure.label} · versão {version.number}"),
+        ("Lançamentos na Base", f"{len(entries)}"),
+        ("Gerado em", local_now.strftime("%d/%m/%Y %H:%M")),
+    ]
+    data = dataclasses.replace(
+        data,
+        header=header,
+        premises=_export_premises(
+            scopes,
+            period.month,
+            entries,
+            budget_present,
+            versions_in_force(session, normalization.treatment_number),
+        ),
+    )
+    return build_workbook(data)
 
 
 def audit_export(session: Session, user: User, run_id: UUID) -> None:

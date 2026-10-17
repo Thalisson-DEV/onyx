@@ -33,6 +33,20 @@ MONTH_NAMES = (
     "nov",
     "dez",
 )
+MONTH_FULL_NAMES = (
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
+)
 BASE_TABLE = "Base"
 NO_UNIT_LABEL = "Sem unidade"
 MONEY_FORMAT = "#,##0.00;[Red]-#,##0.00"
@@ -97,6 +111,8 @@ class ScopeBlock:
     unit_code: str | None
     label: str
     ready_months: frozenset[int]
+    # Code column of a block without a unit: the whole company or a chosen set.
+    title: str = "Consolidado"
 
 
 @dataclass(frozen=True)
@@ -199,13 +215,7 @@ class _Formats:
             {"bold": True, "bottom": 1, "bg_color": "#F2F2F2"}
         )
         self.month = workbook.add_format(
-            {
-                "bold": True,
-                "bottom": 1,
-                "bg_color": "#F2F2F2",
-                "num_format": "mmm/yyyy",
-                "align": "right",
-            }
+            {"bold": True, "bottom": 1, "bg_color": "#F2F2F2", "align": "right"}
         )
         self.status_ready = workbook.add_format(
             {"font_color": "#375623", "align": "right", "italic": True}
@@ -270,13 +280,22 @@ def _write_dre_sheet(
     for line in lines:
         if line.parent_code is not None:
             children[line.parent_code].append(line.code)
+    # Plain A1 ranges, not table references: Google Sheets turns Base[Valor]
+    # into #REF! when it opens the file.
+    last_base_row = max(len(data.entries), 1) + 1
+    base_columns = [name for name, _ in BASE_COLUMNS]
+
+    def base_range(name: str) -> str:
+        column = xl_col_to_name(base_columns.index(name))
+        return f"{BASE_TABLE}!${column}$2:${column}${last_base_row}"
+
     months = list(range(1, data.last_month + 1))
     ytd_column = data.last_month + 2
     value_columns = 1 + data.last_month
     for scope in data.scopes:
         values = expected[scope.unit_code]
         block_row = row
-        sheet.write(block_row, 0, scope.unit_code or "Consolidado", formats.block)
+        sheet.write(block_row, 0, scope.unit_code or scope.title, formats.block)
         sheet.write(block_row, 1, scope.label, formats.block)
         for column in range(2, ytd_column + 1):
             sheet.write_blank(block_row, column, None, formats.block)
@@ -294,16 +313,16 @@ def _write_dre_sheet(
         sheet.write(header_row, 0, "Código", formats.header)
         sheet.write(header_row, 1, "Linha", formats.header)
         for month in months:
-            sheet.write_datetime(
+            sheet.write(
                 header_row,
                 month + 1,
-                datetime.datetime(data.year, month, 1),
+                f"{MONTH_FULL_NAMES[month - 1]}/{data.year}",
                 formats.month,
             )
         sheet.write(header_row, ytd_column, "Acumulado", formats.header)
         row_of = {line.code: header_row + 1 + index for index, line in enumerate(lines)}
         unit_criterion = (
-            f",{BASE_TABLE}[Unidade],{xl_rowcol_to_cell(block_row, 0, True, True)}"
+            f",{base_range('Unidade')},{xl_rowcol_to_cell(block_row, 0, True, True)}"
             if scope.unit_code is not None
             else ""
         )
@@ -323,11 +342,11 @@ def _write_dre_sheet(
             for month in months:
                 column = month + 1
                 if is_source:
-                    month_cell = xl_rowcol_to_cell(header_row, column, True, False)
                     formula = (
-                        f"=SUMIFS({BASE_TABLE}[Valor],"
-                        f"{BASE_TABLE}[Linha DRE],{xl_rowcol_to_cell(line_row, 0, False, True)},"
-                        f"{BASE_TABLE}[Competência],{month_cell}{unit_criterion})"
+                        f"=SUMIFS({base_range('Valor')},"
+                        f"{base_range('Linha DRE')},{xl_rowcol_to_cell(line_row, 0, False, True)},"
+                        f"{base_range('Competência')},DATE({data.year},{month},1)"
+                        f"{unit_criterion})"
                     )
                 else:
                     formula = _cell_formula(line, children, row_of, column)

@@ -13,7 +13,7 @@ from onyx.db.models import User
 from onyx.db.ton import dre, financial_domain
 from onyx.db.ton.acl import business_unit_visible_clause, is_ton_administrator
 from onyx.db.ton.audit import emit_ton_audit_event
-from onyx.db.ton.enums import TonAuditResourceKind
+from onyx.db.ton.enums import BusinessUnitKind, TonAuditResourceKind
 from onyx.db.ton.models import (
     BusinessUnit,
     DreAccountMapping,
@@ -39,6 +39,7 @@ from onyx.error_handling.exceptions import OnyxError
 from onyx.ton.dre.models import DreScope
 from onyx.ton.financial_review.catalog import DEFAULT_CATALOG
 from onyx.ton.financial_review.dataset import FindingState, finding_disposition
+from onyx.ton.financial_review.rules import ng_invoice_key
 from onyx.ton.financial_review.models import (
     DOWNSTREAM_SAFE_DISPOSITIONS,
     ReviewDisposition,
@@ -207,32 +208,50 @@ def overview(
     return ReadinessOverview(
         normalization_run_id=run_id,
         structure_version_id=version_id,
-        periods=[
-            dre.readiness(
-                session,
-                user,
-                DreScope(
-                    normalization_run_id=run_id,
-                    structure_version_id=version_id,
-                    period=period,
-                    unit_id=unit_id,
-                ),
-            )
-            for period in periods
-        ],
+        periods=dre.readiness_by_period(
+            session, user, run_id, version_id, periods, unit_id
+        ),
     )
 
 
 def list_units(
-    session: Session, user: User, limit: int, offset: int, search: str | None
+    session: Session,
+    user: User,
+    limit: int,
+    offset: int,
+    search: str | None,
+    active_only: bool = False,
 ) -> list[BusinessUnit]:
     check_page(limit, offset)
     query = sa.select(BusinessUnit).where(business_unit_visible_clause(user))
     if search:
         query = query.where(BusinessUnit.code.ilike(f"%{search}%"))
+    if active_only:
+        query = query.where(BusinessUnit.is_active.is_(True))
     return list(
         session.scalars(query.order_by(BusinessUnit.code).limit(limit).offset(offset))
     )
+
+
+def update_unit(
+    session: Session,
+    user: User,
+    unit_id: UUID,
+    is_active: bool | None,
+    kind: str | None,
+) -> BusinessUnit:
+    """Deactivate a unit or change its kind, without deleting anything."""
+    if not is_ton_administrator(user):
+        raise OnyxError(OnyxErrorCode.ADMIN_ONLY, "Only administrators manage units")
+    unit = session.get(BusinessUnit, unit_id)
+    if unit is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Business unit not found")
+    if is_active is not None:
+        unit.is_active = is_active
+    if kind is not None:
+        unit.kind = BusinessUnitKind(kind)
+    session.flush()
+    return unit
 
 
 def _candidate(
@@ -632,9 +651,53 @@ def _review_blockers(
                     if rid in records
                 ],
                 locations=locations.get(occurrence_id, [])[:EVIDENCE_SAMPLE],
+                kept_records=[
+                    ng_evidence(record, None)
+                    for record in _kept_duplicates(
+                        session, [records[rid] for rid in ids if rid in records]
+                    )
+                ]
+                if rule_key == financial_domain.DUPLICATE_DOCUMENT_RULE
+                else [],
             )
         )
     return len(occurrence_ids), rows
+
+
+def _kept_duplicates(
+    session: Session, records: list[ParsedSourceRecord]
+) -> list[ParsedSourceRecord]:
+    """Earlier rows a document-format duplicate repeats.
+
+    Same sheet, account, emission date, invoice number (NG's 13-digit form
+    reduced) and movement amount, as the NGF-DUP-DOC rule groups them.
+    """
+    kept: list[ParsedSourceRecord] = []
+    for record in records:
+        if record.document_number is None:
+            continue
+        key = ng_invoice_key(record.document_number, record.emission_date)
+        for other in session.scalars(
+            sa.select(ParsedSourceRecord)
+            .where(
+                ParsedSourceRecord.snapshot_id == record.snapshot_id,
+                ParsedSourceRecord.sheet_name == record.sheet_name,
+                ParsedSourceRecord.account_code == record.account_code,
+                ParsedSourceRecord.emission_date == record.emission_date,
+                ParsedSourceRecord.source_row_number < record.source_row_number,
+                ParsedSourceRecord.id != record.id,
+            )
+            .order_by(ParsedSourceRecord.source_row_number)
+        ):
+            if (
+                other.document_number is not None
+                and ng_invoice_key(other.document_number, other.emission_date)
+                == key
+                and other.movement_amount == record.movement_amount
+            ):
+                kept.append(other)
+                break
+    return kept
 
 
 def _cell_location(locator: dict[str, object]) -> str | None:
@@ -1144,11 +1207,18 @@ def list_blockers(  # noqa: C901 - each blocker uses a separate bounded query
             or 0
         )
         page = session.execute(
-            query.order_by(FinancialReconciliationItem.id).limit(limit).offset(offset)
+            # The two sides of one invoice (same matching key) stay together.
+            query.order_by(
+                FinancialReconciliationItem.evidence_key.asc().nulls_last(),
+                FinancialReconciliationItem.id,
+            )
+            .limit(limit)
+            .offset(offset)
         ).all()
         rows = [
             BlockerRow(
                 item_id=item.id,
+                group_key=item.evidence_key,
                 record_count=1,
                 paired=bool(actual and billing),
                 periods=[actual.calendar_period]

@@ -12,6 +12,7 @@ export interface Unit {
   id: string;
   code: string;
   name?: string;
+  kind?: string;
 }
 
 export interface DreDefinition {
@@ -20,12 +21,15 @@ export interface DreDefinition {
   position: number;
   parent_code: string | null;
   line_type: "SOURCE_SUM" | "CALCULATED" | "SUBTOTAL" | "RESULT" | "PERCENTAGE";
+  operation?: "SUM_LINES" | "SUM_CHILDREN" | "SUBTRACT" | "RATIO" | null;
+  operands?: string[];
 }
 
 export interface DreVersion {
   id: string;
   number: number;
   lines: DreDefinition[];
+  assignments?: Array<{ account_id: string; line_code: string; status: string }>;
 }
 
 export interface PeriodReadiness {
@@ -113,4 +117,27 @@ export interface Contributor {
 export interface ContributorPage {
   total: number;
   rows: Contributor[];
+}
+
+export interface DreYearMonth {
+  run: DreRun;
+  lines: DreLine[];
+}
+
+/** A year for a chosen set of units, each month summed over them. */
+export interface DreUnitsYear {
+  version: DreVersion;
+  unit_ids: string[];
+  months: Array<{
+    period: string;
+    ready_unit_ids: string[];
+    missing_unit_ids: string[];
+    lines: DreLine[];
+  }>;
+}
+
+/** Latest READY result of each calculated month of a year, for one scope. */
+export interface DreYear {
+  version: DreVersion;
+  months: DreYearMonth[];
 }

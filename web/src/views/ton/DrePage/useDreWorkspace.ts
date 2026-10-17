@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { hasPermission } from "@/lib/permissions";
@@ -9,8 +9,11 @@ import { useUser } from "@/providers/UserProvider";
 import type {
   ContributorPage,
   DreRun,
+  DreLine,
   DreStatement,
+  DreUnitsYear,
   DreVersion,
+  DreYear,
   Normalization,
   PeriodPoint,
   ReadinessOverview,
@@ -20,6 +23,30 @@ import type {
 
 export const CONTRIBUTOR_PAGE = 25;
 export const CONSOLIDATED = "consolidated";
+
+/** One month of the year as the statement shows it, for one unit or a set. */
+export interface YearMonthView {
+  period: string;
+  /** The month's result when one scope is shown; null for a set of units. */
+  runId: string | null;
+  lines: DreLine[];
+  /** Selected units still without a result this month. */
+  missingUnits: number;
+}
+
+/** Months side by side in columns, or one block per month from top to bottom. */
+export type DreView = "columns" | "stacked";
+const VIEW_KEY = "ton.dre.view";
+
+function storedView(): DreView {
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === "stacked"
+      ? "stacked"
+      : "columns";
+  } catch {
+    return "columns";
+  }
+}
 
 /**
  * Data for the TON DRE workspace. Same endpoints and selection rules as the
@@ -40,8 +67,16 @@ export function useDreWorkspace() {
   const [normalizationChoice, setNormalizationChoice] = useState("");
   const [structureChoice, setStructureChoice] = useState("");
   const [unitChoice, setUnitChoice] = useState("");
+  // Two or more units: the DRE of the set, each month summed over them.
+  const [unitSet, setUnitSet] = useState<string[]>([]);
+  const multi = unitSet.length >= 2;
   const [periodChoice, setPeriodChoice] = useState("");
   const [lineChoice, setLineChoice] = useState<string | null>(null);
+  const [drillPeriod, setDrillPeriod] = useState<string | null>(null);
+  // null: every calculated month of the year.
+  const [monthChoice, setMonthChoice] = useState<string[] | null>(null);
+  const [view, setView] = useState<DreView>("columns");
+  useEffect(() => setView(storedView()), []);
   const [factType, setFactType] = useState<"ACTUAL" | "BUDGET">("ACTUAL");
   const [offset, setOffset] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -62,13 +97,16 @@ export function useDreWorkspace() {
     errorHandlingFetcher
   );
   const units = useSWR<Unit[]>(
-    canRead ? "/api/ton/financial-domain/units?limit=100" : null,
+    canRead ? "/api/ton/financial-domain/units?limit=100&active_only=true" : null,
     errorHandlingFetcher
   );
   const normalizationId = normalizationChoice || normalizations.data?.[0]?.id;
   const structureId = structureChoice || structures.data?.[0]?.id;
-  const unitId =
-    unitChoice || (isAdmin ? CONSOLIDATED : units.data?.[0]?.id) || undefined;
+  const unitId = multi
+    ? isAdmin
+      ? CONSOLIDATED
+      : unitSet[0]
+    : unitChoice || (isAdmin ? CONSOLIDATED : units.data?.[0]?.id) || undefined;
   const version = useSWR<DreVersion>(
     structureId
       ? `/api/ton/dre/structures/${structureId}/latest-version`
@@ -101,34 +139,83 @@ export function useDreWorkspace() {
       run.scope.structure_version_id === version.data?.id
   );
   const ready = period?.status === "READY";
+  const unitParam =
+    unitId && unitId !== CONSOLIDATED ? `&unit_id=${unitId}` : "";
+  const year = useSWR<DreYear>(
+    ready && normalizationId && version.data && periodValue
+      ? `/api/ton/dre/calculations/year?normalization_run_id=${normalizationId}&structure_version_id=${version.data.id}&year=${periodValue.slice(0, 4)}${unitParam}`
+      : null,
+    errorHandlingFetcher
+  );
+  const unitsQuery = unitSet
+    .map((id) => `&unit_ids=${encodeURIComponent(id)}`)
+    .join("");
+  const unitsYear = useSWR<DreUnitsYear>(
+    multi && normalizationId && version.data && periodValue
+      ? `/api/ton/dre/calculations/units-year?normalization_run_id=${normalizationId}&structure_version_id=${version.data.id}&year=${periodValue.slice(0, 4)}${unitsQuery}`
+      : null,
+    errorHandlingFetcher
+  );
+  const rawMonths: YearMonthView[] = multi
+    ? (unitsYear.data?.months ?? []).map((month) => ({
+        period: month.period,
+        runId: null,
+        lines: month.lines,
+        missingUnits: month.missing_unit_ids.length,
+      }))
+    : (year.data?.months ?? []).map((month) => ({
+        period: month.run.scope.period,
+        runId: month.run.id,
+        lines: month.lines,
+        missingUnits: 0,
+      }));
+  // Months up to the selected period; later months belong to another closing.
+  const yearMonths = rawMonths.filter(
+    (month) => !periodValue || month.period <= periodValue
+  );
+  const shownMonths = yearMonths.filter(
+    (month) => monthChoice === null || monthChoice.includes(month.period)
+  );
+  const budgetPresent = yearMonths.some((month) =>
+    month.lines.some(
+      (line) => Number(line.orcado) !== 0 || Number(line.orcado_ytd) !== 0
+    )
+  );
+  const drillRun =
+    (year.data?.months ?? []).find(
+      (month) => month.run.scope.period === drillPeriod
+    )?.run ?? officialRun;
   const statement = useSWR<DreStatement>(
     ready && officialRun
       ? `/api/ton/dre/calculations/${officialRun.id}/statement`
       : null,
     errorHandlingFetcher
   );
-  const definitions = statement.data?.version.lines ?? [];
+  const definitions =
+    (multi ? unitsYear.data?.version.lines : statement.data?.version.lines) ??
+    [];
   const summaryDefinition =
     [...definitions].reverse().find((line) => line.line_type === "RESULT") ??
     [...definitions].reverse().find((line) => line.line_type === "SUBTOTAL");
-  const summary = statement.data?.lines.find(
-    (line) => line.code === summaryDefinition?.code
-  );
+  const summary = (
+    multi ? yearMonths.at(-1)?.lines : statement.data?.lines
+  )?.find((line) => line.code === summaryDefinition?.code);
   const series = useSWR<PeriodPoint[]>(
-    statement.data && summary
+    !multi && statement.data && summary
       ? `/api/ton/dre/calculations/series?normalization_run_id=${statement.data.run.scope.normalization_run_id}&structure_version_id=${statement.data.run.scope.structure_version_id}&year=${periodValue?.slice(0, 4)}&line_code=${encodeURIComponent(summary.code)}${unitQuery}`
       : null,
     errorHandlingFetcher
   );
-  const selectedLine = statement.data?.lines.find(
-    (line) => line.code === lineChoice
-  );
+  const drillLines =
+    yearMonths.find((month) => month.period === drillRun?.scope.period)?.lines ??
+    statement.data?.lines;
+  const selectedLine = drillLines?.find((line) => line.code === lineChoice);
   const selectedDefinition = definitions.find(
     (line) => line.code === lineChoice
   );
   const contributors = useSWR<ContributorPage>(
-    officialRun && selectedDefinition?.line_type === "SOURCE_SUM"
-      ? `/api/ton/dre/calculations/${officialRun.id}/lines/${encodeURIComponent(selectedDefinition.code)}/contributors?fact_type=${factType}&limit=${CONTRIBUTOR_PAGE}&offset=${offset}`
+    drillRun && selectedDefinition?.line_type === "SOURCE_SUM"
+      ? `/api/ton/dre/calculations/${drillRun.id}/lines/${encodeURIComponent(selectedDefinition.code)}/contributors?fact_type=${factType}&limit=${CONTRIBUTOR_PAGE}&offset=${offset}`
       : null,
     errorHandlingFetcher
   );
@@ -148,8 +235,59 @@ export function useDreWorkspace() {
     overview.error ??
     revisions.error;
 
+  /** Calculates the year of every selected unit, then reloads the sum. */
+  async function calculateUnits(only?: string[]) {
+    if (!normalizationId || !version.data || !periodValue) return;
+    const targets = only ?? unitSet;
+    setBusy(true);
+    setCalculation("idle");
+    try {
+      for (const [index, id] of targets.entries()) {
+        setProgress({ done: index, total: targets.length });
+        const response = await fetch("/api/ton/dre/calculations/year", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            normalization_run_id: normalizationId,
+            structure_version_id: version.data.id,
+            period: periodValue,
+            unit_id: id,
+          }),
+        });
+        if (!response.ok) throw new Error(String(response.status));
+      }
+      const data = await unitsYear.mutate();
+      const last = data?.months.at(-1);
+      setCalculation(
+        last && last.missing_unit_ids.length === 0 ? "ready" : "blocked"
+      );
+    } catch {
+      setCalculation("failed");
+    } finally {
+      setProgress(null);
+      setBusy(false);
+    }
+  }
+
+  /** Excel of the selected units: their sum, then each unit. */
+  async function exportUnitsExcel(): Promise<boolean> {
+    if (!normalizationId || !version.data || !periodValue) return false;
+    const response = await fetch(
+      `/api/ton/dre/calculations/units-year/export.xlsx?normalization_run_id=${normalizationId}&structure_version_id=${version.data.id}&period=${periodValue}${unitsQuery}`
+    );
+    if (!response.ok) return false;
+    const url = URL.createObjectURL(await response.blob());
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `dre-unidades-${periodValue.slice(0, 4)}-01-a-${periodValue.slice(5, 7)}.xlsx`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    return true;
+  }
+
   function resetSelection() {
     setLineChoice(null);
+    setDrillPeriod(null);
     setOffset(0);
     setCalculation("idle");
   }
@@ -157,18 +295,44 @@ export function useDreWorkspace() {
   /** Calculates every month from January to the selected one, in order. */
   async function recalculate() {
     if (!normalizationId || !version.data || !periodValue || !unitId) return;
-    const [year, month] = periodValue.split("-").map(Number) as [
+    const [calendarYear, month] = periodValue.split("-").map(Number) as [
       number,
       number,
     ];
     const months = Array.from(
       { length: month },
-      (_, index) => `${year}-${String(index + 1).padStart(2, "0")}-01`
+      (_, index) => `${calendarYear}-${String(index + 1).padStart(2, "0")}-01`
     );
     setBusy(true);
     setCalculation("idle");
     try {
       let last: DreRun | null = null;
+      // One request computes the whole year with each month loaded once.
+      setProgress({ done: 0, total: months.length });
+      const yearResponse = await fetch("/api/ton/dre/calculations/year", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          normalization_run_id: normalizationId,
+          structure_version_id: version.data.id,
+          period: periodValue,
+          unit_id: unitId === CONSOLIDATED ? null : unitId,
+        }),
+      });
+      if (yearResponse.ok) {
+        // SAFETY: the endpoint returns the DreRunView list, January first.
+        const runs = (await yearResponse.json()) as DreRun[];
+        last = runs.at(-1) ?? null;
+        setCalculation(last?.status === "READY" ? "ready" : "blocked");
+        await Promise.all([
+          revisions.mutate(),
+          overview.mutate(),
+          year.mutate(),
+        ]);
+        return;
+      }
+      if (yearResponse.status !== 404 && yearResponse.status !== 405)
+        throw new Error(String(yearResponse.status));
       for (const [index, value] of months.entries()) {
         setProgress({ done: index, total: months.length });
         const response = await fetch("/api/ton/dre/calculations", {
@@ -185,7 +349,7 @@ export function useDreWorkspace() {
         last = await response.json();
       }
       setCalculation(last?.status === "READY" ? "ready" : "blocked");
-      await Promise.all([revisions.mutate(), overview.mutate()]);
+      await Promise.all([revisions.mutate(), overview.mutate(), year.mutate()]);
     } catch {
       setCalculation("failed");
     } finally {
@@ -238,6 +402,15 @@ export function useDreWorkspace() {
     error,
     retry,
     configured: Boolean(normalizationId && version.data && unitId),
+    multi,
+    unitSet,
+    unitsYear,
+    calculateUnits,
+    exportUnitsExcel,
+    version: version.data,
+    async structureSaved() {
+      await Promise.all([structures.mutate(), version.mutate()]);
+    },
     normalizations: normalizations.data ?? [],
     structures: structures.data ?? [],
     units: units.data ?? [],
@@ -250,6 +423,13 @@ export function useDreWorkspace() {
     ready,
     officialRun,
     statement,
+    year,
+    yearMonths,
+    shownMonths,
+    monthChoice,
+    budgetPresent,
+    view,
+    drillRun,
     definitions,
     summary,
     summaryDefinition,
@@ -276,14 +456,47 @@ export function useDreWorkspace() {
       },
       unit(value: string) {
         setUnitChoice(value);
+        setUnitSet([]);
+        resetSelection();
+      },
+      /** Several units at once; one unit falls back to the single view. */
+      units(ids: string[]) {
+        if (ids.length === 1) {
+          setUnitChoice(ids[0] ?? "");
+          setUnitSet([]);
+        } else {
+          setUnitSet(ids);
+        }
         resetSelection();
       },
       period(value: string) {
         setPeriodChoice(value);
         resetSelection();
       },
-      line(code: string | null) {
+      view(value: DreView) {
+        setView(value);
+        try {
+          window.localStorage.setItem(VIEW_KEY, value);
+        } catch {
+          // The choice still applies to this visit.
+        }
+      },
+      /** Toggle one month; the last visible month cannot be hidden. */
+      month(period: string) {
+        const all = yearMonths.map((month) => month.period);
+        const current = monthChoice ?? all;
+        const next = current.includes(period)
+          ? current.filter((item) => item !== period)
+          : [...current, period];
+        if (next.length === 0) return;
+        setMonthChoice(next.length === all.length ? null : next);
+      },
+      allMonths() {
+        setMonthChoice(null);
+      },
+      line(code: string | null, period?: string) {
         setLineChoice(code);
+        setDrillPeriod(period ?? null);
         setFactType("ACTUAL");
         setOffset(0);
       },

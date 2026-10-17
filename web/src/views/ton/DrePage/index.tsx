@@ -2,30 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Route } from "next";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { Button, InputSingleSelect, Text } from "@opal/components";
+import { cn } from "@opal/utils";
 import {
   SvgAlertTriangle,
   SvgArrowRight,
   SvgCheckCircle,
   SvgChevronDown,
-  SvgChevronRight,
   SvgClipboard,
   SvgDownload,
+  SvgEdit,
   SvgLock,
   SvgRefreshCw,
   SvgSparkle,
   SvgX,
 } from "@opal/icons";
-import { cn } from "@opal/utils";
 import { groupBlockers, totalBlockers } from "@/lib/ton/blockers";
 import {
   COPY,
@@ -34,10 +25,13 @@ import {
   formatDateTime,
   formatNumber,
   formatPercent,
+  formatMonthName,
   formatPeriod,
-  formatShortMonth,
 } from "@/lib/ton/copy";
 import { getBusinessLabel } from "@/lib/ton/labels";
+import YearStatement from "@/views/ton/DrePage/YearStatement";
+import StructureEditor from "@/views/ton/DrePage/StructureEditor";
+import UnitPicker from "@/views/ton/DrePage/UnitPicker";
 import type { DreDefinition, DreLine } from "@/views/admin/DrePage/types";
 import ClosingFrame from "@/views/ton/components/ClosingFrame";
 import { askHref } from "@/views/ton/shell/TonCommandMenu";
@@ -95,7 +89,7 @@ interface SelectProps {
 
 function Select({ label, value, options, onChange }: SelectProps) {
   return (
-    <label className="flex flex-col gap-1 min-w-44">
+    <label className="flex flex-col gap-1 min-w-56">
       <span className="ton-eyebrow">{label}</span>
       <InputSingleSelect value={value} onValueChange={onChange}>
         <InputSingleSelect.Trigger placeholder={label} aria-label={label} />
@@ -112,21 +106,10 @@ function Select({ label, value, options, onChange }: SelectProps) {
 }
 
 function Toolbar({ dre }: { dre: DreWorkspace }) {
-  const scopeOptions = [
-    ...(dre.access.isAdmin
-      ? [{ value: CONSOLIDATED, label: COPY.dre.consolidated }]
-      : []),
-    ...dre.units.map((unit) => ({
-      value: unit.id,
-      label: unit.name
-        ? `${getBusinessLabel(unit.code)} · ${getBusinessLabel(unit.name)}`
-        : getBusinessLabel(unit.code),
-    })),
-  ];
   return (
     <div className="flex flex-wrap items-end gap-3">
       <Select
-        label={COPY.dre.period}
+        label={COPY.dre.closingUntil}
         value={dre.periodValue ?? ""}
         onChange={dre.select.period}
         options={dre.periods.map((item) => ({
@@ -134,12 +117,7 @@ function Toolbar({ dre }: { dre: DreWorkspace }) {
           label: formatPeriod(item.scope.period),
         }))}
       />
-      <Select
-        label={COPY.dre.scope}
-        value={dre.unitId ?? ""}
-        onChange={dre.select.unit}
-        options={scopeOptions}
-      />
+      <UnitPicker dre={dre} />
       {dre.access.isAdmin && (
         <details className="group self-end">
           <summary className="ton-focusable flex items-center gap-1 cursor-pointer list-none rounded-08 px-1 py-2 text-text-03 hover:text-text-05">
@@ -174,45 +152,6 @@ function Toolbar({ dre }: { dre: DreWorkspace }) {
         </details>
       )}
     </div>
-  );
-}
-
-/** Readiness of every month in the overview: the closing calendar at a glance. */
-function MonthStrip({ dre }: { dre: DreWorkspace }) {
-  if (dre.periods.length < 2) return null;
-  return (
-    <nav aria-label={COPY.dre.months} className="flex flex-col gap-2">
-      <span className="ton-eyebrow">{COPY.dre.months}</span>
-      <ol className="flex flex-wrap gap-1.5">
-        {dre.periods.map((item) => {
-          const selected = item.scope.period === dre.periodValue;
-          const ready = item.status === "READY";
-          return (
-            <li key={item.scope.period}>
-              <button
-                type="button"
-                onClick={() => dre.select.period(item.scope.period)}
-                aria-current={selected ? "true" : undefined}
-                title={`${formatPeriod(item.scope.period)} · ${ready ? COPY.dre.monthReady : COPY.dre.monthBlocked}`}
-                className={cn(
-                  "ton-month ton-focusable flex items-center gap-1.5 px-2.5 py-1 rounded-full",
-                  selected && "ton-month-selected"
-                )}
-              >
-                <span
-                  aria-hidden
-                  className="ton-dot"
-                  data-tone={ready ? "success" : "warning"}
-                />
-                <Text font="secondary-action" color="inherit">
-                  {formatShortMonth(item.scope.period)}
-                </Text>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
   );
 }
 
@@ -347,31 +286,6 @@ function BlockedState({ dre }: { dre: DreWorkspace }) {
   );
 }
 
-function depthOf(definition: DreDefinition, definitions: DreDefinition[]) {
-  let depth = 0;
-  let parent = definition.parent_code;
-  while (parent) {
-    depth += 1;
-    parent =
-      definitions.find((item) => item.code === parent)?.parent_code ?? null;
-  }
-  return depth;
-}
-
-function isHidden(
-  definition: DreDefinition,
-  definitions: DreDefinition[],
-  collapsed: string[]
-) {
-  let parent = definition.parent_code;
-  while (parent) {
-    if (collapsed.includes(parent)) return true;
-    parent =
-      definitions.find((item) => item.code === parent)?.parent_code ?? null;
-  }
-  return false;
-}
-
 function valueOf(
   line: DreLine,
   definition: DreDefinition,
@@ -389,180 +303,6 @@ function valueOf(
   return definition.line_type === "PERCENTAGE" || field === "variance_percent"
     ? formatPercent(line[field])
     : formatCurrency(line[field]);
-}
-
-function StatementTable({ dre }: { dre: DreWorkspace }) {
-  const [collapsed, setCollapsed] = useState<string[]>([]);
-  const lines = dre.statement.data?.lines ?? [];
-  const definitions = dre.definitions;
-  return (
-    <div className="ton-card overflow-x-auto">
-      <table className="ton-statement w-full min-w-[960px] border-collapse">
-        <thead>
-          <tr>
-            <th rowSpan={2} scope="col" className="text-start">
-              {COPY.dre.table.line}
-            </th>
-            <th colSpan={4} scope="colgroup" className="ton-statement-group">
-              {COPY.dre.table.month}
-            </th>
-            <th colSpan={3} scope="colgroup" className="ton-statement-group">
-              {COPY.dre.table.ytd}
-            </th>
-          </tr>
-          <tr>
-            <th scope="col">{COPY.dre.table.actual}</th>
-            <th scope="col">{COPY.dre.table.budget}</th>
-            <th scope="col">{COPY.dre.table.variance}</th>
-            <th scope="col">{COPY.dre.table.variancePercent}</th>
-            <th scope="col">{COPY.dre.table.actual}</th>
-            <th scope="col">{COPY.dre.table.budget}</th>
-            <th scope="col">{COPY.dre.table.variance}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lines.map((line) => {
-            const definition = definitions.find(
-              (item) => item.code === line.code
-            );
-            if (!definition || isHidden(definition, definitions, collapsed))
-              return null;
-            const label = getBusinessLabel(line.label);
-            const hasChildren = definitions.some(
-              (item) => item.parent_code === line.code
-            );
-            const isCollapsed = collapsed.includes(line.code);
-            const drillable = definition.line_type === "SOURCE_SUM";
-            return (
-              <tr
-                key={line.code}
-                data-type={definition.line_type}
-                aria-selected={dre.selectedLine?.code === line.code}
-              >
-                <th scope="row" className="text-start">
-                  <span
-                    className="flex items-center gap-1"
-                    style={{
-                      paddingInlineStart: depthOf(definition, definitions) * 16,
-                    }}
-                  >
-                    {hasChildren ? (
-                      <button
-                        type="button"
-                        className="ton-focusable flex items-center justify-center w-5 h-5 rounded-04 text-text-03 hover:text-text-05"
-                        aria-label={
-                          isCollapsed
-                            ? COPY.dre.table.expand(label)
-                            : COPY.dre.table.collapse(label)
-                        }
-                        aria-expanded={!isCollapsed}
-                        onClick={() =>
-                          setCollapsed((old) =>
-                            isCollapsed
-                              ? old.filter((code) => code !== line.code)
-                              : [...old, line.code]
-                          )
-                        }
-                      >
-                        {isCollapsed ? (
-                          <SvgChevronRight size={14} />
-                        ) : (
-                          <SvgChevronDown size={14} />
-                        )}
-                      </button>
-                    ) : (
-                      <span className="w-5 shrink-0" aria-hidden />
-                    )}
-                    {drillable ? (
-                      <button
-                        type="button"
-                        className="ton-focusable ton-statement-drill text-start rounded-04"
-                        aria-label={COPY.dre.table.drill(label)}
-                        onClick={() => dre.select.line(line.code)}
-                      >
-                        {label}
-                      </button>
-                    ) : (
-                      <span>{label}</span>
-                    )}
-                  </span>
-                </th>
-                <td>{valueOf(line, definition, "realizado")}</td>
-                <td>{valueOf(line, definition, "orcado")}</td>
-                <td>{valueOf(line, definition, "variance")}</td>
-                <td>{valueOf(line, definition, "variance_percent")}</td>
-                <td className="ton-statement-ytd">
-                  {valueOf(line, definition, "realizado_ytd")}
-                </td>
-                <td>{valueOf(line, definition, "orcado_ytd")}</td>
-                <td>{valueOf(line, definition, "variance_ytd")}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function Trend({ dre }: { dre: DreWorkspace }) {
-  const data = (dre.series.data ?? []).map((point) => ({
-    period: point.period,
-    month: formatShortMonth(point.period),
-    realizado: Number(point.realizado),
-    orcado: Number(point.orcado),
-  }));
-  return (
-    <TonCard className="flex flex-col gap-3 p-5">
-      <Text as="h3" font="heading-h3" color="text-05">
-        {`${COPY.dre.trend} · ${getBusinessLabel(dre.summary?.label ?? "")}`}
-      </Text>
-      {dre.series.isLoading && <LoadingBlock label={COPY.common.loading} />}
-      {dre.series.error && <ErrorState compact />}
-      {!dre.series.isLoading && !dre.series.error && data.length < 2 && (
-        <Text as="p" font="secondary-body" color="text-03">
-          {COPY.dre.trendEmpty}
-        </Text>
-      )}
-      {data.length >= 2 && (
-        <div className="h-56 w-full" role="img" aria-label={COPY.dre.trend}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="month" tickLine={false} axisLine={false} />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value: number) =>
-                  value.toLocaleString("pt-BR", { notation: "compact" })
-                }
-              />
-              <Tooltip
-                formatter={(value) => formatCurrency(String(value))}
-                labelFormatter={(_, payload) =>
-                  payload?.[0]?.payload?.period
-                    ? formatPeriod(payload[0].payload.period)
-                    : ""
-                }
-              />
-              <Bar
-                name={COPY.dre.kpi.actual}
-                dataKey="realizado"
-                fill="var(--ton-brand)"
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar
-                name={COPY.dre.kpi.budget}
-                dataKey="orcado"
-                fill="var(--ton-gold)"
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-    </TonCard>
-  );
 }
 
 function scopeLabel(dre: DreWorkspace): string {
@@ -617,7 +357,7 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
             </Text>
             <Text font="secondary-body" color="text-03">
               {[
-                dre.periodValue ? formatPeriod(dre.periodValue) : null,
+                dre.drillRun ? formatPeriod(dre.drillRun.scope.period) : null,
                 scopeLabel(dre),
               ]
                 .filter(Boolean)
@@ -637,14 +377,18 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
             label={COPY.dre.kpi.actual}
             value={formatCurrency(line.realizado)}
           />
-          <Metric
-            label={COPY.dre.kpi.budget}
-            value={formatCurrency(line.orcado)}
-          />
-          <Metric
-            label={COPY.dre.kpi.variance}
-            value={formatCurrency(line.variance)}
-          />
+          {dre.budgetPresent && (
+            <Metric
+              label={COPY.dre.kpi.budget}
+              value={formatCurrency(line.orcado)}
+            />
+          )}
+          {dre.budgetPresent && (
+            <Metric
+              label={COPY.dre.kpi.variance}
+              value={formatCurrency(line.variance)}
+            />
+          )}
           {page && (
             <Metric
               label={COPY.dre.drawer.entries}
@@ -653,7 +397,10 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
           )}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3">
-          <div className="ton-segmented" role="group">
+          <div
+            className={cn("ton-segmented", !dre.budgetPresent && "hidden")}
+            role="group"
+          >
             {(["ACTUAL", "BUDGET"] as const).map((type) => (
               <button
                 key={type}
@@ -810,18 +557,35 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
 }
 
 function ReadyState({ dre }: { dre: DreWorkspace }) {
-  const [exportFailed, setExportFailed] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [savedVersion, setSavedVersion] = useState<number | null>(null);
   const [excelState, setExcelState] = useState<"idle" | "loading" | "failed">(
     "idle"
   );
   const run = dre.officialRun;
+  // A ready month without a result (a new unit, a new structure version):
+  // calculate it right away instead of asking for a click.
+  const autoScope = `${dre.unitId}|${dre.periodValue}|${dre.version?.id}`;
+  const autoStarted = useRef<string | null>(null);
+  useEffect(() => {
+    if (run || !dre.access.canRun || dre.busy) return;
+    if (autoStarted.current === autoScope) return;
+    autoStarted.current = autoScope;
+    void dre.recalculate();
+  }, [run, autoScope, dre]);
   if (!run) {
     return (
       <TonCard className="flex flex-col gap-4 p-5">
         <EmptyState
           icon={SvgClipboard}
           tone="brand"
-          title={COPY.dre.readyNoResult}
+          title={
+            dre.busy
+              ? dre.progress
+                ? COPY.dre.recalculatingMonth(dre.progress.done, dre.progress.total)
+                : COPY.dre.recalculating
+              : COPY.dre.readyNoResult
+          }
         />
         <CalculationFeedback dre={dre} />
         <div className="flex justify-center">
@@ -832,27 +596,42 @@ function ReadyState({ dre }: { dre: DreWorkspace }) {
   }
   const summary = dre.summary;
   const definition = dre.summaryDefinition;
+  const first = dre.yearMonths[0]?.period;
+  const monthName = dre.periodValue ? formatMonthName(dre.periodValue) : "";
   return (
     <div className="flex flex-col gap-5">
-      <TonCard className="flex flex-col gap-5 p-5 sm:p-6">
+      <TonCard className="flex flex-col gap-4 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="flex items-center gap-2">
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="flex flex-wrap items-center gap-2">
               <StatusPill tone="success">{COPY.dre.official}</StatusPill>
               <Text font="secondary-body" color="text-03">
                 {COPY.dre.calculatedAt(formatDateTime(run.finished_at))}
               </Text>
             </span>
             <Text as="h2" font="heading-h2" color="text-05">
-              {getBusinessLabel(summary?.label ?? COPY.dre.title)}
+              {COPY.dre.headline(
+                scopeLabel(dre),
+                first ?? run.scope.period,
+                run.scope.period
+              )}
             </Text>
           </div>
           <div className="flex flex-wrap gap-2">
+            {dre.access.isAdmin && dre.version && dre.structureId && (
+              <Button
+                prominence="tertiary"
+                icon={SvgEdit}
+                onClick={() => setEditing(true)}
+              >
+                {COPY.dre.editStructure}
+              </Button>
+            )}
             <RecalculateButton dre={dre} />
             <Button
               icon={SvgDownload}
               disabled={excelState === "loading"}
-              tooltip={COPY.dre.excelHint}
+              tooltip={COPY.dre.excelHint(scopeLabel(dre))}
               onClick={() => {
                 setExcelState("loading");
                 void dre
@@ -865,65 +644,224 @@ function ReadyState({ dre }: { dre: DreWorkspace }) {
                 ? COPY.dre.excelLoading
                 : COPY.dre.excel}
             </Button>
-            <Button
-              prominence="secondary"
-              icon={SvgDownload}
-              onClick={() =>
-                void dre.exportCsv().then((ok) => setExportFailed(!ok))
-              }
-            >
-              {COPY.dre.export}
-            </Button>
           </div>
         </div>
         {summary && definition && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Metric
-              label={COPY.dre.kpi.actual}
-              value={valueOf(summary, definition, "realizado")}
-              detail={`${COPY.dre.kpi.ytd}: ${valueOf(summary, definition, "realizado_ytd")}`}
-            />
-            <Metric
-              label={COPY.dre.kpi.budget}
-              value={valueOf(summary, definition, "orcado")}
-              detail={`${COPY.dre.kpi.ytd}: ${valueOf(summary, definition, "orcado_ytd")}`}
-            />
-            <Metric
-              label={COPY.dre.kpi.variance}
-              value={valueOf(summary, definition, "variance")}
-              detail={`${COPY.dre.kpi.ytd}: ${valueOf(summary, definition, "variance_ytd")}`}
-            />
-            <Metric
-              label={COPY.dre.kpi.variancePercent}
-              value={formatPercent(summary.variance_percent)}
-              detail={`${COPY.dre.kpi.ytd}: ${formatPercent(summary.variance_percent_ytd)}`}
-            />
-          </div>
+          <dl className="ton-summary-strip">
+            <div>
+              <dt>{COPY.dre.summaryMonth(getBusinessLabel(definition.label), monthName)}</dt>
+              <dd>{valueOf(summary, definition, "realizado")}</dd>
+            </div>
+            <div>
+              <dt>{COPY.dre.kpi.ytd}</dt>
+              <dd>{valueOf(summary, definition, "realizado_ytd")}</dd>
+            </div>
+            {dre.budgetPresent && (
+              <div>
+                <dt>{COPY.dre.kpi.budget}</dt>
+                <dd>{valueOf(summary, definition, "orcado_ytd")}</dd>
+              </div>
+            )}
+            {dre.budgetPresent && (
+              <div>
+                <dt>{COPY.dre.kpi.variance}</dt>
+                <dd>{valueOf(summary, definition, "variance_ytd")}</dd>
+              </div>
+            )}
+          </dl>
         )}
         <CalculationFeedback dre={dre} />
-        {exportFailed && <ErrorState compact message={COPY.dre.exportFailed} />}
+        {savedVersion !== null && (
+          <Text font="secondary-body" color="text-04">
+            {COPY.dre.structureSaved(savedVersion)}
+          </Text>
+        )}
         {excelState === "failed" && (
           <ErrorState compact message={COPY.dre.excelFailed} />
         )}
       </TonCard>
-      {dre.statement.isLoading && (
-        <TonCard className="p-5">
-          <LoadingBlock label={COPY.common.loading} lines={6} />
-        </TonCard>
-      )}
-      {dre.statement.error && (
-        <ErrorState onRetry={() => dre.statement.mutate()} />
-      )}
+      <TonCard className="flex flex-col gap-4 p-5">
+        {(dre.year.isLoading || dre.statement.isLoading) && (
+          <LoadingBlock label={COPY.common.loading} lines={8} />
+        )}
+        {dre.year.error && (
+          <ErrorState
+            compact
+            message={COPY.dre.year.loadFailed}
+            onRetry={() => dre.year.mutate()}
+          />
+        )}
+        {dre.year.data && dre.statement.data && <YearStatement dre={dre} />}
+      </TonCard>
       {dre.statement.data && (
-        <>
-          <StatementTable dre={dre} />
-          <Trend dre={dre} />
-          <Text as="p" font="secondary-body" color="text-03">
-            {`${COPY.dre.version}: ${COPY.dre.versionStructure(dre.statement.data.version.number)} · ${formatDateTime(run.finished_at)}`}
-          </Text>
-        </>
+        <Text as="p" font="secondary-body" color="text-03">
+          {`${COPY.dre.version}: ${COPY.dre.versionStructure(dre.statement.data.version.number)} · ${formatDateTime(run.finished_at)}`}
+        </Text>
       )}
       <DrillDrawer dre={dre} />
+      {editing && dre.version && dre.structureId && (
+        <StructureEditor
+          structureId={dre.structureId}
+          version={{
+            ...dre.version,
+            assignments: dre.version.assignments ?? [],
+          }}
+          onClose={() => setEditing(false)}
+          onSaved={async (number) => {
+            setEditing(false);
+            setSavedVersion(number);
+            await dre.structureSaved();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** The DRE of a set of units: each month is the sum of their results. */
+function UnitsState({ dre }: { dre: DreWorkspace }) {
+  const [excelState, setExcelState] = useState<"idle" | "loading" | "failed">(
+    "idle"
+  );
+  const data = dre.unitsYear.data;
+  const missing = new Set(data?.months.flatMap((month) => month.missing_unit_ids));
+  const absent = dre.unitSet.filter(
+    (id) => !data?.months.some((month) => month.ready_unit_ids.includes(id))
+  );
+  // Units without a result for the closing month are calculated right away.
+  const autoKey = `${dre.unitSet.join(",")}|${dre.periodValue}|${dre.version?.id}`;
+  const started = useRef<string | null>(null);
+  const lastMonth = data?.months.find((month) => month.period === dre.periodValue);
+  const toCalculate = data
+    ? dre.unitSet.filter((id) => !lastMonth?.ready_unit_ids.includes(id))
+    : [];
+  useEffect(() => {
+    if (!data || !toCalculate.length || !dre.access.canRun || dre.busy) return;
+    if (started.current === autoKey) return;
+    started.current = autoKey;
+    void dre.calculateUnits(toCalculate);
+  }, [data, toCalculate, autoKey, dre]);
+
+  const names = dre.unitSet
+    .map((id) => dre.units.find((unit) => unit.id === id))
+    .map((unit) => getBusinessLabel(unit?.name ?? unit?.code ?? ""));
+  const first = dre.yearMonths[0]?.period;
+  const definition = dre.summaryDefinition;
+  const summary = dre.summary;
+  const summaryYtd = dre.yearMonths
+    .at(-1)
+    ?.lines.find((line) => line.code === definition?.code);
+  return (
+    <div className="flex flex-col gap-5">
+      <TonCard className="flex flex-col gap-4 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="flex flex-wrap items-center gap-2">
+              <StatusPill tone={missing.size ? "warning" : "success"}>
+                {missing.size ? COPY.dre.units.partial : COPY.dre.units.summed}
+              </StatusPill>
+              <Text font="secondary-body" color="text-03">
+                {names.join(" · ")}
+              </Text>
+            </span>
+            <Text as="h2" font="heading-h2" color="text-05">
+              {COPY.dre.headline(
+                COPY.dre.units.many(dre.unitSet.length),
+                first ?? dre.periodValue ?? "",
+                dre.periodValue ?? ""
+              )}
+            </Text>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {dre.access.canRun && (
+              <Button
+                prominence="secondary"
+                icon={SvgRefreshCw}
+                disabled={dre.busy}
+                onClick={() => void dre.calculateUnits()}
+              >
+                {dre.busy
+                  ? dre.progress
+                    ? COPY.dre.units.calculating(
+                        dre.progress.done,
+                        dre.progress.total
+                      )
+                    : COPY.dre.recalculating
+                  : COPY.dre.recalculate}
+              </Button>
+            )}
+            <Button
+              icon={SvgDownload}
+              disabled={excelState === "loading" || !data}
+              tooltip={COPY.dre.units.excelHint}
+              onClick={() => {
+                setExcelState("loading");
+                void dre
+                  .exportUnitsExcel()
+                  .catch(() => false)
+                  .then((ok) => setExcelState(ok ? "idle" : "failed"));
+              }}
+            >
+              {excelState === "loading" ? COPY.dre.excelLoading : COPY.dre.excel}
+            </Button>
+          </div>
+        </div>
+        {summary && definition && (
+          <dl className="ton-summary-strip">
+            <div>
+              <dt>
+                {COPY.dre.summaryMonth(
+                  getBusinessLabel(definition.label),
+                  dre.periodValue ? formatMonthName(dre.periodValue) : ""
+                )}
+              </dt>
+              <dd>{valueOf(summary, definition, "realizado")}</dd>
+            </div>
+            {summaryYtd && (
+              <div>
+                <dt>{COPY.dre.kpi.ytd}</dt>
+                <dd>{valueOf(summaryYtd, definition, "realizado_ytd")}</dd>
+              </div>
+            )}
+          </dl>
+        )}
+        {absent.length > 0 && !dre.busy && (
+          <Text font="secondary-body" color="text-04">
+            {COPY.dre.units.absent(
+              absent
+                .map((id) =>
+                  getBusinessLabel(
+                    dre.units.find((unit) => unit.id === id)?.name ?? id
+                  )
+                )
+                .join(", ")
+            )}
+          </Text>
+        )}
+        {/* Units left out are named above; "blocked" has no list here. */}
+        {dre.calculation !== "blocked" && <CalculationFeedback dre={dre} />}
+        {excelState === "failed" && (
+          <ErrorState compact message={COPY.dre.excelFailed} />
+        )}
+      </TonCard>
+      <TonCard className="flex flex-col gap-4 p-5">
+        {dre.unitsYear.isLoading && (
+          <LoadingBlock label={COPY.common.loading} lines={8} />
+        )}
+        {dre.unitsYear.error && (
+          <ErrorState
+            compact
+            message={COPY.dre.year.loadFailed}
+            onRetry={() => dre.unitsYear.mutate()}
+          />
+        )}
+        {data && data.months.length > 0 && <YearStatement dre={dre} />}
+        {data && (
+          <Text font="secondary-body" color="text-03">
+            {COPY.dre.units.drillHint}
+          </Text>
+        )}
+      </TonCard>
     </div>
   );
 }
@@ -949,12 +887,13 @@ export function DreWorkspaceView() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-4">
         <Toolbar dre={dre} />
-        <MonthStrip dre={dre} />
       </div>
       {!dre.period ? (
         <TonCard>
           <EmptyState icon={SvgClipboard} title={COPY.dre.noPeriods} />
         </TonCard>
+      ) : dre.multi ? (
+        <UnitsState dre={dre} />
       ) : dre.ready ? (
         <ReadyState dre={dre} />
       ) : (

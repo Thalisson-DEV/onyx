@@ -38,6 +38,7 @@ from onyx.db.ton.models import (
     ImportProfileExecution,
     OperationalSourceRecord,
     ParsedSourceRecord,
+    RecordUnitAssignment,
     ReviewRun,
     SourceSnapshot,
 )
@@ -489,6 +490,11 @@ def _validate_inputs(
     return review, billing, budgets
 
 
+def _cents(value: Decimal | None) -> Decimal | None:
+    """Billing keeps three decimals; NG and the DRE work in cents."""
+    return None if value is None else value.quantize(Decimal("0.01"))
+
+
 def _reconcile(
     actuals: list[dict[str, Any]],
     billings: list[dict[str, Any]],
@@ -585,7 +591,8 @@ def _reconcile(
             "MATCHED"
             if len(ng) == 1
             and len(invoices) == 1
-            and ng[0]["movement_amount"] == invoices[0]["service_amount"]
+            and _cents(ng[0]["movement_amount"])
+            == _cents(invoices[0]["service_amount"])
             else "AMBIGUOUS"
             if ng and invoices
             else "NG_ONLY"
@@ -807,6 +814,16 @@ def _persist_projection(
     counts["excluded_source_rows"] = sum(
         item.disposition.value == "EXCLUDED_SOURCE_ERROR" for item in excluded
     )
+    # Units the Controladoria assigned to entries the NG left without one,
+    # matched by the record's content identity (stable across re-imports).
+    from onyx.db.ton.unit_assignment import current_assignments, record_keys_of
+
+    assignments = current_assignments(session, review.source_id)
+    record_key_by_id: dict[UUID, str] = {}
+    if assignments and any(not record.administrative_unit for record in ng_records):
+        execution = session.get(ImportProfileExecution, review.execution_id)
+        assert execution is not None
+        record_key_by_id = record_keys_of(session, execution)
     for record in ng_records:
         item = dispositions.get(record.id)
         disposition = item.disposition.value if item else "ACCEPTED"
@@ -835,6 +852,15 @@ def _persist_projection(
         )
         actual_id = uuid4()
         unit_id = unit_map.unit_id if unit_map else None
+        assigned_unit = (
+            assignments.get(record_key_by_id.get(record.id, ""))
+            if not record.administrative_unit
+            else None
+        )
+        if assigned_unit is not None:
+            unit_id = assigned_unit
+            unit_map = None
+            counts["actual_unit_assigned"] += 1
         treatment, account_id, original_account_id = _apply_treatment(
             treatment_rules,
             account_map.account_id if account_map else None,
@@ -864,7 +890,7 @@ def _persist_projection(
         )
         actual_documents[actual_id] = record.document_number
         counts["actual_unmapped_account"] += account_map is None
-        counts["actual_unmapped_unit"] += unit_map is None
+        counts["actual_unmapped_unit"] += unit_id is None
     for record in billing_records:
         if record.record_date is None or record.amount is None:
             raise OnyxError(OnyxErrorCode.CONFLICT, "Billing source contract changed")
@@ -1071,6 +1097,16 @@ def normalize(
         or 0
     )
     treatments_number = treatment_number(session)
+    # Every unit assignment for the source is a new input: count the rows
+    # (append-only, so the count only grows).
+    unit_assignments = int(
+        session.scalar(
+            sa.select(sa.func.count())
+            .select_from(RecordUnitAssignment)
+            .where(RecordUnitAssignment.source_id == review.source_id)
+        )
+        or 0
+    )
     input_digest = _digest(
         {
             "review_run_id": review.id,
@@ -1085,6 +1121,7 @@ def normalize(
             "dataset_policy_version": DATASET_POLICY_VERSION,
             # Absent until the first treatment, so earlier digests stay valid.
             **({"treatment_number": treatments_number} if treatments_number else {}),
+            **({"unit_assignments": unit_assignments} if unit_assignments else {}),
         }
     )
     existing = session.scalar(
@@ -1801,7 +1838,20 @@ def readiness(
     blockers["SOURCE_RECONCILIATION_UNRESOLVED"] = reconciliation.get(
         "BILLING_ONLY", 0
     ) + reconciliation.get("UNMAPPED", 0)
-    if not actuals:
+    # A month is missing when the NG base does not cover it. A unit without
+    # entries in a month the base covers (one that started mid-year, say) has
+    # a zero month, not a missing one.
+    if not actuals and (
+        unit_id is None
+        or not session.scalar(
+            sa.select(
+                sa.exists().where(
+                    FinancialActualFact.run_id == run_id,
+                    FinancialActualFact.calendar_period == period,
+                )
+            )
+        )
+    ):
         blockers["NO_ACTUAL"] = 1
     return ReadinessView(
         run_id=run_id,

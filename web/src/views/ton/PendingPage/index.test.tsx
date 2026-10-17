@@ -199,7 +199,7 @@ it("opens the requested category with business titles and no identifiers", () =>
     screen.getByRole("heading", { name: "Conciliação" })
   ).toBeInTheDocument();
   expect(
-    screen.getAllByText("Somente faturamento disponível").length
+    screen.getAllByText(/Somente faturamento disponível/).length
   ).toBeGreaterThan(0);
   expect(screen.getByText("Realizado ausente")).toBeInTheDocument();
   // The row identifies the source record: document, counterparty and value.
@@ -218,29 +218,22 @@ it("titles budget rows by meaning instead of the source identifier", () => {
   expect(container).not.toHaveTextContent("408e7060");
 });
 
-it("requires an explicit decision, a justification and a second confirmation", async () => {
+it("records a decision in one step once an option is chosen", async () => {
   const user = setupUser();
   render(<PendingPage />);
-  await user.click(screen.getByRole("button", { name: "Revisar e decidir" }));
-  const review = screen.getByRole("button", { name: "Revisar decisão" });
-  expect(review).toBeDisabled();
-  await user.click(screen.getByRole("radio", { name: /Diferença esperada/ }));
-  expect(review).toBeDisabled();
+  await user.click(screen.getAllByRole("button", { name: "Decidir" })[0]!);
+  const confirm = screen.getByRole("button", { name: "Confirmar decisão" });
+  // No default outcome: the person must choose.
+  expect(confirm).toBeDisabled();
+  await user.click(
+    screen.getByRole("radio", { name: /mesma nota, com diferença explicada/ })
+  );
+  expect(confirm).toBeEnabled();
   await user.type(
     screen.getByRole("textbox", { name: "Justificativa" }),
     "Nota fiscal conferida"
   );
-  expect(review).toBeEnabled();
-  await user.click(review);
-  expect(global.fetch).not.toHaveBeenCalled();
-  expect(screen.getByText("Confirme antes de registrar")).toBeInTheDocument();
-  // The step indicator shows the confirmation step as current.
-  expect(
-    screen
-      .getByRole("list", { name: "Etapas da decisão" })
-      .querySelector('[aria-current="step"]')
-  ).toHaveTextContent("3");
-  await user.click(screen.getByRole("button", { name: "Confirmar decisão" }));
+  await user.click(confirm);
   const calls = (global.fetch as jest.Mock).mock.calls;
   const [path, init] = calls[0];
   expect(path).toContain("/reconciliation/items/");
@@ -264,15 +257,28 @@ it("requires an explicit decision, a justification and a second confirmation", a
 it("shows the evidence and what each reconciliation option means", async () => {
   const user = setupUser();
   render(<PendingPage />);
-  await user.click(screen.getByRole("button", { name: "Revisar e decidir" }));
+  await user.click(screen.getAllByRole("button", { name: "Decidir" })[0]!);
   expect(screen.getByText("Não muda números da DRE")).toBeInTheDocument();
-  expect(screen.getByText("Nota fiscal")).toBeInTheDocument();
+  // The billing side is a column of the comparison.
+  expect(screen.getAllByText("Faturamento").length).toBeGreaterThan(0);
   expect(
-    screen.getByRole("radio", { name: /Diferença esperada/ })
-  ).toHaveTextContent("prazo, retenção ou arredondamento");
+    screen.getByRole("radio", { name: /mesma nota, com diferença explicada/ })
+  ).toHaveTextContent("retenção, prazo ou arredondamento");
   expect(
-    screen.getByRole("link", { name: "Perguntar ao TON sobre este item" })
+    screen.getByRole("link", { name: "Perguntar ao TON" })
   ).not.toHaveAttribute("href", expect.stringContaining("100"));
+});
+
+it("decides the selected rows together", async () => {
+  const user = setupUser();
+  render(<PendingPage />);
+  await user.click(
+    screen.getByRole("checkbox", { name: "Selecionar todos desta página" })
+  );
+  expect(screen.getByText("1 selecionado")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Decidir selecionados" }));
+  // A single selected row reads as that case; the decision still applies to it.
+  expect(screen.getByRole("dialog")).toHaveTextContent("Confirmar decisão");
 });
 
 it("treats missing months as a data import, not a decision", () => {
@@ -283,7 +289,7 @@ it("treats missing months as a data import, not a decision", () => {
   expect(screen.getByText("mai/2026")).toBeInTheDocument();
   expect(screen.getByText("jun/2026")).toBeInTheDocument();
   expect(
-    screen.queryByRole("button", { name: "Revisar e decidir" })
+    screen.queryByRole("button", { name: "Decidir" })
   ).not.toBeInTheDocument();
   expect(
     screen.getByRole("link", { name: "Importar lançamentos do NG" })

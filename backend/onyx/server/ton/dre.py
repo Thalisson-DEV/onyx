@@ -28,7 +28,9 @@ from onyx.ton.dre.models import (
     DreStructureCreate,
     DreStructureView,
     DreVersionCreate,
+    DreUnitsYearView,
     DreVersionView,
+    DreYearView,
 )
 
 router = APIRouter(prefix="/ton/dre", tags=["TON DRE"])
@@ -135,6 +137,27 @@ def calculate(
         raise
 
 
+@router.post("/calculations/year")
+def calculate_year(
+    scope: DreScope,
+    user: User = Depends(require_permission(Permission.IMPORT_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> list[DreRunView]:
+    """Every month from January to the scope's month, in one request."""
+    try:
+        return repository.execute_year(session, user, scope)
+    except Exception:
+        session.rollback()
+        try:
+            repository.audit_failed_calculation(
+                session, user, scope.structure_version_id
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+        raise
+
+
 @router.get("/calculations")
 def list_calculations(
     period: date,
@@ -165,6 +188,55 @@ def period_series(
         year,
         unit_id,
         line_code,
+    )
+
+
+@router.get("/calculations/year")
+def year_statement(
+    normalization_run_id: UUID,
+    structure_version_id: UUID,
+    year: int = Query(ge=1900, le=9998),
+    unit_id: UUID | None = None,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> DreYearView:
+    return repository.get_year(
+        session, user, normalization_run_id, structure_version_id, year, unit_id
+    )
+
+
+@router.get("/calculations/units-year")
+def units_year_statement(
+    normalization_run_id: UUID,
+    structure_version_id: UUID,
+    year: int = Query(ge=1900, le=9998),
+    unit_ids: list[UUID] = Query(min_length=1, max_length=100),
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> DreUnitsYearView:
+    return repository.get_units_year(
+        session, user, normalization_run_id, structure_version_id, year, unit_ids
+    )
+
+
+@router.get("/calculations/units-year/export.xlsx")
+def export_units_year(
+    normalization_run_id: UUID,
+    structure_version_id: UUID,
+    period: date,
+    unit_ids: list[UUID] = Query(min_length=1, max_length=100),
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> Response:
+    content = repository.export_units_workbook(
+        session, user, normalization_run_id, structure_version_id, period, unit_ids
+    )
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="dre-unidades-{period.year}-01-a-{period.month:02d}.xlsx"'
+        },
     )
 
 

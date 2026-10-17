@@ -12,6 +12,27 @@ function outcomeText(entry: DecisionEntry): string {
   return LOG.outcomes[entry.outcome] ?? getBusinessLabel(entry.outcome);
 }
 
+/** Consecutive identical decisions (one batch) read as one line. */
+function grouped(entries: DecisionEntry[]): Array<DecisionEntry & { count: number }> {
+  const result: Array<DecisionEntry & { count: number }> = [];
+  for (const entry of entries) {
+    const last = result.at(-1);
+    if (
+      last &&
+      last.kind === entry.kind &&
+      last.subject === entry.subject &&
+      last.outcome === entry.outcome &&
+      last.reason === entry.reason &&
+      last.decided_by === entry.decided_by
+    ) {
+      last.count += 1;
+      continue;
+    }
+    result.push({ ...entry, count: 1 });
+  }
+  return result;
+}
+
 /** Who decided what, when, why and in which version — from persisted decisions. */
 export default function DecisionLogList({
   entries,
@@ -20,7 +41,8 @@ export default function DecisionLogList({
   entries: DecisionEntry[];
   limit?: number;
 }) {
-  const shown = limit ? entries.slice(0, limit) : entries;
+  const groups = grouped(entries);
+  const shown = limit ? groups.slice(0, limit) : groups;
   if (!shown.length) {
     return (
       <Text font="secondary-body" color="text-03">
@@ -37,7 +59,9 @@ export default function DecisionLogList({
         >
           <div className="flex flex-wrap items-center gap-2">
             <Text font="main-ui-action" color="text-05">
-              {LOG.kinds[entry.kind]}
+              {entry.count > 1
+                ? LOG.many(entry.count, LOG.kinds[entry.kind])
+                : LOG.kinds[entry.kind]}
             </Text>
             {entry.applied === false && (
               <StatusPill tone="warning">{LOG.pending}</StatusPill>
@@ -55,7 +79,9 @@ export default function DecisionLogList({
             {[
               formatRelativeDateTime(entry.decided_at),
               entry.decided_by ? LOG.by(entry.decided_by) : null,
-              entry.version != null ? LOG.version(entry.version) : null,
+              entry.version != null && entry.count === 1
+                ? LOG.version(entry.version)
+                : null,
             ]
               .filter(Boolean)
               .join(" · ")}

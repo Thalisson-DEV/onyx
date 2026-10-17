@@ -184,7 +184,8 @@ export function appliedDecisionCount(changes: ReadinessChanges): number {
   );
 }
 
-export const TON_DECISIONS_KEY = "/api/ton/financial-domain/decisions?limit=20";
+// Enough history to show a whole batch of decisions as one line.
+export const TON_DECISIONS_KEY = "/api/ton/financial-domain/decisions?limit=100";
 
 export function useDecisionLog() {
   const { canRead } = useTonAccess();
@@ -215,16 +216,36 @@ export function useReadinessChanges(
   );
 }
 
+/** A refused TON request, with the API's own explanation when it sent one. */
+export class TonApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly detail: string | null
+  ) {
+    super(String(status));
+  }
+}
+
 export async function postTonJson<T>(
   path: string,
-  body: Record<string, string | null>
+  body: Record<string, unknown>
 ): Promise<T> {
   const response = await fetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!response.ok) throw new Error(String(response.status));
+  if (!response.ok) {
+    const payload: unknown = await response.json().catch(() => null);
+    const detail =
+      payload && typeof payload === "object" && "detail" in payload
+        ? payload.detail
+        : null;
+    throw new TonApiError(
+      response.status,
+      typeof detail === "string" ? detail : null
+    );
+  }
   // SAFETY: TON endpoints return the declared Pydantic view on 2xx.
   return (await response.json()) as T;
 }

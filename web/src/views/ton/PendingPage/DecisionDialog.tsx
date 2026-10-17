@@ -19,11 +19,14 @@ import {
   type DecisionEntry,
   type DecisionLog,
   TON_DECISIONS_KEY,
+  TonApiError,
   postTonJson,
   sumBlockers,
 } from "@/lib/ton/decisions";
 import { getBusinessLabel } from "@/lib/ton/labels";
 import EvidenceRecords from "@/views/ton/components/EvidenceRecords";
+import DuplicateCompare from "@/views/ton/PendingPage/DuplicateCompare";
+import ReconciliationCompare from "@/views/ton/PendingPage/ReconciliationCompare";
 import ReadinessDelta from "@/views/ton/components/ReadinessDelta";
 import { LoadingBlock, StatusPill } from "@/views/ton/components/ui";
 import {
@@ -40,6 +43,7 @@ import {
   type ReviewDecision,
   type Target,
   type Version,
+  duplicatePair,
   isReviewCategory,
   readinessUrl,
   rowDetail,
@@ -58,46 +62,7 @@ const MAPPING_KIND: Partial<Record<string, string>> = {
   budgetUnits: "BUDGET_UNIT",
 };
 
-type Phase = "edit" | "confirm" | "recording" | "recomputing" | "result";
-type DecisionStep = "review" | "decide" | "confirm" | "done";
-
-function DecisionSteps({ current }: { current: DecisionStep }) {
-  const steps: DecisionStep[] = ["review", "decide", "confirm", "done"];
-  const index = steps.indexOf(current);
-  return (
-    <ol
-      aria-label={COPY.pending.steps.label}
-      className="flex flex-wrap items-center gap-x-2 gap-y-1"
-    >
-      {steps.map((step, position) => (
-        <li key={step} className="flex items-center gap-2">
-          <span
-            aria-current={position === index ? "step" : undefined}
-            className="ton-step"
-            data-state={
-              position < index
-                ? "done"
-                : position === index
-                  ? "current"
-                  : "next"
-            }
-          >
-            {position + 1}
-          </span>
-          <Text
-            font={position === index ? "secondary-action" : "secondary-body"}
-            color={position <= index ? "text-05" : "text-03"}
-          >
-            {COPY.pending.steps[step]}
-          </Text>
-          {position < steps.length - 1 && (
-            <span aria-hidden className="w-4 border-t border-02" />
-          )}
-        </li>
-      ))}
-    </ol>
-  );
-}
+type Phase = "edit" | "recording" | "recomputing" | "result";
 
 function Section({
   title,
@@ -128,38 +93,32 @@ function askTonHref(category: QueueCategory, row: BlockerRow): Route {
   return `/ton/chat?${query.toString()}` as Route;
 }
 
-/** Plain-language question and effect on the numbers; facts, not advice. */
-function Explanation({ category }: { category: QueueCategory }) {
-  const explain = LOOP.explain.categories[category.key];
-  if (!explain) return null;
-  return (
-    <section className="flex flex-col gap-1.5 rounded-12 bg-background-neutral-01 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="ton-eyebrow">{LOOP.explain.title}</span>
-        <StatusPill tone={explain.changes ? "warning" : "neutral"}>
-          {explain.changes
-            ? LOOP.explain.changesNumbers
-            : LOOP.explain.keepsNumbers}
-        </StatusPill>
-      </div>
-      <Text font="main-ui-body" color="text-05">
-        {explain.question}
-      </Text>
-      <Text font="secondary-body" color="text-04">
-        {explain.effect}
-      </Text>
-    </section>
-  );
-}
-
 /** The case at a glance: what it is and the facts a person checks first. */
 function FactCard({
   row,
   category,
+  batch,
+  titleOnly,
 }: {
   row: BlockerRow;
   category: QueueCategory;
+  batch?: BlockerRow[];
+  /** The comparison below already shows the facts. */
+  titleOnly?: boolean;
 }) {
+  if (batch && batch.length > 1) {
+    return (
+      <section className="ton-fact-card flex flex-col gap-1">
+        <span className="ton-eyebrow">{category.label}</span>
+        <Text as="h3" font="heading-h3" color="text-05">
+          {DIALOG.batchTitle(batch.length)}
+        </Text>
+        <Text font="secondary-body" color="text-03">
+          {DIALOG.batchBody}
+        </Text>
+      </section>
+    );
+  }
   const first = row.records[0];
   const amount = first
     ? (first.movement_amount ?? first.final_amount ?? first.service_amount)
@@ -181,6 +140,8 @@ function FactCard({
             ? LOOP.location(first.sheet, first.row)
             : null,
         ],
+        [DIALOG.facts.account, first.account],
+        [DIALOG.facts.history, first.description],
       ].filter((item): item is [string, string] => Boolean(item[1]))
     : row.locations?.length
       ? [[DIALOG.facts.where, row.locations.join(" ; ")] as [string, string]]
@@ -204,7 +165,7 @@ function FactCard({
             .join(" · ")}
         </Text>
       </div>
-      {facts.length > 0 && (
+      {!titleOnly && facts.length > 0 && (
         <dl className="ton-fact-grid">
           {facts.map(([label, value]) => (
             <div key={label} className="flex flex-col gap-0.5 min-w-0">
@@ -231,11 +192,13 @@ function OptionCard({
   title,
   help,
   onSelect,
+  compact,
 }: {
   selected: boolean;
   title: string;
-  help: string;
+  help?: string;
   onSelect: () => void;
+  compact?: boolean;
 }) {
   return (
     // Selectable option card: title plus what it means.
@@ -244,18 +207,70 @@ function OptionCard({
       role="radio"
       aria-checked={selected}
       onClick={onSelect}
-      className={cn("ton-option-card ton-focusable", selected && "is-selected")}
+      className={cn(
+        "ton-option-card ton-focusable",
+        selected && "is-selected",
+        compact && "is-compact"
+      )}
     >
       <span className="ton-option-dot" aria-hidden />
       <span className="flex flex-col gap-0.5 min-w-0 text-start">
         <Text font="main-ui-action" color="text-05">
           {title}
         </Text>
-        <Text font="secondary-body" color="text-03">
-          {help}
-        </Text>
+        {help && (
+          <Text font="secondary-body" color="text-03">
+            {help}
+          </Text>
+        )}
       </span>
     </button>
+  );
+}
+
+/** The API's own reason when it gives one, so the person knows what to fix. */
+function failureMessage(error: unknown): string {
+  return error instanceof TonApiError && error.detail
+    ? DIALOG.errorWithDetail(getBusinessLabel(error.detail))
+    : DIALOG.error;
+}
+
+/** Selected cases at a glance: one line each, the amount on the right. */
+function BatchTable({ rows }: { rows: BlockerRow[] }) {
+  return (
+    <div className="ton-batch-table">
+      <table className="w-full border-collapse">
+        <tbody>
+          {rows.map((item, index) => {
+            const first = item.records[0];
+            const amount =
+              first?.movement_amount ??
+              first?.final_amount ??
+              first?.service_amount ??
+              null;
+            return (
+              <tr key={`${item.occurrence_id ?? item.item_id ?? index}`}>
+                <td>{first?.document ?? "—"}</td>
+                <td className="w-full">
+                  {first?.account ?? first?.counterparty ?? item.rule_title ?? ""}
+                  {first?.description && (
+                    <span className="ton-batch-history">{first.description}</span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap">
+                  {first?.sheet && first.row
+                    ? LOOP.location(first.sheet, first.row)
+                    : ""}
+                </td>
+                <td className="text-end whitespace-nowrap font-semibold">
+                  {amount ? formatCurrency(amount) : "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -263,10 +278,6 @@ function evidenceBasis(row: BlockerRow): string | null {
   if (row.candidate) return LOOP.evidenceReady[row.candidate.evidence];
   if (row.legacy_evidence) return LOOP.evidenceReady.LEGACY;
   return null;
-}
-
-function monthLabel(value: string): string {
-  return formatPeriod(`${value}-01`).toLowerCase();
 }
 
 interface DecisionResult {
@@ -292,6 +303,8 @@ export interface DecisionAccess {
 
 interface DecisionDialogProps {
   row: BlockerRow;
+  /** Rows the person selected in the queue: one decision settles all. */
+  batch?: BlockerRow[];
   category: QueueCategory;
   scope: DecisionScope;
   access: DecisionAccess;
@@ -303,6 +316,7 @@ interface DecisionDialogProps {
 
 export default function DecisionDialog({
   row,
+  batch,
   category,
   scope,
   access,
@@ -326,6 +340,10 @@ export default function DecisionDialog({
   const [endMonth, setEndMonth] = useState("");
   // No default: a reconciliation outcome must be an explicit human choice.
   const [decision, setDecision] = useState<ReconciliationDecision | null>(null);
+  // Unit-missing cases: the unit the entry belongs to, instead of a review
+  // decision (the case is decided as part of the assignment).
+  const [assigning, setAssigning] = useState(false);
+  const [assignUnit, setAssignUnit] = useState("");
   const [reviewDecision, setReviewDecision] = useState<ReviewDecision | null>(
     null
   );
@@ -340,7 +358,7 @@ export default function DecisionDialog({
     total: number;
   } | null>(null);
   const [phase, setPhase] = useState<Phase>("edit");
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const [rejected, setRejected] = useState(false);
   const [result, setResult] = useState<DecisionResult | null>(null);
   const [createdTargets, setCreatedTargets] = useState<Target[]>([]);
@@ -353,7 +371,9 @@ export default function DecisionDialog({
   // The Controladoria may skip the reason on review, reconciliation and
   // mapping decisions; the history then records the decision itself.
   const defaultReason = isReview
-    ? reviewDecision
+    ? assigning
+      ? DIALOG.assignUnit
+      : reviewDecision
       ? DIALOG.defaultReason(
           COPY.pending.reviewDecisions[reviewDecision] ?? reviewDecision
         )
@@ -371,7 +391,8 @@ export default function DecisionDialog({
   // Reconciliation items of the same closing month: one reason can settle a
   // whole list (for example every August note with a different number).
   const siblings = useSWR<{ rows: BlockerRow[] }>(
-    (isReview && row.rule_key) || (isReconciliation && row.item_id)
+    !batch &&
+      ((isReview && row.rule_key) || (isReconciliation && row.item_id))
       ? `/api/ton/financial-domain/normalizations/${scope.runId}/readiness/blockers/${category.blocker}?structure_version_id=${scope.version.id}&limit=100${isReconciliation ? `&period=${scope.period.scope.period}` : ""}${scope.unitId ? `&unit_id=${scope.unitId}` : ""}`
       : null,
     errorHandlingFetcher
@@ -381,6 +402,14 @@ export default function DecisionDialog({
       ? item.rule_key === row.rule_key && item.occurrence_id
       : Boolean(item.item_id)
   );
+  // The NG and billing sides of one invoice are separate items with the same
+  // matching key: they are read and decided together.
+  const pairRows = row.group_key
+    ? (siblings.data?.rows ?? []).filter(
+        (item) => item.group_key === row.group_key && item.item_id
+      )
+    : [];
+  const pair = pairRows.length > 1 ? pairRows : [];
   const batchLabel = isReview
     ? DIALOG.applyToAll(
         sameRule.length,
@@ -420,50 +449,34 @@ export default function DecisionDialog({
           : isReconciliation
             ? Boolean(decision)
             : isReview
-              ? Boolean(reviewDecision)
+              ? assigning
+                ? Boolean(assignUnit)
+                : Boolean(reviewDecision)
               : false;
   const busy = phase === "recording" || phase === "recomputing";
-
+  const batchRecords = (batch ?? []).flatMap((item) => item.records);
+  const duplicate = batch ? null : duplicatePair(row);
+  // A single NG row is already shown in the case card above.
+  const showEvidence =
+    Boolean(batch) ||
+    isReconciliation ||
+    row.records.length > 1 ||
+    Boolean(row.legacy_evidence);
+  const ruleCopy = COPY.pending.ruleDecisions[row.rule_key ?? ""];
+  const unitMissing = row.rule_key === "NGF-UNIT-MISSING";
+  const activeUnits = useSWR<Target[]>(
+    unitMissing && canEdit
+      ? "/api/ton/financial-domain/units?limit=100&active_only=true"
+      : null,
+    errorHandlingFetcher
+  );
+  // For a duplicate the likely answer is "same entry": offer it first.
+  const reviewOrder: readonly ReviewDecision[] = row.rule_key?.startsWith(
+    "NGF-DUP"
+  )
+    ? ["REQUEST_SOURCE_CORRECTION", "JUSTIFY_EXCEPTION", "MARK_FALSE_POSITIVE"]
+    : REVIEW_DECISIONS;
   const allTargets = [...createdTargets, ...(targets.data ?? [])];
-  const chosenTarget = allTargets.find((item) => item.id === targetId);
-  const targetText = chosenTarget
-    ? getBusinessLabel(
-        [chosenTarget.code, chosenTarget.name ?? chosenTarget.label]
-          .filter(Boolean)
-          .join(" — ")
-      )
-    : row.candidate && row.candidate.target_id === targetId
-      ? `${row.candidate.code} — ${row.candidate.label}`
-      : "";
-  const lineLabel =
-    scope.version.lines.find((line) => line.code === lineCode)?.label ??
-    lineCode;
-
-  function previewChange(): string | null {
-    if (!hasTarget) return null;
-    const source = getBusinessLabel(row.source_key ?? "");
-    if (isMapping)
-      return targetType === "units"
-        ? LOOP.preview.unit(source, targetText)
-        : LOOP.preview.account(source, targetText);
-    if (category.key === "amountBasis")
-      return LOOP.preview.amountBasis(
-        basis === "MOVEMENT" ? DIALOG.movement : DIALOG.finalAmount
-      );
-    if (isDre) return LOOP.preview.dre(getBusinessLabel(lineLabel));
-    if (category.key === "budgetPeriods")
-      return LOOP.preview.budgetPeriod(
-        monthLabel(startMonth),
-        endMonth ? monthLabel(endMonth) : null
-      );
-    if (isReconciliation && decision)
-      return LOOP.preview.reconciliation(COPY.pending.decisions[decision]);
-    if (isReview && reviewDecision)
-      return LOOP.preview.review(
-        COPY.pending.reviewDecisions[reviewDecision] ?? reviewDecision
-      );
-    return null;
-  }
 
   async function recordDecision(): Promise<void> {
     if (isMapping) {
@@ -500,14 +513,26 @@ export default function DecisionDialog({
         effective_to: endMonth ? `${endMonth}-01` : null,
         reason,
       });
+    } else if (isReview && assigning && assignUnit && row.occurrence_id) {
+      const pool = batch ?? (applyToAll && sameRule.length > 1 ? sameRule : [row]);
+      const ids = pool.flatMap((item) =>
+        item.occurrence_id ? [item.occurrence_id] : []
+      );
+      for (const [index, occurrenceId] of ids.entries()) {
+        if (ids.length > 1) setBatchProgress({ done: index, total: ids.length });
+        await postTonJson(
+          `/api/ton/financial-review/occurrences/${occurrenceId}/unit-assignment`,
+          { unit_id: assignUnit, reason: reasonInput.trim() }
+        );
+      }
+      setBatchProgress(null);
     } else if (isReview && reviewDecision && row.occurrence_id) {
-      const targets =
-        applyToAll && sameRule.length > 1
-          ? sameRule.map((item) => item.occurrence_id as string)
-          : [row.occurrence_id];
-      for (const [index, occurrenceId] of targets.entries()) {
-        if (targets.length > 1)
-          setBatchProgress({ done: index, total: targets.length });
+      const pool = batch ?? (applyToAll && sameRule.length > 1 ? sameRule : [row]);
+      const ids = pool.flatMap((item) =>
+        item.occurrence_id ? [item.occurrence_id] : []
+      );
+      for (const [index, occurrenceId] of ids.entries()) {
+        if (ids.length > 1) setBatchProgress({ done: index, total: ids.length });
         await postTonJson(
           `/api/ton/financial-review/occurrences/${occurrenceId}/decisions`,
           {
@@ -522,15 +547,18 @@ export default function DecisionDialog({
       }
       setBatchProgress(null);
     } else if (decision && row.item_id) {
-      const targets =
-        applyToAll && sameRule.length > 1
+      const pool =
+        batch ??
+        (applyToAll && sameRule.length > 1
           ? sameRule
-              .filter((item) => decision !== "NG_AUTHORITATIVE" || item.paired)
-              .map((item) => item.item_id as string)
-          : [row.item_id];
-      for (const [index, itemId] of targets.entries()) {
-        if (targets.length > 1)
-          setBatchProgress({ done: index, total: targets.length });
+          : pair.length
+            ? pair
+            : [row]);
+      const ids = pool
+        .filter((item) => decision !== "NG_AUTHORITATIVE" || item.paired)
+        .flatMap((item) => (item.item_id ? [item.item_id] : []));
+      for (const [index, itemId] of ids.entries()) {
+        if (ids.length > 1) setBatchProgress({ done: index, total: ids.length });
         await postTonJson(
           `/api/ton/financial-domain/normalizations/${scope.runId}/reconciliation/items/${itemId}/decision`,
           { decision, reason }
@@ -542,7 +570,7 @@ export default function DecisionDialog({
 
   async function confirm() {
     if (!reason.trim() || !hasTarget) return;
-    setFailed(false);
+    setFailure(null);
     setPhase("recording");
     try {
       await recordDecision();
@@ -581,16 +609,17 @@ export default function DecisionDialog({
       });
       setPhase("result");
       await Promise.all([onApplied(), mutate(TON_DECISIONS_KEY, log, false)]);
-    } catch {
-      setFailed(true);
-      setPhase("confirm");
+    } catch (error) {
+      setBatchProgress(null);
+      setFailure(failureMessage(error));
+      setPhase("edit");
     }
   }
 
   async function reject() {
     if (!row.source_id || !row.source_key || !reason.trim()) return;
     if (category.key !== "units" && category.key !== "accounts") return;
-    setFailed(false);
+    setFailure(null);
     setPhase("recording");
     try {
       const exact =
@@ -609,15 +638,15 @@ export default function DecisionDialog({
       setRejected(true);
       setPhase("result");
       await Promise.all([onApplied(), mutate(TON_DECISIONS_KEY)]);
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      setFailure(failureMessage(error));
       setPhase("edit");
     }
   }
 
   async function createAccount() {
     if (!accountCode.trim() || !accountLabel.trim()) return;
-    setFailed(false);
+    setFailure(null);
     try {
       const account = await postTonJson<Target>(
         "/api/ton/financial-domain/accounts",
@@ -625,21 +654,29 @@ export default function DecisionDialog({
       );
       setCreatedTargets((items) => [account, ...items]);
       setTargetId(account.id);
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      setFailure(failureMessage(error));
     }
   }
 
-  const step: DecisionStep =
-    phase === "result"
-      ? "done"
-      : phase === "edit"
-        ? reason.trim() && hasTarget
-          ? "decide"
-          : "review"
-        : "confirm";
   const periodLabel = formatPeriod(scope.period.scope.period).toLowerCase();
-  const preview = previewChange();
+  const explain = LOOP.explain.categories[category.key];
+  const decisionCount = batch
+    ? batch.length
+    : applyToAll && sameRule.length > 1
+      ? sameRule.length
+      : pair.length || 1;
+  const impactText = [
+    pair.length > 1 && !batch && !applyToAll
+      ? DIALOG.impactPair
+      : decisionCount > 1
+        ? DIALOG.impactMany(decisionCount)
+      : LOOP.preview.scope(
+          plural(row.record_count, "registro", "registros"),
+          rowPeriods(row)
+        ),
+    willApply ? DIALOG.impactRecompute : DIALOG.impactRecordOnly,
+  ].join(" · ");
 
   return (
     <Modal
@@ -648,15 +685,13 @@ export default function DecisionDialog({
         if (!open && !busy) onClose();
       }}
     >
-      <Modal.Content width="lg">
+      <Modal.Content width="full">
         <Modal.Header
-          title={phase === "result" ? LOOP.result.title : DIALOG.title}
+          title={phase === "result" ? LOOP.result.title : category.label}
           onClose={() => !busy && onClose()}
         />
         <Modal.Body>
           <div className="w-full flex flex-col gap-5">
-            {canEdit && <DecisionSteps current={step} />}
-
             {phase === "result" && rejected && (
               <div className="flex items-center gap-2">
                 <SvgCheckCircle size={18} className="ton-brand-text" />
@@ -668,6 +703,7 @@ export default function DecisionDialog({
 
             {phase === "result" && result && (
               <ResultView
+                count={decisionCount}
                 result={result}
                 periodLabel={periodLabel}
                 onNext={onNext}
@@ -676,111 +712,136 @@ export default function DecisionDialog({
             )}
 
             {phase !== "result" && (
-              <>
-                <FactCard row={row} category={category} />
-
-                <Explanation category={category} />
-
-                <Section title={LOOP.evidenceTitle}>
-                  <EvidenceRecords
-                    records={row.records}
-                    total={row.record_count}
-                    reconciliation={isReconciliation}
+              <div className="ton-decision-layout">
+                <div className="flex flex-col gap-4 min-w-0">
+                  <FactCard
+                    row={row}
+                    category={category}
+                    batch={batch}
+                    titleOnly={Boolean(duplicate) || (isReconciliation && !batch)}
                   />
-                  {row.legacy_evidence && (
-                    <Text font="secondary-body" color="text-03">
-                      {`${row.legacy_evidence.reference_label}: ${row.legacy_evidence.suggested_code}${row.legacy_evidence.suggested_label ? ` — ${row.legacy_evidence.suggested_label}` : ""}`}
+                  {duplicate ? (
+                    <DuplicateCompare
+                      kept={duplicate.kept}
+                      repeated={duplicate.repeated}
+                    />
+                  ) : isReconciliation && !batch ? (
+                    <ReconciliationCompare
+                      records={
+                        pair.length
+                          ? pair.flatMap((item) => item.records)
+                          : row.records
+                      }
+                    />
+                  ) : (
+                    showEvidence && (
+                      <Section title={LOOP.evidenceTitle}>
+                        {batch ? (
+                          <BatchTable rows={batch} />
+                        ) : (
+                          <EvidenceRecords
+                            records={row.records}
+                            total={row.record_count}
+                            reconciliation={isReconciliation}
+                          />
+                        )}
+                        {row.legacy_evidence && (
+                          <Text font="secondary-body" color="text-03">
+                            {`${row.legacy_evidence.reference_label}: ${row.legacy_evidence.suggested_code}${row.legacy_evidence.suggested_label ? ` — ${row.legacy_evidence.suggested_label}` : ""}`}
+                          </Text>
+                        )}
+                      </Section>
+                    )
+                  )}
+                  {evidenceBasis(row) && !batch && (
+                    <section className="flex flex-col gap-1 rounded-12 border border-01 p-3">
+                      <div className="flex items-center gap-2">
+                        <SvgCheckCircle size={16} className="ton-brand-text" />
+                        <Text font="main-ui-action" color="text-05">
+                          {rowSuggestion(row)}
+                        </Text>
+                      </div>
+                      <Text font="secondary-body" color="text-03">
+                        {LOOP.evidenceReady.body(evidenceBasis(row) ?? "")}
+                      </Text>
+                    </section>
+                  )}
+                  {category.noActual && (
+                    <div className="flex flex-col gap-2">
+                      <Text font="main-ui-body" color="text-04">
+                        {COPY.pending.noActual.action}
+                      </Text>
+                      <div>
+                        <Button href="/ton/fontes" rightIcon={SvgArrowRight}>
+                          {COPY.pending.noActual.cta}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <aside className="ton-decision-panel">
+                  <div className="flex flex-col gap-1.5">
+                    <Text as="h3" font="heading-h3" color="text-05">
+                      {DIALOG.decision}
+                    </Text>
+                    {explain && (
+                      <span>
+                        <StatusPill tone={explain.changes ? "warning" : "neutral"}>
+                          {explain.changes
+                            ? LOOP.explain.changesNumbers
+                            : LOOP.explain.keepsNumbers}
+                        </StatusPill>
+                      </span>
+                    )}
+                  </div>
+
+                  {!category.noActual && !canEdit && (
+                    <Text font="main-ui-body" color="text-03">
+                      {category.key === "other"
+                        ? category.action
+                        : DIALOG.noPermission}
                     </Text>
                   )}
-                </Section>
 
-                {evidenceBasis(row) ? (
-                  <section className="flex flex-col gap-1 rounded-12 border border-01 p-3">
-                    <div className="flex items-center gap-2">
-                      <SvgCheckCircle size={16} className="ton-brand-text" />
-                      <Text font="main-ui-action" color="text-05">
-                        {LOOP.evidenceReady.title}
-                      </Text>
-                    </div>
-                    <Text font="main-ui-body" color="text-04">
-                      {rowSuggestion(row)}
-                    </Text>
-                    <Text font="secondary-body" color="text-03">
-                      {LOOP.evidenceReady.body(evidenceBasis(row) ?? "")}
-                    </Text>
-                  </section>
-                ) : (
-                  !isReconciliation &&
-                  !isReview &&
-                  !category.noActual && (
-                    <Section title={DIALOG.suggestion}>
-                      <Text font="main-ui-body" color="text-04">
-                        {rowSuggestion(row)}
-                      </Text>
-                    </Section>
-                  )
-                )}
-
-                {category.noActual && (
-                  <div className="flex flex-col gap-2">
-                    <Text font="main-ui-body" color="text-04">
-                      {COPY.pending.noActual.action}
-                    </Text>
-                    <div>
-                      <Button href="/ton/fontes" rightIcon={SvgArrowRight}>
-                        {COPY.pending.noActual.cta}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {!category.noActual && !canEdit && (
-                  <Text font="main-ui-body" color="text-03">
-                    {category.key === "other"
-                      ? category.action
-                      : DIALOG.noPermission}
-                  </Text>
-                )}
-
-                {canEdit && phase === "edit" && (
-                  <Section title={DIALOG.decision}>
-                    <Text font="main-ui-body" color="text-04">
-                      {category.action}
-                    </Text>
-                    {isMapping && (
-                      <div className="flex flex-col gap-2">
-                        <InputTypeIn
-                          searchIcon
-                          value={targetSearch}
-                          onChange={(event) =>
-                            setTargetSearch(event.target.value)
-                          }
-                          placeholder={DIALOG.searchTarget}
-                          aria-label={DIALOG.searchTarget}
-                        />
-                        <div className="flex flex-wrap gap-2">
-                          {allTargets.map((target) => (
-                            <Button
-                              key={target.id}
-                              size="sm"
-                              prominence={
-                                target.id === targetId ? "primary" : "secondary"
-                              }
-                              onClick={() => setTargetId(target.id)}
-                            >
-                              {getBusinessLabel(
-                                target.name ?? target.label ?? target.code
-                              )}
-                            </Button>
-                          ))}
-                        </div>
-                        {targets.isLoading && (
-                          <LoadingBlock label={COPY.common.loading} lines={1} />
-                        )}
-                        {(category.key === "accounts" ||
-                          category.key === "budgetAccounts") &&
-                          access.canConfigure && (
-                            <div className="flex flex-col gap-2 border-t border-01 pt-3">
+                  {canEdit && isMapping && (
+                    <div className="flex flex-col gap-2">
+                      <InputTypeIn
+                        searchIcon
+                        value={targetSearch}
+                        onChange={(event) =>
+                          setTargetSearch(event.target.value)
+                        }
+                        placeholder={DIALOG.searchTarget}
+                        aria-label={DIALOG.searchTarget}
+                      />
+                      <div
+                        role="radiogroup"
+                        aria-label={DIALOG.decision}
+                        className="ton-choice-list"
+                      >
+                        {allTargets.map((target) => (
+                          <OptionCard
+                            key={target.id}
+                            compact
+                            selected={target.id === targetId}
+                            title={getBusinessLabel(
+                              target.name ?? target.label ?? target.code
+                            )}
+                            help={target.code}
+                            onSelect={() => setTargetId(target.id)}
+                          />
+                        ))}
+                      </div>
+                      {targets.isLoading && (
+                        <LoadingBlock label={COPY.common.loading} lines={1} />
+                      )}
+                      {(category.key === "accounts" ||
+                        category.key === "budgetAccounts") &&
+                        access.canConfigure && (
+                          <details className="ton-more">
+                            <summary>{DIALOG.createAccount}</summary>
+                            <div className="flex flex-col gap-2 pt-2">
                               <InputTypeIn
                                 value={accountCode}
                                 onChange={(event) =>
@@ -810,167 +871,186 @@ export default function DecisionDialog({
                                 </Button>
                               </div>
                             </div>
-                          )}
-                      </div>
-                    )}
-                    {category.key === "amountBasis" && (
-                      <div className="flex gap-2">
-                        {(["MOVEMENT", "FINAL"] as const).map((value) => (
-                          <Button
-                            key={value}
-                            size="sm"
-                            prominence={
-                              basis === value ? "primary" : "secondary"
-                            }
-                            onClick={() => setBasis(value)}
-                          >
-                            {value === "MOVEMENT"
+                          </details>
+                        )}
+                    </div>
+                  )}
+
+                  {canEdit && category.key === "amountBasis" && (
+                    <div
+                      role="radiogroup"
+                      aria-label={DIALOG.decision}
+                      className="ton-choice-list"
+                    >
+                      {(["MOVEMENT", "FINAL"] as const).map((value) => (
+                        <OptionCard
+                          key={value}
+                          compact
+                          selected={basis === value}
+                          title={
+                            value === "MOVEMENT"
                               ? DIALOG.movement
-                              : DIALOG.finalAmount}
-                          </Button>
+                              : DIALOG.finalAmount
+                          }
+                          onSelect={() => setBasis(value)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {canEdit && isDre && (
+                    <div
+                      role="radiogroup"
+                      aria-label={DIALOG.decision}
+                      className="ton-choice-list"
+                    >
+                      {scope.version.lines
+                        .filter((line) => line.line_type === "SOURCE_SUM")
+                        .map((line) => (
+                          <OptionCard
+                            key={line.code}
+                            compact
+                            selected={line.code === lineCode}
+                            title={getBusinessLabel(line.label)}
+                            onSelect={() => setLineCode(line.code)}
+                          />
                         ))}
-                      </div>
-                    )}
-                    {isDre && (
-                      <div className="flex flex-wrap gap-2">
-                        {scope.version.lines
-                          .filter((line) => line.line_type === "SOURCE_SUM")
-                          .map((line) => (
-                            <Button
-                              key={line.code}
-                              size="sm"
-                              prominence={
-                                line.code === lineCode ? "primary" : "secondary"
-                              }
-                              onClick={() => setLineCode(line.code)}
-                            >
-                              {getBusinessLabel(line.label)}
-                            </Button>
+                    </div>
+                  )}
+
+                  {canEdit && category.key === "budgetPeriods" && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <label className="flex flex-col gap-1">
+                        <Text font="secondary-action" color="text-04">
+                          {DIALOG.startMonth}
+                        </Text>
+                        <InputTypeIn
+                          type="month"
+                          value={startMonth}
+                          onChange={(event) => setStartMonth(event.target.value)}
+                          aria-label={DIALOG.startMonth}
+                        />
+                      </label>
+                      <label className="flex flex-col gap-1">
+                        <Text font="secondary-action" color="text-04">
+                          {DIALOG.endMonth}
+                        </Text>
+                        <InputTypeIn
+                          type="month"
+                          value={endMonth}
+                          onChange={(event) => setEndMonth(event.target.value)}
+                          aria-label={DIALOG.endMonth}
+                        />
+                      </label>
+                    </div>
+                  )}
+
+                  {canEdit && isReconciliation && (
+                    <div
+                      role="radiogroup"
+                      aria-label={DIALOG.decision}
+                      className="flex flex-col gap-2"
+                    >
+                      {RECONCILIATION_DECISIONS.filter(
+                        (value) => value !== "NG_AUTHORITATIVE" || row.paired
+                      ).map((value) => (
+                        <OptionCard
+                          key={value}
+                          selected={decision === value}
+                          title={COPY.pending.decisions[value]}
+                          help={LOOP.explain.options[value]}
+                          onSelect={() => setDecision(value)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {canEdit && isReview && (
+                    <div
+                      role="radiogroup"
+                      aria-label={DIALOG.decision}
+                      className="flex flex-col gap-2"
+                    >
+                      {unitMissing && (
+                        <OptionCard
+                          selected={assigning}
+                          title={DIALOG.assignUnit}
+                          help={DIALOG.assignUnitHelp}
+                          onSelect={() => {
+                            setAssigning(true);
+                            setReviewDecision(null);
+                          }}
+                        />
+                      )}
+                      {unitMissing && assigning && (
+                        <select
+                          className="ton-select ton-focusable"
+                          aria-label={DIALOG.assignUnitPick}
+                          value={assignUnit}
+                          onChange={(event) => setAssignUnit(event.target.value)}
+                        >
+                          <option value="">{DIALOG.assignUnitPick}</option>
+                          {(activeUnits.data ?? []).map((unit) => (
+                            <option key={unit.id} value={unit.id}>
+                              {getBusinessLabel(unit.name ?? unit.code)}
+                            </option>
                           ))}
-                      </div>
-                    )}
-                    {category.key === "budgetPeriods" && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <label className="flex flex-col gap-1">
-                          <Text font="secondary-action" color="text-04">
-                            {DIALOG.startMonth}
-                          </Text>
-                          <InputTypeIn
-                            type="month"
-                            value={startMonth}
-                            onChange={(event) =>
-                              setStartMonth(event.target.value)
-                            }
-                            aria-label={DIALOG.startMonth}
-                          />
-                        </label>
-                        <label className="flex flex-col gap-1">
-                          <Text font="secondary-action" color="text-04">
-                            {DIALOG.endMonth}
-                          </Text>
-                          <InputTypeIn
-                            type="month"
-                            value={endMonth}
-                            onChange={(event) =>
-                              setEndMonth(event.target.value)
-                            }
-                            aria-label={DIALOG.endMonth}
-                          />
-                        </label>
-                      </div>
-                    )}
-                    {isReconciliation && (
-                      <div
-                        role="radiogroup"
-                        aria-label={DIALOG.decision}
-                        className="flex flex-col gap-2"
-                      >
-                        {RECONCILIATION_DECISIONS.filter(
-                          (value) => value !== "NG_AUTHORITATIVE" || row.paired
-                        ).map((value) => (
-                          <OptionCard
-                            key={value}
-                            selected={decision === value}
-                            title={COPY.pending.decisions[value]}
-                            help={LOOP.explain.options[value]}
-                            onSelect={() => setDecision(value)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {isReview && (
-                      <div
-                        role="radiogroup"
-                        aria-label={DIALOG.decision}
-                        className="flex flex-col gap-2"
-                      >
-                        {REVIEW_DECISIONS.map((value) => (
-                          <OptionCard
-                            key={value}
-                            selected={reviewDecision === value}
-                            title={COPY.pending.reviewDecisions[value] ?? value}
-                            help={COPY.pending.reviewDecisionHelp[value] ?? ""}
-                            onSelect={() => setReviewDecision(value)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    {isReview && reviewDecision === "JUSTIFY_EXCEPTION" && (
+                        </select>
+                      )}
+                      {reviewOrder.map((value) => (
+                        <OptionCard
+                          key={value}
+                          selected={!assigning && reviewDecision === value}
+                          title={
+                            ruleCopy?.[value]?.title ??
+                            COPY.pending.reviewDecisions[value] ??
+                            value
+                          }
+                          help={
+                            ruleCopy?.[value]?.help ??
+                            COPY.pending.reviewDecisionHelp[value] ??
+                            ""
+                          }
+                          onSelect={() => {
+                            setAssigning(false);
+                            setReviewDecision(value);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {canEdit &&
+                    isReview &&
+                    reviewDecision === "JUSTIFY_EXCEPTION" && (
                       <div className="flex flex-col gap-1.5">
                         <Text font="secondary-action" color="text-04">
                           {COPY.pending.justification.label}
                         </Text>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1.5">
                           {JUSTIFICATIONS.map((value) => (
-                            <Button
+                            <button
                               key={value}
-                              size="sm"
-                              prominence={
-                                justification === value
-                                  ? "primary"
-                                  : "secondary"
-                              }
+                              type="button"
+                              aria-pressed={justification === value}
+                              className="ton-chip ton-focusable"
                               onClick={() => setJustification(value)}
                             >
                               {COPY.pending.justification[value] ?? value}
-                            </Button>
+                            </button>
                           ))}
                         </div>
                       </div>
                     )}
-                    <label className="flex flex-col gap-1">
-                      <Text font="secondary-action" color="text-04">
-                        {reasonOptional ? DIALOG.reasonOptional : DIALOG.reason}
-                      </Text>
-                      <InputTypeIn
-                        value={reasonInput}
-                        onChange={(event) => setReason(event.target.value)}
-                        placeholder={DIALOG.reasonPlaceholder}
-                        aria-label={DIALOG.reason}
-                      />
-                    </label>
-                    {(COPY.pending.quickReasons[category.key] ?? []).length >
-                      0 && (
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <Text font="secondary-body" color="text-03">
-                          {DIALOG.quickReasons}
-                        </Text>
-                        {(COPY.pending.quickReasons[category.key] ?? []).map(
-                          (text) => (
-                            <button
-                              key={text}
-                              type="button"
-                              className="ton-chip ton-focusable"
-                              onClick={() => setReason(text)}
-                            >
-                              {text}
-                            </button>
-                          )
-                        )}
-                      </div>
-                    )}
-                    {(isReview || isReconciliation) && sameRule.length > 1 && (
-                      <label className="ton-apply-all flex items-start gap-2.5">
+
+                  {canEdit &&
+                    !batch &&
+                    (isReview || isReconciliation) &&
+                    sameRule.length > Math.max(1, pair.length) && (
+                      <label
+                        aria-label={batchLabel}
+                        className="ton-apply-all flex items-start gap-2.5"
+                      >
                         <input
                           type="checkbox"
                           checked={applyToAll}
@@ -988,8 +1068,50 @@ export default function DecisionDialog({
                         </span>
                       </label>
                     )}
-                    {isReview && (
+
+                  {canEdit && !category.noActual && (
+                    <div className="flex flex-col gap-1.5">
                       <label className="flex flex-col gap-1">
+                        <Text font="secondary-action" color="text-04">
+                          {isReview
+                            ? DIALOG.noteOptional
+                            : reasonOptional
+                              ? DIALOG.reasonOptional
+                              : DIALOG.reason}
+                        </Text>
+                        <InputTypeIn
+                          value={reasonInput}
+                          onChange={(event) => setReason(event.target.value)}
+                          placeholder={DIALOG.reasonPlaceholder}
+                          aria-label={DIALOG.reason}
+                        />
+                      </label>
+                      {category.key !== "review" &&
+                        (COPY.pending.quickReasons[category.key] ?? []).length >
+                          0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {(COPY.pending.quickReasons[category.key] ?? []).map(
+                            (text) => (
+                              <button
+                                key={text}
+                                type="button"
+                                aria-pressed={reasonInput === text}
+                                className="ton-chip ton-focusable"
+                                onClick={() => setReason(text)}
+                              >
+                                {text}
+                              </button>
+                            )
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {canEdit && isReview && (
+                    <details className="ton-more">
+                      <summary>{DIALOG.moreOptions}</summary>
+                      <label className="flex flex-col gap-1 pt-2">
                         <Text font="secondary-action" color="text-04">
                           {DIALOG.authorization}
                         </Text>
@@ -1002,116 +1124,77 @@ export default function DecisionDialog({
                           aria-label={DIALOG.authorization}
                         />
                       </label>
-                    )}
-                  </Section>
-                )}
+                    </details>
+                  )}
 
-                {canEdit && (
-                  <div
-                    className={cn(
-                      "rounded-12 p-3 flex flex-col gap-1.5",
-                      phase === "edit"
-                        ? "bg-background-neutral-01"
-                        : "bg-status-warning-01"
-                    )}
-                  >
-                    <Text font="main-ui-action" color="text-05">
-                      {phase === "edit"
-                        ? LOOP.preview.title
-                        : DIALOG.confirmTitle}
+                  {busy && (
+                    <LoadingBlock
+                      label={
+                        phase === "recording"
+                          ? batchProgress
+                            ? DIALOG.recordingMany(
+                                batchProgress.done + 1,
+                                batchProgress.total
+                              )
+                            : LOOP.working.recording
+                          : LOOP.working.recomputing
+                      }
+                      lines={1}
+                    />
+                  )}
+                  {failure && (
+                    <Text font="main-ui-body" color="status-error-05">
+                      {failure}
                     </Text>
-                    {preview && (
-                      <Text font="main-ui-body" color="text-05">
-                        {preview}
+                  )}
+
+                  <div className="ton-decision-footer">
+                    {canEdit && (
+                      <Text font="secondary-body" color="text-03">
+                        {impactText}
                       </Text>
                     )}
-                    <Text font="secondary-body" color="text-04">
-                      {applyToAll && sameRule.length > 1
-                        ? batchLabel
-                        : LOOP.preview.scope(
-                            plural(row.record_count, "registro", "registros"),
-                            rowPeriods(row)
-                          )}
-                    </Text>
-                    {phase !== "edit" && reason.trim() && (
-                      <Text font="secondary-body" color="text-04">
-                        {`${DIALOG.reason}: “${reason.trim()}”`}
-                      </Text>
-                    )}
-                    <Text font="secondary-body" color="text-03">
-                      {`${willApply ? LOOP.preview.recompute : LOOP.preview.recordOnly} ${LOOP.preview.nothingAutomatic}`}
-                    </Text>
+                    <div className="flex flex-wrap gap-2 justify-end">
+                      {canEdit &&
+                        (category.key === "units" ||
+                          category.key === "accounts") &&
+                        (row.candidate?.evidence === "EXACT_CODE" ||
+                          row.legacy_evidence) && (
+                          <Button
+                            prominence="secondary"
+                            disabled={busy || !reason.trim()}
+                            onClick={reject}
+                          >
+                            {DIALOG.reject}
+                          </Button>
+                        )}
+                      {category.key !== "other" && !batch && (
+                        <Button
+                          prominence="tertiary"
+                          icon={SvgBubbleText}
+                          href={askTonHref(category, row)}
+                        >
+                          {LOOP.explain.askTonShort}
+                        </Button>
+                      )}
+                      {canEdit ? (
+                        <Button
+                          disabled={busy || !reason.trim() || !hasTarget}
+                          onClick={() => void confirm()}
+                        >
+                          {decisionCount > 1
+                            ? DIALOG.confirmMany(decisionCount)
+                            : DIALOG.confirm}
+                        </Button>
+                      ) : (
+                        <Button prominence="secondary" onClick={onClose}>
+                          {DIALOG.close}
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                )}
-
-                {busy && (
-                  <LoadingBlock
-                    label={
-                      phase === "recording"
-                        ? batchProgress
-                          ? DIALOG.recordingMany(
-                              batchProgress.done + 1,
-                              batchProgress.total
-                            )
-                          : LOOP.working.recording
-                        : LOOP.working.recomputing
-                    }
-                    lines={1}
-                  />
-                )}
-                {failed && (
-                  <Text font="main-ui-body" color="status-error-05">
-                    {DIALOG.error}
-                  </Text>
-                )}
-
-                <div className="flex flex-wrap gap-2 justify-end">
-                  {canEdit &&
-                    phase === "edit" &&
-                    (category.key === "units" || category.key === "accounts") &&
-                    (row.candidate?.evidence === "EXACT_CODE" ||
-                      row.legacy_evidence) && (
-                      <Button
-                        prominence="secondary"
-                        disabled={!reason.trim()}
-                        onClick={reject}
-                      >
-                        {DIALOG.reject}
-                      </Button>
-                    )}
-                  {phase === "edit" && category.key !== "other" && (
-                    <Button
-                      prominence="tertiary"
-                      icon={SvgBubbleText}
-                      href={askTonHref(category, row)}
-                    >
-                      {LOOP.explain.askTon}
-                    </Button>
-                  )}
-                  <Button
-                    prominence="tertiary"
-                    disabled={busy}
-                    onClick={() =>
-                      phase === "confirm" ? setPhase("edit") : onClose()
-                    }
-                  >
-                    {phase === "confirm" ? DIALOG.back : DIALOG.close}
-                  </Button>
-                  {canEdit && phase === "edit" && (
-                    <Button
-                      disabled={!reason.trim() || !hasTarget}
-                      onClick={() => setPhase("confirm")}
-                    >
-                      {DIALOG.review}
-                    </Button>
-                  )}
-                  {canEdit && phase !== "edit" && (
-                    <Button disabled={busy} onClick={confirm}>
-                      {DIALOG.confirm}
-                    </Button>
-                  )}
-                </div>
-              </>
+                </aside>
+              </div>
             )}
           </div>
         </Modal.Body>
@@ -1121,11 +1204,13 @@ export default function DecisionDialog({
 }
 
 function ResultView({
+  count,
   result,
   periodLabel,
   onNext,
   onClose,
 }: {
+  count: number;
   result: DecisionResult;
   periodLabel: string;
   onNext: () => void;
@@ -1144,7 +1229,13 @@ function ResultView({
           {entry && (
             <>
               <Text font="main-ui-action" color="text-05">
-                {`${LOOP.log.kinds[entry.kind]}: ${getBusinessLabel(entry.subject)} → ${LOOP.log.outcomes[entry.outcome] ?? getBusinessLabel(entry.outcome)}`}
+                {count > 1
+                  ? DIALOG.recordedMany(
+                      count,
+                      LOOP.log.outcomes[entry.outcome] ??
+                        getBusinessLabel(entry.outcome)
+                    )
+                  : `${LOOP.log.kinds[entry.kind]}: ${getBusinessLabel(entry.subject)} → ${LOOP.log.outcomes[entry.outcome] ?? getBusinessLabel(entry.outcome)}`}
               </Text>
               <Text font="secondary-body" color="text-03">
                 {labels.meta(
@@ -1166,6 +1257,7 @@ function ResultView({
             after={after.blockers}
             statusBefore={before.status}
             statusAfter={after.status}
+            changedOnly
           />
           <Text font="main-ui-body" color="text-04">
             {after.status === "READY"

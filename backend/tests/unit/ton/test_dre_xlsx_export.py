@@ -156,6 +156,10 @@ class _Recalculator:
         base: Worksheet = workbook["Base"]
         rows = list(base.iter_rows(values_only=True))
         header = list(rows[0])
+        self.columns = {
+            openpyxl.utils.get_column_letter(index + 1): name
+            for index, name in enumerate(header)
+        }
         self.base = [dict(zip(header, row, strict=True)) for row in rows[1:]]
         self.cache: dict[str, Decimal | None] = {}
 
@@ -169,15 +173,30 @@ class _Recalculator:
                 self.cache[reference] = _number(raw)
         return self.cache[reference]
 
+    def column(self, reference: str) -> str:
+        match = re.fullmatch(r"Base!\$([A-Z]+)\$2:\$\1\$\d+", reference)
+        assert match, reference
+        return self.columns[match.group(1)]
+
     def raw(self, reference: str) -> object:
         return _at(self.dre, reference.replace("$", ""))
 
     def formula(self, text: str) -> Decimal | None:
         if text.startswith("SUMIFS("):
-            parts = text[len("SUMIFS(") : -1].split(",")
-            assert parts[0] == "Base[Valor]"
+            # DATE(y,m,d) holds commas: read it before splitting the rest.
+            dates = re.findall(r"DATE\((\d+),(\d+),(\d+)\)", text)
+            body = re.sub(r"DATE\(\d+,\d+,\d+\)", "@DATE", text[len("SUMIFS(") : -1])
+            parts = body.split(",")
+            assert self.column(parts[0]) == "Valor"
+
+            def wanted(part: str) -> object:
+                if part == "@DATE":
+                    year, month, day = (int(item) for item in dates.pop(0))
+                    return datetime.datetime(year, month, day)
+                return self.raw(part)
+
             criteria = [
-                (parts[index][len("Base[") : -1], self.raw(parts[index + 1]))
+                (self.column(parts[index]), wanted(parts[index + 1]))
                 for index in range(1, len(parts), 2)
             ]
             return sum(
@@ -256,8 +275,8 @@ def test_workbook_formulas_cache_and_recalculation_match() -> None:
                 formula = _at(sheet, cell)
                 assert isinstance(formula, str) and formula.startswith("=")
                 if code.startswith("n") and month is not None:
-                    assert formula.startswith("=SUMIFS(Base[Valor],")
-                    assert ("Base[Unidade]" in formula) == (unit is not None)
+                    assert formula.startswith("=SUMIFS(Base!$D$2:$D$")
+                    assert ("Base!$B$2" in formula) == (unit is not None)
                 want = expected[unit][(month, code)]
                 cached_value = _at(cached["DRE"], cell)
                 recalculated = recalculator.value(cell)

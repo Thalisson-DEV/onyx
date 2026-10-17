@@ -26,7 +26,12 @@ import {
 import { askHref } from "@/views/ton/shell/TonCommandMenu";
 import { NEW_NATURE } from "./shared";
 
-const COLUMNS = 6;
+const COLUMNS = 7;
+
+/** Open accounts that already have a natureza can be confirmed. */
+export function confirmable(row: ClassificationRow): boolean {
+  return row.status !== "CONFIRMED" && Boolean(row.natureza);
+}
 
 interface Draft {
   code: string;
@@ -37,11 +42,14 @@ interface Draft {
 interface AccountGridProps {
   table: ClassificationTable;
   rows: ClassificationRow[];
-  onNewNature: (code: string) => void;
+  onNewNature: (code: string, name?: string) => void;
   onSaved: () => Promise<unknown>;
   /** Set by the parent after a natureza is created for a row. */
   pending: { code: string; accountId: string } | null;
   onPendingUsed: () => void;
+  /** Account codes ticked for a batch confirmation. */
+  selected: string[];
+  onSelect: (codes: string[]) => void;
 }
 
 function AssistantCell({
@@ -226,7 +234,13 @@ export default function AccountGrid({
   onSaved,
   pending,
   onPendingUsed,
+  selected,
+  onSelect,
 }: AccountGridProps) {
+  const selectable = rows.filter(confirmable).map((row) => row.account_code);
+  const allSelected =
+    selectable.length > 0 &&
+    selectable.every((code) => selected.includes(code));
   const [expanded, setExpanded] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -279,6 +293,17 @@ export default function AccountGrid({
         <thead>
           <tr>
             <th scope="col" className="w-8">
+              {selectable.length > 0 && (
+                <input
+                  type="checkbox"
+                  className="ton-checkbox"
+                  aria-label={COPY.selectAll}
+                  checked={allSelected}
+                  onChange={() => onSelect(allSelected ? [] : selectable)}
+                />
+              )}
+            </th>
+            <th scope="col" className="w-8">
               <span className="sr-only">Detalhes</span>
             </th>
             <th scope="col">{COPY.columns.code}</th>
@@ -305,6 +330,25 @@ export default function AccountGrid({
                   }}
                   className="cursor-pointer"
                 >
+                  <td onClick={(event) => event.stopPropagation()}>
+                    {confirmable(row) && (
+                      <input
+                        type="checkbox"
+                        className="ton-checkbox"
+                        aria-label={COPY.selectRow(row.account_code)}
+                        checked={selected.includes(row.account_code)}
+                        onChange={(event) =>
+                          onSelect(
+                            event.target.checked
+                              ? [...selected, row.account_code]
+                              : selected.filter(
+                                  (code) => code !== row.account_code
+                                )
+                          )
+                        }
+                      />
+                    )}
+                  </td>
                   <td>
                     {open ? (
                       <SvgChevronDown size={14} className="text-text-03" />
@@ -325,7 +369,8 @@ export default function AccountGrid({
                   <td onClick={(event) => event.stopPropagation()}>
                     {/* Type to filter: the controller has dozens of naturezas. */}
                     <InputComboBox
-                      strict
+                      strict={false}
+                      createPrefix={COPY.createNature}
                       searchIcon
                       value={changing?.accountId ?? row.account_id ?? ""}
                       placeholder={COPY.noNature}
@@ -334,6 +379,11 @@ export default function AccountGrid({
                       onValueChange={(value) => {
                         if (value === NEW_NATURE) {
                           onNewNature(row.account_code);
+                        } else if (
+                          !table.natures.some((item) => item.account_id === value)
+                        ) {
+                          // Typed a name that does not exist yet: create it.
+                          onNewNature(row.account_code, value.trim());
                         } else if (value !== row.account_id) {
                           setExpanded(null);
                           setDraft({
@@ -369,8 +419,9 @@ export default function AccountGrid({
                 </tr>
                 {(open || changing) && (
                   <tr data-type="DETAIL">
-                    <td />
-                    <td colSpan={COLUMNS - 1}>
+                    <td aria-hidden="true" />
+                    <td aria-hidden="true" />
+                    <td colSpan={COLUMNS - 2}>
                       {changing ? (
                         <ChangeRow
                           row={row}

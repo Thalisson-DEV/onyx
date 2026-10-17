@@ -15,6 +15,9 @@ from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.db.ton import financial_review as repository
+from onyx.error_handling.error_codes import OnyxErrorCode
+from onyx.error_handling.exceptions import OnyxError
+from onyx.db.ton import unit_assignment
 from onyx.db.ton.enums import OccurrenceCriticality, OccurrenceStatus
 from onyx.ton.financial_review import service
 from onyx.ton.financial_review.models import (
@@ -31,6 +34,9 @@ from onyx.ton.financial_review.models import (
     ReviewRunView,
     RuleCatalogView,
     RuleEvaluationView,
+    UnitAssignmentRequest,
+    UnitAssignmentView,
+    UnitMissingItemView,
 )
 
 router = APIRouter(prefix="/ton/financial-review", tags=["TON Financial Review"])
@@ -209,6 +215,41 @@ def list_decisions(
     session: Session = Depends(get_session),
 ) -> list[ReviewDecisionView]:
     return service.list_decisions(session, user, occurrence_id, limit, offset)
+
+
+@router.get("/unit-missing")
+def list_unit_missing(
+    user: User = Depends(require_permission(Permission.READ_TON_OCCURRENCES)),
+    session: Session = Depends(get_session),
+) -> list[UnitMissingItemView]:
+    """NG entries of the current base without a unit, open or accepted."""
+    return unit_assignment.list_unit_missing(session, user)
+
+
+@router.post("/occurrences/{occurrence_id}/unit-assignment")
+def assign_unit(
+    occurrence_id: UUID,
+    request: UnitAssignmentRequest,
+    user: User = Depends(require_permission(Permission.MANAGE_TON_OCCURRENCES)),
+    session: Session = Depends(get_session),
+) -> UnitAssignmentView:
+    """Assign the unit of an NG entry that has none and decide the case."""
+    try:
+        records = unit_assignment.assign_unit__no_commit(
+            session, user, occurrence_id, request.unit_id, request.reason
+        )
+        session.commit()
+    except ValueError:
+        session.rollback()
+        raise OnyxError(
+            OnyxErrorCode.CONFLICT, "The decision is not allowed for this occurrence"
+        ) from None
+    except Exception:
+        session.rollback()
+        raise
+    return UnitAssignmentView(
+        occurrence_id=occurrence_id, unit_id=request.unit_id, records=records
+    )
 
 
 @router.post("/occurrences/{occurrence_id}/decisions")

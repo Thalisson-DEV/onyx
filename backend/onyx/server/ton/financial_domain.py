@@ -28,6 +28,7 @@ from onyx.ton.financial_domain.models import (
     NormalizationView,
     ReadinessView,
     ReconciliationItemView,
+    UnitActivation,
     UnitView,
 )
 from onyx.ton.financial_domain.readiness_models import (
@@ -76,13 +77,31 @@ def list_financial_units(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     search: str | None = Query(None, max_length=100),
+    active_only: bool = False,
     user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
     session: Session = Depends(get_session),
 ) -> list[UnitView]:
     return [
         UnitView.model_validate(unit)
-        for unit in financial_readiness.list_units(session, user, limit, offset, search)
+        for unit in financial_readiness.list_units(
+            session, user, limit, offset, search, active_only
+        )
     ]
+
+
+@router.patch("/units/{unit_id}")
+def set_unit_active(
+    unit_id: UUID,
+    request: UnitActivation,
+    user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    session: Session = Depends(get_session),
+) -> UnitView:
+    unit = financial_readiness.update_unit(
+        session, user, unit_id, request.is_active, request.kind
+    )
+    view = UnitView.model_validate(unit)
+    session.commit()
+    return view
 
 
 @router.post("/mappings")

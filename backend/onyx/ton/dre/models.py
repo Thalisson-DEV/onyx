@@ -172,6 +172,42 @@ class DreStatementView(BaseModel):
     lines: list[DreResultLineView]
 
 
+class DreYearMonth(BaseModel):
+    """The latest READY result of one month, with all of its lines."""
+
+    run: DreRunView
+    lines: list[DreResultLineView]
+
+
+class DreYearView(BaseModel):
+    """Every calculated month of a year for one base, structure and scope."""
+
+    version: DreVersionView
+    months: list[DreYearMonth]
+
+
+class DreUnitsYearMonth(BaseModel):
+    """One month summed over the selected units that have a READY result."""
+
+    period: date
+    ready_unit_ids: list[UUID]
+    missing_unit_ids: list[UUID]
+    lines: list[DreResultLineView]
+
+
+class DreUnitsYearView(BaseModel):
+    """A year for a chosen set of units: each month is the sum of the units.
+
+    Every line of the structure is additive (source sums, subtotals, results),
+    so the sum of the units' persisted lines is the DRE of the set. A month is
+    complete only when every selected unit has a READY result for it.
+    """
+
+    version: DreVersionView
+    unit_ids: list[UUID]
+    months: list[DreUnitsYearMonth]
+
+
 class DrePeriodPoint(BaseModel):
     period: date
     result_id: UUID

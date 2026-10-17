@@ -65,6 +65,7 @@ from onyx.ton.dre.models import (
     DreAccountAssignment,
     DreLineDefinition,
     DreLineType,
+    DreOperation,
     DreVersionCreate,
 )
 from onyx.ton.financial_domain.models import AccountCreate, MappingCreate, MappingKind
@@ -830,6 +831,57 @@ def _unit_name(value: str | None) -> str | None:
     return value.split(" - ", 1)[-1].strip()
 
 
+def _with_new_group(
+    lines: list[DreLineDefinition], label: str, in_result: bool
+) -> tuple[list[DreLineDefinition], DreGroupView]:
+    """A new empty DRE group; the caller adds its first natureza.
+
+    In the result, it goes right above the last total that sums groups and
+    joins that total; out of the result, it goes to the end.
+    """
+    name = " ".join(label.split()).upper()
+    if any(line.label.strip().upper() == name for line in lines):
+        raise OnyxError(OnyxErrorCode.CONFLICT, "DRE group already exists")
+    numbers = [
+        int(line.code[1:])
+        for line in lines
+        if line.code.startswith("g") and line.code[1:].isdigit()
+    ]
+    code = f"g{max(numbers, default=0) + 1}"
+    totals = [
+        line
+        for line in lines
+        if line.line_type == DreLineType.RESULT
+        and line.operation == DreOperation.SUM_LINES
+    ]
+    target = max(totals, key=lambda line: line.position) if in_result and totals else None
+    position = target.position if target else max(line.position for line in lines) + 1
+    shifted = [
+        line.model_copy(update={"position": line.position + 1})
+        if line.position >= position
+        else line
+        for line in lines
+    ]
+    if target is not None:
+        shifted = [
+            line.model_copy(update={"operands": [*line.operands, code]})
+            if line.code == target.code
+            else line
+            for line in shifted
+        ]
+    shifted.append(
+        DreLineDefinition(
+            code=code,
+            label=name,
+            position=position,
+            parent_code=None,
+            line_type=DreLineType.SUBTOTAL,
+            operation=DreOperation.SUM_CHILDREN,
+        )
+    )
+    return shifted, DreGroupView(code=code, label=name)
+
+
 def create_nature(session: Session, user: User, request: NatureCreate) -> NatureView:
     """New natureza under a DRE group: a canonical account plus a new DRE
     structure version with its own line, like a row added to AUXILIARES."""
@@ -842,12 +894,20 @@ def create_nature(session: Session, user: User, request: NatureCreate) -> Nature
     ):
         raise OnyxError(OnyxErrorCode.CONFLICT, "Natureza already exists")
     layout = _dre_layout(session)
-    group = next(
-        (item for item in layout.groups if item.code == request.dre_group_code), None
-    )
-    if layout.version is None or group is None:
+    if layout.version is None:
         raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Unknown DRE group")
     lines = [DreLineDefinition.model_validate(item) for item in layout.version.lines]
+    if request.new_group_label:
+        lines, group = _with_new_group(
+            lines, request.new_group_label, request.new_group_in_result
+        )
+    else:
+        group = next(
+            (item for item in layout.groups if item.code == request.dre_group_code),
+            None,
+        )
+    if group is None:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Unknown DRE group")
     siblings = [
         line
         for line in lines

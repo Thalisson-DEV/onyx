@@ -112,7 +112,23 @@ function responseFor(key: string | null): unknown {
   if (key.includes("/structures?"))
     return [{ id: "structure-1", label: "Synthetic DRE" }];
   if (key.includes("/units?"))
-    return [{ id: "unit-1", code: "SYN", name: "Synthetic unit" }];
+    return [
+      { id: "unit-1", code: "SYN", name: "Synthetic unit", kind: "OPERATIONAL" },
+      { id: "unit-2", code: "SYM", name: "Second unit", kind: "OPERATIONAL" },
+    ];
+  if (key.includes("/calculations/units-year?"))
+    return {
+      version: { id: "version-1", number: 1, lines: definitions },
+      unit_ids: ["unit-1", "unit-2"],
+      months: [
+        {
+          period: "2026-01-01",
+          ready_unit_ids: ["unit-1", "unit-2"],
+          missing_unit_ids: [],
+          lines,
+        },
+      ],
+    };
   if (key.includes("latest-version"))
     return { id: "version-1", number: 1, lines: definitions };
   if (key.includes("/readiness?"))
@@ -127,6 +143,11 @@ function responseFor(key: string | null): unknown {
               : { UNMAPPED_UNIT: 3, BUDGET_PERIOD_UNRESOLVED: 2 },
         },
       ],
+    };
+  if (key.includes("/calculations/year?"))
+    return {
+      version: { id: "version-1", number: 1, lines: definitions },
+      months: [{ run: result, lines }],
     };
   if (key.includes("/calculations?"))
     return scenario === "ready" ? [result] : [];
@@ -219,21 +240,31 @@ it("explains the blocked DRE by business category and links each to the queue", 
   ).not.toBeInTheDocument();
 });
 
-it("renders the official statement with month, YTD, variance and drill-down", async () => {
+it("renders the year side by side and month by month, with drill-down", async () => {
   scenario = "ready";
   const user = setupUser();
   const { container } = render(<DreWorkspaceView />);
   expect(screen.getByText("Resultado oficial")).toBeInTheDocument();
-  expect(screen.getByRole("table")).toBeInTheDocument();
+  // Months read by their full name, the year to date closes the row.
   expect(
-    screen.getByRole("columnheader", { name: "Acumulado" })
+    screen.getByRole("columnheader", { name: "Janeiro" })
   ).toBeInTheDocument();
-  // A null variance percent stays a dash, never zero.
-  expect(screen.getAllByText("—").length).toBeGreaterThan(0);
-  expect(screen.getByRole("button", { name: "Exportar CSV" })).toBeEnabled();
+  // One month on screen: a total column would only repeat it.
+  expect(
+    screen.queryByRole("columnheader", { name: /Acumulado|Soma/ })
+  ).not.toBeInTheDocument();
+  // Without a budget the statement shows no zeroed budget columns.
+  expect(
+    screen.queryByRole("columnheader", { name: "Orçado" })
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Exportar CSV" })
+  ).not.toBeInTheDocument();
 
   await user.click(
-    screen.getByRole("button", { name: "Ver composição de Synthetic service" })
+    screen.getByRole("button", {
+      name: "Ver lançamentos de Synthetic service em Janeiro",
+    })
   );
   const drawer = screen.getByRole("dialog");
   // Entries read as a table; the source file is stated once in the header.
@@ -249,11 +280,36 @@ it("renders the official statement with month, YTD, variance and drill-down", as
   );
   expect(
     screen.queryByRole("button", {
-      name: "Ver composição de Synthetic service",
+      name: "Ver lançamentos de Synthetic service em Janeiro",
     })
   ).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Mês a mês" }));
+  const block = screen.getByRole("button", { name: /Janeiro de 2026/ });
+  expect(block).toHaveAttribute("aria-expanded", "true");
+  await user.click(block);
+  expect(block).toHaveAttribute("aria-expanded", "false");
   // Internal identifiers stay out of the client view.
   expect(container).not.toHaveTextContent("aaaaaaaa");
+});
+
+it("adds up a chosen set of units, without drill-down", async () => {
+  scenario = "ready";
+  const user = setupUser();
+  render(<DreWorkspaceView />);
+  await user.click(screen.getByRole("button", { name: "Consolidado" }));
+  await user.click(screen.getByRole("button", { name: "Operacionais ativas (2)" }));
+  await user.click(screen.getByRole("button", { name: "Ver DRE" }));
+  expect(
+    screen.getByRole("heading", { name: /2 unidades/ })
+  ).toBeInTheDocument();
+  expect(screen.getByText("Soma das unidades")).toBeInTheDocument();
+  // A set has no single result to open.
+  expect(
+    screen.queryByRole("button", {
+      name: "Ver lançamentos de Synthetic service em Janeiro",
+    })
+  ).not.toBeInTheDocument();
 });
 
 it("shows loading, error and unconfigured states", () => {
@@ -276,14 +332,14 @@ it("recalculates only on explicit action and reports the outcome", async () => {
   const user = setupUser();
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
-    json: async () => ({ ...result, status: "NOT_READY" }),
+    json: async () => [{ ...result, status: "NOT_READY" }],
   });
   render(<DreWorkspaceView />);
   expect(global.fetch).not.toHaveBeenCalled();
   await user.click(screen.getByRole("button", { name: "Calcular DRE do ano" }));
   await waitFor(() =>
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/ton/dre/calculations",
+      "/api/ton/dre/calculations/year",
       expect.objectContaining({ method: "POST" })
     )
   );

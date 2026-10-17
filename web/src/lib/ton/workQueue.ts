@@ -146,9 +146,14 @@ export function buildWorkQueue(input: WorkInputs): WorkItem[] {
   const blockers = Object.entries(change?.blockers_after ?? {}).filter(
     ([, count]) => count > 0
   );
+  // The order a controller works in: classifying accounts settles items in
+  // the other lists, so it comes first; the billing comparison comes last.
+  const rank = (code: string) =>
+    (BLOCKER_WORK_ORDER.indexOf(code) + 1 || BLOCKER_WORK_ORDER.length + 1) *
+    1;
   for (const [blocker, count] of blockers
     .filter(([code]) => isDecisionBlocker(code))
-    .sort((a, b) => b[1] - a[1])) {
+    .sort((a, b) => rank(a[0]) - rank(b[0]) || b[1] - a[1])) {
     items.push({
       key: blocker,
       impact: "blocks",
@@ -227,8 +232,25 @@ export function buildWorkQueue(input: WorkInputs): WorkItem[] {
       });
     }
   }
-  return items;
+  // Decisions that block the DRE first; follow-ups such as a source with
+  // rejected rows (already a pending category) after them.
+  return [
+    ...items.filter((item) => item.impact === "blocks"),
+    ...items.filter((item) => item.impact !== "blocks"),
+  ];
 }
+
+const BLOCKER_WORK_ORDER = [
+  "UNMAPPED_UNIT",
+  "UNMAPPED_ACCOUNT",
+  "ACTUAL_AMOUNT_SEMANTICS_UNRESOLVED",
+  "DRE_ACCOUNT_UNMAPPED",
+  "DRE_MAPPING_PENDING_APPROVAL",
+  "REVIEW_UNRESOLVED",
+  "EXCLUDED_SOURCE_ROWS",
+  "SOURCE_RECONCILIATION_UNRESOLVED",
+  "SOURCE_RECONCILIATION_AMBIGUOUS",
+];
 
 export function useOverdueActions() {
   const { canRead } = useTonAccess();

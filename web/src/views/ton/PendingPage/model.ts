@@ -61,6 +61,31 @@ export interface BlockerRow {
   rule_title?: string | null;
   /** Workbook cells of rows rejected before they became records. */
   locations?: string[];
+  /** Reconciliation: NG and billing items of the same invoice key. */
+  group_key?: string | null;
+  /** Document-format duplicates: the earlier row that stays in the DRE. */
+  kept_records?: EvidenceRecord[];
+}
+
+/** Categories settled where the accounts are classified, not one by one. */
+export const CLASSIFICATION_KEYS: PendingCategoryKey[] = [
+  "accounts",
+  "amountBasis",
+  "dreAssignment",
+  "drePending",
+];
+
+/** The two rows of a duplicate case, when both are known. */
+export function duplicatePair(
+  row: BlockerRow
+): { kept: EvidenceRecord; repeated: EvidenceRecord } | null {
+  const [first, second] = row.records;
+  const kept = row.kept_records?.[0];
+  if (row.rule_key === "NGF-DUP-DOC" && kept && first)
+    return { kept, repeated: first };
+  if (row.rule_key === "NGF-DUP-EXACT" && first && second)
+    return { kept: first, repeated: second };
+  return null;
 }
 
 export interface BlockerPage {

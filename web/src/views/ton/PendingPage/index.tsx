@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import type { Route } from "next";
 import { useSearchParams } from "next/navigation";
 import { Button, InputTypeIn, Text } from "@opal/components";
 import {
@@ -23,6 +24,7 @@ import {
   COPY,
   formatCurrency,
   formatDateTime,
+  formatMonthName,
   formatPeriod,
 } from "@/lib/ton/copy";
 import {
@@ -49,6 +51,7 @@ import {
   type BlockerPage,
   type BlockerRow,
   CATEGORY_PARAM,
+  CLASSIFICATION_KEYS,
   type Normalization,
   type Overview,
   type QueueCategory,
@@ -56,16 +59,40 @@ import {
   type Target,
   type Version,
   describeCategory,
+  isReviewCategory,
   readinessUrl,
-  rowDetail,
-  rowPeriods,
   rowRecordHint,
   rowSuggestion,
   rowTitle,
   triageOf,
 } from "@/views/ton/PendingPage/model";
 
-const PAGE = 25;
+const PAGE = 100;
+
+/** Classification first; it clears items in the other lists. */
+const WORK_ORDER = [
+  "units",
+  "accounts",
+  "amountBasis",
+  "dreAssignment",
+  "drePending",
+  "review",
+  "excludedRows",
+  "reconciliation",
+  "reconciliationAmbiguous",
+  "budgetAccounts",
+  "budgetUnits",
+  "budgetPeriods",
+];
+
+/** Kind of case inside a category: the review rule, or what happened. */
+function groupOf(row: BlockerRow): string | null {
+  if (row.rule_title) return row.rule_title;
+  const headline = getBusinessLabel(row.evidence ?? "")
+    .split(/[.(]/)[0]
+    ?.trim();
+  return headline ? headline : null;
+}
 
 const TRIAGE_TONE = {
   evidence: "brand",
@@ -188,9 +215,12 @@ export default function PendingPage() {
   const [dialog, setDialog] = useState<{
     key: number;
     row: BlockerRow;
+    batch?: BlockerRow[];
     category: QueueCategory;
     scope: DecisionScope;
   } | null>(null);
+  const [selection, setSelection] = useState<string[]>([]);
+  const [ruleFilter, setRuleFilter] = useState<string | null>(null);
   const selected = dialog?.row ?? null;
   const [applying, setApplying] = useState(false);
   const [applyFailed, setApplyFailed] = useState(false);
@@ -255,31 +285,65 @@ export default function PendingPage() {
       .map((blocker) =>
         describeCategory("other", blocker, periodBlockers[blocker] ?? 0)
       );
-    return [...known, ...extra].filter(
-      (item) => item.count > 0 || item.blocker === blockerSelection
-    );
+    // Work order: what classification settles first, then the review of the
+    // NG rows, then the comparison with billing, which depends on both.
+    const order = WORK_ORDER;
+    return [...known, ...extra]
+      .filter((item) => item.count > 0 || item.blocker === blockerSelection)
+      .sort(
+        (a, b) =>
+          (order.indexOf(a.key) + 1 || order.length + 1) -
+          (order.indexOf(b.key) + 1 || order.length + 1)
+      );
   })();
 
   const category: QueueCategory | undefined =
     categories.find((item) => item.blocker === blockerSelection) ??
-    // Default to the largest category that needs a human decision.
-    [...categories].sort(
-      (a, b) => Number(a.noActual) - Number(b.noActual) || b.count - a.count
-    )[0];
+    // Start where the work starts: the first category in work order.
+    categories.find((item) => !item.noActual) ??
+    categories[0];
 
   const blockerUrl =
     scopeReady && category && runId && version.data
       ? `/api/ton/financial-domain/normalizations/${runId}/readiness/blockers/${category.blocker}?structure_version_id=${version.data.id}&limit=${PAGE}&offset=${offset}&search=${encodeURIComponent(search)}${unitId ? `&unit_id=${unitId}` : ""}${period ? `&period=${period.scope.period}` : ""}`
       : null;
   const blockers = useSWR<BlockerPage>(blockerUrl, errorHandlingFetcher);
+  const allRows = blockers.data?.rows ?? [];
+  // Review cases come from several rules; each is decided its own way.
+  const rules = Array.from(
+    allRows.reduce((counts, row) => {
+      const group = groupOf(row);
+      if (group) counts.set(group, (counts.get(group) ?? 0) + 1);
+      return counts;
+    }, new Map<string, number>())
+  );
+  const unmappedCount = allRows.filter((row) =>
+    (groupOf(row) ?? "").startsWith("Registro sem unidade ou natureza")
+  ).length;
+  const pageRows = allRows.filter(
+    (row) => !ruleFilter || groupOf(row) === ruleFilter
+  );
+  // Review and reconciliation cases take the same decision in bulk.
+  const selectable =
+    !!category &&
+    (isReviewCategory(category) || category.key.startsWith("reconciliation"));
+  const selectedRows = pageRows.filter((row) =>
+    selection.includes(rowKey(row))
+  );
 
   function chooseCategory(blocker: string) {
     setBlockerSelection(blocker);
     setOffset(0);
     setDialog(null);
+    setSelection([]);
+    setRuleFilter(null);
   }
 
-  function openRow(row: BlockerRow, target = category) {
+  function openRow(
+    row: BlockerRow,
+    target = category,
+    batch?: BlockerRow[]
+  ) {
     const currentVersion = version.data;
     if (!target || !runId || !structureId || !currentVersion || !period) return;
     // Pin the category so the queue stays on it after it empties.
@@ -287,6 +351,7 @@ export default function PendingPage() {
     setDialog((current) => ({
       key: (current?.key ?? 0) + 1,
       row,
+      batch,
       category: target,
       scope: {
         runId,
@@ -301,6 +366,7 @@ export default function PendingPage() {
   async function refreshAfterDecision() {
     // Follow the newest base: the decision may have produced it.
     setRunSelection("");
+    setSelection([]);
     await Promise.all([
       runs.mutate(),
       version.mutate(),
@@ -386,10 +452,23 @@ export default function PendingPage() {
         </TonCard>
       )}
       {failed && (
-        <TonCard className="p-5">
+        <TonCard className="flex flex-wrap items-center justify-between gap-3 p-5">
           <Text font="main-ui-body" color="status-error-05">
             {COPY.pending.loadError}
           </Text>
+          <Button
+            prominence="secondary"
+            icon={SvgRefreshCw}
+            onClick={() => {
+              void runs.mutate();
+              void structures.mutate();
+              void version.mutate();
+              void overview.mutate();
+              void blockers.mutate();
+            }}
+          >
+            {COPY.pending.retry}
+          </Button>
         </TonCard>
       )}
       {!loading && !failed && !scopeReady && (
@@ -500,7 +579,12 @@ export default function PendingPage() {
                   {category.description}
                 </Text>
                 <Text font="secondary-action" color="text-04">
-                  {category.action}
+                  {blockers.data && blockers.data.total !== category.count
+                    ? COPY.pending.casesAndEntries(
+                        blockers.data.total,
+                        category.count
+                      )
+                    : category.action}
                 </Text>
               </div>
             </div>
@@ -509,6 +593,70 @@ export default function PendingPage() {
                 page={blockers.data}
                 closingPeriod={period.scope.period}
               />
+            )}
+            {CLASSIFICATION_KEYS.includes(category.key) && (
+              <div className="ton-guide">
+                <Text font="main-ui-body" color="text-04">
+                  {COPY.pending.classificationGuide[category.key] ?? ""}
+                </Text>
+                <span className="shrink-0">
+                  <Button
+                    href={"/ton/classificacao?voltar=pendencias" as Route}
+                    rightIcon={SvgArrowRight}
+                  >
+                    {COPY.pending.classificationCta}
+                  </Button>
+                </span>
+              </div>
+            )}
+            {category.key.startsWith("reconciliation") && unmappedCount > 0 && (
+              <div className="ton-guide">
+                <Text font="main-ui-body" color="text-04">
+                  {COPY.pending.unmappedGuide(unmappedCount)}
+                </Text>
+                <span className="shrink-0">
+                  <Button
+                    prominence="secondary"
+                    href={"/ton/classificacao?voltar=pendencias" as Route}
+                    rightIcon={SvgArrowRight}
+                  >
+                    {COPY.pending.classificationCta}
+                  </Button>
+                </span>
+              </div>
+            )}
+            {rules.length > 1 && (
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="group"
+                aria-label={COPY.pending.categoriesLabel}
+              >
+                <button
+                  type="button"
+                  aria-pressed={ruleFilter === null}
+                  className="ton-chip ton-focusable"
+                  onClick={() => {
+                    setRuleFilter(null);
+                    setSelection([]);
+                  }}
+                >
+                  {`${COPY.pending.allRules} · ${allRows.length}`}
+                </button>
+                {rules.map(([title, count]) => (
+                  <button
+                    key={title}
+                    type="button"
+                    aria-pressed={ruleFilter === title}
+                    className="ton-chip ton-focusable"
+                    onClick={() => {
+                      setRuleFilter(title);
+                      setSelection([]);
+                    }}
+                  >
+                    {`${getBusinessLabel(title)} · ${count}`}
+                  </button>
+                ))}
+              </div>
             )}
             {!category.noActual && (blockers.data?.total ?? 0) > 5 && (
               <InputTypeIn
@@ -523,72 +671,176 @@ export default function PendingPage() {
               />
             )}
             {blockers.isLoading && <LoadingBlock label={COPY.common.loading} />}
+            {!category.noActual && selectable && selectedRows.length > 0 && (
+              <div className="ton-bulk-bar" role="region" aria-live="polite">
+                <Text font="main-ui-action" color="text-05">
+                  {COPY.pending.selected(selectedRows.length)}
+                </Text>
+                <span className="flex-1" />
+                <Button
+                  size="md"
+                  prominence="tertiary"
+                  onClick={() => setSelection([])}
+                >
+                  {COPY.pending.clearSelection}
+                </Button>
+                <Button
+                  size="md"
+                  rightIcon={SvgArrowRight}
+                  onClick={() => {
+                    const [first] = selectedRows;
+                    if (first) openRow(first, category, selectedRows);
+                  }}
+                >
+                  {COPY.pending.decideSelected}
+                </Button>
+              </div>
+            )}
             {!category.noActual && (
-              <ul className="flex flex-col divide-y divide-border-01 border border-01 rounded-12">
-                {(blockers.data?.rows ?? []).map((row) => {
-                  const hint = rowRecordHint(row);
-                  const amount = rowAmount(row);
-                  return (
-                    <li
-                      key={rowKey(row)}
-                      className="ton-queue-row flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3"
-                    >
-                      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Text font="main-ui-action" color="text-05">
-                            {hint ?? rowTitle(row, category)}
-                          </Text>
-                          {triageOf(row, category) === "evidence" && (
-                            <StatusPill tone={TRIAGE_TONE.evidence}>
-                              {COPY.decisionLoop.triage.evidence}
-                            </StatusPill>
-                          )}
-                        </div>
-                        <Text font="secondary-body" color="text-03">
-                          {[
-                            hint ? rowTitle(row, category) : null,
-                            row.evidence &&
-                            !row.candidate &&
-                            !row.legacy_evidence
-                              ? rowDetail(row, category)
-                              : rowSuggestion(row),
-                            rowPeriods(row),
-                            row.record_count > 1
-                              ? COPY.pending.affected(row.record_count)
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </Text>
-                      </div>
-                      {amount && (
-                        <span className="ton-queue-amount">
-                          <Text font="main-ui-action" color="text-05">
-                            {amount}
-                          </Text>
-                        </span>
+              <div className="ton-queue-table-wrap">
+                <table className="ton-queue-table w-full border-collapse">
+                  <thead>
+                    <tr>
+                      {selectable && (
+                        <th scope="col" className="w-10">
+                          <input
+                            type="checkbox"
+                            aria-label={COPY.pending.selectAll}
+                            checked={
+                              pageRows.length > 0 &&
+                              pageRows.every((row) =>
+                                selection.includes(rowKey(row))
+                              )
+                            }
+                            onChange={(event) =>
+                              setSelection(
+                                event.target.checked
+                                  ? pageRows.map(rowKey)
+                                  : []
+                              )
+                            }
+                          />
+                        </th>
                       )}
-                      <Button
-                        size="md"
-                        prominence="secondary"
-                        rightIcon={SvgArrowRight}
-                        onClick={() => openRow(row)}
-                      >
-                        {category.noActual
-                          ? COPY.pending.analyze
-                          : COPY.pending.decide}
-                      </Button>
-                    </li>
-                  );
-                })}
-                {blockers.data?.rows.length === 0 && (
-                  <li className="p-4">
-                    <Text font="main-ui-body" color="text-03">
-                      {COPY.pending.empty}
-                    </Text>
-                  </li>
-                )}
-              </ul>
+                      <th scope="col" className="text-start">
+                        {COPY.pending.columns.item}
+                      </th>
+                      <th scope="col" className="text-start">
+                        {COPY.pending.columns.period}
+                      </th>
+                      <th scope="col" className="text-end">
+                        {COPY.pending.columns.amount}
+                      </th>
+                      <th scope="col">
+                        <span className="sr-only">{COPY.pending.decide}</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageRows.map((row) => {
+                      const key = rowKey(row);
+                      const hint = CLASSIFICATION_KEYS.includes(category.key)
+                        ? null
+                        : rowRecordHint(row);
+                      const amount =
+                        rowAmount(row) ??
+                        (row.record_count > 1
+                          ? COPY.pending.entries(row.record_count)
+                          : null);
+                      const accountish = CLASSIFICATION_KEYS.includes(
+                        category.key
+                      );
+                      // An account reads by code and name, as in the NG.
+                      const title =
+                        hint ??
+                        (accountish ? row.records[0]?.account : null) ??
+                        rowTitle(row, category);
+                      // The kind of case, once; nothing when a chip filters it.
+                      const detail = accountish
+                        ? ""
+                        : row.candidate || row.legacy_evidence
+                          ? rowSuggestion(row)
+                          : ruleFilter
+                            ? ""
+                            : groupOf(row) === title
+                              ? ""
+                              : (groupOf(row) ?? "");
+                      const checked = selection.includes(key);
+                      return (
+                        <tr
+                          key={key}
+                          aria-selected={checked || undefined}
+                          onClick={() => openRow(row)}
+                        >
+                          {selectable && (
+                            <td onClick={(event) => event.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                aria-label={COPY.pending.selectRow(title)}
+                                checked={checked}
+                                onChange={(event) =>
+                                  setSelection((old) =>
+                                    event.target.checked
+                                      ? [...old, key]
+                                      : old.filter((item) => item !== key)
+                                  )
+                                }
+                              />
+                            </td>
+                          )}
+                          <td className="ton-queue-item">
+                            <span className="flex flex-wrap items-center gap-2">
+                              <Text font="main-ui-action" color="text-05">
+                                {title}
+                              </Text>
+                              {triageOf(row, category) === "evidence" && (
+                                <StatusPill tone={TRIAGE_TONE.evidence}>
+                                  {COPY.decisionLoop.triage.evidence}
+                                </StatusPill>
+                              )}
+                            </span>
+                            {detail && (
+                              <span className="ton-queue-detail">{detail}</span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap">
+                            <Text font="secondary-body" color="text-04">
+                              {row.periods
+                                .map((item) => formatMonthName(item))
+                                .join(", ") || "—"}
+                            </Text>
+                          </td>
+                          <td className="text-end whitespace-nowrap ton-queue-amount">
+                            {amount ?? "—"}
+                          </td>
+                          <td className="text-end">
+                            <Button
+                              size="sm"
+                              prominence="secondary"
+                              rightIcon={SvgArrowRight}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openRow(row);
+                              }}
+                            >
+                              {COPY.pending.decide}
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {blockers.data?.rows.length === 0 && (
+                      <tr>
+                        <td colSpan={selectable ? 5 : 4} className="p-4">
+                          <Text font="main-ui-body" color="text-03">
+                            {COPY.pending.empty}
+                          </Text>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             )}
             {(blockers.data?.total ?? 0) > PAGE && (
               <div className="flex items-center justify-between">
@@ -596,7 +848,10 @@ export default function PendingPage() {
                   size="md"
                   prominence="secondary"
                   disabled={offset === 0}
-                  onClick={() => setOffset(Math.max(0, offset - PAGE))}
+                  onClick={() => {
+                    setOffset(Math.max(0, offset - PAGE));
+                    setSelection([]);
+                  }}
                 >
                   {COPY.pending.previous}
                 </Button>
@@ -611,7 +866,10 @@ export default function PendingPage() {
                   size="md"
                   prominence="secondary"
                   disabled={offset + PAGE >= (blockers.data?.total ?? 0)}
-                  onClick={() => setOffset(offset + PAGE)}
+                  onClick={() => {
+                    setOffset(offset + PAGE);
+                    setSelection([]);
+                  }}
                 >
                   {COPY.pending.next}
                 </Button>
@@ -706,6 +964,7 @@ export default function PendingPage() {
         <DecisionDialog
           key={dialog.key}
           row={dialog.row}
+          batch={dialog.batch}
           category={dialog.category}
           scope={dialog.scope}
           access={access}

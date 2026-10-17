@@ -491,7 +491,7 @@ def test_synthetic_excel_export_matches_persisted_dre(
                         persisted[code].realizado_ytd
                     )
         assert str(formulas["DRE"].cell(rows["service"], 3).value).startswith(
-            "=SUMIFS(Base[Valor],"
+            "=SUMIFS(Base!$D$2:$D$"
         )
         assert formulas["DRE"].cell(rows["result"], 4).value == (
             f"=D{rows['gross']}-D{rows['cost']}"

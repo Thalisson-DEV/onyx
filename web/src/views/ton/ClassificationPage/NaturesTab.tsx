@@ -14,7 +14,7 @@ export default function NaturesTab({
   onCreate,
 }: {
   table: ClassificationTable;
-  onCreate: () => void;
+  onCreate: (withGroup?: boolean) => void;
 }) {
   const groups = [
     ...table.groups.map((group) => group.label),
@@ -33,9 +33,18 @@ export default function NaturesTab({
           {COPY.intro}
         </Text>
         <span className="shrink-0">
-          <Button icon={SvgPlus} onClick={onCreate}>
-            {COPY.create}
-          </Button>
+          <span className="flex gap-2">
+            <Button
+              prominence="secondary"
+              icon={SvgPlus}
+              onClick={() => onCreate(true)}
+            >
+              {COPY.createGroup}
+            </Button>
+            <Button icon={SvgPlus} onClick={() => onCreate()}>
+              {COPY.create}
+            </Button>
+          </span>
         </span>
       </div>
       <div className="ton-card overflow-x-auto">

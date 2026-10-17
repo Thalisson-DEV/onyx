@@ -121,6 +121,28 @@ export function formatPercent(value: string | null | undefined): string {
   return value == null ? "—" : `${percentFormatter.format(Number(value))}%`;
 }
 
+const amountFormatter = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const monthNameFormatter = new Intl.DateTimeFormat("pt-BR", {
+  month: "long",
+  timeZone: "UTC",
+});
+
+/** "1.279.626,41" for statement cells: the column header carries "R$". */
+export function formatAmount(value: string | null | undefined): string {
+  return value == null ? "—" : amountFormatter.format(Number(value));
+}
+
+/** "Setembro", or "Setembro de 2026" with the year, for "2026-09-01". */
+export function formatMonthName(period: string, withYear = false): string {
+  const label = (withYear ? monthFormatter : monthNameFormatter).format(
+    new Date(`${period}T12:00:00Z`)
+  );
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 /** "jul." for an ISO period such as "2026-07-01". */
 export function formatShortMonth(period: string): string {
   return shortMonthFormatter.format(new Date(`${period}T12:00:00Z`));
@@ -364,6 +386,12 @@ export const COPY = {
     description:
       "Demonstrativo de resultado versionado por período e escopo. Valores só aparecem quando a base está pronta.",
     period: "Período",
+    closingUntil: "Fechamento até",
+    headline: (scope: string, first: string, last: string) =>
+      first === last
+        ? `${scope} · ${formatPeriod(last)}`
+        : `${scope} · ${formatShortMonth(first).replace(".", "")} a ${formatShortMonth(last).replace(".", "")} de ${last.slice(0, 4)}`,
+    summaryMonth: (line: string, month: string) => `${line} · ${month}`,
     scope: "Unidade/filial",
     consolidated: "Consolidado",
     advanced: "Base e estrutura",
@@ -401,8 +429,10 @@ export const COPY = {
     exportFailed: "Não foi possível exportar. Tente novamente.",
     excel: "Baixar Excel",
     excelLoading: "Gerando Excel…",
-    excelHint:
-      "Planilha de janeiro até o mês escolhido, consolidada e por unidade/filial, com os lançamentos de cada linha.",
+    excelHint: (scope: string) =>
+      scope === "Consolidado"
+        ? "Planilha de janeiro até o mês escolhido: o consolidado e, abaixo, cada unidade/filial, com os lançamentos de cada linha."
+        : `Planilha de janeiro até o mês escolhido só de ${scope}, com os lançamentos de cada linha.`,
     excelFailed:
       "Não foi possível gerar o Excel. Tente novamente em instantes.",
     kpi: {
@@ -423,6 +453,99 @@ export const COPY = {
       expand: (line: string) => `Expandir ${line}`,
       collapse: (line: string) => `Recolher ${line}`,
       drill: (line: string) => `Ver composição de ${line}`,
+    },
+    year: {
+      lineHeader: "Linha · R$",
+      ytdHeader: (first: string, last: string) =>
+        first === last
+          ? `Acumulado ${formatShortMonth(last).replace(".", "")}`
+          : `Acumulado ${formatShortMonth(first).replace(".", "")}–${formatShortMonth(last).replace(".", "")}`,
+      shownTotal: (periods: string[]) =>
+        `Soma ${periods.map((period) => formatShortMonth(period).replace(".", "")).join(", ")}`,
+      ytdUntil: (period: string) =>
+        `Acumulado até ${formatShortMonth(period).replace(".", "")}`,
+      drillCell: (line: string, month: string) =>
+        `Ver lançamentos de ${line} em ${month}`,
+      monthsLabel: "Meses exibidos",
+      allMonths: "Mostrar todos",
+      notCalculated: "Mês pronto, ainda não calculado: use Calcular DRE do ano",
+      blocked: "Mês bloqueado por pendências",
+      viewLabel: "Visualização",
+      columns: "Lado a lado",
+      stacked: "Mês a mês",
+      expandAll: "Abrir todos os meses",
+      collapseAll: "Fechar todos os meses",
+      loadFailed: "Não foi possível carregar os meses do ano.",
+    },
+    editStructure: "Editar estrutura",
+    units: {
+      title: "Escolher unidades",
+      consolidated: "Consolidado — todas as unidades",
+      pick: "Uma ou mais unidades",
+      operational: (count: number) => `Operacionais ativas (${count})`,
+      operationalHint:
+        "Segue o cadastro em Administração → Classificação de contas → Unidades: tipo Operacional e ativa.",
+      reset: "Limpar seleção e voltar ao consolidado",
+      clear: "Limpar",
+      apply: "Ver DRE",
+      oneHint: "Uma unidade: DRE dela, com os lançamentos.",
+      sumHint: (count: number) =>
+        `${count} unidades: a DRE soma as ${count}, mês a mês.`,
+      many: (count: number) => `${count} unidades`,
+      summed: "Soma das unidades",
+      partial: "Soma parcial",
+      calculating: (done: number, total: number) =>
+        `Calculando unidade ${done + 1} de ${total}…`,
+      absent: (names: string) =>
+        `Sem resultado no ano para: ${names}. Elas ficam fora da soma até a base delas estar pronta.`,
+      drillHint:
+        "Para ver os lançamentos de uma linha, escolha uma unidade só. O Excel traz a soma e cada unidade, com os lançamentos.",
+      excelHint:
+        "Planilha com a soma das unidades escolhidas e, abaixo, cada unidade, com os lançamentos de cada linha.",
+    },
+    structureSaved: (number: number) =>
+      `Estrutura salva (versão ${number}). Clique em Calcular DRE do ano para ver os números nela.`,
+    editor: {
+      eyebrow: (number: number) => `Estrutura da DRE · versão ${number}`,
+      title: "Editar a estrutura da DRE",
+      description:
+        "Renomeie, reordene e crie grupos; mova naturezas entre grupos e decida o que entra no resultado. Salvar cria uma nova versão; as anteriores ficam guardadas.",
+      close: "Fechar",
+      columns: {
+        order: "Ordem",
+        line: "Linha",
+        group: "Grupo",
+        result: "Resultado",
+        remove: "Remover",
+      },
+      kinds: { group: "Grupo", nature: "Natureza", total: "Total" },
+      inResult: "Entra no resultado",
+      outOfResult: "Fora do resultado",
+      newGroup: "Novo grupo",
+      addGroup: "Novo grupo",
+      rename: (line: string) => `Nome de ${line}`,
+      moveUp: (line: string) => `Subir ${line}`,
+      moveDown: (line: string) => `Descer ${line}`,
+      moveTo: (line: string) => `Grupo de ${line}`,
+      remove: (line: string) => `Remover ${line}`,
+      problems: {
+        emptyName: "Toda linha precisa de nome.",
+        emptyGroup: (group: string) =>
+          `“${group}” está vazio: mova ao menos uma natureza para ele ou remova o grupo.`,
+        emptyTotal: (total: string) =>
+          `“${total}” ficou sem nenhuma linha somada.`,
+      },
+      reason: "Motivo da mudança (opcional)",
+      reasonPlaceholder: "Ex.: pedido da Miriam na reunião de 19/10",
+      defaultReason: "Estrutura ajustada pela Controladoria",
+      cancel: "Cancelar",
+      save: "Salvar nova versão",
+      saving: "Salvando…",
+      afterSave:
+        "Os números atuais continuam na versão anterior até você calcular a DRE do ano de novo.",
+      failed: "Não foi possível salvar a estrutura. Tente novamente.",
+      failedWithDetail: (detail: string) =>
+        `Não foi possível salvar a estrutura: ${detail}`,
     },
     trend: "Evolução no ano",
     trendEmpty: "Sem outros meses calculados neste ano.",
@@ -482,7 +605,120 @@ export const COPY = {
     ready: "Pronta para publicação",
     notReady: "Não pronta",
     categoriesLabel: "Tipos de pendência",
-    search: "Buscar pelo valor de origem",
+    search: "Buscar por documento, conta ou histórico",
+    retry: "Tentar de novo",
+    allRules: "Todos",
+    casesAndEntries: (cases: number, entries: number) =>
+      `${plural(cases, "caso", "casos")} · ${plural(entries, "lançamento afetado", "lançamentos afetados")}`,
+    entries: (count: number) =>
+      count === 1 ? "1 lançamento" : `${formatNumber(count)} lançamentos`,
+    classificationGuide: {
+      accounts:
+        "Contas novas do NG se classificam na tela de Classificação de contas: lá você escolhe a natureza de cada uma, com a sugestão do assistente, e confirma várias de uma vez.",
+      amountBasis:
+        "Esta pendência some sozinha quando as contas novas recebem uma natureza na Classificação de contas.",
+      dreAssignment:
+        "A linha da DRE vem da natureza escolhida na Classificação de contas.",
+      drePending:
+        "A linha da DRE vem da natureza escolhida na Classificação de contas.",
+    } as Record<string, string>,
+    classificationCta: "Abrir Classificação de contas",
+    unmappedGuide: (count: number) =>
+      `${count === 1 ? "1 item" : `${formatNumber(count)} itens`} desta lista só ${count === 1 ? "existe" : "existem"} porque a conta ainda não tem natureza. Classifique as contas primeiro: ${count === 1 ? "ele some" : "eles somem"} sozinho${count === 1 ? "" : "s"}.`,
+    compare: {
+      field: "Campo",
+      ng: "NG",
+      billing: "Faturamento",
+      document: "Documento",
+      emission: "Emissão",
+      competence: "Competência",
+      who: "Unidade / tomador",
+      account: "Conta",
+      amount: "Valor",
+      net: "Valor líquido",
+      description: "Histórico / descrição",
+      where: "Aba · linha",
+      ngTotal: "Valor no NG",
+      billingTotal: "Valor no faturamento",
+      difference: "Diferença",
+      rounding: (value: string) => `R$ ${value} — só arredondamento`,
+    },
+    duplicate: {
+      field: "Campo",
+      kept: "Primeira linha",
+      repeated: "Linha repetida",
+      stays: "fica na DRE",
+      inQuestion: "em análise",
+      where: "Aba · linha",
+      document: "Documento",
+      date: "Emissão",
+      account: "Conta",
+      unit: "Unidade",
+      amount: "Valor",
+      history: "Histórico",
+      note: "As duas linhas têm o mesmo valor: manter uma ou outra não muda a DRE. O que importa é se são o mesmo lançamento ou dois lançamentos diferentes.",
+    },
+    ruleDecisions: {
+      "NGF-DUP-DOC": {
+        REQUEST_SOURCE_CORRECTION: {
+          title: "É o mesmo lançamento: fica só a primeira linha",
+          help: "A linha repetida sai da DRE. Corrija no NG para não voltar na próxima importação.",
+        },
+        JUSTIFY_EXCEPTION: {
+          title: "São lançamentos diferentes: ficam os dois",
+          help: "Por exemplo duas parcelas no mesmo dia. As duas linhas entram na DRE.",
+        },
+        MARK_FALSE_POSITIVE: {
+          title: "Não é duplicidade",
+          help: "O alerta não procede. As duas linhas entram na DRE.",
+        },
+      },
+      "NGF-DUP-EXACT": {
+        REQUEST_SOURCE_CORRECTION: {
+          title: "É o mesmo lançamento: fica só a primeira linha",
+          help: "As repetições saem da DRE. Corrija no NG para não voltar na próxima importação.",
+        },
+        JUSTIFY_EXCEPTION: {
+          title: "São lançamentos diferentes: ficam todos",
+          help: "Por exemplo duas parcelas iguais no mesmo dia. Confira no extrato bancário.",
+        },
+        MARK_FALSE_POSITIVE: {
+          title: "Não é duplicidade",
+          help: "O alerta não procede. Todas as linhas entram na DRE.",
+        },
+      },
+      "NGF-UNIT-MISSING": {
+        JUSTIFY_EXCEPTION: {
+          title: "Aceitar sem unidade",
+          help: "O lançamento entra na DRE no grupo \u201cSem unidade no NG\u201d. Escreva no motivo qual é a unidade certa, para corrigir no NG.",
+        },
+        REQUEST_SOURCE_CORRECTION: {
+          title: "Tirar da DRE até lançar a unidade no NG",
+          help: "O lançamento fica fora da DRE até o arquivo corrigido ser importado.",
+        },
+        MARK_FALSE_POSITIVE: {
+          title: "Não precisa de unidade",
+          help: "O lançamento entra na DRE normalmente.",
+        },
+      },
+      "NGF-SRC-ROW-REJECTED": {
+        JUSTIFY_EXCEPTION: {
+          title: "Pode ficar de fora",
+          help: "A linha quebrada no export do NG não entra na DRE e fica registrado o motivo.",
+        },
+        REQUEST_SOURCE_CORRECTION: {
+          title: "Corrigir o arquivo e importar de novo",
+          help: "A linha continua pendente até o arquivo corrigido ser importado.",
+        },
+        MARK_FALSE_POSITIVE: {
+          title: "Não é um problema",
+          help: "A linha não tinha valor a considerar.",
+        },
+      },
+    } as Record<
+      string,
+      Record<string, { title: string; help: string } | undefined> | undefined
+    >,
     empty: "Nenhum item nesta categoria.",
     noBase: "Ainda não há base normalizada ou estrutura de DRE para analisar.",
     loadError:
@@ -493,7 +729,18 @@ export const COPY = {
     approvedCandidate: (code: string) => `Decisão registrada: ${code}`,
     noCandidate: "Sem sugestão determinística",
     analyze: "Ver evidência",
-    decide: "Revisar e decidir",
+    decide: "Decidir",
+    selectAll: "Selecionar todos desta página",
+    selectRow: (item: string) => `Selecionar ${item}`,
+    selected: (count: number) =>
+      count === 1 ? "1 selecionado" : `${formatNumber(count)} selecionados`,
+    decideSelected: "Decidir selecionados",
+    clearSelection: "Limpar seleção",
+    columns: {
+      item: "Item",
+      period: "Mês",
+      amount: "Valor",
+    },
     steps: {
       label: "Etapas da decisão",
       review: "Revisar",
@@ -601,17 +848,17 @@ export const COPY = {
       cta: "Abrir Fontes",
     },
     reviewDecisions: {
-      JUSTIFY_EXCEPTION: "Aceitar com justificativa",
+      JUSTIFY_EXCEPTION: "Aceitar como está",
       MARK_FALSE_POSITIVE: "Não é um problema",
-      REQUEST_SOURCE_CORRECTION: "Corrigir no NG",
+      REQUEST_SOURCE_CORRECTION: "Tirar da DRE até corrigir no NG",
     } as Record<string, string>,
     reviewDecisionHelp: {
       JUSTIFY_EXCEPTION:
-        "O caso é conhecido e o lançamento entra na DRE como está. Fica registrado quem aceitou e por quê.",
+        "O caso é conhecido. O lançamento entra na DRE e fica registrado o motivo.",
       MARK_FALSE_POSITIVE:
-        "A regra apontou algo que não é um problema. O lançamento entra na DRE normalmente.",
+        "O alerta não procede. O lançamento entra na DRE normalmente.",
       REQUEST_SOURCE_CORRECTION:
-        "O lançamento está errado no NG. Ele fica fora da DRE até o arquivo corrigido ser importado de novo.",
+        "O lançamento está errado no NG. Em duplicidade, só o primeiro registro fica na DRE até o arquivo corrigido ser importado.",
     } as Record<string, string>,
     justification: {
       label: "Motivo da aceitação",
@@ -639,21 +886,42 @@ export const COPY = {
       reconciliationAmbiguous: ["Mesma nota conferida no NG e no faturamento"],
     } as Record<string, string[] | undefined>,
     decisions: {
-      SUPPLEMENTAL: "Lançamento complementar",
-      EXPECTED_DIFFERENCE: "Diferença esperada",
-      NOT_SAME_EVENT: "Eventos distintos",
-      NG_AUTHORITATIVE: "Prevalece o NG/Keevo",
+      SUPPLEMENTAL: "As duas valem e se completam",
+      EXPECTED_DIFFERENCE: "É a mesma nota, com diferença explicada",
+      NOT_SAME_EVENT: "São notas diferentes",
+      NG_AUTHORITATIVE: "É a mesma nota: vale o NG",
     },
     dialog: {
       title: "Decisão necessária",
       found: "O que aconteceu",
       suggestion: "Sugestão do TON",
       scope: "Quantos registros são afetados",
-      decision: "O que precisa ser decidido",
+      decision: "O que fazer?",
+      moreOptions: "Mais opções",
+      batchTitle: (count: number) =>
+        `${formatNumber(count)} itens selecionados`,
+      batchBody:
+        "A mesma decisão e o mesmo motivo valem para todos. Cada item fica registrado separadamente no histórico.",
+      impactMany: (count: number) =>
+        `Vale para ${formatNumber(count)} itens`,
+      impactRecompute: "a base é recalculada em seguida",
+      impactPair: "Vale para os dois lados desta nota (NG e faturamento)",
+      impactRecordOnly: "fica registrada para o próximo recálculo",
+      confirmMany: (count: number) =>
+        `Confirmar para ${formatNumber(count)} itens`,
+      errorWithDetail: (detail: string) =>
+        `Não foi possível registrar a decisão: ${detail}`,
       reason: "Justificativa",
       reasonPlaceholder: "Motivo ou referência do documento",
       quickReasons: "Textos prontos",
       reasonOptional: "Motivo (opcional)",
+      noteOptional: "Observação (opcional)",
+      assignUnit: "Atribuir a unidade certa",
+      assignUnitHelp:
+        "O lançamento passa a contar na DRE da unidade escolhida. Vale até o NG trazer a unidade e continua valendo se o arquivo for importado de novo.",
+      assignUnitPick: "Escolha a unidade",
+      recordedMany: (count: number, outcome: string) =>
+        `${formatNumber(count)} decisões registradas: ${outcome}`,
       defaultReason: (decision: string) =>
         `${decision} (decisão da Controladoria)`,
       defaultMappingReason: "Aprovado pela Controladoria",
@@ -674,6 +942,8 @@ export const COPY = {
         date: "Emissão",
         amount: "Valor",
         where: "Onde está",
+        account: "Conta",
+        history: "Histórico",
       },
       searchTarget: "Buscar destino",
       accountCode: "Código da conta",
@@ -773,7 +1043,7 @@ export const COPY = {
         `O item passa a ser classificado como “${decision}”.`,
       review: (decision: string) => `O caso passa a ser “${decision}”.`,
       scope: (records: string, periods: string | null) =>
-        periods ? `Afeta ${records} em ${periods}.` : `Afeta ${records}.`,
+        periods ? `Afeta ${records} em ${periods}` : `Afeta ${records}`,
       recompute:
         "Ao confirmar, o TON registra a decisão com seu nome e recalcula a prontidão para mostrar o antes e o depois.",
       recordOnly:
@@ -822,6 +1092,7 @@ export const COPY = {
       "Uma pessoa com permissão de importação precisa recalcular a prontidão.",
     log: {
       title: "Decisões recentes",
+      many: (count: number, kind: string) => `${kind} · ${formatNumber(count)} itens`,
       empty: "Nenhuma decisão registrada até agora.",
       applied: "Aplicada",
       pending: "Aguardando recálculo",
@@ -961,15 +1232,16 @@ export const COPY = {
       >,
       options: {
         SUPPLEMENTAL:
-          "O registro é válido e complementa o outro lado, por exemplo quando a contrapartida está em outro documento ou mês.",
+          "Os dois registros são válidos e um completa o outro, por exemplo quando a contrapartida está em outro documento ou mês.",
         EXPECTED_DIFFERENCE:
-          "A diferença é conhecida e aceita, por exemplo por prazo, retenção ou arredondamento.",
+          "É a mesma nota, mas não bate por um motivo conhecido: número diferente no NG, retenção, prazo ou arredondamento.",
         NOT_SAME_EVENT:
-          "Os registros tratam de fatos diferentes e não devem ser comparados.",
+          "Mesmo número, mas são fatos diferentes (por exemplo uma nota de 2020). Não devem ser comparadas.",
         NG_AUTHORITATIVE:
-          "Os dois lados existem e vale o registro do NG/Keevo.",
+          "A nota existe nos dois lados e o valor que vale é o do NG.",
       },
       askTon: "Perguntar ao TON sobre este item",
+      askTonShort: "Perguntar ao TON",
       askPrompt: (category: string, item: string, periods: string | null) =>
         `Explique em linguagem simples a pendência "${category}: ${item}"${periods ? ` (${periods})` : ""} do fechamento: o que aconteceu, quais evidências devo conferir e o que cada opção muda. Não decida por mim.`,
     },
@@ -1094,6 +1366,12 @@ export const COPY = {
     previousVersions: (count: number) =>
       `${plural(count, "versão anterior preservada", "versões anteriores preservadas")} para auditoria`,
     period: "Período",
+    closingUntil: "Fechamento até",
+    headline: (scope: string, first: string, last: string) =>
+      first === last
+        ? `${scope} · ${formatPeriod(last)}`
+        : `${scope} · ${formatShortMonth(first).replace(".", "")} a ${formatShortMonth(last).replace(".", "")} de ${last.slice(0, 4)}`,
+    summaryMonth: (line: string, month: string) => `${line} · ${month}`,
     scope: "Unidade/filial",
     generated: "Gerado em",
     status: "Situação",

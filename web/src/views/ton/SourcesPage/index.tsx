@@ -239,7 +239,7 @@ function SourceRow({
               {COPY.sources.pasteOpen}
             </Button>
           )}
-          {source.can_import && source.source_id && (
+          {source.can_import && (
             <Button
               size="md"
               icon={SvgUploadCloud}

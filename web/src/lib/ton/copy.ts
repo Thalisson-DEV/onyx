@@ -1490,6 +1490,8 @@ export const COPY = {
           : `${records} linhas prontas para importar`,
       problemAt: (row: number | null, column: string | null, label: string) =>
         `${row ? `Linha ${row}` : "Tabela"}${column ? ` · coluna ${column}` : ""}: ${label}`,
+      moreProblems: (count: number) =>
+        `E mais ${formatNumber(count)} — corrija estes e confira de novo.`,
       notRecognized:
         "Não encontrei as colunas obrigatórias: Mês (ou Data de pagamento), Unidade e Valor pago.",
       failed: "Não foi possível conferir a tabela.",

@@ -26,6 +26,11 @@ export const PASTE_COLUMNS: Record<string, string[]> = {
   ],
 };
 const START_ROWS = 12;
+const ROW_HEIGHT = 33;
+const HEADER_HEIGHT = 56;
+const OVERSCAN = 10;
+const WINDOW_ROWS = 60;
+const MAX_LISTED = 50;
 
 interface Problem {
   code: string;
@@ -110,6 +115,33 @@ export default function PasteTable({
   const [busy, setBusy] = useState<"check" | "import" | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  // Only the rows on screen are drawn, so thousands of pasted rows stay
+  // light to edit; the header rows take the first HEADER_HEIGHT pixels.
+  const first = Math.max(
+    0,
+    Math.floor((scrollTop - HEADER_HEIGHT) / ROW_HEIGHT) - OVERSCAN
+  );
+  const last = Math.min(rows.length, first + WINDOW_ROWS);
+
+  function goTo(row: number) {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const top = Math.max(0, HEADER_HEIGHT + row * ROW_HEIGHT - 80);
+    frame.scrollTo({ top });
+    setScrollTop(top);
+    // The row is drawn once the window moves there; try for a few frames.
+    let tries = 0;
+    const focus = () => {
+      const cell = frame.querySelector<HTMLInputElement>(
+        `[data-paste-row="${row}"]`
+      );
+      if (cell) cell.focus({ preventScroll: true });
+      else if (tries++ < 20) window.requestAnimationFrame(focus);
+    };
+    window.requestAnimationFrame(focus);
+  }
 
   const filled = rows.filter((row) => row.some((cell) => cell.trim()));
   const payload = JSON.stringify([header, ...filled]);
@@ -243,7 +275,11 @@ export default function PasteTable({
           />
         </header>
         <div className="flex-1 min-h-0 flex flex-col gap-3 px-6 py-4">
-          <div className="ton-paste-frame flex-1 min-h-0 overflow-auto">
+          <div
+            ref={frameRef}
+            className="ton-paste-frame flex-1 min-h-0 overflow-auto"
+            onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
+          >
           <table className="ton-paste-grid">
             <colgroup>
               <col className="ton-paste-index-col" />
@@ -284,7 +320,12 @@ export default function PasteTable({
               </tr>
             </thead>
             <tbody>
-              {rows.map((cells, row) => (
+              {first > 0 && (
+                <tr aria-hidden style={{ height: first * ROW_HEIGHT }} />
+              )}
+              {rows.slice(first, last).map((cells, offset) => {
+                const row = first + offset;
+                return (
                 <tr key={row} className={cn(rowFlags.has(row) && "is-flagged")}>
                   <th scope="row" className="ton-paste-index" title={rowFlags.get(row)}>
                     {row + 2}
@@ -299,6 +340,7 @@ export default function PasteTable({
                           title={problem}
                           aria-label={T.cell(letter(column), row + 2)}
                           aria-invalid={problem ? true : undefined}
+                          data-paste-row={column === 0 ? row : undefined}
                           onChange={(event) => setCell(row, column, event.target.value)}
                           onPaste={(event) => {
                             const text = event.clipboardData.getData("text/plain");
@@ -329,7 +371,14 @@ export default function PasteTable({
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
+              {last < rows.length && (
+                <tr
+                  aria-hidden
+                  style={{ height: (rows.length - last) * ROW_HEIGHT }}
+                />
+              )}
             </tbody>
           </table>
           </div>
@@ -365,13 +414,27 @@ export default function PasteTable({
               </Text>
               {validation.problems.length > 0 && (
                 <ul className="flex flex-col gap-0.5 max-h-24 overflow-auto">
-                  {validation.problems.map((problem, index) => (
+                  {validation.problems.slice(0, MAX_LISTED).map((problem, index) => (
                     <li key={index}>
-                      <Text font="secondary-body" color="text-04">
-                        {T.problemAt(problem.row_number, problem.column, describe(problem))}
-                      </Text>
+                      <button
+                        type="button"
+                        className="ton-focusable text-start hover:underline"
+                        disabled={problem.row_number === null}
+                        onClick={() => problem.row_number && goTo(problem.row_number - 2)}
+                      >
+                        <Text font="secondary-body" color="text-04">
+                          {T.problemAt(problem.row_number, problem.column, describe(problem))}
+                        </Text>
+                      </button>
                     </li>
                   ))}
+                  {validation.problems.length > MAX_LISTED && (
+                    <li>
+                      <Text font="secondary-body" color="text-03">
+                        {T.moreProblems(validation.problems.length - MAX_LISTED)}
+                      </Text>
+                    </li>
+                  )}
                 </ul>
               )}
             </div>

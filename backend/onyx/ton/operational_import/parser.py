@@ -74,6 +74,11 @@ MONTHS = {
     "dezembro": 12,
 }
 CODE_PATTERN = re.compile(r"^\d+(?:\.\d+)*$")
+YEAR_PATTERN = re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
+
+
+def _sheet_years(name: str) -> list[int]:
+    return [int(year) for year in YEAR_PATTERN.findall(name)]
 
 
 def _normal(value: object) -> str:
@@ -277,6 +282,10 @@ class BillingParser:
         result = _empty_result(self.key, snapshot_id)
         duplicates: Counter[str] = Counter()
         total_rows = 0
+        newest = max(
+            (year for name in book.sheet_names() for year in _sheet_years(name)),
+            default=None,
+        )
         for sheet in book.sheets():
             _check_time(start)
             total_rows += sheet.nrows
@@ -286,6 +295,22 @@ class BillingParser:
                 or sheet.ncols > MAX_COLUMNS
             ):
                 raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Billing grid limit")
+            years = _sheet_years(sheet.name)
+            if newest is not None and years and max(years) < newest - 1:
+                # "MATRIZ 2017" next to "VALE NORTE 2025-2026": an archive of
+                # past years, whose invoice numbers repeat the current ones.
+                result.sheets.append(
+                    OperationalSheetSummary(
+                        name=sheet.name,
+                        classification=SheetClass.OUT_OF_SCOPE,
+                        physical_rows=sheet.nrows,
+                        rows_inspected=0,
+                    )
+                )
+                _diagnostic(
+                    result, DiagnosticLevel.INFO, "SHEET_OUT_OF_SCOPE", sheet.name
+                )
+                continue
             headers = [
                 (row, mapping)
                 for row in range(sheet.nrows)

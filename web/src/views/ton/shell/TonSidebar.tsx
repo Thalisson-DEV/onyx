@@ -47,6 +47,9 @@ interface NavChild {
   href: Route;
   label: string;
   match: string[];
+  /** ?modelo= this child shows; the first DRE child also owns no modelo. */
+  model?: string;
+  defaultModel?: boolean;
 }
 
 interface NavItem {
@@ -78,7 +81,25 @@ const NAV: NavItem[] = [
     icon: SvgBarChart,
     match: ["/ton/fechamento"],
     children: [
-      { href: "/ton/dre", label: COPY.nav.dre, match: ["/ton/dre"] },
+      {
+        href: "/ton/dre?modelo=gerencial" as Route,
+        label: COPY.nav.dreManagerial,
+        match: ["/ton/dre"],
+        model: "gerencial",
+        defaultModel: true,
+      },
+      {
+        href: "/ton/dre?modelo=caixa" as Route,
+        label: COPY.nav.dreCash,
+        match: ["/ton/dre"],
+        model: "caixa",
+      },
+      {
+        href: "/ton/dre?modelo=economica" as Route,
+        label: COPY.nav.dreEconomic,
+        match: ["/ton/dre"],
+        model: "economica",
+      },
       {
         href: "/ton/pendencias",
         label: COPY.nav.pending,
@@ -197,6 +218,7 @@ interface NavGroupProps {
 
 function NavGroup({ item, pathname, rail, onNavigate }: NavGroupProps) {
   const children = item.children ?? [];
+  const model = useSearchParams()?.get("modelo") ?? "";
   const childActive = children.some((child) => isActive(pathname, child.match));
   const [expanded, setExpanded] = useState(true);
 
@@ -239,7 +261,11 @@ function NavGroup({ item, pathname, rail, onNavigate }: NavGroupProps) {
       {!rail && expanded && (
         <div className="ton-nav-children flex flex-col gap-px ms-[1.125rem] ps-2.5 my-0.5">
           {children.map((child) => {
-            const active = isActive(pathname, child.match);
+            const active =
+              isActive(pathname, child.match) &&
+              (child.model === undefined ||
+                child.model === model ||
+                (!model && Boolean(child.defaultModel)));
             return (
               <Link
                 key={child.href}

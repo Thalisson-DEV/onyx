@@ -11,6 +11,7 @@ from onyx.db.ton import import_profiles as repository
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.file_store.file_store import FileStore
+from onyx.ton.ng_financial import installments
 from onyx.ton.ng_financial.models import (
     ImportProfileExecutionView,
     ParsedImportResult,
@@ -29,9 +30,20 @@ from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
 
-# Each profile version is pinned to one parser. A new layout adds a version.
-PARSERS: dict[tuple[str, int], type[NgFinancialExportParser]] = {
-    (PROFILE_KEY, PROFILE_VERSION): NgFinancialExportParser,
+# Each profile version is pinned to one parser and its stored column
+# contract. A new layout adds a version.
+PARSERS: dict[
+    tuple[str, int],
+    tuple[
+        type[NgFinancialExportParser] | type[installments.InstallmentTableParser],
+        dict[str, str],
+    ],
+] = {
+    (PROFILE_KEY, PROFILE_VERSION): (NgFinancialExportParser, COLUMN_MAP),
+    (installments.PROFILE_KEY, installments.PROFILE_VERSION): (
+        installments.InstallmentTableParser,
+        installments.COLUMN_MAP,
+    ),
 }
 
 
@@ -48,12 +60,12 @@ def execute_ng_profile(
         session, user, source_id, profile_id, Permission.IMPORT_TON_SOURCES
     )
     snapshot = repository.get_snapshot_for_parse(session, user, source_id, snapshot_id)
-    parser_class = PARSERS.get((profile.key, profile.version))
+    pinned = PARSERS.get((profile.key, profile.version))
     # The stored contract must be the one the pinned parser implements.
     if (
-        parser_class is None
+        pinned is None
         or profile.format != SourceFormat.XLSX
-        or profile.column_map != COLUMN_MAP
+        or profile.column_map != pinned[1]
         or snapshot.format != SourceFormat.XLSX
     ):
         raise OnyxError(
@@ -77,7 +89,7 @@ def execute_ng_profile(
             or hashlib.sha256(content).hexdigest() != checksum
         ):
             raise OnyxError(OnyxErrorCode.SOURCE_INTEGRITY_ERROR)
-        result = parser_class().parse(content, snapshot_id)
+        result = pinned[0]().parse(content, snapshot_id)
         execution = repository.get_execution(
             session, user, source_id, execution_id, Permission.IMPORT_TON_SOURCES
         )

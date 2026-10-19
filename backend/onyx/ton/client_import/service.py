@@ -25,9 +25,13 @@ from onyx.ton.client_import.models import (
     ClientImportView,
     ClientSourceView,
     DiagnosticSummary,
+    ProblemRow,
+    ProblemRowCell,
+    ProblemRowsView,
     ReimportPreviewItem,
     ReimportPreviewView,
 )
+from onyx.ton.client_import.row_preview import RowCell, read_rows
 from onyx.ton.financial_domain.models import (
     BudgetInput,
     InputPolicy,
@@ -40,7 +44,9 @@ from onyx.ton.financial_review.engine import FinancialReviewEngine
 from onyx.ton.financial_review.models import RuleContext
 from onyx.ton.financial_review.rules import DEFAULT_EXECUTORS
 from onyx.ton.financial_review.service import dataset_summary, execute_review
+from onyx.ton.ng_financial.installments import InstallmentTableParser
 from onyx.ton.ng_financial.models import ProfileExecutionStatus
+from onyx.ton.ng_financial.parser import HEADER as NG_HEADER
 from onyx.ton.ng_financial.parser import NgFinancialExportParser
 from onyx.ton.ng_financial.service import execute_ng_profile
 from onyx.ton.operational_import.parser import BillingParser
@@ -78,6 +84,12 @@ CATALOG = {
     "budget": (
         "Dotação / Orçamento",
         "Planejamento e execução do orçamento.",
+        SourceFormat.XLSX,
+    ),
+    "installments": (
+        "Parcelamentos pagos",
+        "Planilha da Controladoria com os parcelamentos pagos por mês e unidade. "
+        "Nos meses que ela traz, substitui os parcelamentos lançados no NG.",
         SourceFormat.XLSX,
     ),
 }
@@ -230,6 +242,78 @@ def get_client_import(
     return _view(*detail, key)
 
 
+MAX_PROBLEM_ROWS = 300
+
+
+def get_problem_rows(
+    session: Session,
+    user: User,
+    key: str,
+    execution_id: UUID,
+    code: str,
+    store: FileStore,
+) -> ProblemRowsView:
+    """Where each problem of one kind is, and what that row of the file holds."""
+    _contract(key)
+    source = repository.visible_source(session, user, key)
+    if source is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Financial source not found")
+    detail = repository.import_detail(session, user, source.id, execution_id)
+    if detail is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "Import not found")
+    execution, snapshot = detail
+    matching = [
+        item
+        for item in execution.diagnostics or []
+        if item.get("code") == code
+    ]
+    matching.sort(
+        key=lambda item: (item.get("sheet_name") or "", item.get("row_number") or 0)
+    )
+    shown = matching[:MAX_PROBLEM_ROWS]
+    wanted: dict[str, set[int]] = {}
+    for item in shown:
+        if item.get("sheet_name") and item.get("row_number"):
+            wanted.setdefault(item["sheet_name"], set()).add(int(item["row_number"]))
+    cells: dict[tuple[str, int], list[RowCell]] = {}
+    available = True
+    if wanted:
+        try:
+            assert snapshot.storage_file_id is not None and snapshot.format is not None
+            with store.read_file(snapshot.storage_file_id) as stream:
+                content = stream.read(MAX_UPLOAD_BYTES + 1)
+            cells = read_rows(
+                content,
+                snapshot.format,
+                wanted,
+                NG_HEADER if key == "financial_launches" else None,
+            )
+        except Exception:
+            logger.exception("Could not read rows back from snapshot %s", snapshot.id)
+            available = False
+    return ProblemRowsView(
+        code=code,
+        total=len(matching),
+        cells_available=available,
+        rows=[
+            ProblemRow(
+                code=code,
+                level=str(item.get("level") or ""),
+                sheet_name=item.get("sheet_name"),
+                row_number=item.get("row_number"),
+                column=item.get("column"),
+                cells=[
+                    ProblemRowCell(**cell.model_dump())
+                    for cell in cells.get(
+                        (item.get("sheet_name") or "", item.get("row_number") or 0), []
+                    )
+                ],
+            )
+            for item in shown
+        ],
+    )
+
+
 def _source_for_upload(session: Session, user: User, key: str) -> UUID:
     source = repository.source_by_key_for_import(session, user, key)
     if source is not None:
@@ -277,6 +361,16 @@ def _refresh_readiness(session: Session, user: User) -> tuple[str, UUID | None]:
     review = repository.successful_review(session, user, ng.id, ng_execution.id)
     if review is None:
         return "PENDING_INPUTS", None
+    installment_source_id: UUID | None = None
+    installment_execution_id: UUID | None = None
+    table = repository.source_by_key_for_import(session, user, "installments")
+    if table is not None and table.status == SourceStatus.ACTIVE:
+        for execution, _snapshot in repository.import_history(
+            session, user, table.id, 1
+        ):
+            if execution.status in ("SUCCEEDED", "PARTIAL"):
+                installment_source_id = table.id
+                installment_execution_id = execution.id
     budgets: list[BudgetInput] = []
     if READINESS_INPUT_POLICY is InputPolicy.ACTUAL_AND_APPROVED_BUDGET:
         budget = repository.source_by_key_for_import(session, user, "budget")
@@ -302,6 +396,8 @@ def _refresh_readiness(session: Session, user: User) -> tuple[str, UUID | None]:
         billing_source_id=billing.id,
         billing_execution_id=billing_execution.id,
         budgets=budgets,
+        installment_source_id=installment_source_id,
+        installment_execution_id=installment_execution_id,
         input_policy=READINESS_INPUT_POLICY,
     )
     try:
@@ -342,6 +438,10 @@ def upload_client_source(
         profile_key = (
             NgFinancialExportParser().parse(validated.content, UUID(int=0)).profile_key
             if key == "financial_launches"
+            else InstallmentTableParser()
+            .parse(validated.content, UUID(int=0))
+            .profile_key
+            if key == "installments"
             else identify_profile(validated.content, validated.format)
         )
     except OnyxError:
@@ -353,6 +453,10 @@ def upload_client_source(
     sources.get_source(session, user, source_id, Permission.IMPORT_TON_SOURCES)
     if key == "financial_launches":
         profile = import_profiles.create_ng_profile_v1(
+            session, user, source_id, Permission.IMPORT_TON_SOURCES
+        )
+    elif key == "installments":
+        profile = import_profiles.create_installment_profile_v1(
             session, user, source_id, Permission.IMPORT_TON_SOURCES
         )
     else:
@@ -381,6 +485,11 @@ def upload_client_source(
             summary = dataset_summary(session, user, source_id, review.id)
         else:
             summary = None
+    elif key == "installments":
+        execution = execute_ng_profile(
+            session, user, source_id, snapshot.id, profile.id, store
+        )
+        summary = None
     else:
         execution = execute_operational_profile(
             session, user, source_id, snapshot.id, profile.id, store
@@ -458,6 +567,16 @@ def preview_client_import(
     if len(validated.content) > MAX_UPLOAD_BYTES:
         raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Financial file is too large")
     try:
+        if key == "installments":
+            table = InstallmentTableParser().parse(validated.content, UUID(int=0))
+            stats = parse_statistics(table)
+            return _empty_preview(key, filename).model_copy(
+                update={
+                    "imported": len(table.records),
+                    "rejected": int(stats.get("records_rejected", 0)),
+                    "changes_actuals": True,
+                }
+            )
         if key != "financial_launches":
             identify_profile(validated.content, validated.format)
             view = _empty_preview(key, filename)

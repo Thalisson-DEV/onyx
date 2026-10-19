@@ -30,6 +30,12 @@ class DreLineDefinition(BaseModel):
     line_type: DreLineType
     operation: DreOperation | None = None
     operands: list[str] = Field(default_factory=list)
+    # Only the presentation: a hidden line still counts in every total that
+    # sums it. The screen and the Excel leave it (and its children) out.
+    hidden: bool = False
+    # Out of the result: the group above does not add this line, which keeps
+    # its own value (shown, and marked, on the screen and in the Excel).
+    excluded: bool = False
 
     @model_validator(mode="after")
     def validate_behavior(self) -> "DreLineDefinition":
@@ -78,6 +84,7 @@ class DreStructureView(BaseModel):
     key: str
     label: str
     latest_version: int
+    base_structure_id: UUID | None = None
 
 
 class DreVersionView(BaseModel):
@@ -87,6 +94,54 @@ class DreVersionView(BaseModel):
     lines: list[DreLineDefinition]
     assignments: list[DreAccountAssignment]
     created_at: datetime
+
+
+class DreChangeKind(StrEnum):
+    LINE_ADDED = "LINE_ADDED"
+    LINE_REMOVED = "LINE_REMOVED"
+    LINE_RENAMED = "LINE_RENAMED"
+    LINE_MOVED = "LINE_MOVED"
+    ORDER_CHANGED = "ORDER_CHANGED"
+    INTO_RESULT = "INTO_RESULT"
+    OUT_OF_RESULT = "OUT_OF_RESULT"
+    FORMULA_CHANGED = "FORMULA_CHANGED"
+    HIDDEN = "HIDDEN"
+    SHOWN = "SHOWN"
+    NATURE_LINKED = "NATURE_LINKED"
+    NATURE_UNLINKED = "NATURE_UNLINKED"
+    NATURE_RELINKED = "NATURE_RELINKED"
+
+
+class DreChange(BaseModel):
+    """One difference between two versions, in the Controladoria's words."""
+
+    kind: DreChangeKind
+    line: str
+    before: str | None = None
+    after: str | None = None
+
+
+class DreVersionHistoryItem(BaseModel):
+    id: UUID
+    number: int
+    created_at: datetime
+    author: str | None
+    reason: str | None
+    changes: list[DreChange]
+
+
+class DreRestoreRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=400)
+    dry_run: bool = False
+
+
+class DreRestoreView(BaseModel):
+    """What going back to an earlier version changes, and the new version."""
+
+    target_number: int
+    changes: list[DreChange]
+    left_out_natures: list[str]
+    version: DreVersionView | None = None
 
 
 class DreScope(BaseModel):

@@ -21,6 +21,8 @@ from onyx.ton.dre.models import (
     DreContributorPage,
     DrePeriodPoint,
     DreReadinessView,
+    DreRestoreRequest,
+    DreRestoreView,
     DreResultLineView,
     DreRunView,
     DreScope,
@@ -28,6 +30,7 @@ from onyx.ton.dre.models import (
     DreStructureCreate,
     DreStructureView,
     DreVersionCreate,
+    DreVersionHistoryItem,
     DreUnitsYearView,
     DreVersionView,
     DreYearView,
@@ -43,6 +46,17 @@ def create_structure(
     session: Session = Depends(get_session),
 ) -> DreVersionView:
     result = repository.create_structure(session, user, request)
+    session.commit()
+    return result
+
+
+@router.post("/structures/simplified")
+def create_simplified_structures(
+    user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    session: Session = Depends(get_session),
+) -> list[DreStructureView]:
+    """The Caixa and Econômica DREs of the Controladoria's model, once."""
+    result = repository.create_simplified_structures(session, user)
     session.commit()
     return result
 
@@ -75,6 +89,29 @@ def create_version(
 ) -> DreVersionView:
     result = repository.create_version(session, user, structure_id, request)
     session.commit()
+    return result
+
+
+@router.get("/structures/{structure_id}/versions")
+def list_version_history(
+    structure_id: UUID,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> list[DreVersionHistoryItem]:
+    return repository.list_version_history(session, user, structure_id)
+
+
+@router.post("/structures/{structure_id}/versions/{number}/restore")
+def restore_version(
+    structure_id: UUID,
+    number: int,
+    request: DreRestoreRequest,
+    user: User = Depends(require_permission(Permission.FULL_ADMIN_PANEL_ACCESS)),
+    session: Session = Depends(get_session),
+) -> DreRestoreView:
+    result = repository.restore_version(session, user, structure_id, number, request)
+    if not request.dry_run:
+        session.commit()
     return result
 
 

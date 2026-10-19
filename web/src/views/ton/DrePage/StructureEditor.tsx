@@ -13,6 +13,7 @@ import { COPY } from "@/lib/ton/copy";
 import { TonApiError, postTonJson } from "@/lib/ton/decisions";
 import { getBusinessLabel } from "@/lib/ton/labels";
 import { StatusPill } from "@/views/ton/components/ui";
+import StructureHistory from "@/views/ton/DrePage/StructureHistory";
 
 const T = COPY.dre.editor;
 
@@ -25,6 +26,8 @@ export interface EditableLine {
   line_type: "SOURCE_SUM" | "CALCULATED" | "SUBTOTAL" | "RESULT" | "PERCENTAGE";
   operation?: "SUM_LINES" | "SUM_CHILDREN" | "SUBTRACT" | "RATIO" | null;
   operands?: string[];
+  hidden?: boolean;
+  excluded?: boolean;
 }
 
 export interface EditableVersion {
@@ -66,7 +69,15 @@ function toDraft(version: EditableVersion): Draft {
   }
   return {
     lines: Object.fromEntries(
-      sorted.map((line) => [line.code, { ...line, operands: line.operands ?? [] }])
+      sorted.map((line) => [
+        line.code,
+        {
+          ...line,
+          operands: line.operands ?? [],
+          hidden: line.hidden ?? false,
+          excluded: line.excluded ?? false,
+        },
+      ])
     ),
     top,
     children,
@@ -136,6 +147,7 @@ export default function StructureEditor({
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [tab, setTab] = useState<"structure" | "history">("structure");
   const closeRef = useRef<HTMLButtonElement>(null);
   const original = useMemo(
     () => JSON.stringify(flatten(toDraft(version))),
@@ -382,6 +394,42 @@ export default function StructureEditor({
             onClick={onClose}
           />
         </header>
+        <div
+          role="tablist"
+          aria-label={T.title}
+          className="flex gap-1 px-6 pt-2 border-b border-01"
+        >
+          {(["structure", "history"] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              role="tab"
+              aria-selected={tab === item}
+              className={cn(
+                "ton-focusable px-3 py-2 -mb-px border-b-2",
+                tab === item ? "border-text-05" : "border-transparent"
+              )}
+              onClick={() => setTab(item)}
+            >
+              <Text
+                font="secondary-action"
+                color={tab === item ? "text-05" : "text-03"}
+              >
+                {T.tabs[item]}
+              </Text>
+            </button>
+          ))}
+        </div>
+        {tab === "history" ? (
+          <div className="flex-1 overflow-auto px-6 py-4">
+            <StructureHistory
+              structureId={structureId}
+              currentNumber={version.number}
+              onRestored={onSaved}
+            />
+          </div>
+        ) : (
+          <>
         <div className="flex-1 overflow-auto px-6 py-4">
           <table className="ton-structure w-full border-collapse">
             <thead>
@@ -395,6 +443,9 @@ export default function StructureEditor({
                 </th>
                 <th scope="col" className="w-40">
                   {T.columns.result}
+                </th>
+                <th scope="col" className="w-32">
+                  {T.columns.shown}
                 </th>
                 <th scope="col" className="w-10">
                   <span className="sr-only">{T.columns.remove}</span>
@@ -452,6 +503,13 @@ export default function StructureEditor({
                           </Text>
                         </label>
                       )}
+                      {kind === "group" && inResult && line.hidden && (
+                        <span className="block text-status-warning-05">
+                          <Text font="secondary-body" color="inherit">
+                            {T.hiddenButSummed}
+                          </Text>
+                        </span>
+                      )}
                       {kind === "total" && (
                         <Text font="secondary-body" color="text-03">
                           {(line.operands ?? [])
@@ -460,6 +518,23 @@ export default function StructureEditor({
                             )
                             .join(" + ")}
                         </Text>
+                      )}
+                    </td>
+                    <td>
+                      {kind === "group" && (
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            className="ton-checkbox"
+                            checked={!line.hidden}
+                            onChange={(event) =>
+                              update(code, { hidden: !event.target.checked })
+                            }
+                          />
+                          <Text font="secondary-body" color="text-04">
+                            {line.hidden ? T.hidden : T.shown}
+                          </Text>
+                        </label>
                       )}
                     </td>
                     <td>
@@ -518,7 +593,44 @@ export default function StructureEditor({
                             ))}
                           </select>
                         </td>
-                        <td aria-hidden="true" />
+                        <td>
+                          <label
+                            className="flex items-center gap-2"
+                            title={T.natureOutHint}
+                          >
+                            <input
+                              type="checkbox"
+                              className="ton-checkbox"
+                              checked={!nature.excluded}
+                              onChange={(event) =>
+                                update(child, { excluded: !event.target.checked })
+                              }
+                            />
+                            <Text
+                              font="secondary-body"
+                              color={nature.excluded ? "status-error-05" : "text-04"}
+                            >
+                              {nature.excluded
+                                ? T.natureOutOfGroup
+                                : T.natureInGroup}
+                            </Text>
+                          </label>
+                        </td>
+                        <td>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              className="ton-checkbox"
+                              checked={!nature.hidden}
+                              onChange={(event) =>
+                                update(child, { hidden: !event.target.checked })
+                              }
+                            />
+                            <Text font="secondary-body" color="text-04">
+                              {nature.hidden ? T.hidden : T.shown}
+                            </Text>
+                          </label>
+                        </td>
                         <td aria-hidden="true" />
                       </tr>
                     );
@@ -576,6 +688,8 @@ export default function StructureEditor({
             {T.afterSave}
           </Text>
         </footer>
+          </>
+        )}
       </aside>
     </>
   );

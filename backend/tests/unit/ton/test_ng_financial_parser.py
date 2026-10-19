@@ -594,3 +594,10 @@ def test_diff_pairs_exact_duplicates_and_flags_ambiguity() -> None:
     both[3][16] = 12
     ambiguous = compare_source_imports(month_result(base, 1), month_result(both, 2))
     assert ambiguous.changed == 2 and ambiguous.ambiguous == 2
+
+
+def test_document_stored_as_a_decimal_number_reads_as_the_invoice() -> None:
+    rows = tree_rows()
+    rows[-1][3] = 2596.0
+    result = parse(book({"Jan": rows}))
+    assert result.records[-1].document_number == "2596"

@@ -20,6 +20,7 @@ import {
 } from "@/lib/ton/import-diagnostics";
 import { useUser } from "@/providers/UserProvider";
 import { TonStatusTag } from "@/views/ton/components/TonStatusTag";
+import ProblemRows from "@/views/ton/DataSourcesPage/ProblemRows";
 
 interface Diagnostic {
   code: string;
@@ -64,7 +65,11 @@ interface ClientSource {
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
 /** NG gets the decision preview; billing only reports what was read. */
-const PREVIEWED_SOURCES = new Set(["financial_launches", "billing_invoices"]);
+const PREVIEWED_SOURCES = new Set([
+  "financial_launches",
+  "billing_invoices",
+  "installments",
+]);
 
 interface ReimportPreview {
   imported: number;
@@ -366,7 +371,15 @@ export function SourceUpload({
   );
 }
 
-export function ImportDetail({ result }: { result: ClientImport }) {
+export function ImportDetail({
+  result,
+  sourceKey,
+}: {
+  result: ClientImport;
+  /** Lets each problem open its rows; without it only the counts show. */
+  sourceKey?: string;
+}) {
+  const [openCode, setOpenCode] = useState<string | null>(null);
   const t = useTranslations("dataSources");
   const format = useFormatter();
   const copy = COPY.sources.detail;
@@ -458,19 +471,51 @@ export function ImportDetail({ result }: { result: ClientImport }) {
             {copy.actionableTitle}
           </Text>
           <ul className="flex flex-col divide-y divide-border-01 rounded-12 border border-01">
-            {actionable.map((item) => (
-              <li
-                key={item.code}
-                className="flex justify-between gap-4 px-3 py-2"
-              >
-                <Text font="main-ui-body" color="text-05">
-                  {item.label}
-                </Text>
-                <Text font="main-ui-action" color="text-04">
-                  {format.number(item.count)}
-                </Text>
-              </li>
-            ))}
+            {actionable.map((item) => {
+              const open = openCode === item.code;
+              const label = (
+                <>
+                  <span className="flex-1 min-w-0">
+                    <Text font="main-ui-body" color="text-05">
+                      {item.label}
+                    </Text>
+                  </span>
+                  <Text font="main-ui-action" color="text-04">
+                    {format.number(item.count)}
+                  </Text>
+                  {sourceKey && (
+                    <Text font="secondary-action" color="text-03">
+                      {open ? copy.problems.hide : copy.problems.show}
+                    </Text>
+                  )}
+                </>
+              );
+              return (
+                <li key={item.code} className="flex flex-col">
+                  {sourceKey ? (
+                    <button
+                      type="button"
+                      aria-expanded={open}
+                      className="ton-row-link ton-focusable flex w-full items-center gap-4 px-3 py-2 text-start"
+                      onClick={() => setOpenCode(open ? null : item.code)}
+                    >
+                      {label}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-4 px-3 py-2">{label}</div>
+                  )}
+                  {open && sourceKey && (
+                    <div className="px-3 pb-3">
+                      <ProblemRows
+                        sourceKey={sourceKey}
+                        importId={result.id}
+                        code={item.code}
+                      />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

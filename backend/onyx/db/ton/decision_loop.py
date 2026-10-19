@@ -557,7 +557,11 @@ def decision_log(session: Session, user: User, limit: int) -> DecisionLog:  # no
     for version, structure in session.execute(
         sa.select(DreStructureVersion, DreStructure)
         .join(DreStructure, DreStructure.id == DreStructureVersion.structure_id)
-        .where(DreStructureVersion.number > 1)
+        .where(
+            DreStructureVersion.number > 1,
+            # Derived structures only follow the managerial one.
+            DreStructure.base_structure_id.is_(None),
+        )
         .order_by(DreStructureVersion.created_at.desc())
         .limit(limit)
     ):

@@ -81,7 +81,7 @@ def _evaluate_lenient(
     """Evaluate every line; a ratio over zero, and lines using it, give None."""
     children: dict[str, list[str]] = defaultdict(list)
     for line in ordered:
-        if line.parent_code is not None:
+        if line.parent_code is not None and not line.excluded:
             children[line.parent_code].append(line.code)
     result: dict[str, Decimal | None] = {}
     for line in ordered:

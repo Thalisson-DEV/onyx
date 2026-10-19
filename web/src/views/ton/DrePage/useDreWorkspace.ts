@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { Route } from "next";
 import useSWR from "swr";
 import { errorHandlingFetcher } from "@/lib/fetcher";
+import { postTonJson } from "@/lib/ton/decisions";
 import { hasPermission } from "@/lib/permissions";
 import { Permission } from "@/lib/types";
 import { useUser } from "@/providers/UserProvider";
@@ -54,6 +57,11 @@ function storedView(): DreView {
  * overview per period, and only a READY calculation run that matches both is
  * the official result. Nothing here computes financial values.
  */
+/** "vale-norte-caixa" -> "caixa": the model name used in the URL. */
+export function modelOf(key: string): string {
+  return key.split("-").at(-1) ?? key;
+}
+
 export function useDreWorkspace() {
   const { user } = useUser();
   const permissions = user?.effective_permissions ?? [];
@@ -65,7 +73,12 @@ export function useDreWorkspace() {
   );
 
   const [normalizationChoice, setNormalizationChoice] = useState("");
-  const [structureChoice, setStructureChoice] = useState("");
+  // The DRE model lives in the URL (?modelo=caixa), so the sidebar can link
+  // straight to each one.
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const model = searchParams?.get("modelo") ?? "";
   const [unitChoice, setUnitChoice] = useState("");
   // Two or more units: the DRE of the set, each month summed over them.
   const [unitSet, setUnitSet] = useState<string[]>([]);
@@ -101,7 +114,10 @@ export function useDreWorkspace() {
     errorHandlingFetcher
   );
   const normalizationId = normalizationChoice || normalizations.data?.[0]?.id;
-  const structureId = structureChoice || structures.data?.[0]?.id;
+  const structureId =
+    (model &&
+      structures.data?.find((item) => modelOf(item.key) === model)?.id) ||
+    structures.data?.[0]?.id;
   const unitId = multi
     ? isAdmin
       ? CONSOLIDATED
@@ -191,9 +207,19 @@ export function useDreWorkspace() {
       : null,
     errorHandlingFetcher
   );
-  const definitions =
+  const allDefinitions =
     (multi ? unitsYear.data?.version.lines : statement.data?.version.lines) ??
     [];
+  // A line hidden in the structure (and everything under it) stays in every
+  // total but leaves the screen, as it leaves the Excel.
+  const hiddenCodes = new Set<string>();
+  for (const line of [...allDefinitions].sort((a, b) => a.position - b.position)) {
+    if (line.hidden || (line.parent_code && hiddenCodes.has(line.parent_code)))
+      hiddenCodes.add(line.code);
+  }
+  const definitions = allDefinitions.filter(
+    (line) => !hiddenCodes.has(line.code)
+  );
   const summaryDefinition =
     [...definitions].reverse().find((line) => line.line_type === "RESULT") ??
     [...definitions].reverse().find((line) => line.line_type === "SUBTOTAL");
@@ -411,6 +437,11 @@ export function useDreWorkspace() {
     async structureSaved() {
       await Promise.all([structures.mutate(), version.mutate()]);
     },
+    /** Creates the Caixa and Econômica DREs of the Controladoria's model. */
+    async createSimplified() {
+      await postTonJson("/api/ton/dre/structures/simplified", {});
+      await structures.mutate();
+    },
     normalizations: normalizations.data ?? [],
     structures: structures.data ?? [],
     units: units.data ?? [],
@@ -451,7 +482,11 @@ export function useDreWorkspace() {
         resetSelection();
       },
       structure(value: string) {
-        setStructureChoice(value);
+        const key = structures.data?.find((item) => item.id === value)?.key;
+        const params = new URLSearchParams(searchParams?.toString() ?? "");
+        if (key) params.set("modelo", modelOf(key));
+        // SAFETY: same typed route, only the query string changes.
+        router.replace(`${pathname}?${params.toString()}` as Route);
         resetSelection();
       },
       unit(value: string) {

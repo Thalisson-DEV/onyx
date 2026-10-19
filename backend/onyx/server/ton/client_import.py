@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from onyx.auth.permissions import require_permission
@@ -13,10 +13,12 @@ from onyx.file_store.file_store import get_default_file_store
 from onyx.ton.client_import.models import (
     ClientImportView,
     ClientSourceView,
+    ProblemRowsView,
     ReimportPreviewView,
 )
 from onyx.ton.client_import.service import (
     get_client_import,
+    get_problem_rows as problem_rows,
     list_client_sources,
     preview_client_import,
     upload_client_source,
@@ -76,3 +78,16 @@ def get_financial_import(
     session: Session = Depends(get_session),
 ) -> ClientImportView:
     return get_client_import(session, user, key, execution_id)
+
+
+@router.get("/{key}/imports/{execution_id}/problems")
+def get_problem_rows(
+    key: str,
+    execution_id: UUID,
+    code: str = Query(min_length=1, max_length=100),
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> ProblemRowsView:
+    return problem_rows(
+        session, user, key, execution_id, code, get_default_file_store()
+    )

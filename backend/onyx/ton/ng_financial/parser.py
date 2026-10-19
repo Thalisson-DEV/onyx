@@ -599,7 +599,13 @@ class _SheetParser:
         }
         extras = [(column, _as_text(value)) for column, value in row.extras]
         source_values.update(extras)
-        document = _as_text(values[3])
+        # Excel may store the number as 2596.0; the NF in billing is 2596.
+        raw_document = values[3]
+        document = _as_text(
+            int(raw_document)
+            if isinstance(raw_document, float) and raw_document.is_integer()
+            else raw_document
+        )
         history = str(values[4])
         fingerprint = _fingerprint(
             state.code,

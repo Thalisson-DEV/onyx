@@ -42,7 +42,9 @@ from onyx.db.ton.models import (
 from onyx.db.ton.sources import check_page, get_source
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
+from onyx.ton.dre import derived
 from onyx.ton.dre.engine import ENGINE_VERSION, calculate, calculation_order
+from onyx.ton.dre.history import VersionContent, describe_changes, plan_restore
 from onyx.ton.dre.models import (
     DreAccountAssignment,
     DreAssignmentApproval,
@@ -53,6 +55,8 @@ from onyx.ton.dre.models import (
     DreOperation,
     DrePeriodPoint,
     DreReadinessView,
+    DreRestoreRequest,
+    DreRestoreView,
     DreResultLineView,
     DreRunView,
     DreScope,
@@ -60,6 +64,7 @@ from onyx.ton.dre.models import (
     DreStructureCreate,
     DreStructureView,
     DreVersionCreate,
+    DreVersionHistoryItem,
     DreVersionView,
     DreUnitsYearMonth,
     DreUnitsYearView,
@@ -76,10 +81,12 @@ from onyx.ton.dre.xlsx_export import (
     month_label,
 )
 from onyx.ton.financial_domain.models import DreInputDataset
+from onyx.ton.financial_domain.models import TreatmentEffect
 from onyx.utils.audit import AuditAction, AuditOutcome
 
 RESULT_SCALE = Decimal("1e-25")
 SAO_PAULO = ZoneInfo("America/Sao_Paulo")
+REPLACED_TITLE = "Substituído pela planilha de parcelamentos"
 
 
 def _require_admin(user: User) -> None:
@@ -167,7 +174,123 @@ def _create_version(
         resource_kind=TonAuditResourceKind.DRE_STRUCTURE_VERSION,
         resource_id=version.id,
     )
-    return _version_view(session, version)
+    view = _version_view(session, version)
+    if structure.base_structure_id is None:
+        _follow_base(session, user, structure, view)
+    return view
+
+
+def _latest(session: Session, structure_id: UUID) -> DreStructureVersion | None:
+    return session.scalar(
+        sa.select(DreStructureVersion)
+        .where(DreStructureVersion.structure_id == structure_id)
+        .order_by(DreStructureVersion.number.desc())
+        .limit(1)
+    )
+
+
+def _follow_base(
+    session: Session, user: User, base: DreStructure, version: DreVersionView
+) -> None:
+    """New versions of the structures derived from ``base``, when it changed them."""
+    for structure in session.scalars(
+        sa.select(DreStructure).where(DreStructure.base_structure_id == base.id)
+    ):
+        template = derived.TEMPLATES.get(structure.template_key or "")
+        latest = _latest(session, structure.id)
+        if template is None or latest is None:
+            continue
+        lines = derived.sync(
+            template,
+            [DreLineDefinition.model_validate(item) for item in latest.lines],
+            version.lines,
+        )
+        present = {line.code for line in (lines or [])} or {
+            item["code"] for item in latest.lines
+        }
+        assignments = [
+            item for item in version.assignments if item.line_code in present
+        ]
+        current = _version_view(session, latest).assignments
+        if lines is None and sorted(
+            (str(item.account_id), item.line_code, item.status) for item in assignments
+        ) == sorted(
+            (str(item.account_id), item.line_code, item.status) for item in current
+        ):
+            continue
+        _create_version(
+            session,
+            user,
+            structure,
+            latest.number + 1,
+            DreVersionCreate(
+                lines=lines
+                or [DreLineDefinition.model_validate(item) for item in latest.lines],
+                assignments=assignments,
+                reason=f"Acompanha a versão {version.number} de {base.label}",
+            ),
+        )
+
+
+def create_simplified_structures(
+    session: Session, user: User
+) -> list[DreStructureView]:
+    """The Caixa and Econômica structures of the Controladoria's model."""
+    _require_admin(user)
+    session.execute(sa.text("SELECT pg_advisory_xact_lock(4433006)"))
+    base = _primary_structure(session)
+    if base is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "DRE structure not found")
+    latest = _latest(session, base.id)
+    assert latest is not None
+    view = _version_view(session, latest)
+    for template in derived.TEMPLATES.values():
+        exists = session.scalar(
+            sa.select(DreStructure.id).where(
+                DreStructure.base_structure_id == base.id,
+                DreStructure.template_key == template.key,
+            )
+        )
+        if exists is not None:
+            continue
+        structure = DreStructure(
+            key=template.structure_key,
+            label=template.label,
+            base_structure_id=base.id,
+            template_key=template.key,
+        )
+        session.add(structure)
+        session.flush()
+        lines = derived.build(template, view.lines)
+        present = {line.code for line in lines}
+        _create_version(
+            session,
+            user,
+            structure,
+            1,
+            DreVersionCreate(
+                lines=lines,
+                assignments=[
+                    item for item in view.assignments if item.line_code in present
+                ],
+                reason=f"Modelo da Controladoria a partir da versão {view.number} de {base.label}",
+            ),
+        )
+    return list_structures(session, user, 100, 0)
+
+
+def _primary_structure(session: Session) -> DreStructure | None:
+    """The managerial structure: not derived, with the most naturezas."""
+    rows = session.execute(
+        sa.select(DreStructure, sa.func.count(DreAccountMapping.id))
+        .join(DreStructureVersion, DreStructureVersion.structure_id == DreStructure.id)
+        .outerjoin(
+            DreAccountMapping, DreAccountMapping.version_id == DreStructureVersion.id
+        )
+        .where(DreStructure.base_structure_id.is_(None))
+        .group_by(DreStructure.id)
+    ).all()
+    return max(rows, key=lambda row: row[1])[0] if rows else None
 
 
 def create_structure(
@@ -241,7 +364,7 @@ def list_structures(
         sa.select(DreStructure, sa.func.max(DreStructureVersion.number))
         .join(DreStructureVersion)
         .group_by(DreStructure.id)
-        .order_by(DreStructure.key)
+        .order_by(DreStructure.base_structure_id.is_not(None), DreStructure.key)
         .limit(limit)
         .offset(offset)
     ).all()
@@ -251,6 +374,7 @@ def list_structures(
             key=structure.key,
             label=structure.label,
             latest_version=number,
+            base_structure_id=structure.base_structure_id,
         )
         for structure, number in rows
     ]
@@ -294,6 +418,106 @@ def get_latest_version(
     )
     assert version is not None
     return _version_view(session, version)
+
+
+def _content(view: DreVersionView) -> VersionContent:
+    return VersionContent(lines=view.lines, assignments=view.assignments)
+
+
+def _nature_labels(session: Session, views: list[DreVersionView]) -> dict[UUID, str]:
+    ids = {item.account_id for view in views for item in view.assignments}
+    return {
+        account.id: account.label
+        for account in session.scalars(
+            sa.select(FinancialAccount).where(FinancialAccount.id.in_(ids))
+        )
+    }
+
+
+def list_version_history(
+    session: Session, user: User, structure_id: UUID
+) -> list[DreVersionHistoryItem]:
+    """Every version, newest first, with who saved it, why and what changed."""
+    get_structure(session, user, structure_id)
+    rows = list(
+        session.scalars(
+            sa.select(DreStructureVersion)
+            .where(DreStructureVersion.structure_id == structure_id)
+            .order_by(DreStructureVersion.number)
+        )
+    )
+    views = [_version_view(session, row) for row in rows]
+    natures = _nature_labels(session, views)
+    authors = {row.created_by for row in rows if row.created_by}
+    emails = dict(
+        session.execute(sa.select(User.id, User.email).where(User.id.in_(authors))).all()
+    )
+    items: list[DreVersionHistoryItem] = []
+    for index, (row, view) in enumerate(zip(rows, views)):
+        changes = (
+            describe_changes(_content(views[index - 1]), _content(view), natures)
+            if index
+            else []
+        )
+        items.append(
+            DreVersionHistoryItem(
+                id=row.id,
+                number=row.number,
+                created_at=row.created_at,
+                author=emails.get(row.created_by) if row.created_by else None,
+                reason=row.reason,
+                changes=changes,
+            )
+        )
+    return list(reversed(items))
+
+
+def restore_version(
+    session: Session,
+    user: User,
+    structure_id: UUID,
+    number: int,
+    request: DreRestoreRequest,
+) -> DreRestoreView:
+    """Back to an earlier structure as a new version; the history stays."""
+    _require_admin(user)
+    target_row = session.scalar(
+        sa.select(DreStructureVersion).where(
+            DreStructureVersion.structure_id == structure_id,
+            DreStructureVersion.number == number,
+        )
+    )
+    if target_row is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "DRE version not found")
+    current = get_latest_version(session, user, structure_id)
+    if current.number == number:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT, "Esta já é a versão em uso da estrutura"
+        )
+    target = _version_view(session, target_row)
+    plan = plan_restore(_content(target), _content(current))
+    natures = _nature_labels(session, [target, current])
+    view = DreRestoreView(
+        target_number=number,
+        changes=describe_changes(_content(current), plan.content, natures),
+        left_out_natures=[natures.get(item, str(item)) for item in plan.left_out],
+    )
+    if request.dry_run:
+        return view
+    note = (request.reason or "").strip()
+    saved = create_version(
+        session,
+        user,
+        structure_id,
+        DreVersionCreate(
+            lines=plan.content.lines,
+            assignments=plan.content.assignments,
+            reason=(f"Volta para a versão {number}" + (f": {note}" if note else ""))[
+                :500
+            ],
+        ),
+    )
+    return view.model_copy(update={"version": saved})
 
 
 def _inputs(
@@ -1095,6 +1319,11 @@ def list_contributors(
         treatment = None
         original_amount = None
         original_account = None
+        replaced = (
+            fact_type == "ACTUAL"
+            and fact.treatment_effect == TreatmentEffect.REPLACE_BY_SOURCE.value
+            and fact.treatment_id is None
+        )
         if fact_type == "ACTUAL":
             basis, amount, original_amount = financial_domain.actual_amounts(
                 fact, basis_index, accounts
@@ -1145,10 +1374,18 @@ def list_contributors(
                 source_account_code=source_account_code,
                 source_account_label=source_account_label,
                 description=description,
-                treatment_title=treatment.title if treatment else None,
-                treatment_effect=treatment.effect if treatment else None,
+                treatment_title=treatment.title
+                if treatment
+                else REPLACED_TITLE
+                if replaced
+                else None,
+                treatment_effect=treatment.effect
+                if treatment
+                else TreatmentEffect.REPLACE_BY_SOURCE
+                if replaced
+                else None,
                 treatment_version=treatment.version if treatment else None,
-                original_amount=original_amount if treatment else None,
+                original_amount=original_amount if treatment or replaced else None,
                 original_account_label=(
                     original_account.label if original_account else None
                 ),

@@ -244,3 +244,38 @@ def test_bounded_workbooks(monkeypatch: pytest.MonkeyPatch) -> None:
         BillingParser().parse(billing, SNAPSHOT)
     with pytest.raises(OnyxError):
         BudgetParser(BUDGET_ANNUAL_KEY).parse(budget, SNAPSHOT)
+
+
+def test_billing_skips_sheets_of_past_years() -> None:
+    workbook = xlwt.Workbook()
+    style = xlwt.easyxf(num_format_str="DD/MM/YYYY")
+    for name, number in (
+        ("VALE NORTE 2025-2026", 101),
+        ("VALE NORTE 2024", 202),
+        ("MATRIZ 2017", 101),
+        ("MACAU 100%", 303),
+    ):
+        sheet = workbook.add_sheet(name)
+        for column, value in enumerate(HEADER):
+            sheet.write(0, column, value)
+        for column, value in enumerate(invoice(number)):
+            if value is not None:
+                sheet.write(
+                    1,
+                    column,
+                    value,
+                    style if isinstance(value, datetime) else xlwt.Style.default_style,
+                )
+    output = BytesIO()
+    workbook.save(output)
+    result = BillingParser().parse(output.getvalue(), SNAPSHOT)
+    assert {record.locator.sheet_name for record in result.records} == {
+        "VALE NORTE 2025-2026",
+        "MACAU 100%",
+    }
+    for name in ("VALE NORTE 2024", "MATRIZ 2017"):
+        skipped = [item for item in result.sheets if item.name == name]
+        assert skipped[0].classification is SheetClass.OUT_OF_SCOPE
+        assert ("SHEET_OUT_OF_SCOPE", name) in {
+            (item.code, item.sheet_name) for item in result.diagnostics
+        }

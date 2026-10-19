@@ -22,6 +22,7 @@ from onyx.db.ton.models import (
 from onyx.db.ton.sources import get_source
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
+from onyx.ton.ng_financial import installments
 from onyx.ton.ng_financial.models import (
     REJECTION_CODES,
     ParsedImportResult,
@@ -49,8 +50,49 @@ def create_ng_profile_v1(
     permission: Permission = Permission.MANAGE_TON_SOURCES,
 ) -> ImportProfile:
     """Idempotent: the v1 contract is fixed, so an existing row is returned."""
+    return _fixed_profile(
+        session,
+        user,
+        source_id,
+        permission,
+        SOURCE_KEY,
+        PROFILE_KEY,
+        PROFILE_VERSION,
+        COLUMN_MAP,
+    )
+
+
+def create_installment_profile_v1(
+    session: Session,
+    user: User,
+    source_id: UUID,
+    permission: Permission = Permission.MANAGE_TON_SOURCES,
+) -> ImportProfile:
+    """The installment table, read by its header into NG-shaped records."""
+    return _fixed_profile(
+        session,
+        user,
+        source_id,
+        permission,
+        installments.SOURCE_KEY,
+        installments.PROFILE_KEY,
+        installments.PROFILE_VERSION,
+        installments.COLUMN_MAP,
+    )
+
+
+def _fixed_profile(
+    session: Session,
+    user: User,
+    source_id: UUID,
+    permission: Permission,
+    source_key: str,
+    profile_key: str,
+    profile_version: int,
+    column_map: dict[str, str],
+) -> ImportProfile:
     source = get_source(session, user, source_id, permission, lock=True)
-    if source.key != SOURCE_KEY:
+    if source.key != source_key:
         raise OnyxError(
             OnyxErrorCode.INVALID_INPUT,
             "NG profile requires a financial launches source",
@@ -58,18 +100,18 @@ def create_ng_profile_v1(
     existing = session.scalar(
         sa.select(ImportProfile).where(
             ImportProfile.source_id == source_id,
-            ImportProfile.key == PROFILE_KEY,
-            ImportProfile.version == PROFILE_VERSION,
+            ImportProfile.key == profile_key,
+            ImportProfile.version == profile_version,
         )
     )
     if existing is not None:
         return existing
     profile = ImportProfile(
         source_id=source_id,
-        key=PROFILE_KEY,
-        version=PROFILE_VERSION,
+        key=profile_key,
+        version=profile_version,
         format=SourceFormat.XLSX,
-        column_map=dict(COLUMN_MAP),
+        column_map=dict(column_map),
     )
     session.add(profile)
     session.flush()

@@ -5,7 +5,10 @@ export interface Normalization {
 
 export interface Structure {
   id: string;
+  key: string;
   label: string;
+  /** Set on the DREs derived from the managerial one (Caixa, Econômica). */
+  base_structure_id?: string | null;
 }
 
 export interface Unit {
@@ -23,6 +26,10 @@ export interface DreDefinition {
   line_type: "SOURCE_SUM" | "CALCULATED" | "SUBTOTAL" | "RESULT" | "PERCENTAGE";
   operation?: "SUM_LINES" | "SUM_CHILDREN" | "SUBTRACT" | "RATIO" | null;
   operands?: string[];
+  /** Kept in every total, left out of the screen and the Excel. */
+  hidden?: boolean;
+  /** Keeps its value but the group above does not add it. */
+  excluded?: boolean;
 }
 
 export interface DreVersion {

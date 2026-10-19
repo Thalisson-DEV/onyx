@@ -119,6 +119,10 @@ class NormalizationRequest(BaseModel):
     # Empty means an Actual-only run: Orçado stays zero and budget coverage
     # is not evaluated.
     budgets: list[BudgetInput] = Field(default_factory=list)
+    # The Controladoria's table of installments paid; its natureza and months
+    # replace the NG launches of the same natureza and month.
+    installment_source_id: UUID | None = None
+    installment_execution_id: UUID | None = None
     # Which inputs the run may read. None derives it from ``budgets``: budget
     # workbooks named explicitly are budgets someone approved for this run.
     input_policy: InputPolicy | None = None

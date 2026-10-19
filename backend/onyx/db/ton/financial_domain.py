@@ -3,6 +3,7 @@
 import datetime
 import hashlib
 import json
+import unicodedata
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 from decimal import Decimal
@@ -70,6 +71,7 @@ from onyx.ton.financial_review.models import (
     ReviewDisposition,
 )
 from onyx.ton.financial_review.rules import ng_invoice_key
+from onyx.ton.ng_financial import installments as installment_table
 from onyx.ton.ng_financial.models import ProfileExecutionStatus
 from onyx.ton.operational_import.parser import (
     BILLING_KEY,
@@ -487,6 +489,29 @@ def _validate_inputs(
         ):
             raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Invalid budget execution")
         budgets.append(execution)
+    if (request.installment_execution_id is None) != (
+        request.installment_source_id is None
+    ):
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Invalid installment input")
+    if request.installment_execution_id is not None:
+        assert request.installment_source_id is not None
+        execution = get_execution(
+            session,
+            user,
+            request.installment_source_id,
+            request.installment_execution_id,
+            permission,
+        )
+        profile = session.get(ImportProfile, execution.profile_id)
+        if (
+            profile is None
+            or profile.key != installment_table.PROFILE_KEY
+            or execution.status
+            not in (ProfileExecutionStatus.SUCCEEDED, ProfileExecutionStatus.PARTIAL)
+        ):
+            raise OnyxError(
+                OnyxErrorCode.INVALID_INPUT, "Invalid installment execution"
+            )
     return review, billing, budgets
 
 
@@ -759,6 +784,102 @@ def _apply_treatment(
     return treatment, account_id, None
 
 
+def _key(value: str | None) -> str:
+    text = unicodedata.normalize("NFKD", value or "")
+    return " ".join(text.encode("ascii", "ignore").decode().casefold().split())
+
+
+def _installment_facts(
+    session: Session,
+    run: FinancialNormalizationRun,
+    ng_source_id: UUID,
+    execution_id: UUID,
+    mappings: "MappingIndex",
+    counts: Counter[str],
+) -> list[dict[str, Any]]:
+    """Actual facts for the rows of the installment table.
+
+    The rows speak the NG's language when they can (its account code and unit
+    text, read through the NG mappings); otherwise a natureza code or name and
+    a unit code or name are accepted.
+    """
+    records = list(
+        session.scalars(
+            sa.select(ParsedSourceRecord)
+            .where(ParsedSourceRecord.execution_id == execution_id)
+            .order_by(ParsedSourceRecord.id)
+        )
+    )
+    accounts: dict[str, UUID] = {}
+    for account in session.scalars(sa.select(FinancialAccount)):
+        accounts.setdefault(_key(account.code), account.id)
+        accounts.setdefault(_key(account.label), account.id)
+    units: dict[str, UUID] = {}
+    for unit in session.scalars(sa.select(BusinessUnit)):
+        units.setdefault(_key(unit.code), unit.id)
+        units.setdefault(_key(unit.name), unit.id)
+
+    def unit_of(text: str | None) -> UUID | None:
+        if not text:
+            return None
+        code, _, name = text.partition(" - ")
+        candidates = [text, code, name]
+        if code.strip().isdigit():
+            candidates.append(code.strip().zfill(6))
+        for candidate in candidates:
+            found = units.get(_key(candidate))
+            if found is not None:
+                return found
+        return None
+
+    facts: list[dict[str, Any]] = []
+    for record in records:
+        account_map = mappings.find(
+            ng_source_id, MappingKind.ACCOUNT, record.account_code, record.emission_date
+        )
+        account_id = (
+            account_map.account_id
+            if account_map
+            else accounts.get(_key(record.account_code))
+            or accounts.get(_key(record.account_label))
+        )
+        unit_map = (
+            mappings.find(
+                ng_source_id,
+                MappingKind.UNIT,
+                record.administrative_unit,
+                record.emission_date,
+            )
+            if record.administrative_unit
+            else None
+        )
+        unit_id = unit_map.unit_id if unit_map else unit_of(record.administrative_unit)
+        facts.append(
+            {
+                "id": uuid4(),
+                "run_id": run.id,
+                "parsed_record_id": record.id,
+                "account_id": account_id,
+                "unit_id": unit_id,
+                "account_mapping_id": account_map.id if account_map else None,
+                "unit_mapping_id": unit_map.id if unit_map else None,
+                "emission_date": record.emission_date,
+                "calendar_period": _period(record.emission_date),
+                "source_sheet_month": record.sheet_month,
+                "movement_amount": record.movement_amount,
+                "final_amount": record.final_amount,
+                "disposition": "ACCEPTED",
+                "treatment_id": None,
+                "treatment_effect": None,
+                "original_account_id": None,
+            }
+        )
+        counts["installment_facts"] += 1
+        counts["actual_unmapped_account"] += account_id is None
+        counts["actual_unmapped_unit"] += unit_id is None
+    return facts
+
+
 def _persist_projection(
     session: Session,
     run: FinancialNormalizationRun,
@@ -766,6 +887,7 @@ def _persist_projection(
     billing_execution_id: UUID,
     budget_execution_ids: list[UUID],
     mapping_number: int,
+    installment_execution_id: UUID | None = None,
 ) -> dict[str, int]:
     mappings = _load_mappings(session, mapping_number)
     treatment_rules = treatments.in_force(rules_up_to(session, run.treatment_number))
@@ -891,6 +1013,27 @@ def _persist_projection(
         actual_documents[actual_id] = record.document_number
         counts["actual_unmapped_account"] += account_map is None
         counts["actual_unmapped_unit"] += unit_id is None
+    if installment_execution_id is not None:
+        table = _installment_facts(
+            session, run, review.source_id, installment_execution_id, mappings, counts
+        )
+        # The table is the truth for its natureza in the months it covers:
+        # the NG launches there stay as evidence but count as zero.
+        covered = {
+            (item["account_id"], item["calendar_period"])
+            for item in table
+            if item["account_id"] is not None
+        }
+        for item in actuals:
+            if (
+                item["account_id"],
+                item["calendar_period"],
+            ) in covered and item["treatment_effect"] != TreatmentEffect.EXCLUDE.value:
+                item["treatment_effect"] = TreatmentEffect.REPLACE_BY_SOURCE.value
+                counts["actual_replaced_by_installments"] += 1
+        for item in table:
+            actual_documents[item["id"]] = None
+        actuals.extend(table)
     for record in billing_records:
         if record.record_date is None or record.amount is None:
             raise OnyxError(OnyxErrorCode.CONFLICT, "Billing source contract changed")
@@ -1109,6 +1252,12 @@ def normalize(
     )
     input_digest = _digest(
         {
+            # Absent without the table, so earlier digests stay valid.
+            **(
+                {"installment_execution_id": request.installment_execution_id}
+                if request.installment_execution_id
+                else {}
+            ),
             "review_run_id": review.id,
             "dataset_revision": dataset_revision_value,
             "billing_execution_id": request.billing_execution_id,
@@ -1167,6 +1316,7 @@ def normalize(
         dataset_as_of=dataset_as_of,
         billing_execution_id=request.billing_execution_id,
         budget_execution_ids=[str(item) for item in budget_ids],
+        installment_execution_id=request.installment_execution_id,
         input_policy=request.effective_input_policy.value,
         mapping_revision_number=mapping_number,
         amount_basis_revision_number=basis_number,
@@ -1225,6 +1375,7 @@ def normalize(
             request.billing_execution_id,
             budget_ids,
             mapping_number,
+            request.installment_execution_id,
         )
         run.status = "SUCCEEDED"
         run.finished_at = datetime.datetime.now(datetime.UTC)
@@ -1323,12 +1474,21 @@ def normalization_request_for_run(
         budgets.append(
             BudgetInput(source_id=execution.source_id, execution_id=execution.id)
         )
+    installment = (
+        session.get(ImportProfileExecution, run.installment_execution_id)
+        if run.installment_execution_id
+        else None
+    )
     return NormalizationRequest(
         ng_source_id=review.source_id,
         review_run_id=review.id,
         billing_source_id=billing.source_id,
         billing_execution_id=billing.id,
         budgets=budgets,
+        installment_source_id=(
+            installment.source_id if installment is not None else None
+        ),
+        installment_execution_id=run.installment_execution_id,
         input_policy=(
             InputPolicy(run.input_policy)
             if run.input_policy in InputPolicy.__members__
@@ -1471,7 +1631,11 @@ def actual_amounts(
         if basis == "FINAL"
         else None
     )
-    if fact.treatment_effect == TreatmentEffect.EXCLUDE.value and original is not None:
+    if (
+        fact.treatment_effect
+        in (TreatmentEffect.EXCLUDE.value, TreatmentEffect.REPLACE_BY_SOURCE.value)
+        and original is not None
+    ):
         return basis, Decimal(0), original
     return basis, original, original
 

@@ -165,6 +165,20 @@ def expected_values(data: DreWorkbookInput) -> dict[str | None, ScopeValues]:
     return result
 
 
+def hidden_codes(lines: list[DreLineDefinition]) -> set[str]:
+    """Lines hidden by the structure, directly or through a hidden parent."""
+    by_code = {line.code: line for line in lines}
+    hidden: set[str] = set()
+    for line in lines:
+        current: DreLineDefinition | None = line
+        while current is not None:
+            if current.hidden:
+                hidden.add(line.code)
+                break
+            current = by_code.get(current.parent_code) if current.parent_code else None
+    return hidden
+
+
 def _depths(lines: list[DreLineDefinition]) -> dict[str, int]:
     by_code = {line.code: line for line in lines}
     depths: dict[str, int] = {}
@@ -193,7 +207,7 @@ def _cell_formula(
             if line.operation == DreOperation.SUM_CHILDREN
             else line.operands
         )
-        return "=" + "+".join(ref(code) for code in operands)
+        return "=" + ("+".join(ref(code) for code in operands) or "0")
     if line.operation == DreOperation.SUBTRACT:
         return f"={ref(line.operands[0])}-{ref(line.operands[1])}"
     numerator, denominator = ref(line.operands[0]), ref(line.operands[1])
@@ -276,9 +290,10 @@ def _write_dre_sheet(
     lines = sorted(data.lines, key=lambda item: item.position)
     calculation_order(lines)
     depths = _depths(lines)
+    hidden = hidden_codes(lines)
     children: dict[str, list[str]] = defaultdict(list)
     for line in lines:
-        if line.parent_code is not None:
+        if line.parent_code is not None and not line.excluded:
             children[line.parent_code].append(line.code)
     # Plain A1 ranges, not table references: Google Sheets turns Base[Valor]
     # into #REF! when it opens the file.
@@ -328,13 +343,16 @@ def _write_dre_sheet(
         )
         for line in lines:
             line_row = row_of[line.code]
+            if line.code in hidden:
+                # Hidden, not removed: the totals above still read the row.
+                sheet.set_row(line_row, None, None, {"hidden": True})
             is_source = line.line_type == DreLineType.SOURCE_SUM
             is_ratio = line.operation == DreOperation.RATIO
             sheet.write(line_row, 0, line.code)
             sheet.write(
                 line_row,
                 1,
-                line.label,
+                f"{line.label} (fora do resultado)" if line.excluded else line.label,
                 formats.indent[min(depths[line.code], 3)]
                 if is_source
                 else formats.text_bold,

@@ -200,6 +200,9 @@ export const COPY = {
     assistant: "Assistente",
     closing: "Fechamento",
     dre: "DRE",
+    dreManagerial: "DRE Gerencial",
+    dreCash: "DRE Caixa",
+    dreEconomic: "DRE Econômica",
     pending: "Pendências",
     automations: "Automações",
     emailFlows: "Fluxos de e-mail",
@@ -394,7 +397,11 @@ export const COPY = {
     summaryMonth: (line: string, month: string) => `${line} · ${month}`,
     scope: "Unidade/filial",
     consolidated: "Consolidado",
-    advanced: "Base e estrutura",
+    advanced: "Base de dados",
+    model: "Modelo da DRE",
+    createSimplified: "Criar DRE Caixa e Econômica",
+    creatingSimplified: "Criando…",
+    createSimplifiedFailed: "Não foi possível criar as DREs simplificadas.",
     normalization: "Base normalizada",
     structure: "Estrutura da DRE",
     months: "Meses do exercício",
@@ -453,6 +460,7 @@ export const COPY = {
       expand: (line: string) => `Expandir ${line}`,
       collapse: (line: string) => `Recolher ${line}`,
       drill: (line: string) => `Ver composição de ${line}`,
+      excluded: "fora do resultado",
     },
     year: {
       lineHeader: "Linha · R$",
@@ -516,11 +524,69 @@ export const COPY = {
         line: "Linha",
         group: "Grupo",
         result: "Resultado",
+        shown: "Na DRE",
         remove: "Remover",
       },
       kinds: { group: "Grupo", nature: "Natureza", total: "Total" },
       inResult: "Entra no resultado",
       outOfResult: "Fora do resultado",
+      shown: "Mostrar",
+      hidden: "Oculto",
+      hiddenButSummed: "Oculto, mas soma no resultado",
+      natureInGroup: "Soma no grupo",
+      natureOutOfGroup: "Fora do resultado",
+      natureOutHint:
+        "Continua aparecendo com o valor, mas o grupo e o resultado não a somam.",
+      tabs: { structure: "Estrutura", history: "Histórico" },
+      history: {
+        loading: "Carregando o histórico…",
+        failed: "Não foi possível carregar o histórico.",
+        empty: "Ainda não há versões anteriores.",
+        current: "Versão em uso",
+        version: (number: number) => `Versão ${number}`,
+        by: (author: string | null, date: string) =>
+          author ? `${author} · ${date}` : date,
+        noReason: "Sem motivo informado",
+        noChanges: "Sem mudança na estrutura (só a versão inicial ou um recálculo).",
+        restore: "Voltar para esta versão",
+        preview: (number: number) => `Voltar para a versão ${number}`,
+        previewIntro: "Ao confirmar, o TON cria uma nova versão com estas mudanças:",
+        previewNone:
+          "Nada a voltar: a estrutura em uso já é igual a esta versão (naturezas criadas depois dela são mantidas).",
+        leftOut: (natures: string) =>
+          `Ficam sem linha (o grupo delas não existe nesta versão): ${natures}. Elas voltarão para a Classificação.`,
+        reason: "Motivo da volta (opcional)",
+        confirm: "Confirmar a volta",
+        confirming: "Voltando…",
+        cancel: "Cancelar",
+        restoreFailed: "Não foi possível voltar para esta versão.",
+        changes: {
+          LINE_ADDED: (line: string, _before: string | null, after: string | null) =>
+            after ? `Linha “${line}” criada em “${after}”` : `Linha “${line}” criada`,
+          LINE_REMOVED: (line: string, before: string | null) =>
+            before ? `Linha “${line}” removida de “${before}”` : `Linha “${line}” removida`,
+          LINE_RENAMED: (_line: string, before: string | null, after: string | null) =>
+            `“${before}” renomeada para “${after}”`,
+          LINE_MOVED: (line: string, before: string | null, after: string | null) =>
+            `“${line}” saiu de “${before}” para “${after}”`,
+          ORDER_CHANGED: (line: string) => `Ordem alterada em “${line}”`,
+          INTO_RESULT: (line: string) => `“${line}” voltou a entrar no resultado`,
+          OUT_OF_RESULT: (line: string) => `“${line}” saiu do resultado`,
+          FORMULA_CHANGED: (line: string, before: string | null, after: string | null) =>
+            `Cálculo de “${line}”: ${before || "—"} → ${after || "—"}`,
+          HIDDEN: (line: string) => `“${line}” oculta na DRE`,
+          SHOWN: (line: string) => `“${line}” voltou a aparecer na DRE`,
+          NATURE_LINKED: (line: string, _before: string | null, after: string | null) =>
+            `Natureza ${line} ligada a “${after}”`,
+          NATURE_UNLINKED: (line: string, before: string | null) =>
+            `Natureza ${line} desligada de “${before}”`,
+          NATURE_RELINKED: (line: string, before: string | null, after: string | null) =>
+            `Natureza ${line}: “${before}” → “${after}”`,
+        } as Record<
+          string,
+          (line: string, before: string | null, after: string | null) => string
+        >,
+      },
       newGroup: "Novo grupo",
       addGroup: "Novo grupo",
       rename: (line: string) => `Nome de ${line}`,
@@ -1434,6 +1500,23 @@ export const COPY = {
       rejected: "Rejeitados",
       toDecide: "Lançamentos aguardando decisão",
       actionableTitle: "Linhas com problema",
+      problems: {
+        show: "Ver linhas",
+        hide: "Ocultar",
+        loading: "Lendo as linhas no arquivo importado…",
+        failed: "Não foi possível ler as linhas. Tente de novo.",
+        cellsUnavailable:
+          "O arquivo importado não pôde ser lido de novo; abaixo só a aba e a linha.",
+        columns: {
+          place: "Aba e linha",
+          column: "Coluna",
+          content: "O que está na linha (a coluna com problema em destaque)",
+        },
+        place: (sheet: string, row: number) => `${sheet} · linha ${row}`,
+        emptyCell: (column: string) => `Coluna ${column}: vazia`,
+        truncated: (shown: string, total: string) =>
+          `Mostrando ${shown} de ${total} linhas.`,
+      },
       informational: (count: number) =>
         `${plural(count, "observação da leitura", "observações da leitura")} que não exigem ação`,
       nextNg:

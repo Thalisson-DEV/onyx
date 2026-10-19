@@ -28,6 +28,7 @@ from onyx.db.ton.models import (
     AccountClassificationSuggestion,
     BusinessUnit,
     DreAccountMapping,
+    DreStructure,
     DreStructureVersion,
     FinancialAccount,
     FinancialActualFact,
@@ -131,8 +132,12 @@ class _DreLayout:
 
 def _newest_version(session: Session) -> DreStructureVersion | None:
     """Newest version of the structure with the most account assignments."""
+    # Derived structures (Caixa, Econômica) follow the managerial one.
     versions = session.scalars(
-        sa.select(DreStructureVersion).order_by(DreStructureVersion.number.desc())
+        sa.select(DreStructureVersion)
+        .join(DreStructure, DreStructure.id == DreStructureVersion.structure_id)
+        .where(DreStructure.base_structure_id.is_(None))
+        .order_by(DreStructureVersion.number.desc())
     ).all()
     newest: dict[UUID, DreStructureVersion] = {}
     for version in versions:

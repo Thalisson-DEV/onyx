@@ -105,6 +105,47 @@ function Select({ label, value, options, onChange }: SelectProps) {
   );
 }
 
+function ModelPicker({ dre }: { dre: DreWorkspace }) {
+  const [creating, setCreating] = useState(false);
+  const [failed, setFailed] = useState(false);
+  if (dre.structures.length > 1)
+    return (
+      <Select
+        label={COPY.dre.model}
+        value={dre.structureId ?? ""}
+        onChange={dre.select.structure}
+        options={dre.structures.map((item) => ({
+          value: item.id,
+          label: getBusinessLabel(item.label),
+        }))}
+      />
+    );
+  if (!dre.access.isAdmin || dre.structures.length === 0) return null;
+  return (
+    <span className="flex flex-col gap-1 self-end">
+      <Button
+        prominence="secondary"
+        disabled={creating}
+        onClick={() => {
+          setCreating(true);
+          setFailed(false);
+          dre
+            .createSimplified()
+            .catch(() => setFailed(true))
+            .finally(() => setCreating(false));
+        }}
+      >
+        {creating ? COPY.dre.creatingSimplified : COPY.dre.createSimplified}
+      </Button>
+      {failed && (
+        <Text font="secondary-body" color="status-error-05">
+          {COPY.dre.createSimplifiedFailed}
+        </Text>
+      )}
+    </span>
+  );
+}
+
 function Toolbar({ dre }: { dre: DreWorkspace }) {
   return (
     <div className="flex flex-wrap items-end gap-3">
@@ -117,6 +158,7 @@ function Toolbar({ dre }: { dre: DreWorkspace }) {
           label: formatPeriod(item.scope.period),
         }))}
       />
+      <ModelPicker dre={dre} />
       <UnitPicker dre={dre} />
       {dre.access.isAdmin && (
         <details className="group self-end">
@@ -137,15 +179,6 @@ function Toolbar({ dre }: { dre: DreWorkspace }) {
               options={dre.normalizations.map((run) => ({
                 value: run.id,
                 label: formatDateTime(run.started_at),
-              }))}
-            />
-            <Select
-              label={COPY.dre.structure}
-              value={dre.structureId ?? ""}
-              onChange={dre.select.structure}
-              options={dre.structures.map((item) => ({
-                value: item.id,
-                label: getBusinessLabel(item.label),
               }))}
             />
           </div>

@@ -1821,3 +1821,41 @@ html:has(.ton-shell) body {
 .ton-compare tbody th {
   width: 9rem;
 }
+
+/* Fontes: rows behind one import problem. */
+.ton-problem-rows th,
+.ton-problem-rows td {
+  padding: 6px 10px;
+  text-align: start;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border-01);
+}
+.ton-problem-rows th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-03);
+  background: var(--background-tint-01);
+}
+.ton-problem-rows tr:last-child td {
+  border-bottom: 0;
+}
+.ton-problem-cell {
+  display: inline-block;
+  max-width: 28rem;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-04);
+  background: var(--background-tint-02);
+  overflow-wrap: anywhere;
+}
+.ton-problem-cell b {
+  font-weight: 600;
+  color: var(--text-03);
+}
+.ton-problem-cell.is-flagged {
+  color: var(--status-error-05);
+  background: var(--status-error-01);
+  outline: 1px solid var(--status-error-05);
+}

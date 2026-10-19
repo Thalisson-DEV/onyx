@@ -1,7 +1,8 @@
 import type { ClientSource } from "@/lib/ton/types";
 
-// The DRE needs the NG export and billing; the budget is optional for now.
-const OPTIONAL_SOURCES = new Set(["budget"]);
+// The DRE needs the NG export and billing; the budget and the installment
+// table are optional.
+const OPTIONAL_SOURCES = new Set(["budget", "installments"]);
 
 export interface SourcesSummary {
   /** Sources the closing needs that the user can import. */

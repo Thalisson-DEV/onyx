@@ -143,6 +143,13 @@ function LineLabel({
       ) : (
         <span className="truncate">{label}</span>
       )}
+      {definition.excluded && (
+        <span className="shrink-0">
+          <Text font="secondary-body" color="text-03">
+            {`(${COPY.dre.table.excluded})`}
+          </Text>
+        </span>
+      )}
     </span>
   );
 }

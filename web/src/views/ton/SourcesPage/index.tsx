@@ -327,7 +327,7 @@ function SourceRow({
           )}
           {detail && (
             <div className="rounded-12 border border-01 p-4">
-              <ImportDetail result={detail} />
+              <ImportDetail result={detail} sourceKey={source.key} />
             </div>
           )}
         </div>

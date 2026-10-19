@@ -1144,6 +1144,10 @@ class FinancialNormalizationRun(Base):
         nullable=False,
     )
     budget_execution_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    installment_execution_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_import_profile_execution.id", ondelete="RESTRICT"),
+    )
     # Which inputs the run may read: ACTUAL_ONLY, ACTUAL_AND_APPROVED_BUDGET, or
     # LEGACY_ALL_AVAILABLE for runs made before the policy existed.
     input_policy: Mapped[str] = mapped_column(
@@ -1487,6 +1491,12 @@ class DreStructure(Base):
     )
     key: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     label: Mapped[str] = mapped_column(String(500), nullable=False)
+    # A derived structure (Caixa, Econômica) regroups the natureza lines of
+    # its base and follows every new version of it.
+    base_structure_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_dre_structure.id", ondelete="RESTRICT")
+    )
+    template_key: Mapped[str | None] = mapped_column(String(50))
 
 
 class DreStructureVersion(Base):

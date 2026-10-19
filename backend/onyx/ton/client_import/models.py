@@ -9,6 +9,31 @@ class DiagnosticSummary(BaseModel):
     count: int
 
 
+class ProblemRowCell(BaseModel):
+    column: str
+    header: str | None
+    value: str
+
+
+class ProblemRow(BaseModel):
+    """One row the reader flagged, with the cells read back from the file."""
+
+    code: str
+    level: str
+    sheet_name: str | None
+    row_number: int | None
+    column: str | None
+    cells: list[ProblemRowCell]
+
+
+class ProblemRowsView(BaseModel):
+    code: str
+    total: int
+    rows: list[ProblemRow]
+    # False when the file could not be read back (cells stay empty).
+    cells_available: bool
+
+
 class ClientImportView(BaseModel):
     id: UUID
     source_id: UUID

@@ -66,15 +66,15 @@ function normal(value: string): string {
 /** Wider columns for long text, narrow ones for codes and numbers. */
 function widthOf(title: string): string {
   const name = normal(title);
-  if (name.includes("unidade")) return "17rem";
+  if (name.includes("unidade")) return "14rem";
   if (["credor", "descri", "hist"].some((word) => name.includes(word)))
-    return "14rem";
-  if (name.includes("conta")) return "11rem";
-  if (name.includes("parcelamento")) return "10rem";
-  if (name.includes("data") || name.includes("valor")) return "9rem";
+    return "11rem";
+  if (name.includes("conta")) return "10rem";
+  if (name.includes("parcelamento")) return "9rem";
+  if (name.includes("data") || name.includes("valor")) return "8rem";
   if (name === "parcela") return "6rem";
-  if (name.includes("mes")) return "7rem";
-  return "9rem";
+  if (name.includes("mes")) return "6rem";
+  return "8rem";
 }
 
 function emptyRow(width: number): string[] {
@@ -221,7 +221,7 @@ export default function PasteTable({
         role="dialog"
         aria-modal="true"
         aria-labelledby="ton-paste-title"
-        className="ton-drawer fixed inset-y-0 end-0 z-50 flex flex-col w-full lg:w-[min(1180px,calc(100vw-4rem))]"
+        className="ton-drawer fixed inset-y-0 end-0 z-50 flex flex-col w-full lg:w-[min(1320px,calc(100vw-3rem))]"
       >
         <header className="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-01">
           <div className="flex flex-col gap-1 min-w-0">

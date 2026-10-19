@@ -258,6 +258,16 @@ def test_header_section_subtotal_total_and_blank_rows() -> None:
     }
 
 
+def test_header_of_the_newer_export_opens_the_sheet() -> None:
+    header = ["Natureza Gerencial", *HEADER[1:3], "Número Documento", *HEADER[4:]]
+    result = parse(book({"Jul Fin": [header, *tree_rows()]}))
+    assert result.sheets[0].classifications[RowKind.HEADER] == 1
+    plain = parse(book({"Jul Fin": tree_rows()})).records
+    assert [r.model_dump(exclude={"locator"}) for r in result.records] == [
+        r.model_dump(exclude={"locator"}) for r in plain
+    ]
+
+
 def test_blank_row_inside_sheet_is_classified() -> None:
     rows = tree_rows()
     spaced = [*rows[:7], [None] * 3, *rows[7:]]

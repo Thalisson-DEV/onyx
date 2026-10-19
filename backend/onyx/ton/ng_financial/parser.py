@@ -119,6 +119,11 @@ HEADER = (
     "Valor Outras Deduções",
     "Valor Final",
 )
+# Other names an NG export gives the same column (the 2026-10 export).
+HEADER_ALIASES: dict[int, tuple[str, ...]] = {
+    0: ("Natureza Gerencial",),
+    3: ("Número Documento",),
+}
 AMOUNT_SLICE = slice(5, CONTRACT_WIDTH)
 
 
@@ -302,8 +307,10 @@ def _read_sheet(sheet: ReadOnlyWorksheet, budget: _Budget) -> list[_SheetRow]:
 
 def _is_header(values: Sequence[object]) -> bool:
     return all(
-        isinstance(value, str) and value.strip().casefold() == label.casefold()
-        for value, label in zip(values, HEADER, strict=True)
+        isinstance(value, str)
+        and value.strip().casefold()
+        in {name.casefold() for name in (label, *HEADER_ALIASES.get(index, ()))}
+        for index, (value, label) in enumerate(zip(values, HEADER, strict=True))
     )
 
 

@@ -6,6 +6,7 @@ import { Button, Text } from "@opal/components";
 import {
   SvgAlertTriangle,
   SvgCheckCircle,
+  SvgClipboard,
   SvgChevronDown,
   SvgChevronUp,
   SvgFileText,
@@ -25,6 +26,7 @@ import { getBusinessLabel } from "@/lib/ton/labels";
 import { summarizeSources } from "@/lib/ton/sources";
 import type { ClientImport, ClientSource } from "@/lib/ton/types";
 import { ImportDetail, SourceUpload } from "@/views/ton/DataSourcesPage";
+import PasteTable, { PASTE_COLUMNS } from "@/views/ton/SourcesPage/PasteTable";
 import {
   ErrorState,
   IconTile,
@@ -146,6 +148,7 @@ interface SourceRowProps {
   source: ClientSource;
   directIntegration: string | undefined;
   onUpload: (source: ClientSource) => void;
+  onPaste: (source: ClientSource) => void;
   justImported: ClientImport | null;
   /** Opened from a link that asks for this source's latest import. */
   focused: boolean;
@@ -155,6 +158,7 @@ function SourceRow({
   source,
   directIntegration,
   onUpload,
+  onPaste,
   justImported,
   focused,
 }: SourceRowProps) {
@@ -225,6 +229,16 @@ function SourceRow({
           <StatusPill tone={sourceTone(source.status)}>
             {getBusinessLabel(source.status)}
           </StatusPill>
+          {source.can_import && PASTE_COLUMNS[source.key] && (
+            <Button
+              size="md"
+              prominence="secondary"
+              icon={SvgClipboard}
+              onClick={() => onPaste(source)}
+            >
+              {COPY.sources.pasteOpen}
+            </Button>
+          )}
           {source.can_import && source.source_id && (
             <Button
               size="md"
@@ -340,6 +354,7 @@ export default function SourcesPage() {
   const sources = useTonDataSources();
   const closing = useTonClosing();
   const [uploadSource, setUploadSource] = useState<ClientSource | null>(null);
+  const [pasteSource, setPasteSource] = useState<ClientSource | null>(null);
   const [imported, setImported] = useState<{
     key: string;
     result: ClientImport;
@@ -401,6 +416,7 @@ export default function SourcesPage() {
                 source={source}
                 directIntegration={directFor(source.key)}
                 onUpload={setUploadSource}
+                onPaste={setPasteSource}
                 justImported={
                   imported?.key === source.key ? imported.result : null
                 }
@@ -409,6 +425,18 @@ export default function SourcesPage() {
             ))}
           </section>
         </>
+      )}
+      {pasteSource && (
+        <PasteTable
+          source={pasteSource}
+          onClose={() => setPasteSource(null)}
+          onComplete={(result) => {
+            setImported({ key: pasteSource.key, result });
+            setPasteSource(null);
+            void sources.mutate();
+            void closing.mutate();
+          }}
+        />
       )}
       {uploadSource && (
         <SourceUpload

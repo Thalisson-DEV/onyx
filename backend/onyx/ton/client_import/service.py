@@ -1,5 +1,6 @@
 """Client entry point over the existing TON capture and import services."""
 
+from datetime import datetime, timezone
 from io import BytesIO
 from typing import BinaryIO
 from uuid import UUID
@@ -25,6 +26,9 @@ from onyx.ton.client_import.models import (
     ClientImportView,
     ClientSourceView,
     DiagnosticSummary,
+    PastedProblem,
+    PastedTable,
+    PastedValidation,
     ProblemRow,
     ProblemRowCell,
     ProblemRowsView,
@@ -644,3 +648,75 @@ def preview_client_import(
             "changes_actuals": True,
         }
     )
+
+
+# Tables the Controladoria keeps itself can be pasted into the TON grid.
+PASTABLE = {"installments": InstallmentTableParser}
+XLSX_MEDIA = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _pasted_workbook(table: PastedTable) -> bytes:
+    from openpyxl import Workbook
+
+    book = Workbook()
+    sheet = book.active
+    assert sheet is not None
+    sheet.title = "Colado no TON"
+    width = max(len(row) for row in table.rows)
+    if width > 40:
+        raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Too many pasted columns")
+    for row in table.rows:
+        sheet.append([(value or "").strip() or None for value in row])
+    out = BytesIO()
+    book.save(out)
+    return out.getvalue()
+
+
+def paste_client_table(
+    session: Session,
+    user: User,
+    key: str,
+    table: PastedTable,
+    store: FileStore,
+) -> PastedValidation:
+    """Validate (dry run) or import a table pasted into the TON grid.
+
+    The pasted cells become a workbook that is stored like any upload, so
+    the import keeps its evidence: the exact table the person confirmed.
+    """
+    parser = PASTABLE.get(key)
+    if parser is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "This source does not accept pasted tables")
+    content = _pasted_workbook(table)
+    try:
+        parsed = parser().parse(content, UUID(int=0))
+        records, diagnostics = len(parsed.records), parsed.diagnostics
+    except OnyxError:
+        records, diagnostics = 0, []
+    problems = [
+        PastedProblem(
+            code=item.code.value,
+            level=item.level.value,
+            row_number=item.row_number,
+            column=item.column,
+        )
+        for item in diagnostics
+        if item.code.value != "SHEET_OUT_OF_SCOPE"
+    ]
+    if records == 0 and not problems:
+        problems.append(
+            PastedProblem(code="TABLE_NOT_RECOGNIZED", level="ERROR", row_number=1, column=None)
+        )
+    if table.dry_run or records == 0:
+        return PastedValidation(records=records, problems=problems)
+    stamp = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H%M")
+    result = upload_client_source(
+        session,
+        user,
+        key,
+        BytesIO(content),
+        f"Colado no TON - {stamp}.xlsx",
+        XLSX_MEDIA,
+        store,
+    )
+    return PastedValidation(records=records, problems=problems, result=result)

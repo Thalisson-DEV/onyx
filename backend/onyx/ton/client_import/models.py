@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DiagnosticSummary(BaseModel):
@@ -104,3 +104,24 @@ class ReimportPreviewView(BaseModel):
     attention: list[ReimportPreviewItem]
     # Importing this source changes the actual (Realizado) base.
     changes_actuals: bool
+
+
+class PastedTable(BaseModel):
+    """Rows pasted into the TON grid; the first row holds the column titles."""
+
+    rows: list[list[str | None]] = Field(min_length=2, max_length=5001)
+    dry_run: bool = True
+
+
+class PastedProblem(BaseModel):
+    code: str
+    level: str
+    # 1-based row of the pasted table (1 = the titles) and column letter.
+    row_number: int | None
+    column: str | None
+
+
+class PastedValidation(BaseModel):
+    records: int
+    problems: list[PastedProblem]
+    result: ClientImportView | None = None

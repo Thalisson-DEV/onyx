@@ -1467,6 +1467,35 @@ export const COPY = {
     warnings: "Avisos",
     never: "Nunca importado",
     update: "Atualizar dados",
+    pasteOpen: "Colar planilha",
+    paste: {
+      title: "Colar planilha",
+      description:
+        "Copie as linhas no Excel (com ou sem os títulos) e cole em qualquer célula. Corrija aqui mesmo, confira e importe.",
+      close: "Fechar",
+      row: "Linha",
+      titleOf: (column: string) => `Título da coluna ${column}`,
+      cell: (column: string, row: number) => `Coluna ${column}, linha ${row}`,
+      removeRow: (row: number) => `Remover a linha ${row}`,
+      addRows: "Mais 10 linhas",
+      filled: (rows: string) => `${rows} linhas preenchidas`,
+      cancel: "Cancelar",
+      check: "Conferir",
+      checking: "Conferindo…",
+      import: (rows: string) => `Importar ${rows} linhas`,
+      importing: "Importando…",
+      summary: (records: string, errors: number) =>
+        errors
+          ? `${records} linhas prontas · ${errors} com problema (em destaque na grade)`
+          : `${records} linhas prontas para importar`,
+      problemAt: (row: number | null, column: string | null, label: string) =>
+        `${row ? `Linha ${row}` : "Tabela"}${column ? ` · coluna ${column}` : ""}: ${label}`,
+      notRecognized:
+        "Não encontrei as colunas obrigatórias: Mês (ou Data de pagamento), Unidade e Valor pago.",
+      failed: "Não foi possível conferir a tabela.",
+      evidence:
+        "A tabela importada fica guardada como arquivo da fonte, com data e autor, como um upload.",
+    },
     preview: {
       check: "Ver o que muda",
       confirm: "Confirmar importação",

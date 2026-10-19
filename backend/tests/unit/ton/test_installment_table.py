@@ -119,3 +119,25 @@ def test_months_in_the_ways_people_write_them(
     value: object, expected: datetime.date
 ) -> None:
     assert parse_month(value) == expected
+
+
+def test_pasted_rows_read_like_the_template() -> None:
+    from onyx.ton.client_import.models import PastedTable
+    from onyx.ton.client_import.service import _pasted_workbook
+
+    table = PastedTable(
+        rows=[
+            ["Mês", "Unidade", "Conta NG", "Valor pago"],
+            ["01/2026", "000001 - ADMINISTRAÇÃO CENTRAL", "2.4.0002", "45.000,00"],
+            ["fev/26", "000009", "", "R$ 1.000,50"],
+            ["13/2026", "000009", "", "10"],
+        ]
+    )
+    result = InstallmentTableParser().parse(_pasted_workbook(table), SNAPSHOT)
+    assert [record.final_amount for record in result.records] == [
+        Decimal("-45000.00"),
+        Decimal("-1000.50"),
+    ]
+    assert [(item.code, item.row_number) for item in result.diagnostics] == [
+        ("INVALID_DATE", 4)
+    ]

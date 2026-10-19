@@ -13,6 +13,8 @@ from onyx.file_store.file_store import get_default_file_store
 from onyx.ton.client_import.models import (
     ClientImportView,
     ClientSourceView,
+    PastedTable,
+    PastedValidation,
     ProblemRowsView,
     ReimportPreviewView,
 )
@@ -20,6 +22,7 @@ from onyx.ton.client_import.service import (
     get_client_import,
     get_problem_rows as problem_rows,
     list_client_sources,
+    paste_client_table,
     preview_client_import,
     upload_client_source,
 )
@@ -51,6 +54,17 @@ def upload_financial_source(
         file.content_type or "",
         get_default_file_store(),
     )
+
+
+@router.post("/{key}/paste")
+def paste_financial_table(
+    key: str,
+    table: PastedTable,
+    user: User = Depends(require_permission(Permission.IMPORT_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> PastedValidation:
+    """Rows pasted into the TON grid: checked, or imported like a file."""
+    return paste_client_table(session, user, key, table, get_default_file_store())
 
 
 @router.post("/{key}/imports/preview")

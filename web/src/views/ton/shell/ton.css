@@ -1861,56 +1861,111 @@ html:has(.ton-shell) body {
 }
 
 /* Paste grid: a light spreadsheet for tables the Controladoria keeps. */
+.ton-paste-frame {
+  border: 1px solid var(--border-02);
+  border-radius: 10px;
+  background: var(--background-neutral-00, var(--background-tint-00));
+}
 .ton-paste-grid {
+  width: 100%;
+  min-width: max-content;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
+}
+.ton-paste-index-col {
+  width: 3rem;
+}
+.ton-paste-action-col {
+  width: 2.5rem;
 }
 .ton-paste-grid th,
 .ton-paste-grid td {
   padding: 0;
-  border: 1px solid var(--border-01);
+  border-bottom: 1px solid var(--border-01);
+  border-right: 1px solid var(--border-01);
+}
+.ton-paste-grid tr > :last-child {
+  border-right: 0;
 }
 .ton-paste-grid thead th {
+  position: sticky;
+  z-index: 1;
   background: var(--background-tint-01);
-  vertical-align: bottom;
 }
-.ton-paste-letter {
-  display: block;
-  padding: 2px 6px 0;
-  font-size: 11px;
-  color: var(--text-03);
-}
-.ton-paste-index {
-  min-width: 2.75rem;
-  padding: 0 6px;
+.ton-paste-letters th {
+  top: 0;
+  height: 22px;
   font-size: 11px;
   font-weight: 500;
   color: var(--text-03);
-  text-align: end;
+  text-align: center;
+}
+.ton-paste-titles th {
+  top: 22px;
+  border-bottom: 1px solid var(--border-02);
+}
+.ton-paste-index {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-03);
+  text-align: center;
   background: var(--background-tint-01);
 }
-.ton-paste-grid tr.is-flagged .ton-paste-index {
+.ton-paste-grid tbody tr:hover td {
+  background: var(--background-tint-01);
+}
+.ton-paste-grid tbody tr.is-flagged .ton-paste-index {
   color: var(--status-error-05);
   background: var(--status-error-01);
 }
 .ton-paste-cell {
-  width: 10rem;
-  min-width: 6rem;
-  height: 30px;
-  padding: 0 8px;
+  display: block;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
   border: 0;
+  border-radius: 0;
   color: var(--text-05);
   background: transparent;
+  text-overflow: ellipsis;
 }
 .ton-paste-cell.is-title {
   font-weight: 600;
+  color: var(--text-04);
 }
 .ton-paste-cell:focus {
-  outline: 2px solid var(--action-link-05, var(--text-05));
+  outline: 2px solid var(--theme-primary-05, var(--text-05));
   outline-offset: -2px;
-  background: var(--background-neutral-00, transparent);
 }
-.ton-paste-cell.is-flagged {
-  color: var(--status-error-05);
+.ton-paste-grid td.is-flagged,
+.ton-paste-grid tbody tr:hover td.is-flagged {
   background: var(--status-error-01);
   box-shadow: inset 0 0 0 1px var(--status-error-05);
+}
+.ton-paste-grid td.is-flagged .ton-paste-cell {
+  color: var(--status-error-05);
+}
+.ton-paste-action {
+  text-align: center;
+}
+.ton-paste-action .ton-icon-button {
+  opacity: 0;
+}
+.ton-paste-grid tbody tr:hover .ton-paste-action .ton-icon-button,
+.ton-paste-action .ton-icon-button:focus-visible {
+  opacity: 1;
+}
+.ton-paste-result {
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+.ton-paste-result.is-ok {
+  color: var(--status-success-05);
+  background: var(--status-success-01);
+}
+.ton-paste-result.is-error {
+  color: var(--status-error-05);
+  background: var(--status-error-01);
 }

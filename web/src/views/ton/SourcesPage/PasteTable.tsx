@@ -63,6 +63,20 @@ function normal(value: string): string {
     .trim();
 }
 
+/** Wider columns for long text, narrow ones for codes and numbers. */
+function widthOf(title: string): string {
+  const name = normal(title);
+  if (name.includes("unidade")) return "17rem";
+  if (["credor", "descri", "hist"].some((word) => name.includes(word)))
+    return "14rem";
+  if (name.includes("conta")) return "11rem";
+  if (name.includes("parcelamento")) return "10rem";
+  if (name.includes("data") || name.includes("valor")) return "9rem";
+  if (name === "parcela") return "6rem";
+  if (name.includes("mes")) return "7rem";
+  return "9rem";
+}
+
 function emptyRow(width: number): string[] {
   return Array.from({ length: width }, () => "");
 }
@@ -228,14 +242,30 @@ export default function PasteTable({
             onClick={onClose}
           />
         </header>
-        <div className="flex-1 overflow-auto px-6 py-4">
-          <table className="ton-paste-grid border-collapse">
+        <div className="flex-1 min-h-0 flex flex-col gap-3 px-6 py-4">
+          <div className="ton-paste-frame flex-1 min-h-0 overflow-auto">
+          <table className="ton-paste-grid">
+            <colgroup>
+              <col className="ton-paste-index-col" />
+              {header.map((title, column) => (
+                <col key={column} style={{ width: widthOf(title) }} />
+              ))}
+              <col className="ton-paste-action-col" />
+            </colgroup>
             <thead>
-              <tr>
-                <th scope="col" className="ton-paste-index" aria-label={T.row} />
+              <tr className="ton-paste-letters" aria-hidden>
+                <th />
+                {header.map((_, column) => (
+                  <th key={column}>{letter(column)}</th>
+                ))}
+                <th />
+              </tr>
+              <tr className="ton-paste-titles">
+                <th scope="col" className="ton-paste-index">
+                  <span className="sr-only">{T.row}</span>
+                </th>
                 {header.map((title, column) => (
                   <th key={column} scope="col">
-                    <span className="ton-paste-letter">{letter(column)}</span>
                     <input
                       className="ton-paste-cell is-title ton-focusable"
                       value={title}
@@ -262,12 +292,9 @@ export default function PasteTable({
                   {header.map((_, column) => {
                     const problem = flagged.get(`${row}:${column}`);
                     return (
-                      <td key={column}>
+                      <td key={column} className={cn(problem && "is-flagged")}>
                         <input
-                          className={cn(
-                            "ton-paste-cell ton-focusable",
-                            problem && "is-flagged"
-                          )}
+                          className="ton-paste-cell ton-focusable"
                           value={cells[column] ?? ""}
                           title={problem}
                           aria-label={T.cell(letter(column), row + 2)}
@@ -283,27 +310,32 @@ export default function PasteTable({
                       </td>
                     );
                   })}
-                  <td>
-                    <button
-                      type="button"
-                      className="ton-focusable ton-icon-button"
-                      aria-label={T.removeRow(row + 2)}
-                      onClick={() =>
-                        setRows((old) =>
-                          old.length > 1 ? old.filter((_, index) => index !== row) : old
-                        )
-                      }
-                    >
-                      <SvgTrash size={14} />
-                    </button>
+                  <td className="ton-paste-action">
+                    {cells.some((cell) => cell.trim()) && (
+                      <button
+                        type="button"
+                        className="ton-focusable ton-icon-button"
+                        aria-label={T.removeRow(row + 2)}
+                        onClick={() =>
+                          setRows((old) =>
+                            old.length > 1
+                              ? old.filter((_, index) => index !== row)
+                              : old
+                          )
+                        }
+                      >
+                        <SvgTrash size={14} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div className="pt-3">
+          </div>
+          <div className="flex items-center justify-between gap-3">
             <Button
-              prominence="secondary"
+              prominence="tertiary"
               icon={SvgPlus}
               onClick={() =>
                 setRows((old) => [
@@ -314,16 +346,25 @@ export default function PasteTable({
             >
               {T.addRows}
             </Button>
+            <Text font="secondary-body" color="text-03">
+              {T.filled(formatNumber(filled.length))}
+            </Text>
           </div>
         </div>
         <footer className="flex flex-col gap-3 px-6 py-4 border-t border-01">
           {current && (
-            <div className="flex flex-col gap-1" role="status">
-              <Text font="secondary-action" color={errors ? "status-error-05" : "text-05"}>
+            <div
+              role="status"
+              className={cn(
+                "ton-paste-result flex flex-col gap-1",
+                errors ? "is-error" : "is-ok"
+              )}
+            >
+              <Text font="secondary-action" color="inherit">
                 {T.summary(formatNumber(validation.records), errors)}
               </Text>
               {validation.problems.length > 0 && (
-                <ul className="flex flex-col gap-0.5 max-h-28 overflow-auto">
+                <ul className="flex flex-col gap-0.5 max-h-24 overflow-auto">
                   {validation.problems.map((problem, index) => (
                     <li key={index}>
                       <Text font="secondary-body" color="text-04">
@@ -340,11 +381,12 @@ export default function PasteTable({
               {failure}
             </Text>
           )}
-          <div className="flex flex-wrap items-center justify-end gap-3">
-            <Text font="secondary-body" color="text-03">
-              {T.filled(formatNumber(filled.length))}
-            </Text>
-            <span className="flex-1" />
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="flex-1 min-w-[14rem]">
+              <Text font="secondary-body" color="text-03">
+                {T.evidence}
+              </Text>
+            </span>
             <Button prominence="tertiary" disabled={busy !== null} onClick={onClose}>
               {T.cancel}
             </Button>
@@ -364,9 +406,6 @@ export default function PasteTable({
                 : T.import(formatNumber(current ? validation.records : 0))}
             </Button>
           </div>
-          <Text font="secondary-body" color="text-03">
-            {T.evidence}
-          </Text>
         </footer>
       </aside>
     </>

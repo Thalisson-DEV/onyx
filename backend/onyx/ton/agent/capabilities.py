@@ -75,6 +75,9 @@ OPERATIONAL_TESTS = (
     ("T30", "Preço de compra", "COMPRAS", "compras e histórico de preços"),
 )
 
+# Financial tests the chat runs on demand and the R1 sweep runs daily.
+AGENT_TESTS = frozenset({"T1", "T2", "T3", "T6", "T8", "T9", "T10"})
+
 STATUS_LABELS: dict[str, str] = {
     "OPERATIONAL": "Operacional",
     "PARTIAL": "Parcial",
@@ -101,9 +104,13 @@ def rule_capabilities() -> list[CapabilityView]:
             dependency = (
                 "Resolver bloqueios de prontidão antes de publicar valores oficiais."
             )
+        elif key in AGENT_TESTS:
+            status = "PARTIAL"
+            reason = "Roda sob demanda no chat do TON e na varredura diária R1, com evidência por linha. Os limites são parâmetros de cada execução e a criticidade é aprovada no registro; ainda não é regra aprovada."
+            dependency = "Aprovar os limites do teste como regra versionada da Controladoria."
         elif key == "T4":
             status = "PARTIAL"
-            reason = "Conciliação NG e faturamento disponível. O teste de divergência por unidade do Prompt Mestre ainda não está habilitado."
+            reason = "Conciliação NG e faturamento disponível; o chat compara receita do NG e notas por unidade sob demanda e na varredura R1. Limites ainda não aprovados como regra."
             dependency = "Aprovar vínculos, semântica de valor e configuração do teste por unidade."
         result.append(
             CapabilityView(

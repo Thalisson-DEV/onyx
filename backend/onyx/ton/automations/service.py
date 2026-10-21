@@ -275,13 +275,14 @@ def migrate_email_flows(session: Session) -> int:
 
 
 def ensure_defaults(session: Session) -> None:
-    from onyx.db.ton.agent import sync_agent__system
+    from onyx.db.ton.agent import sync_agent__system, sync_specialist_personas
     from onyx.ton.email_flows import service as flow_service
 
     flow_service.ensure_defaults(session)
     migrate_email_flows(session)
     # Chat drafting needs the automation tool on the agent provisioned earlier.
     sync_agent__system(session)
+    sync_specialist_personas(session)
 
 
 # ---------------------------------------------------------------------------

@@ -337,6 +337,30 @@ export function querySummary(
       if (!isObject(body)) break;
       return W.overdue(sum(body.items));
     }
+    case "ton_propose_dre_structure_change":
+    case "ton_propose_dre_adjustment":
+    case "ton_propose_closing_treatment":
+    case "ton_propose_dre_recalculation":
+    case "ton_propose_source_import":
+    case "ton_propose_account_classification":
+    case "ton_propose_classification_confirm":
+    case "ton_propose_review_decision":
+    case "ton_propose_unit_assignment":
+    case "ton_propose_automation_status":
+    case "ton_propose_automation_run":
+    case "ton_propose_controller_rule":
+    case "ton_propose_ledger_registration":
+    case "ton_propose_occurrence_assignment":
+    case "ton_propose_daily_sweep": {
+      if (!isObject(body) || typeof body.title !== "string") break;
+      return `Proposta “${body.title}”`;
+    }
+    case "ton_run_financial_test":
+    case "ton_search_entries":
+    case "ton_supplier_summary": {
+      if (!isObject(body) || typeof body.resumo !== "string") break;
+      return body.resumo;
+    }
     case "ton_draft_automation":
     case "ton_draft_email_flow": {
       if (!isObject(body) || typeof body.name !== "string") break;

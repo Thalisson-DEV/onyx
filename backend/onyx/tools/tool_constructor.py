@@ -270,7 +270,17 @@ def _construct_tools_impl(
 
             if issubclass(tool_cls, TonDomainTool):
                 tool_dict[db_tool_model.id] = [
-                    tool_cls(tool_id=db_tool_model.id, emitter=emitter, user=user)
+                    tool_cls(
+                        tool_id=db_tool_model.id,
+                        emitter=emitter,
+                        user=user,
+                        chat_session_id=custom_tool_config.chat_session_id
+                        if custom_tool_config
+                        else None,
+                        chat_file_ids=file_reader_tool_config.chat_file_ids
+                        if file_reader_tool_config
+                        else [],
+                    )
                 ]
 
             # Handle Internal Search Tool

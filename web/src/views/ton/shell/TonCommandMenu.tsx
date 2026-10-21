@@ -120,6 +120,13 @@ export default function TonCommandMenu({ trigger }: TonCommandMenuProps) {
         keywords: "pendencias decisoes bloqueios",
       },
       {
+        key: "occurrences",
+        label: items.occurrences,
+        icon: SvgShield,
+        href: "/ton/ocorrencias" as Route,
+        keywords: "ocorrencias ledger casos responsavel prazo varredura testes",
+      },
+      {
         key: "automations",
         label: items.automations,
         icon: SvgWorkflow,

@@ -4885,3 +4885,112 @@ class RecordUnitAssignment(Base):
             "created_at",
         ),
     )
+
+
+class DreAdjustment(Base):
+    """One append-only value the Controladoria set for an ADJUSTMENT line.
+
+    The latest row per structure, line, month and unit is the one in force; a
+    correction or an undo is a new row. Unit rows add up in the consolidated
+    DRE; a row without unit enters the consolidated DRE only.
+    """
+
+    __tablename__ = "ton_dre_adjustment"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    structure_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_dre_structure.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    line_code: Mapped[str] = mapped_column(String(100), nullable=False)
+    period: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    unit_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_business_unit.id", ondelete="RESTRICT")
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(50, 25), nullable=False)
+    justification: Mapped[str] = mapped_column(String(2000), nullable=False)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        Index(
+            "ix_ton_dre_adjustment_scope",
+            "structure_id",
+            "period",
+            "line_code",
+            "created_at",
+        ),
+    )
+
+
+class AgentAction(Base):
+    """A change the TON chat proposed. Only a person's click applies it."""
+
+    __tablename__ = "ton_agent_action"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    chat_session_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("chat_session.id", ondelete="CASCADE")
+    )
+    kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    preview: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    error: Mapped[str | None] = mapped_column(String(1000))
+    proposed_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+    decided_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    decided_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('PROPOSED', 'APPLIED', 'CANCELLED', 'EXPIRED', 'UNDONE', 'FAILED')",
+            name="ck_ton_agent_action_status",
+        ),
+        Index("ix_ton_agent_action_session", "chat_session_id", "created_at"),
+    )
+
+
+class ControllerRule(Base):
+    """A rule the Controladoria stated in a conversation, read by every chat.
+
+    Append-only versions per ``rule_key``; the latest version is in force and
+    an archived one stops being read.
+    """
+
+    __tablename__ = "ton_controller_rule"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    rule_key: Mapped[str] = mapped_column(String(100), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    topic: Mapped[str] = mapped_column(String(100), nullable=False)
+    text: Mapped[str] = mapped_column(String(2000), nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    chat_session_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("chat_session.id", ondelete="SET NULL")
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        UniqueConstraint("rule_key", "version", name="uq_ton_controller_rule_version"),
+    )

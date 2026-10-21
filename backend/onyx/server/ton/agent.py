@@ -10,8 +10,21 @@ from onyx.auth.permissions import require_permission
 from onyx.db.engine.sql_engine import get_session
 from onyx.db.enums import Permission
 from onyx.db.models import User
-from onyx.db.ton.agent import configured_agent_id, provision_agent
+from onyx.db.ton import agent_actions
+from onyx.db.ton.agent_ledger import r1_automation
+from onyx.db.ton.agent import (
+    configured_agent_id,
+    provision_agent,
+    specialist_agent_id,
+)
 from onyx.db.ton.agent_occurrences import query_occurrences
+from onyx.db.ton.occurrence_ledger import (
+    LedgerDetail,
+    LedgerFilter,
+    LedgerPage,
+    ledger_detail,
+    ledger_page,
+)
 from onyx.db.ton.capabilities import capability_registry
 from onyx.db.ton.closing import (
     execute_closing,
@@ -25,6 +38,7 @@ from onyx.db.ton.closing import (
 )
 from onyx.db.ton.enums import AnalysisTrigger
 from onyx.db.ton.routine_schedule import configure_schedule, schedule_view
+from onyx.ton.agent.action_models import AgentActionView
 from onyx.ton.agent.capabilities import CapabilityView
 from onyx.ton.agent.closing_models import (
     ClosingOutput,
@@ -66,13 +80,24 @@ def agent_configuration(
     return AgentConfiguration(persona_id=configured_agent_id(session, user))
 
 
+@router.get("/specialists/{key}/configuration")
+def specialist_configuration(
+    key: str,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> AgentConfiguration:
+    """The persona of one specialist conversation (CFO, AUDITOR, …)."""
+    return AgentConfiguration(persona_id=specialist_agent_id(session, user, key))
+
+
 @router.get("/routines")
 def routine_definitions(
     user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
     session: Session = Depends(get_session),
 ) -> list[RoutineView]:
     schedule = schedule_view(session, user)
-    return [
+    sweep = r1_automation(session)
+    views = [
         RoutineView(
             key=key,
             name=name,
@@ -97,6 +122,23 @@ def routine_definitions(
         )
         for key, name, reason in ROUTINES
     ]
+    # R1 is configured from the chat (ton_propose_daily_sweep).
+    for index, view in enumerate(views):
+        if view.key != "R1":
+            continue
+        enabled = sweep is not None and sweep.status == "ACTIVE"
+        views[index] = view.model_copy(
+            update={
+                "status": "Ligada" if enabled else "Disponível pelo chat",
+                "reason": (
+                    "Automação “Varredura financeira diária (R1)”: testes financeiros todo dia, casos no ledger."
+                    if enabled
+                    else "Peça ao TON para ligar a varredura diária, ou use o modelo em Automações."
+                ),
+                "schedule": "Diária (veja em Automações)" if enabled else "Desligada",
+            }
+        )
+    return views
 
 
 @router.get("/routines/R3/schedule")
@@ -243,6 +285,28 @@ def report_download(
     )
 
 
+@router.get("/ledger")
+def ledger(
+    status: LedgerFilter = "open",
+    text: str | None = Query(None, max_length=200),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    user: User = Depends(require_permission(Permission.READ_TON_OCCURRENCES)),
+    session: Session = Depends(get_session),
+) -> LedgerPage:
+    """The occurrence ledger: open cases first, overdue and critical on top."""
+    return ledger_page(session, user, status, text, limit, offset)
+
+
+@router.get("/ledger/{occurrence_id}")
+def ledger_case(
+    occurrence_id: UUID,
+    user: User = Depends(require_permission(Permission.READ_TON_OCCURRENCES)),
+    session: Session = Depends(get_session),
+) -> LedgerDetail:
+    return ledger_detail(session, user, occurrence_id)
+
+
 @router.get("/actions/overdue")
 def list_overdue_actions(
     limit: int = Query(10, ge=1, le=25),
@@ -253,3 +317,48 @@ def list_overdue_actions(
     return query_occurrences(
         session, user, "ton_list_overdue_actions", ToolQuery(limit=limit)
     )
+
+
+@router.get("/actions")
+def list_agent_actions(
+    chat_session_id: UUID,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> list[AgentActionView]:
+    return agent_actions.list_for_session(session, user, chat_session_id)
+
+
+@router.get("/actions/{action_id}")
+def get_agent_action(
+    action_id: UUID,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> AgentActionView:
+    return agent_actions.get(session, user, action_id)
+
+
+@router.post("/actions/{action_id}/apply")
+def apply_agent_action(
+    action_id: UUID,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> AgentActionView:
+    return agent_actions.apply(session, user, action_id)
+
+
+@router.post("/actions/{action_id}/cancel")
+def cancel_agent_action(
+    action_id: UUID,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> AgentActionView:
+    return agent_actions.cancel(session, user, action_id)
+
+
+@router.post("/actions/{action_id}/undo")
+def undo_agent_action(
+    action_id: UUID,
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> AgentActionView:
+    return agent_actions.undo(session, user, action_id)

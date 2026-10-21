@@ -82,7 +82,8 @@ def test_registry_covers_master_keys_without_rule_activation(
     assert len([item for item in items if item.family == "Especialistas"]) == 9
     assert keyed["S10"].status == "OPERATIONAL"
     assert keyed["T4"].status == "PARTIAL"
-    assert keyed["T3"].status == "NOT_IMPLEMENTED"
+    assert keyed["T3"].status == "PARTIAL"
+    assert keyed["T5"].status == "NOT_IMPLEMENTED"
     assert keyed["CFO"].status == "BLOCKED"
     assert keyed["R3"].status == "PARTIAL"
     assert "conexão atual não validadas" in keyed["SOURCE_ZEEV"].reason

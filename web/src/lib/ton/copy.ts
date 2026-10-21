@@ -204,6 +204,7 @@ export const COPY = {
     dreCash: "DRE Caixa",
     dreEconomic: "DRE Econômica",
     pending: "Pendências",
+    occurrences: "Ocorrências",
     automations: "Automações",
     emailFlows: "Fluxos de e-mail",
     reports: "Relatórios",
@@ -1624,19 +1625,17 @@ export const COPY = {
   specialists: {
     title: "Especialistas",
     description:
-      "O TON coordena especialistas por domínio. Cada especialista atua só quando suas fontes e regras estão disponíveis; a conversa é sempre com o TON.",
+      "Cada especialista tem uma conversa própria, focada no seu domínio e com as ferramentas dele. O TON coordenador atende tudo.",
     working: "Atuando",
     waiting: "Aguardando fonte",
     waitingDescription:
-      "Estes especialistas ficam inativos até a fonte de dados ou as regras do domínio estarem disponíveis.",
+      "Sem a fonte do domínio, estes especialistas trabalham com o que o NG já mostra e dizem o que falta.",
     can: "O que já faz",
     limits: "Limitações atuais",
     needs: "Precisa de",
     lastRun: (date: string) => `Última atuação: ${date}`,
     neverRan: "Ainda não atuou",
-    ask: "Perguntar ao TON",
-    askPrompt: (name: string, objective: string) =>
-      `Com foco no ${name} (${objective.replace(/\.$/, "")}), o que precisa da minha atenção agora?`,
+    ask: "Conversar",
     policy: "Consultar e recomendar. Decisões e aprovações exigem uma pessoa.",
   },
   chatFile: {
@@ -1981,6 +1980,7 @@ export const COPY = {
       closing: "Fechamento do período",
       dre: "Abrir DRE",
       pending: "Ver pendências",
+      occurrences: "Ocorrências (ledger)",
       automations: "Automações",
       emailFlows: "Fluxos de e-mail",
       reports: "Relatórios",

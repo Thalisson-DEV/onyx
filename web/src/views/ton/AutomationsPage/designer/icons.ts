@@ -23,7 +23,9 @@ import {
   SvgPlusCircle,
   SvgRefreshCw,
   SvgRevert,
+  SvgSearch,
   SvgSearchMenu,
+  SvgShield,
   SvgSort,
   SvgSparkle,
   SvgSpreadsheetFile,
@@ -75,6 +77,8 @@ const ICONS: Record<string, IconFunctionComponent> = {
   globe: SvgGlobe,
   check: SvgUserCheck,
   file: SvgFileText,
+  search: SvgSearch,
+  shield: SvgShield,
 };
 
 export function nodeIcon(key: string | undefined): IconFunctionComponent {

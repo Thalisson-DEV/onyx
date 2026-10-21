@@ -151,6 +151,18 @@ export function useTonPersona() {
   );
 }
 
+/** The persona of one specialist conversation; null key skips the request. */
+export function useTonSpecialistPersona(key: string | null) {
+  const { canRead } = useTonAccess();
+  return useSWR<{ persona_id: number | null }>(
+    canRead && key
+      ? `${TON_API.specialists}/${encodeURIComponent(key)}/configuration`
+      : null,
+    errorHandlingFetcher,
+    { revalidateOnFocus: false }
+  );
+}
+
 /** The backend declares the synthetic demonstration context in plain text. */
 export function isSyntheticContext(closing: ClosingOutput | undefined) {
   return !!closing && /sint[eé]tic|synthetic/i.test(closing.data_context);

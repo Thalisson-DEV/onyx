@@ -24,6 +24,11 @@ from onyx.db.ton.models import (
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.prompts.ton.agent import TON_SYSTEM_PROMPT
+from onyx.ton.agent.specialist_chat import (
+    SPECIALIST_CHAT_BY_KEY,
+    SPECIALIST_CHATS,
+    specialist_prompt,
+)
 from onyx.ton.agent.models import (
     FinancialBaseContext,
     FinancialContext,
@@ -298,6 +303,7 @@ def provision_agent(session: Session, user: User) -> Persona:
         commit=False,
     )
     session.commit()
+    sync_specialist_personas(session)
     return persona
 
 
@@ -347,6 +353,97 @@ def sync_agent__system(session: Session) -> bool:
     persona.system_prompt = prompt
     session.commit()
     return True
+
+
+def _specialist_signature(persona: Persona) -> tuple[str, frozenset[str]]:
+    return persona.system_prompt or "", frozenset(
+        tool.in_code_tool_id or "" for tool in persona.tools
+    )
+
+
+def sync_specialist_personas(session: Session) -> int:
+    """One persona per specialist conversation, kept up to date with the code.
+
+    Runs only after the coordinator was provisioned (its tools exist). Returns
+    how many personas it created or changed."""
+    coordinator = session.scalar(
+        sa.select(Persona).where(
+            Persona.name == "TON",
+            Persona.builtin_persona.is_(True),
+            Persona.deleted.is_(False),
+        )
+    )
+    if coordinator is None:
+        return 0
+    by_name = {
+        tool_class.NAME: tool_class.__name__ for tool_class in TON_TOOL_CLASSES
+    }
+    tools_by_class = {
+        tool.in_code_tool_id: tool
+        for tool in session.scalars(
+            sa.select(Tool).where(Tool.in_code_tool_id.in_(list(by_name.values())))
+        )
+    }
+    changed = 0
+    for chat in SPECIALIST_CHATS:
+        tools = [
+            tools_by_class[by_name[name]]
+            for name in chat.tools
+            if by_name.get(name) in tools_by_class
+        ]
+        prompt = specialist_prompt(_agent_prompt(), chat)
+        existing = session.scalar(
+            sa.select(Persona).where(
+                Persona.name == chat.persona_name,
+                Persona.builtin_persona.is_(True),
+                Persona.deleted.is_(False),
+            )
+        )
+        wanted = (prompt, frozenset(tool.in_code_tool_id or "" for tool in tools))
+        if existing is not None and _specialist_signature(existing) == wanted:
+            continue
+        session.execute(sa.text("SELECT pg_advisory_xact_lock(74661001)"))
+        upsert_persona(
+            user=None,
+            name=chat.persona_name,
+            description=chat.description,
+            starter_messages=[
+                StarterMessage(name=name, message=message)
+                for name, message in chat.starters
+            ],
+            system_prompt=prompt,
+            task_prompt=None,
+            datetime_aware=True,
+            is_public=True,
+            db_session=session,
+            tool_ids=[tool.id for tool in tools],
+            persona_id=existing.id if existing else None,
+            builtin_persona=True,
+            is_listed=False,
+            is_featured=False,
+            commit=False,
+        )
+        changed += 1
+    if changed:
+        session.commit()
+    return changed
+
+
+def specialist_agent_id(session: Session, user: User, key: str) -> int | None:
+    assert_global(user, permission=Permission.READ_TON_SOURCES)
+    chat = SPECIALIST_CHAT_BY_KEY.get(key)
+    if chat is None:
+        return None
+    return session.scalar(
+        sa.select(Persona.id)
+        .where(
+            Persona.name == chat.persona_name,
+            Persona.builtin_persona.is_(True),
+            Persona.deleted.is_(False),
+            Persona.is_public.is_(True),
+        )
+        .limit(1)
+    )
 
 
 def configured_agent_id(session: Session, user: User) -> int | None:

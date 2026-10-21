@@ -24,6 +24,34 @@ interface TonExecutionSummaryProps {
   stopReason?: StopReason;
 }
 
+/** Tools that propose a change; every proposal keeps its own card. */
+const ACTION_TOOLS = [
+  "ton_propose_dre_structure_change",
+  "ton_propose_dre_adjustment",
+  "ton_propose_closing_treatment",
+  "ton_propose_dre_recalculation",
+  "ton_propose_source_import",
+  "ton_propose_account_classification",
+  "ton_propose_classification_confirm",
+  "ton_propose_review_decision",
+  "ton_propose_unit_assignment",
+  "ton_propose_automation_status",
+  "ton_propose_automation_run",
+  "ton_propose_controller_rule",
+  "ton_propose_ledger_registration",
+  "ton_propose_occurrence_assignment",
+  "ton_propose_daily_sweep",
+];
+
+/** Tools whose results show as a table; every call keeps its own card. */
+const INVESTIGATION_TOOLS = [
+  "ton_run_financial_test",
+  "ton_search_entries",
+  "ton_supplier_summary",
+  "ton_compare_dre",
+  "ton_get_dre_line_entries",
+];
+
 type Area = "sources" | "dre" | "evidence" | "report";
 
 const AREAS: Record<Area, string[]> = {
@@ -33,6 +61,8 @@ const AREAS: Record<Area, string[]> = {
     "ton_get_dre_result",
     "ton_get_recent_changes",
     "ton_analyze_closing",
+    "ton_get_dre_structure",
+    ...ACTION_TOOLS,
   ],
   evidence: [
     "ton_list_findings",
@@ -56,6 +86,8 @@ const CARD_TOOLS = [
   "ton_get_readiness_evidence",
   "ton_generate_closing_report",
   "ton_generate_executive_brief",
+  ...ACTION_TOOLS,
+  ...INVESTIGATION_TOOLS,
 ];
 
 /** Readiness-style tools share one card per period and scope. */
@@ -115,7 +147,11 @@ export function TonExecutionSummary({
     )
       continue;
     const kind = DRE_CARD_TOOLS.has(query.key) ? "dre" : query.key;
-    cardsById.set(`${kind}|${query.subject ?? ""}`, query);
+    const subject =
+      ACTION_TOOLS.includes(query.key) || INVESTIGATION_TOOLS.includes(query.key)
+      ? String(cardsById.size)
+      : (query.subject ?? "");
+    cardsById.set(`${kind}|${subject}`, query);
   }
   const cards = [...cardsById.entries()].map(([id, query]) => ({
     id,

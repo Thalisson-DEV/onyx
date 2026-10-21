@@ -26,7 +26,77 @@ class Template:
     definition: dict[str, Any]
 
 
+SWEEP_TESTS = ["T1", "T2", "T3", "T4", "T6", "T8", "T9", "T10"]
+
+
+def sweep_definition(
+    tests: list[str] | None = None,
+    time: str = "07:00",
+    bands: tuple[float, float, float] = (1.0, 0.3, 0.1),
+) -> dict[str, Any]:
+    """R1: every day, run the financial tests, record the cases in the ledger
+    and warn in the TON bell when there are new ones."""
+    return {
+        "schema": 3,
+        "trigger": {
+            "type": "trigger.schedule",
+            "params": {"frequency": "day", "interval": 1, "time": time},
+        },
+        "steps": [
+            {
+                "id": "varredura",
+                "type": "ton.financial_sweep",
+                "label": "Rodar os testes e registrar no ledger",
+                "params": {
+                    "tests": tests or SWEEP_TESTS,
+                    "band_critical": bands[0],
+                    "band_high": bands[1],
+                    "band_medium": bands[2],
+                },
+            },
+            {
+                "id": "tem_novos",
+                "type": "control.condition",
+                "label": "Há casos novos?",
+                "params": {
+                    "condition": {
+                        "op": "and",
+                        "rules": [
+                            {
+                                "left": "{{ steps.varredura.outputs.new_count }}",
+                                "operator": "gt",
+                                "right": "0",
+                            }
+                        ],
+                    }
+                },
+                "then": [
+                    {
+                        "id": "avisar",
+                        "type": "ton.notify",
+                        "label": "Avisar no TON",
+                        "params": {
+                            "title": "Varredura: {{ steps.varredura.outputs.new_count }} caso(s) novo(s) no ledger",
+                            "message": "Impacto somado {{ steps.varredura.outputs.total_formatado }}. Confira responsável e prazo de cada caso.",
+                            "severity": "WARNING",
+                            "link": "/ton/ocorrencias",
+                        },
+                    }
+                ],
+                "else": [],
+            },
+        ],
+    }
+
+
 TEMPLATES: tuple[Template, ...] = (
+    Template(
+        "daily_financial_sweep",
+        "Varredura financeira diária (R1)",
+        "Todo dia às 07:00, roda os testes do Prompt Mestre no último mês, registra os casos no ledger e avisa no TON quando há casos novos.",
+        AutomationKind.ALERT,
+        sweep_definition(),
+    ),
     Template(
         "weekly_inconsistencies",
         "Relatório semanal de inconsistências",

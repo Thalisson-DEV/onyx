@@ -18,12 +18,15 @@ from onyx.db.ton import financial_domain
 from onyx.db.ton.acl import business_unit_visible_clause, is_ton_administrator
 from onyx.db.ton.audit import emit_ton_audit_event
 from onyx.db.ton.closing_treatments import versions_in_force
+from onyx.db.ton import dre_line_sources
+from onyx.db.ton.dre_line_sources import has_extra_sources, line_source_sums
 from onyx.db.ton.email_flows import record_dre_recalculated__no_commit
 from onyx.db.ton.enums import TonAuditResourceKind
 from onyx.db.ton.models import (
     BusinessUnit,
     ClosingTreatment,
     DreAccountMapping,
+    DreAdjustment,
     DreCalculationRun,
     DreResultLine,
     DreStructure,
@@ -51,6 +54,7 @@ from onyx.ton.dre.models import (
     DreContributorPage,
     DreContributorView,
     DreLineDefinition,
+    DreLineSource,
     DreLineType,
     DreOperation,
     DrePeriodPoint,
@@ -133,7 +137,10 @@ def _create_version(
     except ValueError as error:
         raise OnyxError(OnyxErrorCode.INVALID_INPUT, str(error)) from error
     source_lines = {
-        item.code for item in request.lines if item.line_type == DreLineType.SOURCE_SUM
+        item.code
+        for item in request.lines
+        if item.line_type == DreLineType.SOURCE_SUM
+        and item.source == DreLineSource.NG_ACCOUNTS
     }
     account_ids = [item.account_id for item in request.assignments]
     if len(account_ids) != len(set(account_ids)) or any(
@@ -520,6 +527,34 @@ def restore_version(
     return view.model_copy(update={"version": saved})
 
 
+@dataclasses.dataclass
+class LineSources:
+    """Monthly sums of the billing and adjustment lines of one scope."""
+
+    by_month: dict[int, dict[str, Decimal]]
+    identity: list[str]
+
+
+def _line_sources(
+    session: Session,
+    version: DreVersionView,
+    scope: DreScope,
+    extra_adjustments: list[DreAdjustment] | None = None,
+) -> LineSources:
+    if not has_extra_sources(version.lines):
+        return LineSources(by_month={}, identity=[])
+    by_month, identity = line_source_sums(
+        session,
+        version.lines,
+        version.structure_id,
+        scope.normalization_run_id,
+        scope.period.year,
+        scope.unit_id,
+        extra_adjustments=extra_adjustments,
+    )
+    return LineSources(by_month=by_month, identity=identity)
+
+
 def _inputs(
     session: Session, user: User, scope: DreScope, *, write: bool
 ) -> tuple[DreVersionView, FinancialNormalizationRun, list[DreInputDataset]]:
@@ -625,8 +660,15 @@ def _blockers(
 
 
 def _calculated_lines(
-    version: DreVersionView, datasets: list[DreInputDataset], month: int
+    version: DreVersionView,
+    datasets: list[DreInputDataset],
+    month: int,
+    sources: LineSources | None = None,
+    *,
+    lenient: bool = False,
 ) -> list[DreResultLineView]:
+    """Line values of one scope. ``lenient`` (previews only) leaves out the
+    facts whose nature has no approved line instead of failing."""
     assignments = {
         item.account_id: item.line_code
         for item in version.assignments
@@ -641,12 +683,57 @@ def _calculated_lines(
     for dataset in datasets:
         current_month = dataset.readiness.period.month
         for fact in dataset.actuals:
+            if lenient and assignments.get(fact.account_id or UUID(int=0)) is None:
+                continue
             assert fact.account_id is not None and fact.amount is not None
             actual_by_period[current_month][assignments[fact.account_id]] += fact.amount
         for fact in dataset.budgets:
+            if lenient and assignments.get(fact.account_id or UUID(int=0)) is None:
+                continue
             assert fact.account_id is not None and fact.amount is not None
             budget_by_period[current_month][assignments[fact.account_id]] += fact.amount
+    if sources is not None:
+        for current_month, values in sources.by_month.items():
+            for code, amount in values.items():
+                actual_by_period[current_month][code] += amount
     return calculate(version.lines, actual_by_period, budget_by_period, month)
+
+
+def preview_statement(
+    session: Session,
+    user: User,
+    scope: DreScope,
+    *,
+    lines: list[DreLineDefinition] | None = None,
+    assignments: list[DreAccountAssignment] | None = None,
+    extra_adjustments: list[DreAdjustment] | None = None,
+) -> tuple[list[DreResultLineView], dict[str, int]]:
+    """The DRE of one scope with a proposed structure or adjustment, unsaved.
+
+    Values are computed even when the base has blockers (natures without an
+    approved line are left out), so the person sees the effect of a change;
+    the blockers are returned beside them.
+    """
+    version, run, datasets = _inputs(session, user, scope, write=False)
+    if lines is not None:
+        version = version.model_copy(
+            update={
+                "lines": lines,
+                "assignments": assignments
+                if assignments is not None
+                else version.assignments,
+            }
+        )
+    blockers = _blockers(version, run, datasets, scope.unit_id)
+    sources = _line_sources(session, version, scope, extra_adjustments)
+    try:
+        result = _calculated_lines(
+            version, datasets, scope.period.month, sources, lenient=True
+        )
+    except ValueError as error:
+        blockers[_formula_blocker(error)] = 1
+        result = []
+    return result, blockers
 
 
 def _formula_blocker(error: ValueError) -> str:
@@ -792,23 +879,26 @@ def _execute_loaded(
 ) -> DreRunView:
     started_at = datetime.datetime.now(datetime.timezone.utc)
     blockers = _blockers(version, normalization, datasets, scope.unit_id)
+    sources = _line_sources(session, version, scope)
     result_lines: list[DreResultLineView] = []
     if not blockers:
         try:
-            result_lines = _calculated_lines(version, datasets, scope.period.month)
+            result_lines = _calculated_lines(
+                version, datasets, scope.period.month, sources
+            )
         except ValueError as error:
             blockers[_formula_blocker(error)] = 1
     # The blockers are part of the identity: a scope that was blocked and is
     # ready now (a rule fixed, say) gets a new result instead of the old one.
+    identity: dict[str, object] = {
+        "scope": scope.model_dump(mode="json"),
+        "engine": ENGINE_VERSION,
+        "blockers": blockers,
+    }
+    if sources.identity:
+        identity["adjustments"] = sources.identity
     digest = hashlib.sha256(
-        json.dumps(
-            {
-                "scope": scope.model_dump(mode="json"),
-                "engine": ENGINE_VERSION,
-                "blockers": blockers,
-            },
-            sort_keys=True,
-        ).encode()
+        json.dumps(identity, sort_keys=True).encode()
     ).hexdigest()
     session.execute(
         sa.text("SELECT pg_advisory_xact_lock(4433007, hashtext(:digest))"),
@@ -1248,6 +1338,14 @@ def list_contributors(
         )
     if fact_type not in ("ACTUAL", "BUDGET"):
         raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Unknown contributor type")
+    definition_line = DreLineDefinition.model_validate(line)
+    if definition_line.source != DreLineSource.NG_ACCOUNTS:
+        extra = (
+            _line_source_contributors(session, run, definition_line)
+            if fact_type == "ACTUAL"
+            else []
+        )
+        return DreContributorPage(total=len(extra), rows=extra[offset : offset + limit])
     fact_model = FinancialActualFact if fact_type == "ACTUAL" else FinancialBudgetFact
     source_model = (
         ParsedSourceRecord if fact_type == "ACTUAL" else OperationalSourceRecord
@@ -1394,6 +1492,101 @@ def list_contributors(
     return DreContributorPage(total=total, rows=contributors)
 
 
+def _line_source_contributors(
+    session: Session, run: DreRunView, line: DreLineDefinition
+) -> list[DreContributorView]:
+    """The month's invoices or adjustments behind one billing or adjustment line."""
+    scope = run.scope
+    units = {item.id: item for item in session.scalars(sa.select(BusinessUnit))}
+    result: list[DreContributorView] = []
+    if line.source == DreLineSource.BILLING:
+        sources_by_id = {item.id: item for item in session.scalars(sa.select(Source))}
+        snapshots: dict[UUID, SourceSnapshot | None] = {}
+        for fact, record in dre_line_sources.billing_facts(
+            session, scope.normalization_run_id, scope.period.year, scope.unit_id
+        ):
+            if dre_line_sources.billing_month(fact, line.billing_period) != scope.period:
+                continue
+            amount = sum(
+                (
+                    dre_line_sources.billing_amount(fact, record.numeric_values, field)
+                    for field in line.billing_fields
+                ),
+                Decimal(0),
+            )
+            if not amount:
+                continue
+            if record.snapshot_id not in snapshots:
+                snapshots[record.snapshot_id] = session.get(
+                    SourceSnapshot, record.snapshot_id
+                )
+            snapshot = snapshots[record.snapshot_id]
+            source = sources_by_id.get(record.source_id)
+            unit = units.get(fact.unit_id) if fact.unit_id else None
+            result.append(
+                DreContributorView(
+                    id=fact.id,
+                    fact_type="ACTUAL",
+                    period=scope.period,
+                    account_code=fact.invoice_number,
+                    account_label=", ".join(
+                        dre_line_sources.BILLING_FIELD_LABELS[field]
+                        for field in line.billing_fields
+                    ),
+                    unit_code=unit.code if unit else "",
+                    unit_name=unit.name if unit else None,
+                    amount=-amount if line.negate else amount,
+                    amount_basis="BILLING",
+                    record_date=fact.emission_date,
+                    source_name=source.display_name if source else "Faturamento",
+                    original_filename=(snapshot.original_filename or "")
+                    if snapshot
+                    else "",
+                    source_id=record.source_id,
+                    source_snapshot_id=record.snapshot_id,
+                    source_execution_id=record.execution_id,
+                    sheet_name=record.sheet_name,
+                    source_row_number=record.source_row_number,
+                    reference=fact.invoice_number,
+                    review_status=None,
+                    description=fact.payer_text,
+                )
+            )
+        return result
+    version = session.get(DreStructureVersion, scope.structure_version_id)
+    assert version is not None
+    for row in dre_line_sources.adjustments_in_force(
+        session, version.structure_id, scope.period.year, scope.unit_id
+    ):
+        if row.line_code != line.code or row.period != scope.period:
+            continue
+        unit = units.get(row.unit_id) if row.unit_id else None
+        result.append(
+            DreContributorView(
+                id=row.id,
+                fact_type="ACTUAL",
+                period=scope.period,
+                account_code="",
+                account_label="Ajuste da Controladoria",
+                unit_code=unit.code if unit else "",
+                unit_name=unit.name if unit else "Consolidado",
+                amount=-row.amount if line.negate else row.amount,
+                amount_basis="ADJUSTMENT",
+                record_date=row.created_at.date(),
+                source_name="Ajuste da Controladoria",
+                original_filename="",
+                source_id=None,
+                source_snapshot_id=None,
+                source_execution_id=None,
+                sheet_name="",
+                source_row_number=0,
+                reference=None,
+                review_status=None,
+                description=row.justification,
+            )
+        )
+    return result
+
 def _export_entries(
     session: Session,
     user: User,
@@ -1479,6 +1672,120 @@ def _export_entries(
                 original_amount=original if treatment is not None else None,
             )
         )
+    entries.extend(
+        _line_source_entries(session, user, scope, lines, unit_ids)
+    )
+    return entries
+
+
+def _line_source_entries(
+    session: Session,
+    user: User,
+    scope: DreScope,
+    lines: dict[str, DreLineDefinition],
+    unit_ids: list[UUID] | None,
+) -> list[BaseEntry]:
+    """Invoices and adjustments behind the billing and adjustment lines."""
+    if not has_extra_sources(list(lines.values())):
+        return []
+    visible = (
+        None
+        if is_ton_administrator(user)
+        else set(
+            session.scalars(
+                sa.select(BusinessUnit.id).where(business_unit_visible_clause(user))
+            )
+        )
+    )
+
+    def allowed(unit_id: UUID | None) -> bool:
+        if unit_ids is not None and unit_id not in unit_ids:
+            return False
+        return visible is None or unit_id in visible
+
+    units = {item.id: item for item in session.scalars(sa.select(BusinessUnit))}
+    version = session.get(DreStructureVersion, scope.structure_version_id)
+    assert version is not None
+    entries: list[BaseEntry] = []
+    billing_lines = [
+        line
+        for line in lines.values()
+        if line.line_type == DreLineType.SOURCE_SUM
+        and line.source == DreLineSource.BILLING
+    ]
+    if billing_lines:
+        for fact, record in dre_line_sources.billing_facts(
+            session, scope.normalization_run_id, scope.period.year, scope.unit_id
+        ):
+            if not allowed(fact.unit_id):
+                continue
+            unit = units.get(fact.unit_id) if fact.unit_id else None
+            for line in billing_lines:
+                month = dre_line_sources.billing_month(fact, line.billing_period)
+                if month.year != scope.period.year or month > scope.period:
+                    continue
+                for field in line.billing_fields:
+                    amount = dre_line_sources.billing_amount(
+                        fact, record.numeric_values, field
+                    )
+                    if not amount:
+                        continue
+                    entries.append(
+                        BaseEntry(
+                            competence=month,
+                            unit_code=unit.code if unit else None,
+                            unit_name=unit.name if unit else None,
+                            line_code=line.code,
+                            amount=-amount if line.negate else amount,
+                            record_date=fact.emission_date,
+                            nature=line.label,
+                            ng_account_code=None,
+                            ng_account_label=dre_line_sources.BILLING_FIELD_LABELS[
+                                field
+                            ],
+                            document=fact.invoice_number,
+                            history=fact.payer_text,
+                            amount_basis="BILLING",
+                            review_status=None,
+                            source_file="Faturamento",
+                            sheet_name=record.sheet_name,
+                            row_number=record.source_row_number,
+                        )
+                    )
+    adjustment_lines = {
+        line.code: line
+        for line in lines.values()
+        if line.line_type == DreLineType.SOURCE_SUM
+        and line.source == DreLineSource.ADJUSTMENT
+    }
+    if adjustment_lines:
+        for row in dre_line_sources.adjustments_in_force(
+            session, version.structure_id, scope.period.year, scope.unit_id
+        ):
+            target = adjustment_lines.get(row.line_code)
+            if target is None or row.period > scope.period or not allowed(row.unit_id):
+                continue
+            unit = units.get(row.unit_id) if row.unit_id else None
+            entries.append(
+                BaseEntry(
+                    competence=row.period,
+                    unit_code=unit.code if unit else None,
+                    unit_name=unit.name if unit else None,
+                    line_code=target.code,
+                    amount=-row.amount if target.negate else row.amount,
+                    record_date=row.created_at.date(),
+                    nature=target.label,
+                    ng_account_code=None,
+                    ng_account_label="Ajuste da Controladoria",
+                    document=None,
+                    history=row.justification,
+                    amount_basis="ADJUSTMENT",
+                    review_status=None,
+                    source_file="Ajuste da Controladoria",
+                    sheet_name="",
+                    row_number=0,
+                )
+            )
     return entries
 
 

@@ -1,10 +1,12 @@
 """TON domain queries in the existing Onyx tool runtime."""
 
+import datetime
 import json
+from decimal import Decimal
 from typing import Any, ClassVar
 from uuid import UUID
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from onyx.chat.emitter import Emitter
 from onyx.db.engine.sql_engine import get_session_with_tenant
@@ -15,6 +17,24 @@ from onyx.server.query_and_chat.streaming_models import (
     CustomToolDelta,
     CustomToolStart,
     Packet,
+)
+from onyx.ton.agent.action_models import (
+    ActionKind,
+    AdjustmentPayload,
+    AutomationRunPayload,
+    AutomationStatusPayload,
+    ClassificationConfirmPayload,
+    ClassificationPayload,
+    ControllerRulePayload,
+    LedgerRegisterPayload,
+    OccurrenceAssignPayload,
+    R1SchedulePayload,
+    RecalculatePayload,
+    ReviewDecisionPayload,
+    SourceImportPayload,
+    StructureChangePayload,
+    TreatmentPayload,
+    UnitAssignmentPayload,
 )
 from onyx.ton.agent.labels import humanize
 from onyx.ton.agent.models import ToolQuery
@@ -47,6 +67,32 @@ TON_TOOL_DISPLAY_NAMES = {
     "ton_get_readiness_evidence": "Evidência da prontidão",
     "ton_get_recent_changes": "Mudanças após decisões",
     "ton_draft_automation": "Rascunho de automação",
+    "ton_get_dre_structure": "Estrutura da DRE",
+    "ton_propose_dre_structure_change": "Proposta na estrutura da DRE",
+    "ton_propose_dre_adjustment": "Proposta de ajuste da DRE",
+    "ton_propose_closing_treatment": "Proposta de tratamento",
+    "ton_propose_dre_recalculation": "Proposta de recálculo",
+    "ton_propose_source_import": "Proposta de importação",
+    "ton_search_entries": "Busca de lançamentos",
+    "ton_supplier_summary": "Fornecedores",
+    "ton_run_financial_test": "Teste financeiro",
+    "ton_compare_dre": "Comparação da DRE",
+    "ton_get_dre_line_entries": "Lançamentos da linha",
+    "ton_propose_account_classification": "Proposta de classificação",
+    "ton_propose_classification_confirm": "Proposta de confirmação",
+    "ton_propose_review_decision": "Proposta de decisão",
+    "ton_propose_unit_assignment": "Proposta de unidade",
+    "ton_propose_automation_status": "Proposta na automação",
+    "ton_propose_automation_run": "Proposta de execução",
+    "ton_list_classification_queue": "Contas para classificar",
+    "ton_list_unit_missing": "Lançamentos sem unidade",
+    "ton_list_automations": "Automações",
+    "ton_propose_controller_rule": "Proposta de regra",
+    "ton_get_controller_rules": "Regras da Controladoria",
+    "ton_propose_ledger_registration": "Proposta de registro no ledger",
+    "ton_propose_occurrence_assignment": "Proposta de responsável",
+    "ton_propose_daily_sweep": "Proposta de varredura diária",
+    "ton_get_daily_sweep": "Varredura diária",
 }
 
 
@@ -56,11 +102,20 @@ class TonDomainTool(Tool[None]):
     FIELDS: ClassVar[tuple[str, ...]] = ()
     REQUIRED: ClassVar[tuple[str, ...]] = ()
 
-    def __init__(self, tool_id: int, emitter: Emitter, user: User) -> None:
+    def __init__(
+        self,
+        tool_id: int,
+        emitter: Emitter,
+        user: User,
+        chat_session_id: UUID | None = None,
+        chat_file_ids: list[UUID] | None = None,
+    ) -> None:
         super().__init__(emitter)
         self._id = tool_id
         self._user_id = user.id
         self._tenant_id = get_current_tenant_id()
+        self._chat_session_id = chat_session_id
+        self._chat_file_ids = list(chat_file_ids or [])
 
     @property
     def id(self) -> int:
@@ -374,6 +429,694 @@ class TonDraftAutomationTool(TonDomainTool):
         )
 
 
+def _inline_schema(model: type[BaseModel]) -> dict[str, Any]:
+    """JSON schema of ``model`` with every $ref resolved and titles dropped."""
+    schema = model.model_json_schema()
+    definitions = schema.pop("$defs", {})
+
+    def resolve(node: Any) -> Any:
+        if isinstance(node, dict):
+            if "$ref" in node:
+                return resolve(definitions[node["$ref"].split("/")[-1]])
+            return {
+                key: resolve(value) for key, value in node.items() if key != "title"
+            }
+        if isinstance(node, list):
+            return [resolve(item) for item in node]
+        return node
+
+    return resolve(schema)
+
+
+class TonProposeActionTool(TonDomainTool):
+    """Validates a change and shows it as a card with Aplicar and Cancelar.
+    Nothing changes until the person clicks Aplicar."""
+
+    KIND: ClassVar[ActionKind]
+    PAYLOAD: ClassVar[type[BaseModel]]
+
+    def tool_definition(self) -> dict[str, Any]:
+        parameters = _inline_schema(self.PAYLOAD)
+        parameters["additionalProperties"] = False
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": parameters,
+            },
+        }
+
+    def run(
+        self, placement: Placement, override_kwargs: None, **llm_kwargs: Any
+    ) -> ToolResponse:
+        del override_kwargs
+        from onyx.db.ton import agent_actions
+
+        try:
+            with get_session_with_tenant(tenant_id=self._tenant_id) as session:
+                user = session.get(User, self._user_id)
+                if user is None or not user.is_active:
+                    raise ValueError("Usuário indisponível")
+                view = agent_actions.propose(
+                    session, user, self.KIND, llm_kwargs, self._chat_session_id
+                )
+        except (ValueError, OnyxError) as error:
+            message = error.detail if isinstance(error, OnyxError) else str(error)
+            raise ToolCallException(
+                "TON action proposal rejected",
+                f"A proposta não foi criada: {message}. Corrija o pedido ou pergunte à pessoa o que falta.",
+            ) from error
+        data = {**view.model_dump(mode="json"), "kind": "agent_action", "action_kind": view.kind.value}
+        self.emitter.emit(
+            Packet(
+                placement=placement,
+                obj=CustomToolDelta(
+                    tool_name=self.display_name,
+                    tool_id=self.id,
+                    response_type="json",
+                    data=data,
+                ),
+            )
+        )
+        llm_data = {
+            "proposta": view.title,
+            "situacao": "AGUARDANDO A PESSOA CLICAR EM APLICAR",
+            "resumo": view.preview.resumo,
+            "escopo": view.preview.escopo,
+            "linhas_antes_depois": [
+                item.model_dump(mode="json") for item in view.preview.linhas
+            ],
+            "avisos": view.preview.avisos,
+            "instrucao": "O cartão com Aplicar e Cancelar já está na tela. Diga em poucas frases o que muda e peça para conferir e clicar em Aplicar. Nunca diga que já aplicou.",
+        }
+        return ToolResponse(
+            rich_response=CustomToolCallSummary(
+                tool_name=self.name, response_type="json", tool_result=data
+            ),
+            llm_facing_response=json.dumps(llm_data, ensure_ascii=False),
+        )
+
+
+class TonProposeStructureChangeTool(TonProposeActionTool):
+    NAME = "ton_propose_dre_structure_change"
+    KIND = ActionKind.DRE_STRUCTURE_CHANGE
+    PAYLOAD = StructureChangePayload
+    DESCRIPTION = (
+        "Propor mudança na estrutura da DRE: criar linha ou grupo, renomear, mover, ocultar, tirar do "
+        "resultado, mudar a origem da linha, mudar fórmula de total, remover linha vazia ou mover natureza "
+        "do NG para outra linha. Antes, leia os códigos com ton_get_dre_structure. Origens de linha: "
+        "NG_ACCOUNTS (naturezas do NG), BILLING (notas da planilha de faturamento: billing_fields como "
+        "service_amount para o bruto, iss_retained, iss_invoice, total_retained; negate=true para impostos e "
+        "retenções) e ADJUSTMENT (valores informados pela Controladoria, ajustados depois com "
+        "ton_propose_dre_adjustment). Linhas e grupos novos recebem os códigos a1, a2, a3… na ordem em que "
+        "são criados (pule os que já existem); use esses códigos em after_code e code das operações seguintes. "
+        "A proposta mostra a DRE antes e depois; só muda quando a pessoa clica em Aplicar."
+    )
+
+
+class TonProposeAdjustmentTool(TonProposeActionTool):
+    NAME = "ton_propose_dre_adjustment"
+    KIND = ActionKind.DRE_ADJUSTMENT
+    PAYLOAD = AdjustmentPayload
+    DESCRIPTION = (
+        "Propor valores da Controladoria para uma linha de origem ADJUSTMENT (ex.: PIS/COFINS do mês enquanto "
+        "a planilha não chega). Um valor por mês e unidade; sem unidade, entra só no consolidado. Valores "
+        "positivos; a linha com negate=true deduz. Exige justificativa. Só muda quando a pessoa clica em Aplicar."
+    )
+
+
+class TonProposeTreatmentTool(TonProposeActionTool):
+    NAME = "ton_propose_closing_treatment"
+    KIND = ActionKind.CLOSING_TREATMENT
+    PAYLOAD = TreatmentPayload
+    DESCRIPTION = (
+        "Propor tratamento de fechamento sobre uma natureza do NG: EXCLUDE (tirar da DRE), RECLASSIFY (mover "
+        "para target_nature_code) ou REPLACE_BY_SOURCE. Mesmo treatment_key cria nova versão. Exige "
+        "justificativa e evidência ditas pela pessoa; não invente. Ao aplicar, a base é atualizada e a DRE recalculada."
+    )
+
+
+class TonProposeRecalculationTool(TonProposeActionTool):
+    NAME = "ton_propose_dre_recalculation"
+    KIND = ActionKind.DRE_RECALCULATE
+    PAYLOAD = RecalculatePayload
+    DESCRIPTION = (
+        "Propor o recálculo da DRE de janeiro até o mês, no consolidado e nas unidades pedidas "
+        "(units=['todas'] para todas). Use depois de mudanças aplicadas em unidades ou quando a DRE não está calculada."
+    )
+
+
+class TonProposeImportTool(TonProposeActionTool):
+    NAME = "ton_propose_source_import"
+    KIND = ActionKind.SOURCE_IMPORT
+    PAYLOAD = SourceImportPayload
+    DESCRIPTION = (
+        "Propor a importação de um arquivo anexado nesta conversa como nova versão de uma fonte: "
+        "financial_launches (lançamentos do NG), billing_invoices (faturamento/notas fiscais), budget "
+        "(dotação/orçamento) ou installments (parcelamentos pagos). Use o id do arquivo anexado. A prévia diz "
+        "quantas linhas entram, quais decisões continuam e quais voltam para decisão. Ao aplicar, importa, "
+        "atualiza a base e recalcula a DRE."
+    )
+
+    def run(
+        self, placement: Placement, override_kwargs: None, **llm_kwargs: Any
+    ) -> ToolResponse:
+        from onyx.db.ton import agent_actions
+
+        with get_session_with_tenant(tenant_id=self._tenant_id) as session:
+            user = session.get(User, self._user_id)
+            files = (
+                agent_actions.attached_spreadsheets(session, user, self._chat_file_ids)
+                if user is not None
+                else []
+            )
+        wanted_id = str(llm_kwargs.get("file_id") or "")
+        wanted_name = str(llm_kwargs.get("file_name") or "").strip().lower()
+        matches = [
+            (file_id, name)
+            for file_id, name in files
+            if (wanted_id and str(file_id) == wanted_id)
+            or (wanted_name and wanted_name in name.lower())
+        ]
+        if not wanted_id and not wanted_name:
+            matches = files
+        if len(matches) != 1:
+            names = ", ".join(name for _, name in files) or "nenhuma"
+            raise ToolCallException(
+                "TON import file not resolved",
+                f"Não identifiquei um único arquivo. Planilhas anexadas nesta conversa: {names}. "
+                "Passe file_name com o nome exato ou peça para anexar o arquivo.",
+            )
+        llm_kwargs = {
+            **{key: value for key, value in llm_kwargs.items() if key != "file_name"},
+            "file_id": str(matches[0][0]),
+        }
+        return super().run(placement, override_kwargs, **llm_kwargs)
+
+
+class TonDreStructureTool(TonDomainTool):
+    NAME = "ton_get_dre_structure"
+    DESCRIPTION = (
+        "Ler a estrutura da DRE como está: código, nome, grupo, origem de cada linha, naturezas ligadas, "
+        "fórmulas dos totais e campos de faturamento disponíveis. Use antes de propor mudanças na estrutura ou ajustes."
+    )
+
+    def tool_definition(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "structure_id": {
+                            "type": "string",
+                            "description": "Estrutura (opcional; vazio é a gerencial).",
+                        }
+                    },
+                    "required": [],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+    def run(
+        self, placement: Placement, override_kwargs: None, **llm_kwargs: Any
+    ) -> ToolResponse:
+        del override_kwargs
+        from onyx.db.ton import agent_actions
+
+        try:
+            raw = llm_kwargs.get("structure_id")
+            structure_id = UUID(str(raw)) if raw else None
+            with get_session_with_tenant(tenant_id=self._tenant_id) as session:
+                user = session.get(User, self._user_id)
+                if user is None or not user.is_active:
+                    raise ValueError("Usuário indisponível")
+                data = agent_actions.structure_for_chat(session, user, structure_id)
+        except (ValueError, OnyxError) as error:
+            raise ToolCallException(
+                "TON structure read rejected",
+                "Estrutura indisponível. Não invente códigos de linha.",
+            ) from error
+        self.emitter.emit(
+            Packet(
+                placement=placement,
+                obj=CustomToolDelta(
+                    tool_name=self.display_name,
+                    tool_id=self.id,
+                    response_type="json",
+                    data=data,
+                ),
+            )
+        )
+        return ToolResponse(
+            rich_response=CustomToolCallSummary(
+                tool_name=self.name, response_type="json", tool_result=data
+            ),
+            llm_facing_response=json.dumps(data, ensure_ascii=False),
+        )
+
+
+def _date(value: Any) -> datetime.date | None:
+    if not value:
+        return None
+    text = str(value)
+    if len(text) == 7:
+        text = f"{text}-01"
+    return datetime.date.fromisoformat(text[:10]).replace(day=1)
+
+
+def _decimal(value: Any, default: str) -> Decimal:
+    return Decimal(str(value)) if value not in (None, "") else Decimal(default)
+
+
+PERIOD = {"type": "string", "description": "Mês no formato AAAA-MM. Vazio: último mês da base."}
+UNIT = {"type": "string", "description": "Nome ou código da unidade como a pessoa escreveu. Vazio: todas."}
+
+
+class TonFunctionTool(TonDomainTool):
+    """A read-only TON tool with its own parameters, answered by ``compute``."""
+
+    PARAMETERS: ClassVar[dict[str, Any]] = {}
+
+    def tool_definition(self) -> dict[str, Any]:
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": self.PARAMETERS,
+                    "required": [],
+                    "additionalProperties": False,
+                },
+            },
+        }
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        raise NotImplementedError
+
+    def run(
+        self, placement: Placement, override_kwargs: None, **llm_kwargs: Any
+    ) -> ToolResponse:
+        del override_kwargs
+        from onyx.db.ton.agent_investigations import InvestigationError, public
+
+        try:
+            if set(llm_kwargs) - set(self.PARAMETERS):
+                raise InvestigationError("Parâmetro não permitido")
+            with get_session_with_tenant(tenant_id=self._tenant_id) as session:
+                user = session.get(User, self._user_id)
+                if user is None or not user.is_active:
+                    raise InvestigationError("Usuário indisponível")
+                data = public(self.compute(session, user, llm_kwargs))
+        except (InvestigationError, OnyxError, ValueError) as error:
+            message = error.detail if isinstance(error, OnyxError) else str(error)
+            raise ToolCallException(
+                "TON investigation rejected",
+                f"Consulta não feita: {message}. Corrija os parâmetros ou pergunte à pessoa.",
+            ) from error
+        response = json.dumps(data, ensure_ascii=False)
+        if len(response) > 48000:
+            raise ToolCallException(
+                "TON response too large", "Resultado grande demais; filtre por unidade, natureza ou período."
+            )
+        self.emitter.emit(
+            Packet(
+                placement=placement,
+                obj=CustomToolDelta(
+                    tool_name=self.display_name,
+                    tool_id=self.id,
+                    response_type="json",
+                    data=data,
+                ),
+            )
+        )
+        return ToolResponse(
+            rich_response=CustomToolCallSummary(
+                tool_name=self.name, response_type="json", tool_result=data
+            ),
+            llm_facing_response=response,
+        )
+
+
+class TonSearchEntriesTool(TonFunctionTool):
+    NAME = "ton_search_entries"
+    DESCRIPTION = (
+        "Buscar lançamentos do NG por texto do histórico ou fornecedor, documento, natureza, unidade, período e "
+        "faixa de valor. Devolve os maiores, a soma e a evidência (arquivo, planilha, linha). Use para perguntas "
+        "como 'quanto pagamos à empresa X', 'ache o documento 392', 'locações de Mossoró em abril'."
+    )
+    PARAMETERS = {
+        "text": {"type": "string", "description": "Palavras do histórico ou do fornecedor."},
+        "document": {"type": "string", "description": "Número do documento."},
+        "nature": {"type": "string", "description": "Código (ex.: 8.1.0001) ou nome da natureza."},
+        "unit": UNIT,
+        "period_from": PERIOD,
+        "period_to": PERIOD,
+        "min_amount": {"type": "number", "description": "Valor absoluto mínimo."},
+        "max_amount": {"type": "number", "description": "Valor absoluto máximo."},
+    }
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        from onyx.db.ton import agent_investigations as inv
+
+        return inv.search_entries(
+            session,
+            user,
+            text=kwargs.get("text"),
+            document=kwargs.get("document"),
+            nature=kwargs.get("nature"),
+            unit=kwargs.get("unit"),
+            period_from=_date(kwargs.get("period_from")),
+            period_to=_date(kwargs.get("period_to")),
+            min_amount=_decimal(kwargs["min_amount"], "0") if "min_amount" in kwargs else None,
+            max_amount=_decimal(kwargs["max_amount"], "0") if "max_amount" in kwargs else None,
+        )
+
+
+class TonSupplierSummaryTool(TonFunctionTool):
+    NAME = "ton_supplier_summary"
+    DESCRIPTION = (
+        "Maiores fornecedores por valor no período, com número de lançamentos e unidades atendidas. Filtre por "
+        "natureza e unidade. O fornecedor vem do histórico do NG ('PAGAMENTO A ...')."
+    )
+    PARAMETERS = {
+        "nature": {"type": "string", "description": "Código ou nome da natureza."},
+        "unit": UNIT,
+        "period_from": PERIOD,
+        "period_to": PERIOD,
+    }
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        from onyx.db.ton import agent_investigations as inv
+
+        return inv.supplier_summary(
+            session,
+            user,
+            nature=kwargs.get("nature"),
+            unit=kwargs.get("unit"),
+            period_from=_date(kwargs.get("period_from")),
+            period_to=_date(kwargs.get("period_to")),
+        )
+
+
+class TonFinancialTestTool(TonFunctionTool):
+    NAME = "ton_run_financial_test"
+    DESCRIPTION = (
+        "Rodar um teste financeiro do Prompt Mestre sobre a base real e devolver os candidatos com evidência: "
+        "T1 grupo zerado, T2 desvio da média de 3 meses, T3 duplicidade, T4 receita NG × notas fiscais, "
+        "T6 sinal invertido, T8 fornecedor × unidade, T9 competência retroativa, T10 evento não recorrente. "
+        "Os limites são parâmetros do teste (diga quais usou); o resultado são candidatos para a pessoa conferir, "
+        "nunca conclusão de erro ou fraude. Para uma varredura do mês, rode os testes mais úteis um a um."
+    )
+    PARAMETERS = {
+        "test": {"type": "string", "enum": ["T1", "T2", "T3", "T4", "T6", "T8", "T9", "T10"]},
+        "period": PERIOD,
+        "period_from": PERIOD,
+        "period_to": PERIOD,
+        "unit": UNIT,
+        "min_amount": {"type": "number", "description": "Valor mínimo em reais (padrão por teste)."},
+        "min_percent": {"type": "number", "description": "T2: variação mínima em % (padrão 50)."},
+        "factor": {"type": "number", "description": "T10: vezes a mediana (padrão 10)."},
+        "min_units": {"type": "integer", "description": "T8: unidades no mesmo mês (padrão 5)."},
+        "min_months": {"type": "integer", "description": "T9: meses de atraso (padrão 2)."},
+    }
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        from onyx.db.ton import agent_investigations as inv
+
+        return inv.run_test(session, user, kwargs)
+
+
+class TonCompareDreTool(TonFunctionTool):
+    NAME = "ton_compare_dre"
+    DESCRIPTION = (
+        "Comparar a DRE calculada entre meses e/ou unidades lado a lado (valores da tela DRE). Ex.: Mossoró "
+        "jan × set, ou todas as unidades em setembro. Use 'consolidado' para o total."
+    )
+    PARAMETERS = {
+        "periods": {"type": "array", "items": PERIOD, "description": "Meses a comparar (até 12)."},
+        "units": {"type": "array", "items": UNIT, "description": "Unidades (até 8); 'consolidado' para o total."},
+    }
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        from onyx.db.ton import agent_investigations as inv
+
+        periods = [item for item in (_date(value) for value in kwargs.get("periods") or []) if item]
+        return inv.compare_dre(session, user, periods, list(kwargs.get("units") or []))
+
+
+class TonLineEntriesTool(TonFunctionTool):
+    NAME = "ton_get_dre_line_entries"
+    DESCRIPTION = (
+        "Ver os lançamentos que compõem uma linha da DRE no mês e escopo (o mesmo detalhe do clique na linha da "
+        "tela), com os maiores valores, tratamentos e evidência."
+    )
+    PARAMETERS = {
+        "line": {"type": "string", "description": "Nome ou código da linha (ex.: Combustível, n3.01)."},
+        "period": PERIOD,
+        "unit": UNIT,
+    }
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        from onyx.db.ton import agent_investigations as inv
+
+        return inv.line_entries(
+            session, user, str(kwargs.get("line") or ""), _date(kwargs.get("period")), kwargs.get("unit")
+        )
+
+
+class TonProposeClassificationTool(TonProposeActionTool):
+    NAME = "ton_propose_account_classification"
+    KIND = ActionKind.ACCOUNT_CLASSIFICATION
+    PAYLOAD = ClassificationPayload
+    DESCRIPTION = (
+        "Propor a natureza de contas do NG (classificação contábil): uma ou várias contas, cada uma com a "
+        "natureza (código ou nome). Use a fila de ton_list_classification_queue para os códigos. Ao aplicar, "
+        "grava a classificação, atualiza a base e recalcula a DRE. Pode desfazer."
+    )
+
+
+class TonProposeClassificationConfirmTool(TonProposeActionTool):
+    NAME = "ton_propose_classification_confirm"
+    KIND = ActionKind.CLASSIFICATION_CONFIRM
+    PAYLOAD = ClassificationConfirmPayload
+    DESCRIPTION = "Propor confirmar, como estão, as naturezas sugeridas pelo assistente para as contas do NG listadas."
+
+
+class TonProposeReviewDecisionTool(TonProposeActionTool):
+    NAME = "ton_propose_review_decision"
+    KIND = ActionKind.REVIEW_DECISION
+    PAYLOAD = ReviewDecisionPayload
+    DESCRIPTION = (
+        "Propor a decisão de pendências da revisão do NG (ids de ton_list_occurrences ou ton_list_findings): "
+        "ACKNOWLEDGE (ciente), REQUEST_SOURCE_CORRECTION (pedir correção na fonte), JUSTIFY_EXCEPTION (exceção "
+        "justificada, com justification_category), MARK_FALSE_POSITIVE, CONFIRM_SOURCE_CORRECTION. O motivo vem "
+        "da pessoa; não invente."
+    )
+
+
+class TonProposeUnitAssignmentTool(TonProposeActionTool):
+    NAME = "ton_propose_unit_assignment"
+    KIND = ActionKind.UNIT_ASSIGNMENT
+    PAYLOAD = UnitAssignmentPayload
+    DESCRIPTION = (
+        "Propor a unidade de lançamentos do NG que vieram sem unidade (ids de ton_list_unit_missing). Pode "
+        "sugerir a unidade pelo histórico, mas diga que é sugestão. Ao aplicar, atualiza a base e recalcula."
+    )
+
+
+class TonProposeAutomationStatusTool(TonProposeActionTool):
+    NAME = "ton_propose_automation_status"
+    KIND = ActionKind.AUTOMATION_STATUS
+    PAYLOAD = AutomationStatusPayload
+    DESCRIPTION = "Propor ativar (ACTIVE) ou pausar (PAUSED) uma automação pelo nome."
+
+
+class TonProposeAutomationRunTool(TonProposeActionTool):
+    NAME = "ton_propose_automation_run"
+    KIND = ActionKind.AUTOMATION_RUN
+    PAYLOAD = AutomationRunPayload
+    DESCRIPTION = (
+        "Propor executar uma automação agora pelo nome. test=true (padrão) manda e-mails só para a pessoa; "
+        "test=false executa de verdade."
+    )
+
+
+class TonProposeControllerRuleTool(TonProposeActionTool):
+    NAME = "ton_propose_controller_rule"
+    KIND = ActionKind.CONTROLLER_RULE
+    PAYLOAD = ControllerRulePayload
+    DESCRIPTION = (
+        "Propor lembrar uma regra que a pessoa disse sobre como a Controladoria trabalha (ex.: parcelamento "
+        "fica fora do resultado; receita é sempre pelo bruto; mútuo nunca entra na DRE). Para trocar ou "
+        "esquecer uma regra, passe rule_key (e archive=true para esquecer). Use quando a pessoa disser "
+        "sempre, nunca, a regra é, lembre que."
+    )
+
+
+class TonControllerRulesTool(TonFunctionTool):
+    NAME = "ton_get_controller_rules"
+    DESCRIPTION = (
+        "Ler as regras da Controladoria lembradas pelo TON (decisões permanentes de como tratar receita, "
+        "parcelamentos, mútuos, classificação). Leia antes de propor mudanças ou quando a pessoa perguntar "
+        "como algo deve ser tratado."
+    )
+    PARAMETERS = {}
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        from onyx.db.ton import agent_actions
+
+        rules = agent_actions.rules_for_chat(session)
+        return {"kind": "controller_rules", "total": len(rules), "regras": rules}
+
+
+class TonProposeLedgerTool(TonProposeActionTool):
+    NAME = "ton_propose_ledger_registration"
+    KIND = ActionKind.LEDGER_REGISTER
+    PAYLOAD = LedgerRegisterPayload
+    DESCRIPTION = (
+        "Propor registrar no ledger de ocorrências os casos de um teste (T1, T2, T3, T4, T6, T8, T9, T10). "
+        "Passe o teste, os mesmos test_parameters usados ao rodá-lo e as chaves (campo chave de cada item) dos "
+        "casos escolhidos; sem chaves, registra todos. O servidor roda o teste de novo e sugere a criticidade "
+        "pela régua PAD-CTRL-001 (impacto ÷ receita da unidade no mês). Pode já atribuir responsável, prazo e nota. "
+        "Caso já registrado conta como repetição, sem duplicar."
+    )
+
+
+class TonProposeOccurrenceAssignTool(TonProposeActionTool):
+    NAME = "ton_propose_occurrence_assignment"
+    KIND = ActionKind.OCCURRENCE_ASSIGN
+    PAYLOAD = OccurrenceAssignPayload
+    DESCRIPTION = (
+        "Propor responsável (nome ou cargo), prazo e/ou nota para ocorrências do ledger (ids de "
+        "ton_list_occurrences ou de um registro recente). Não invente responsáveis: use o que a pessoa disser."
+    )
+
+
+class TonProposeR1Tool(TonProposeActionTool):
+    NAME = "ton_propose_daily_sweep"
+    KIND = ActionKind.R1_SCHEDULE
+    PAYLOAD = R1SchedulePayload
+    DESCRIPTION = (
+        "Propor ligar ou desligar a varredura diária R1: todo dia o TON roda os testes escolhidos no último "
+        "mês e registra os casos no ledger com a criticidade da régua PAD-CTRL-001. A pessoa aprova testes, "
+        "horário e faixas ao aplicar."
+    )
+
+
+class TonR1StatusTool(TonFunctionTool):
+    NAME = "ton_get_daily_sweep"
+    DESCRIPTION = "Ver se a varredura diária R1 está ligada, seu horário, testes e as últimas execuções."
+    PARAMETERS = {}
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        from onyx.db.ton import agent_ledger
+        from onyx.ton.automations import service as automation_service
+
+        automation = agent_ledger.r1_automation(session)
+        if automation is None:
+            return {"kind": "daily_sweep", "ligada": False, "configurada": False}
+        detail = automation_service.detail(session, user, automation.id)
+        data = detail.model_dump(mode="json")
+        return {
+            "kind": "daily_sweep",
+            "ligada": automation.status == "ACTIVE",
+            "situacao": automation.status,
+            "link": f"/ton/automacoes/{automation.id}",
+            "quando": data.get("when") or data.get("schedule"),
+            "execucoes": (data.get("runs") or [])[:5],
+        }
+
+
+class TonClassificationQueueTool(TonFunctionTool):
+    NAME = "ton_list_classification_queue"
+    DESCRIPTION = (
+        "Listar contas do NG sem natureza ou aguardando confirmação, com a sugestão do assistente, número de "
+        "lançamentos e valor, e as naturezas disponíveis."
+    )
+    PARAMETERS = {
+        "status": {
+            "type": "string",
+            "enum": ["PENDING", "AWAITING_CONFIRMATION", "CONFIRMED", "ALL"],
+            "description": "Padrão: pendentes e aguardando confirmação.",
+        },
+        "text": {"type": "string", "description": "Filtro pelo código ou descrição da conta."},
+    }
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        from onyx.db.ton import account_classification
+
+        table = account_classification.classification_table(session, user, None)
+        status = kwargs.get("status")
+        text = str(kwargs.get("text") or "").lower()
+        rows = [
+            row
+            for row in table.rows
+            if (
+                status == "ALL"
+                or (status and row.status.value == status)
+                or (not status and row.status.value != "CONFIRMED")
+            )
+            and (not text or text in f"{row.account_code} {row.description}".lower())
+        ]
+        rows.sort(key=lambda row: -abs(row.total_amount))
+        return {
+            "kind": "classification_queue",
+            "total": len(rows),
+            "contas": [
+                {
+                    "conta": row.account_code,
+                    "descricao": row.description,
+                    "situacao": row.status.value,
+                    "natureza_atual": row.natureza,
+                    "sugestao": row.suggestion.model_dump(mode="json") if row.suggestion else None,
+                    "lancamentos": row.entries,
+                    "valor": str(row.total_amount),
+                    "unidades": row.units[:6],
+                }
+                for row in rows[:40]
+            ],
+            "naturezas": [f"{item.code} {item.natureza} ({item.dre_group})" for item in table.natures],
+        }
+
+
+class TonUnitMissingTool(TonFunctionTool):
+    NAME = "ton_list_unit_missing"
+    DESCRIPTION = "Listar lançamentos do NG sem unidade (abertos), com o id da pendência e as linhas da planilha."
+    PARAMETERS = {
+        "include_decided": {"type": "boolean", "description": "Incluir os já atribuídos."}
+    }
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        from onyx.db.ton import unit_assignment
+
+        items = unit_assignment.list_unit_missing(session, user)
+        if not kwargs.get("include_decided"):
+            items = [item for item in items if item.open]
+        return {
+            "kind": "unit_missing",
+            "total": len(items),
+            "itens": [item.model_dump(mode="json") for item in items[:40]],
+        }
+
+
+class TonListAutomationsTool(TonFunctionTool):
+    NAME = "ton_list_automations"
+    DESCRIPTION = "Listar as automações (nome, tipo, situação, gatilho, últimas execuções)."
+    PARAMETERS = {}
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        from onyx.ton.automations import service as automation_service
+
+        table = automation_service.table(session, user)
+        return {"kind": "automations", **table.model_dump(mode="json")}
+
 TON_TOOL_CLASSES = (
     TonListSourcesTool,
     TonGetSourceStatusTool,
@@ -396,4 +1139,30 @@ TON_TOOL_CLASSES = (
     TonReadinessEvidenceTool,
     TonRecentChangesTool,
     TonDraftAutomationTool,
+    TonDreStructureTool,
+    TonProposeStructureChangeTool,
+    TonProposeAdjustmentTool,
+    TonProposeTreatmentTool,
+    TonProposeRecalculationTool,
+    TonProposeImportTool,
+    TonSearchEntriesTool,
+    TonSupplierSummaryTool,
+    TonFinancialTestTool,
+    TonCompareDreTool,
+    TonLineEntriesTool,
+    TonProposeClassificationTool,
+    TonProposeClassificationConfirmTool,
+    TonProposeReviewDecisionTool,
+    TonProposeUnitAssignmentTool,
+    TonProposeAutomationStatusTool,
+    TonProposeAutomationRunTool,
+    TonClassificationQueueTool,
+    TonUnitMissingTool,
+    TonListAutomationsTool,
+    TonProposeControllerRuleTool,
+    TonControllerRulesTool,
+    TonProposeLedgerTool,
+    TonProposeOccurrenceAssignTool,
+    TonProposeR1Tool,
+    TonR1StatusTool,
 )

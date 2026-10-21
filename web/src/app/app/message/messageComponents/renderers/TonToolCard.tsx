@@ -19,6 +19,9 @@ import { totalBlockers } from "@/lib/ton/blockers";
 import { isDraftResult } from "@/lib/ton/emailFlows";
 import FlowDraftCard from "@/views/ton/EmailFlowsPage/FlowDraftCard";
 import AutomationDraftCard, { isAutomationDraft } from "@/views/ton/AutomationsPage/AutomationDraftCard";
+import ActionCard from "@/views/ton/chat/ActionCard";
+import InvestigationCard, { investigationData } from "@/views/ton/chat/InvestigationCard";
+import { isAgentAction } from "@/lib/ton/agent-actions";
 import {
   blockerCode,
   blockerLabel,
@@ -463,6 +466,10 @@ export function TonToolCard({ toolName, data, subtitle }: TonToolCardProps) {
     payload.report_url.startsWith("/ton/controladoria/reports/")
       ? payload
       : null;
+  if (record(payload) && isAgentAction(payload))
+    return <ActionCard action={payload} />;
+  const investigation = investigationData(payload);
+  if (investigation) return <InvestigationCard data={investigation} />;
   if (record(payload) && isAutomationDraft(payload))
     return <AutomationDraftCard draft={payload} />;
   if (record(payload) && payload.kind === "flow_draft" && isDraftResult(payload))
@@ -528,7 +535,12 @@ export function TonToolCard({ toolName, data, subtitle }: TonToolCardProps) {
 export function cardNeedsAttention(data: Json | undefined): boolean {
   const payload = record(data) && "data" in data ? data.data : data;
   if (!record(payload)) return false;
-  if (payload.kind === "flow_draft" || isAutomationDraft(payload)) return true;
+  if (
+    payload.kind === "flow_draft" ||
+    isAutomationDraft(payload) ||
+    isAgentAction(payload)
+  )
+    return true;
   if (
     typeof payload.report_url === "string" &&
     payload.report_url.startsWith("/ton/controladoria/reports/")

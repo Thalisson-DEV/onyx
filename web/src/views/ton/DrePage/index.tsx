@@ -21,7 +21,7 @@ import { groupBlockers, totalBlockers } from "@/lib/ton/blockers";
 import {
   COPY,
   formatCurrency,
-  formatDate,
+  formatDay,
   formatDateTime,
   formatNumber,
   formatPercent,
@@ -493,7 +493,7 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
                   return (
                     <tr key={fact.id}>
                       <td>
-                        {fact.record_date ? formatDate(fact.record_date) : "—"}
+                        {fact.record_date ? formatDay(fact.record_date) : "—"}
                       </td>
                       <td>
                         {getBusinessLabel(fact.unit_name ?? fact.unit_code)}

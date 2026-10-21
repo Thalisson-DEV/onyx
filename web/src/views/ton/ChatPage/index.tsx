@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import useSWR from "swr";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
 import { Text } from "@opal/components";
@@ -17,10 +18,12 @@ import { cn } from "@opal/utils";
 import AppPage, { type AppPagePresentation } from "@/views/AppPage";
 import { SearchFiltersProvider } from "@/lib/searchFilters/providers";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
+import { errorHandlingFetcher } from "@/lib/fetcher";
 import {
   useTonAccess,
   useTonClosing,
   useTonPersona,
+  useTonSpecialistPersona,
   useTonSpecialists,
 } from "@/lib/ton/api";
 import { COPY, formatPeriod } from "@/lib/ton/copy";
@@ -51,10 +54,34 @@ function Welcome() {
   );
 }
 
-function Suggestions({ submit }: { submit: (message: string) => void }) {
+interface StarterMessage {
+  name: string;
+  message: string;
+}
+
+interface SuggestionsProps {
+  submit: (message: string) => void;
+  /** Persona of a specialist conversation, whose own first questions show. */
+  specialistPersonaId?: number | null;
+}
+
+function Suggestions({ submit, specialistPersonaId }: SuggestionsProps) {
+  const persona = useSWR<{ starter_messages: StarterMessage[] | null }>(
+    specialistPersonaId ? `/api/persona/${specialistPersonaId}` : null,
+    errorHandlingFetcher,
+    { revalidateOnFocus: false }
+  );
+  const starters = persona.data?.starter_messages ?? [];
+  const items = specialistPersonaId
+    ? starters.map((starter, index) => ({
+        key: `starter-${index}`,
+        label: starter.name,
+        prompt: starter.message,
+      }))
+    : COPY.assistant.suggestions;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full pt-2">
-      {COPY.assistant.suggestions.map((suggestion) => (
+      {items.map((suggestion) => (
         // A whole-card target; no Opal button renders a card surface.
         <button
           key={suggestion.key}
@@ -101,26 +128,34 @@ function ContextBar({ focus }: { focus: string | null }) {
       )}
       {specialist && (
         <Text font="secondary-body" color="text-03">
-          {`${COPY.assistant.context.focus}: ${specialist.domain}`}
+          {specialist.objective}
         </Text>
       )}
     </div>
   );
 }
 
-const PRESENTATION: AppPagePresentation = {
-  welcome: <Welcome />,
-  renderSuggestions: (submit) => <Suggestions submit={submit} />,
-  hideModelSelector: true,
-  hideToolPicker: true,
-  placeholder: COPY.assistant.placeholder,
-};
+function presentation(specialistPersonaId: number | null): AppPagePresentation {
+  return {
+    welcome: <Welcome />,
+    renderSuggestions: (submit) => (
+      <Suggestions submit={submit} specialistPersonaId={specialistPersonaId} />
+    ),
+    hideModelSelector: true,
+    hideToolPicker: true,
+    placeholder: COPY.assistant.placeholder,
+  };
+}
 
 export default function TonChatPage() {
   const { canRead } = useTonAccess();
-  const configuration = useTonPersona();
   const router = useRouter();
   const params = useSearchParams();
+  const focus = params.get("foco");
+  const coordinator = useTonPersona();
+  const specialist = useTonSpecialistPersona(focus);
+  // A specialist conversation runs on the specialist's own persona.
+  const configuration = focus ? specialist : coordinator;
   const hasSession = params.has(SEARCH_PARAM_NAMES.CHAT_ID);
   const personaId = configuration.data?.persona_id;
   const initialized =
@@ -160,11 +195,11 @@ export default function TonChatPage() {
           !hasSession && "ton-hero-art"
         )}
       >
-        <ContextBar focus={params.get("foco")} />
+        <ContextBar focus={focus} />
         <SearchFiltersProvider>
           <AppPage
             firstMessage={params.get("firstMessage") ?? undefined}
-            presentation={PRESENTATION}
+            presentation={presentation(focus ? (personaId ?? null) : null)}
           />
         </SearchFiltersProvider>
       </div>

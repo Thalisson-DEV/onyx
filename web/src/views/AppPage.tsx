@@ -35,6 +35,7 @@ import { SourceMetadata } from "@/lib/search/interfaces";
 import { FederatedConnectorDetail, ValidSources } from "@/lib/types";
 import DocumentsSidebar from "@/sections/document-sidebar/DocumentsSidebar";
 import useChatController from "@/hooks/useChatController";
+import { TON_SEND_MESSAGE_EVENT } from "@/lib/ton/agent-actions";
 import useMultiModelChat from "@/hooks/useMultiModelChat";
 import MultiModelSelector from "@/sections/model-selector/MultiModelSelector";
 import { useActiveAgent } from "@/lib/agents/hooks";
@@ -512,6 +513,21 @@ export default function AppPage({ firstMessage, presentation }: ChatPageProps) {
     refreshChatSessions,
     onSubmit,
   });
+
+  // TON chat cards (an applied action, a next step) continue the conversation
+  // with a message of their own.
+  useEffect(() => {
+    function handle(event: Event) {
+      if (!(event instanceof CustomEvent)) return;
+      const detail: unknown = event.detail;
+      if (typeof detail !== "object" || detail === null) return;
+      const message: unknown = Reflect.get(detail, "message");
+      if (typeof message !== "string" || !message.trim()) return;
+      void onSubmit({ message, currentMessageFiles: [], deepResearch: false });
+    }
+    window.addEventListener(TON_SEND_MESSAGE_EVENT, handle);
+    return () => window.removeEventListener(TON_SEND_MESSAGE_EVENT, handle);
+  }, [onSubmit]);
 
   // A link can arrive carrying both a prompt and a search scope. Declared here
   // because it submits, so it needs `onSubmit` above it.

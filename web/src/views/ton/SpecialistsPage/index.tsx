@@ -3,7 +3,6 @@
 import type { Route } from "next";
 import { Button, Text } from "@opal/components";
 import { SvgBubbleText, SvgLock, SvgShield, SvgSparkle } from "@opal/icons";
-import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
 import { useTonSpecialists } from "@/lib/ton/api";
 import { COPY, formatRelativeDateTime } from "@/lib/ton/copy";
 import type { SpecialistView } from "@/lib/ton/types";
@@ -17,15 +16,9 @@ import {
   specialistTone,
 } from "@/views/ton/components/ui";
 
-function askHref(specialist: SpecialistView): Route {
-  const query = new URLSearchParams({
-    firstMessage: COPY.specialists.askPrompt(
-      specialist.name,
-      specialist.objective
-    ),
-    [SEARCH_PARAM_NAMES.SUBMIT_ON_LOAD]: "true",
-    foco: specialist.key,
-  });
+/** The specialist's own conversation, focused on its domain. */
+function chatHref(specialist: SpecialistView): Route {
+  const query = new URLSearchParams({ foco: specialist.key });
   return `/ton/chat?${query.toString()}` as Route;
 }
 
@@ -88,7 +81,7 @@ function WorkingCard({ specialist }: { specialist: SpecialistView }) {
       </div>
       <div>
         <Button
-          href={askHref(specialist)}
+          href={chatHref(specialist)}
           prominence="secondary"
           icon={SvgBubbleText}
         >
@@ -119,6 +112,16 @@ function WaitingCard({ specialist }: { specialist: SpecialistView }) {
         <Text font="secondary-body" color="text-04">
           {specialist.required_sources.join(", ")}
         </Text>
+      </div>
+      <div>
+        <Button
+          href={chatHref(specialist)}
+          prominence="secondary"
+          size="sm"
+          icon={SvgBubbleText}
+        >
+          {COPY.specialists.ask}
+        </Button>
       </div>
     </TonCard>
   );

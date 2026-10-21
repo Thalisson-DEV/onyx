@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from onyx.db.models import User
 from onyx.db.ton.closing import inspect_closing
+from onyx.db.ton.agent_ledger import r1_automation
 from onyx.db.ton.routine_schedule import schedule_view
 from onyx.ton.agent.capabilities import (
     STATUS_LABELS,
@@ -48,10 +49,13 @@ def capability_registry(
             )
         )
     schedule = schedule_view(session, user)
+    sweep = r1_automation(session)
     for key, name, reason in ROUTINES:
         status = (
             ("OPERATIONAL" if schedule.enabled else "PARTIAL")
             if key == "R3"
+            else ("OPERATIONAL" if sweep is not None and sweep.status == "ACTIVE" else "PARTIAL")
+            if key == "R1"
             else "BLOCKED"
         )
         result.append(

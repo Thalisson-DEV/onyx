@@ -22,6 +22,35 @@ class DreOperation(StrEnum):
     RATIO = "RATIO"
 
 
+class DreLineSource(StrEnum):
+    """Where a SOURCE_SUM line reads its values."""
+
+    NG_ACCOUNTS = "NG_ACCOUNTS"
+    BILLING = "BILLING"
+    ADJUSTMENT = "ADJUSTMENT"
+
+
+class BillingField(StrEnum):
+    """Amounts of the billing invoices a DRE line can sum."""
+
+    SERVICE_AMOUNT = "service_amount"
+    INVOICE_NET_AMOUNT = "invoice_net_amount"
+    TOTAL_RETAINED = "total_retained"
+    ISS_RETAINED = "iss_retained"
+    IR_RETAINED = "ir_retained"
+    INSS_RETAINED = "inss_retained"
+    ISS_INVOICE = "iss_invoice"
+    INSS_INVOICE = "inss_invoice"
+    IR_INVOICE = "ir_invoice"
+    DEDUCTION_AMOUNT = "deduction_amount"
+
+
+class BillingPeriodBasis(StrEnum):
+    EMISSION = "EMISSION"
+    # Competence of the invoice; invoices without one fall back to emission.
+    COMPETENCE = "COMPETENCE"
+
+
 class DreLineDefinition(BaseModel):
     code: str = Field(min_length=1, max_length=100)
     label: str = Field(min_length=1, max_length=500)
@@ -36,12 +65,22 @@ class DreLineDefinition(BaseModel):
     # Out of the result: the group above does not add this line, which keeps
     # its own value (shown, and marked, on the screen and in the Excel).
     excluded: bool = False
+    source: DreLineSource = DreLineSource.NG_ACCOUNTS
+    # BILLING lines: the invoice amounts summed and the month they fall in.
+    billing_fields: list[BillingField] = Field(default_factory=list)
+    billing_period: BillingPeriodBasis = BillingPeriodBasis.EMISSION
+    # Deductions (taxes, retentions) enter the result with a negative sign.
+    negate: bool = False
 
     @model_validator(mode="after")
     def validate_behavior(self) -> "DreLineDefinition":
         if self.line_type == DreLineType.SOURCE_SUM:
             if self.operation is not None or self.operands:
                 raise ValueError("Source lines cannot have formulas")
+            if (self.source == DreLineSource.BILLING) != bool(self.billing_fields):
+                raise ValueError("Billing lines need billing fields")
+        elif self.source != DreLineSource.NG_ACCOUNTS:
+            raise ValueError("Only source lines can read billing or adjustments")
         elif self.operation is None:
             raise ValueError("Calculated lines require an operation")
         if self.operation == DreOperation.SUBTRACT and len(self.operands) != 2:
@@ -196,9 +235,10 @@ class DreContributorView(BaseModel):
     record_date: date | None
     source_name: str
     original_filename: str
-    source_id: UUID
-    source_snapshot_id: UUID
-    source_execution_id: UUID
+    # Empty for a Controladoria adjustment, which has no source file.
+    source_id: UUID | None
+    source_snapshot_id: UUID | None
+    source_execution_id: UUID | None
     sheet_name: str
     source_row_number: int
     reference: str | None

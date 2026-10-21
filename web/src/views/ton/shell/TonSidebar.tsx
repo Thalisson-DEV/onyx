@@ -24,6 +24,7 @@ import {
   SvgPlus,
   SvgServer,
   SvgSettings,
+  SvgShield,
   SvgTrash,
   SvgUsers,
   SvgWorkflow,
@@ -106,6 +107,12 @@ const NAV: NavItem[] = [
         match: ["/ton/pendencias"],
       },
     ],
+  },
+  {
+    href: "/ton/ocorrencias" as Route,
+    label: COPY.nav.occurrences,
+    icon: SvgShield,
+    match: ["/ton/ocorrencias"],
   },
   {
     href: "/ton/automacoes",

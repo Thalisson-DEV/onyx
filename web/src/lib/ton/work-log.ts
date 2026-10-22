@@ -338,6 +338,7 @@ export function querySummary(
       return W.overdue(sum(body.items));
     }
     case "ton_propose_dre_structure_change":
+    case "ton_propose_dre_create":
     case "ton_propose_dre_adjustment":
     case "ton_propose_closing_treatment":
     case "ton_propose_dre_recalculation":

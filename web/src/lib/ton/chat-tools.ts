@@ -120,6 +120,13 @@ export const TON_TOOLS: Record<string, TonToolDescriptor> = {
     icon: SvgBarChart,
     kind: "dre",
   },
+  ton_propose_dre_create: {
+    doing: "Preparando a DRE nova",
+    label: "Proposta de DRE nova",
+    href: "/ton/dre",
+    icon: SvgBarChart,
+    kind: "dre",
+  },
   ton_propose_dre_adjustment: {
     doing: "Preparando o ajuste e calculando o antes e depois",
     label: "Proposta de ajuste da DRE",

@@ -59,6 +59,28 @@ def billing_amount(
     return Decimal(raw) if raw else Decimal(0)
 
 
+def percent_text(value: Decimal) -> str:
+    return f"{value.normalize():f}".replace(".", ",") + "%"
+
+
+def billing_fields_text(
+    line: DreLineDefinition, fields: list[BillingField] | None = None
+) -> str:
+    """What a billing line reads, as the Controladoria says it: "2% de valor
+    do serviço (bruto)"."""
+    text = ", ".join(BILLING_FIELD_LABELS[item] for item in (fields or line.billing_fields))
+    if line.billing_percent is not None:
+        return f"{percent_text(line.billing_percent)} de {text}"
+    return text
+
+
+def billing_share(amount: Decimal, line: DreLineDefinition) -> Decimal:
+    """The part of an invoice amount a billing line takes, signed for the DRE."""
+    if line.billing_percent is not None:
+        amount = amount * line.billing_percent / 100
+    return -amount if line.negate else amount
+
+
 def billing_month(
     fact: FinancialBillingFact, basis: BillingPeriodBasis
 ) -> datetime.date:
@@ -184,7 +206,7 @@ def line_source_sums(
                     ),
                     Decimal(0),
                 )
-                sums[month.month][line.code] += -amount if line.negate else amount
+                sums[month.month][line.code] += billing_share(amount, line)
     if adjustment_lines:
         rows = adjustments_in_force(session, structure_id, year, unit_id)
         if extra_adjustments:

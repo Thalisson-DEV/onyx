@@ -22,6 +22,10 @@ from onyx.ton.dre.models import (
 # code; "*" takes whatever no other group claims. A group no total reads stays
 # out of the result.
 REST = "*"
+# Codes of the lines the Controladoria adds to a derived structure itself
+# (billing or adjustment lines, groups). The base never uses them, so sync
+# keeps these lines where they are.
+OWN_PREFIX = "x"
 
 
 @dataclass(frozen=True)
@@ -196,7 +200,11 @@ def sync(
     derived_natures = {line.code: line for line in _natures(derived)}
     lines: list[DreLineDefinition] = []
     for line in sorted(derived, key=lambda item: item.position):
-        if line.code in derived_natures and line.code not in base_natures:
+        if (
+            line.code in derived_natures
+            and line.code not in base_natures
+            and not line.code.startswith(OWN_PREFIX)
+        ):
             continue
         source = base_natures.get(line.code)
         if source is not None and source.label != line.label:

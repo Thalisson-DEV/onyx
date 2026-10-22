@@ -69,11 +69,18 @@ class DreLineDefinition(BaseModel):
     # BILLING lines: the invoice amounts summed and the month they fall in.
     billing_fields: list[BillingField] = Field(default_factory=list)
     billing_period: BillingPeriodBasis = BillingPeriodBasis.EMISSION
+    # BILLING lines only: the line takes this percentage of the summed fields
+    # (taxa de administração 2%, PIS 1% of the invoices). None: the full sum.
+    billing_percent: Decimal | None = Field(
+        default=None, gt=0, le=100, max_digits=9, decimal_places=4
+    )
     # Deductions (taxes, retentions) enter the result with a negative sign.
     negate: bool = False
 
     @model_validator(mode="after")
     def validate_behavior(self) -> "DreLineDefinition":
+        if self.billing_percent is not None and self.source != DreLineSource.BILLING:
+            raise ValueError("Only billing lines take a percentage")
         if self.line_type == DreLineType.SOURCE_SUM:
             if self.operation is not None or self.operands:
                 raise ValueError("Source lines cannot have formulas")

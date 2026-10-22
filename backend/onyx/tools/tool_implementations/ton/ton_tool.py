@@ -33,6 +33,7 @@ from onyx.ton.agent.action_models import (
     ReviewDecisionPayload,
     SourceImportPayload,
     StructureChangePayload,
+    StructureCreatePayload,
     TreatmentPayload,
     UnitAssignmentPayload,
 )
@@ -69,6 +70,7 @@ TON_TOOL_DISPLAY_NAMES = {
     "ton_draft_automation": "Rascunho de automação",
     "ton_get_dre_structure": "Estrutura da DRE",
     "ton_propose_dre_structure_change": "Proposta na estrutura da DRE",
+    "ton_propose_dre_create": "Proposta de DRE nova",
     "ton_propose_dre_adjustment": "Proposta de ajuste da DRE",
     "ton_propose_closing_treatment": "Proposta de tratamento",
     "ton_propose_dre_recalculation": "Proposta de recálculo",
@@ -176,10 +178,19 @@ class TonDomainTool(Tool[None]):
                     else result.model_dump(mode="json")
                 )
         except (ValidationError, ValueError, OnyxError) as error:
-            # Do not pass DB details or unauthorized identifiers to the model.
+            # Business messages only: database errors are not caught here, so
+            # no DB detail reaches the model.
+            if isinstance(error, ValidationError):
+                first = error.errors()[0]
+                reason = f"parâmetro {'.'.join(str(item) for item in first['loc'])}: {first['msg']}"
+            elif isinstance(error, OnyxError):
+                reason = error.detail
+            else:
+                reason = str(error)
             raise ToolCallException(
                 "TON query rejected",
-                "Consulta indisponível. Verifique os parâmetros e sua autorização. Não invente dados.",
+                f"Consulta não feita ({reason[:300]}). Corrija os parâmetros sem repetir a mesma chamada, "
+                "ou explique a limitação. Não invente dados.",
             ) from error
         if uses_synthetic_demo_data():
             data = {"data_context": SYNTHETIC_DATA_NOTICE, "data": data}
@@ -523,15 +534,30 @@ class TonProposeStructureChangeTool(TonProposeActionTool):
     KIND = ActionKind.DRE_STRUCTURE_CHANGE
     PAYLOAD = StructureChangePayload
     DESCRIPTION = (
-        "Propor mudança na estrutura da DRE: criar linha ou grupo, renomear, mover, ocultar, tirar do "
-        "resultado, mudar a origem da linha, mudar fórmula de total, remover linha vazia ou mover natureza "
-        "do NG para outra linha. Antes, leia os códigos com ton_get_dre_structure. Origens de linha: "
-        "NG_ACCOUNTS (naturezas do NG), BILLING (notas da planilha de faturamento: billing_fields como "
-        "service_amount para o bruto, iss_retained, iss_invoice, total_retained; negate=true para impostos e "
-        "retenções) e ADJUSTMENT (valores informados pela Controladoria, ajustados depois com "
-        "ton_propose_dre_adjustment). Linhas e grupos novos recebem os códigos a1, a2, a3… na ordem em que "
-        "são criados (pule os que já existem); use esses códigos em after_code e code das operações seguintes. "
-        "A proposta mostra a DRE antes e depois; só muda quando a pessoa clica em Aplicar."
+        "Propor mudança na estrutura de uma DRE (gerencial, caixa, economica ou outra, em structure_id): criar "
+        "linha ou grupo, renomear, mover, ocultar, tirar do resultado, mudar a origem da linha, mudar fórmula de "
+        "total, remover linha vazia ou mover natureza do NG para outra linha (só na gerencial). Antes, leia os "
+        "códigos com ton_get_dre_structure da mesma DRE. Origens de linha: NG_ACCOUNTS (naturezas do NG), BILLING "
+        "(notas da planilha de faturamento: billing_fields como service_amount para o bruto, iss_retained, "
+        "iss_invoice, total_retained; billing_percent para um percentual do valor, ex.: taxa de administração 2% "
+        "= service_amount com billing_percent=2; negate=true para impostos, taxas e retenções) e ADJUSTMENT "
+        "(valores informados pela Controladoria, ajustados depois com ton_propose_dre_adjustment). Linhas e grupos "
+        "novos recebem códigos em sequência a partir de proximo_codigo_novo da leitura (a1, a2… na gerencial; "
+        "x1, x2… nas outras DREs), pulando os que já existem; use esses códigos em after_code, code e operands "
+        "das operações seguintes. A proposta mostra a DRE antes e depois; só muda quando a pessoa clica em Aplicar."
+    )
+
+
+class TonProposeStructureCreateTool(TonProposeActionTool):
+    NAME = "ton_propose_dre_create"
+    KIND = ActionKind.DRE_STRUCTURE_CREATE
+    PAYLOAD = StructureCreatePayload
+    DESCRIPTION = (
+        "Propor uma DRE nova da Controladoria (ex.: \"DRE - BI Caixa\") começando como cópia da DRE Caixa ou da "
+        "Econômica, acompanhando a gerencial como elas. Use quando a pessoa pedir um modelo novo de DRE ou "
+        "fechamento que não existe; se ela quer mudar uma DRE existente, use ton_propose_dre_structure_change. "
+        "Depois de aplicada, leia a DRE nova com ton_get_dre_structure e proponha as mudanças dela (grupos, "
+        "faturamento bruto, impostos, percentuais) numa única proposta. Só muda quando a pessoa clica em Aplicar."
     )
 
 
@@ -618,8 +644,10 @@ class TonProposeImportTool(TonProposeActionTool):
 class TonDreStructureTool(TonDomainTool):
     NAME = "ton_get_dre_structure"
     DESCRIPTION = (
-        "Ler a estrutura da DRE como está: código, nome, grupo, origem de cada linha, naturezas ligadas, "
-        "fórmulas dos totais e campos de faturamento disponíveis. Use antes de propor mudanças na estrutura ou ajustes."
+        "Ler a estrutura de uma DRE como está: código, nome, grupo, origem de cada linha, naturezas ligadas, "
+        "fórmulas dos totais, campos de faturamento, o que pode ser editado nela e o próximo código de linha nova. "
+        "Também lista todas as DREs existentes (gerencial, caixa, econômica e as criadas pela Controladoria). "
+        "Use antes de propor mudanças na estrutura ou ajustes."
     )
 
     def tool_definition(self) -> dict[str, Any]:
@@ -633,7 +661,7 @@ class TonDreStructureTool(TonDomainTool):
                     "properties": {
                         "structure_id": {
                             "type": "string",
-                            "description": "Estrutura (opcional; vazio é a gerencial).",
+                            "description": "Qual DRE: gerencial, caixa, economica, o nome de outra DRE ou o structure_id. Vazio: a gerencial.",
                         }
                     },
                     "required": [],
@@ -650,16 +678,19 @@ class TonDreStructureTool(TonDomainTool):
 
         try:
             raw = llm_kwargs.get("structure_id")
-            structure_id = UUID(str(raw)) if raw else None
             with get_session_with_tenant(tenant_id=self._tenant_id) as session:
                 user = session.get(User, self._user_id)
                 if user is None or not user.is_active:
                     raise ValueError("Usuário indisponível")
-                data = agent_actions.structure_for_chat(session, user, structure_id)
+                data = agent_actions.structure_for_chat(
+                    session, user, str(raw) if raw else None
+                )
         except (ValueError, OnyxError) as error:
+            message = error.detail if isinstance(error, OnyxError) else str(error)
             raise ToolCallException(
                 "TON structure read rejected",
-                "Estrutura indisponível. Não invente códigos de linha.",
+                f"Estrutura não lida: {message}. Corrija o nome da DRE (gerencial, caixa, economica ou o nome "
+                "exato) e não repita o mesmo pedido. Não invente códigos de linha.",
             ) from error
         self.emitter.emit(
             Packet(
@@ -1141,6 +1172,7 @@ TON_TOOL_CLASSES = (
     TonDraftAutomationTool,
     TonDreStructureTool,
     TonProposeStructureChangeTool,
+    TonProposeStructureCreateTool,
     TonProposeAdjustmentTool,
     TonProposeTreatmentTool,
     TonProposeRecalculationTool,

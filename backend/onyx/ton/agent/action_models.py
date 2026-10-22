@@ -14,6 +14,7 @@ from onyx.ton.financial_domain.models import TreatmentEffect, TreatmentStatus
 
 class ActionKind(StrEnum):
     DRE_STRUCTURE_CHANGE = "DRE_STRUCTURE_CHANGE"
+    DRE_STRUCTURE_CREATE = "DRE_STRUCTURE_CREATE"
     DRE_ADJUSTMENT = "DRE_ADJUSTMENT"
     CLOSING_TREATMENT = "CLOSING_TREATMENT"
     DRE_RECALCULATE = "DRE_RECALCULATE"
@@ -47,10 +48,33 @@ class ScopeInput(BaseModel):
     unit: str | None = Field(default=None, max_length=100)
 
 
+def _structure_field() -> Any:
+    """Which DRE: "gerencial", "caixa", "economica", another DRE's name or its
+    id. Empty: the managerial DRE."""
+    return Field(
+        default=None,
+        max_length=200,
+        description="Qual DRE: gerencial, caixa, economica, o nome de outra DRE ou o structure_id. Vazio: a gerencial.",
+    )
+
+
 class StructureChangePayload(ScopeInput):
-    # Empty: the managerial structure.
-    structure_id: UUID | None = None
+    structure_id: str | None = _structure_field()
     operations: list[LineOperation] = Field(min_length=1, max_length=20)
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class StructureCreatePayload(ScopeInput):
+    """A new DRE of the Controladoria (e.g. "DRE - BI Caixa"), a copy of the
+    Caixa or Econômica DRE that follows the managerial one like them."""
+
+    label: str = Field(min_length=3, max_length=200)
+    based_on: str = Field(
+        default="caixa",
+        min_length=1,
+        max_length=200,
+        description="DRE copiada como ponto de partida: caixa, economica ou outra DRE já derivada delas.",
+    )
     reason: str = Field(min_length=3, max_length=500)
 
 
@@ -63,7 +87,7 @@ class AdjustmentValue(BaseModel):
 
 
 class AdjustmentPayload(ScopeInput):
-    structure_id: UUID | None = None
+    structure_id: str | None = _structure_field()
     line_code: str = Field(min_length=1, max_length=100)
     values: list[AdjustmentValue] = Field(min_length=1, max_length=60)
     justification: str = Field(min_length=3, max_length=2000)
@@ -87,7 +111,7 @@ class TreatmentPayload(ScopeInput):
 
 
 class RecalculatePayload(ScopeInput):
-    structure_id: UUID | None = None
+    structure_id: str | None = _structure_field()
     # Units to recalculate besides the consolidated DRE; "todas" means every unit.
     units: list[str] = Field(default_factory=list, max_length=60)
 

@@ -4,6 +4,8 @@ import dataclasses
 import datetime
 import hashlib
 import json
+import re
+import unicodedata
 from collections import Counter, defaultdict
 from decimal import ROUND_HALF_EVEN, Decimal, localcontext
 from uuid import UUID
@@ -284,6 +286,90 @@ def create_simplified_structures(
             ),
         )
     return list_structures(session, user, 100, 0)
+
+
+def structure_key_for(session: Session, label: str) -> str:
+    """A free key for a new DRE whose last part names it alone, so the DRE
+    page link (?modelo=…) never takes it for Caixa or Econômica."""
+    plain = unicodedata.normalize("NFKD", label).encode("ascii", "ignore").decode()
+    word = re.sub(r"[^a-z0-9]", "", plain.lower())[:60] or "dre"
+    key, number = f"controladoria-{word}", 1
+    while session.scalar(sa.select(DreStructure.id).where(DreStructure.key == key)):
+        number += 1
+        key = f"controladoria-{word}{number}"
+    return key
+
+
+def copy_derived_structure(
+    session: Session, user: User, source_id: UUID, label: str, reason: str
+) -> DreVersionView:
+    """A new DRE with the latest lines of a derived one (Caixa, Econômica),
+    following the same managerial structure from now on."""
+    _require_admin(user)
+    session.execute(sa.text("SELECT pg_advisory_xact_lock(4433006)"))
+    source = session.get(DreStructure, source_id)
+    if source is None or source.base_structure_id is None or not source.template_key:
+        raise OnyxError(
+            OnyxErrorCode.INVALID_INPUT,
+            "Uma DRE nova parte da DRE Caixa ou da Econômica",
+        )
+    if session.scalar(
+        sa.select(DreStructure.id).where(sa.func.lower(DreStructure.label) == label.lower())
+    ):
+        raise OnyxError(OnyxErrorCode.CONFLICT, f"Já existe a DRE “{label}”")
+    latest = _latest(session, source.id)
+    assert latest is not None
+    view = _version_view(session, latest)
+    structure = DreStructure(
+        key=structure_key_for(session, label),
+        label=label,
+        base_structure_id=source.base_structure_id,
+        template_key=source.template_key,
+    )
+    session.add(structure)
+    session.flush()
+    return _create_version(
+        session,
+        user,
+        structure,
+        1,
+        DreVersionCreate(lines=view.lines, assignments=view.assignments, reason=reason),
+    )
+
+
+def remove_unused_structure(session: Session, user: User, structure_id: UUID) -> None:
+    """Deletes a derived DRE nobody calculated or adjusted yet."""
+    _require_admin(user)
+    structure = session.get(DreStructure, structure_id)
+    if structure is None or structure.base_structure_id is None:
+        raise OnyxError(OnyxErrorCode.NOT_FOUND, "DRE structure not found")
+    version_ids = list(
+        session.scalars(
+            sa.select(DreStructureVersion.id).where(
+                DreStructureVersion.structure_id == structure_id
+            )
+        )
+    )
+    used = session.scalar(
+        sa.select(DreCalculationRun.id)
+        .where(DreCalculationRun.structure_version_id.in_(version_ids))
+        .limit(1)
+    ) or session.scalar(
+        sa.select(DreAdjustment.id).where(DreAdjustment.structure_id == structure_id).limit(1)
+    )
+    if used is not None:
+        raise OnyxError(
+            OnyxErrorCode.CONFLICT,
+            "Esta DRE já foi calculada ou recebeu ajustes; ela fica, e pode ser renomeada ou ajustada",
+        )
+    session.execute(
+        sa.delete(DreAccountMapping).where(DreAccountMapping.version_id.in_(version_ids))
+    )
+    session.execute(
+        sa.delete(DreStructureVersion).where(DreStructureVersion.structure_id == structure_id)
+    )
+    session.delete(structure)
+    session.flush()
 
 
 def _primary_structure(session: Session) -> DreStructure | None:
@@ -1529,13 +1615,10 @@ def _line_source_contributors(
                     fact_type="ACTUAL",
                     period=scope.period,
                     account_code=fact.invoice_number,
-                    account_label=", ".join(
-                        dre_line_sources.BILLING_FIELD_LABELS[field]
-                        for field in line.billing_fields
-                    ),
+                    account_label=dre_line_sources.billing_fields_text(line),
                     unit_code=unit.code if unit else "",
                     unit_name=unit.name if unit else None,
-                    amount=-amount if line.negate else amount,
+                    amount=dre_line_sources.billing_share(amount, line),
                     amount_basis="BILLING",
                     record_date=fact.emission_date,
                     source_name=source.display_name if source else "Faturamento",
@@ -1736,13 +1819,13 @@ def _line_source_entries(
                             unit_code=unit.code if unit else None,
                             unit_name=unit.name if unit else None,
                             line_code=line.code,
-                            amount=-amount if line.negate else amount,
+                            amount=dre_line_sources.billing_share(amount, line),
                             record_date=fact.emission_date,
                             nature=line.label,
                             ng_account_code=None,
-                            ng_account_label=dre_line_sources.BILLING_FIELD_LABELS[
-                                field
-                            ],
+                            ng_account_label=dre_line_sources.billing_fields_text(
+                                line, [field]
+                            ),
                             document=fact.invoice_number,
                             history=fact.payer_text,
                             amount_basis="BILLING",

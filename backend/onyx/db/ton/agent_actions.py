@@ -27,7 +27,11 @@ from onyx.db.ton import financial_domain as financial_repository
 from onyx.db.ton.acl import is_ton_administrator
 from onyx.db.ton.agent import financial_context
 from onyx.db.ton.agent_overview import _fold, resolve_unit, visible_units
-from onyx.db.ton.dre_line_sources import BILLING_FIELD_LABELS, adjustments_in_force
+from onyx.db.ton.dre_line_sources import (
+    BILLING_FIELD_LABELS,
+    adjustments_in_force,
+    billing_fields_text,
+)
 from onyx.db.ton.models import (
     AgentAction,
     ControllerRule,
@@ -61,6 +65,7 @@ from onyx.ton.agent.action_models import (
     ScopeInput,
     SourceImportPayload,
     StructureChangePayload,
+    StructureCreatePayload,
     TreatmentPayload,
     UnitAssignmentPayload,
 )
@@ -69,6 +74,7 @@ from onyx.ton.account_classification.models import (
     ClassificationConfirmBatch,
 )
 from onyx.ton.agent.structure_ops import apply_operations
+from onyx.ton.dre.derived import OWN_PREFIX
 from onyx.ton.automations import service as automation_service
 from onyx.ton.automations.definition import AutomationStatus
 from onyx.ton.financial_review import service as review_service
@@ -100,10 +106,13 @@ from onyx.ton.financial_domain.models import (
 from onyx.ton.financial_review.service import dataset_summary
 
 EXPIRY = datetime.timedelta(hours=24)
+# What decides where a source line reads its values.
+SOURCE_FIELDS = {"source", "billing_fields", "billing_period", "billing_percent", "negate"}
 CENT = Decimal("0.005")
 
 PAYLOADS: dict[ActionKind, type[BaseModel]] = {
     ActionKind.DRE_STRUCTURE_CHANGE: StructureChangePayload,
+    ActionKind.DRE_STRUCTURE_CREATE: StructureCreatePayload,
     ActionKind.DRE_ADJUSTMENT: AdjustmentPayload,
     ActionKind.CLOSING_TREATMENT: TreatmentPayload,
     ActionKind.DRE_RECALCULATE: RecalculatePayload,
@@ -151,7 +160,7 @@ def _source_text(line: DreLineDefinition) -> str | None:
         return None
     sign = " com sinal negativo" if line.negate else ""
     if line.source == DreLineSource.BILLING:
-        fields = ", ".join(BILLING_FIELD_LABELS[item] for item in line.billing_fields)
+        fields = billing_fields_text(line)
         basis = "competência" if line.billing_period == "COMPETENCE" else "emissão"
         return f"“{line.label}” soma do faturamento: {fields}, pelo mês de {basis}{sign}"
     if line.source == DreLineSource.ADJUSTMENT:
@@ -221,19 +230,53 @@ def _scope_text(scope: _Scope) -> str:
     )
 
 
-def _structure(session: Session, structure_id: UUID | None) -> DreStructure:
-    structure = (
-        session.get(DreStructure, structure_id)
-        if structure_id
-        else dre._primary_structure(session)
+MANAGERIAL_WORDS = {"gerencial", "dre gerencial", "principal", "base"}
+
+
+def _structure_names(structures: list[DreStructure]) -> str:
+    return ", ".join(f"“{item.label}”" for item in structures) or "nenhuma"
+
+
+def _structure(session: Session, ref: UUID | str | None) -> DreStructure:
+    """The DRE a person or the chat names: empty or "gerencial" is the
+    managerial one; "caixa", "econômica", a DRE's name or its id the others."""
+    primary = dre._primary_structure(session)
+    text = str(ref).strip() if ref else ""
+    if not text or _fold(text) in MANAGERIAL_WORDS:
+        if primary is None:
+            raise ValueError("Ainda não há DRE configurada")
+        return primary
+    try:
+        found = session.get(DreStructure, UUID(text))
+    except ValueError:
+        found = None
+    if found is not None:
+        return found
+    structures = list(session.scalars(sa.select(DreStructure).order_by(DreStructure.key)))
+    wanted = _fold(text).removeprefix("dre ").strip()
+    tiers = [
+        [item for item in structures if _fold(item.label).removeprefix("dre ") == wanted],
+        [item for item in structures if _fold(item.key.split("-")[-1]) == wanted],
+        [
+            item
+            for item in structures
+            if wanted in _fold(item.label) or _fold(item.key) == wanted
+        ],
+    ]
+    for matches in tiers:
+        if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            raise ValueError(
+                f"Mais de uma DRE combina com “{text}”: {_structure_names(matches)}. Diga qual."
+            )
+    raise ValueError(
+        f"DRE “{text}” não encontrada. DREs existentes: {_structure_names(structures)}"
     )
-    if structure is None:
-        raise ValueError("Estrutura de DRE não encontrada")
-    if structure.base_structure_id is not None:
-        raise ValueError(
-            "Esta estrutura acompanha a gerencial; mude a estrutura gerencial"
-        )
-    return structure
+
+
+def _is_derived(structure: DreStructure) -> bool:
+    return structure.base_structure_id is not None
 
 
 def _brl(value: Decimal) -> str:
@@ -306,7 +349,11 @@ def _structure_plan(
     }
     try:
         edit = apply_operations(
-            current.lines, current.assignments, payload.operations, accounts
+            current.lines,
+            current.assignments,
+            payload.operations,
+            accounts,
+            derived=_is_derived(structure),
         )
     except ValueError as error:
         raise ValueError(str(error)) from error
@@ -336,8 +383,7 @@ def _preview_structure(
         previous = old_lines.get(line.code)
         if text and (
             previous is None
-            or previous.model_dump(include={"source", "billing_fields", "billing_period", "negate"})
-            != line.model_dump(include={"source", "billing_fields", "billing_period", "negate"})
+            or previous.model_dump(include=SOURCE_FIELDS) != line.model_dump(include=SOURCE_FIELDS)
         ):
             summary.append(text)
     if not summary:
@@ -366,6 +412,87 @@ def _preview_structure(
             pode_desfazer=True,
         ),
     )
+
+
+# ---------------------------------------------------------- new structure
+
+
+def _create_plan(
+    session: Session, payload: StructureCreatePayload
+) -> tuple[DreStructure, DreStructure]:
+    source = _structure(session, payload.based_on)
+    if not _is_derived(source):
+        raise ValueError(
+            "Uma DRE nova parte da DRE Caixa ou da Econômica (que acompanham a gerencial); diga qual delas serve de ponto de partida"
+        )
+    base = session.get(DreStructure, source.base_structure_id)
+    assert base is not None
+    if session.scalar(
+        sa.select(DreStructure.id).where(
+            sa.func.lower(DreStructure.label) == payload.label.strip().lower()
+        )
+    ):
+        raise ValueError(f"Já existe a DRE “{payload.label.strip()}”")
+    return source, base
+
+
+def _preview_create(
+    session: Session, user: User, payload: StructureCreatePayload
+) -> tuple[str, ActionPreview]:
+    source, base = _create_plan(session, payload)
+    version = dre.get_latest_version(session, user, source.id)
+    groups = [
+        line.label
+        for line in sorted(version.lines, key=lambda item: item.position)
+        if line.parent_code is None
+    ]
+    return (
+        f"Criar a DRE “{payload.label.strip()}”",
+        ActionPreview(
+            resumo=[
+                f"Nova DRE “{payload.label.strip()}”, começando igual à “{source.label}” (versão {version.number})",
+                f"Acompanha a “{base.label}”: naturezas novas ou renomeadas lá chegam aqui sozinhas",
+                "Linhas principais: " + "; ".join(groups[:14]) + ("…" if len(groups) > 14 else ""),
+                f"Motivo: {payload.reason}",
+            ],
+            avisos=[
+                "Depois de criada, as mudanças desta DRE (grupos, linhas de faturamento, percentuais, ajustes) são propostas à parte, sem mexer na DRE de origem.",
+                "Ela aparece na escolha de modelo da tela DRE; para ver valores, recalcule a DRE nova.",
+            ],
+            pode_desfazer=True,
+        ),
+    )
+
+
+def _apply_create(
+    session: Session, user: User, payload: StructureCreatePayload
+) -> dict[str, Any]:
+    source, _ = _create_plan(session, payload)
+    view = dre.copy_derived_structure(
+        session, user, source.id, payload.label.strip(), payload.reason
+    )
+    session.commit()
+    structure = session.get(DreStructure, view.structure_id)
+    assert structure is not None
+    return {
+        "structure_id": str(structure.id),
+        "dre": structure.label,
+        "link": f"/ton/dre?modelo={structure.key.split('-')[-1]}",
+    }
+
+
+def _undo_create(
+    session: Session,
+    user: User,
+    payload: StructureCreatePayload,
+    result: dict[str, Any],
+) -> dict[str, Any]:
+    try:
+        dre.remove_unused_structure(session, user, UUID(result["structure_id"]))
+    except OnyxError as error:
+        raise ValueError(error.detail) from error
+    session.commit()
+    return {"removida": result.get("dre")}
 
 
 def _recalculate(
@@ -1647,6 +1774,7 @@ def _undo_r1(
 
 PREVIEWS = {
     ActionKind.DRE_STRUCTURE_CHANGE: _preview_structure,
+    ActionKind.DRE_STRUCTURE_CREATE: _preview_create,
     ActionKind.DRE_ADJUSTMENT: _preview_adjustment,
     ActionKind.CLOSING_TREATMENT: _preview_treatment,
     ActionKind.DRE_RECALCULATE: _preview_recalculate,
@@ -1664,6 +1792,7 @@ PREVIEWS = {
 }
 APPLIERS = {
     ActionKind.DRE_STRUCTURE_CHANGE: _apply_structure,
+    ActionKind.DRE_STRUCTURE_CREATE: _apply_create,
     ActionKind.DRE_ADJUSTMENT: _apply_adjustment,
     ActionKind.CLOSING_TREATMENT: _apply_treatment,
     ActionKind.DRE_RECALCULATE: _apply_recalculate,
@@ -1681,6 +1810,7 @@ APPLIERS = {
 }
 UNDOERS = {
     ActionKind.DRE_STRUCTURE_CHANGE: _undo_structure,
+    ActionKind.DRE_STRUCTURE_CREATE: _undo_create,
     ActionKind.DRE_ADJUSTMENT: _undo_adjustment,
     ActionKind.CLOSING_TREATMENT: _undo_treatment,
     ActionKind.ACCOUNT_CLASSIFICATION: _undo_classification,
@@ -1823,13 +1953,33 @@ def get(session: Session, user: User, action_id: UUID) -> AgentActionView:
     return _view(row)
 
 
+def structures_for_chat(session: Session, user: User) -> list[dict[str, Any]]:
+    """Every DRE the Controladoria has, and how the chat names each one."""
+    by_id = {item.id: item for item in dre.list_structures(session, user, 100, 0)}
+    primary = dre._primary_structure(session)
+    result = []
+    for item in by_id.values():
+        base = by_id.get(item.base_structure_id) if item.base_structure_id else None
+        result.append(
+            {
+                "nome": item.label,
+                "structure_id": str(item.id),
+                "como_pedir": "gerencial"
+                if primary is not None and item.id == primary.id
+                else item.key.split("-")[-1],
+                "acompanha": base.label if base else None,
+            }
+        )
+    return result
+
+
 def structure_for_chat(
-    session: Session, user: User, structure_id: UUID | None
+    session: Session, user: User, structure_ref: str | None
 ) -> dict[str, Any]:
     """The structure as the chat needs it to propose edits: codes, groups,
     where each line reads its values and the naturezas linked to it."""
     try:
-        structure = _structure(session, structure_id)
+        structure = _structure(session, structure_ref)
     except ValueError as error:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, str(error)) from error
     version = dre.get_latest_version(session, user, structure.id)
@@ -1862,8 +2012,12 @@ def structure_for_chat(
             "grupo": line.parent_code,
         }
         if kind == "linha":
-            entry["origem"] = _source_text(line) or "naturezas do NG"
             linked = natures.get(line.code, [])
+            entry["origem"] = _source_text(line) or (
+                "naturezas do NG"
+                if linked
+                else "vazia: sem natureza; para lançar valores, mude a origem para ADJUSTMENT"
+            )
             entry["naturezas"] = linked[:15]
             if len(linked) > 15:
                 entry["naturezas_a_mais"] = len(linked) - 15
@@ -1874,14 +2028,35 @@ def structure_for_chat(
         if line.excluded:
             entry["fora_do_resultado"] = True
         lines.append(entry)
+    derived = _is_derived(structure)
+    codes = {line.code for line in version.lines}
+    prefix = OWN_PREFIX if derived else "a"
+    number = 1
+    while f"{prefix}{number}" in codes:
+        number += 1
+    base = session.get(DreStructure, structure.base_structure_id) if derived else None
     return {
         "estrutura": structure.label,
         "structure_id": str(structure.id),
         "versao": version.number,
+        "tipo": f"derivada: acompanha a “{base.label}”" if base else "gerencial (base das outras)",
+        "como_editar": (
+            "Aqui você pode: criar grupos e linhas de faturamento (BILLING, com billing_percent quando for um percentual) "
+            "ou de valores da Controladoria (ADJUSTMENT); mover, ocultar ou tirar do resultado qualquer linha; mudar "
+            "fórmulas dos totais; renomear, mudar a origem ou remover as linhas próprias desta DRE (códigos "
+            f"{OWN_PREFIX}1, {OWN_PREFIX}2…) e as linhas manuais sem grupo. Naturezas do NG seguem a DRE gerencial: "
+            "renomear, remover ou mover natureza é lá."
+            if derived
+            else "Todas as operações; mudanças de naturezas e linhas daqui chegam às DREs que acompanham esta."
+        ),
+        "proximo_codigo_novo": f"{prefix}{number}",
         "linhas": lines,
         "campos_de_faturamento": {
             field.value: label for field, label in BILLING_FIELD_LABELS.items()
         },
-        "observacao": "Custos e deduções entram com valor negativo; linhas de imposto ou retenção do faturamento usam negate=true.",
+        "observacao": "Custos e deduções entram com valor negativo; linhas de imposto ou retenção do faturamento usam negate=true. "
+        "Percentual sobre o faturamento (taxa de administração 2%, PIS 1%, COFINS 4,6%, contingência 1%): linha BILLING com "
+        "billing_fields=[service_amount], billing_percent=2 e negate=true.",
+        "dres_existentes": structures_for_chat(session, user),
         "regras_da_controladoria": rules_for_chat(session),
     }

@@ -1,10 +1,12 @@
 """Edits to a DRE structure that the chat proposes, applied on a copy."""
 
+from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from onyx.ton.dre.derived import OWN_PREFIX
 from onyx.ton.dre.engine import calculation_order
 from onyx.ton.dre.models import (
     BillingField,
@@ -32,6 +34,16 @@ OperationKind = Literal[
 ]
 
 
+ENGINE_ERRORS = {
+    "DRE line codes and positions must be unique": "Dois itens ficariam com o mesmo código",
+    "Invalid DRE parent": "Uma linha ficaria num grupo que não existe",
+    "DRE hierarchy has a cycle": "Um grupo ficaria dentro dele mesmo",
+    "DRE formula references a missing line": "Uma fórmula de total usaria uma linha que não existe; ajuste os operands",
+    "DRE formula or hierarchy has a cycle": "Uma fórmula de total dependeria dela mesma",
+    "SUM_LINES requires operands": "Um total ficaria sem linhas para somar",
+}
+
+
 class LineOperation(BaseModel):
     """One edit. Fields not used by ``op`` are ignored."""
 
@@ -47,6 +59,9 @@ class LineOperation(BaseModel):
     source: DreLineSource | None = None
     billing_fields: list[BillingField] = Field(default_factory=list, max_length=10)
     billing_period: BillingPeriodBasis | None = None
+    # BILLING lines: the percentage of the summed fields the line takes
+    # (taxa de administração 2% of the gross billing). Empty: the full sum.
+    billing_percent: Decimal | None = Field(default=None, gt=0, le=100)
     negate: bool | None = None
     operation: DreOperation | None = None
     operands: list[str] = Field(default_factory=list, max_length=20)
@@ -67,11 +82,21 @@ def _is_group(line: DreLineDefinition) -> bool:
     )
 
 
-def _new_code(codes: set[str]) -> str:
+def _new_code(codes: set[str], prefix: str = "a") -> str:
     number = 1
-    while f"a{number}" in codes:
+    while f"{prefix}{number}" in codes:
         number += 1
-    return f"a{number}"
+    return f"{prefix}{number}"
+
+
+def follows_base(line: DreLineDefinition) -> bool:
+    """In a derived structure (Caixa, Econômica): a line of the managerial
+    structure kept in step with it, whose name and origin change there."""
+    return (
+        line.line_type == DreLineType.SOURCE_SUM
+        and line.parent_code is not None
+        and not line.code.startswith(OWN_PREFIX)
+    )
 
 
 class _Draft:
@@ -127,6 +152,12 @@ class _Draft:
 
 def _source_line(operation: LineOperation, code: str) -> DreLineDefinition:
     source = operation.source or DreLineSource.NG_ACCOUNTS
+    if source == DreLineSource.BILLING and not operation.billing_fields:
+        raise ValueError(
+            f"A linha {operation.label or code} lê o faturamento: diga quais campos em billing_fields (ex.: service_amount)"
+        )
+    if operation.billing_percent is not None and source != DreLineSource.BILLING:
+        raise ValueError("Percentual (billing_percent) só vale para linha de faturamento (BILLING)")
     return DreLineDefinition(
         code=code,
         label=operation.label or "",
@@ -138,6 +169,9 @@ def _source_line(operation: LineOperation, code: str) -> DreLineDefinition:
         if source == DreLineSource.BILLING
         else [],
         billing_period=operation.billing_period or BillingPeriodBasis.EMISSION,
+        billing_percent=operation.billing_percent
+        if source == DreLineSource.BILLING
+        else None,
         negate=bool(operation.negate),
     )
 
@@ -147,10 +181,18 @@ def apply_operations(
     assignments: list[DreAccountAssignment],
     operations: list[LineOperation],
     accounts_by_code: dict[str, UUID],
+    *,
+    derived: bool = False,
 ) -> StructureEdit:
     """The structure after ``operations``, in order. Raises ValueError with a
-    message in Portuguese when an edit does not fit the structure."""
+    message in Portuguese when an edit does not fit the structure.
+
+    ``derived``: a Caixa or Econômica structure. Its natureza lines follow the
+    managerial one, so they are moved, hidden or taken out of the result here
+    but renamed, removed or given naturezas only there; its own lines read
+    billing or Controladoria values and get the codes x1, x2…"""
     draft = _Draft(lines)
+    prefix = OWN_PREFIX if derived else "a"
     mapping = {item.account_id: item for item in assignments}
     for operation in operations:
         codes = {line.code for line in draft.order}
@@ -158,7 +200,16 @@ def apply_operations(
             if not operation.label:
                 raise ValueError("A linha nova precisa de um nome")
             draft.check_parent(operation.parent_code)
-            code = _new_code(codes)
+            code = _new_code(codes, prefix)
+            if (
+                derived
+                and operation.op == "add_line"
+                and (operation.source or DreLineSource.NG_ACCOUNTS)
+                == DreLineSource.NG_ACCOUNTS
+            ):
+                raise ValueError(
+                    "Nesta DRE as naturezas do NG seguem a DRE Gerencial; a linha nova lê faturamento (BILLING) ou valores da Controladoria (ADJUSTMENT)"
+                )
             if operation.op == "add_line":
                 line = _source_line(operation, code)
             else:
@@ -174,6 +225,10 @@ def apply_operations(
             draft.order.insert(index, line)
             continue
         if operation.op == "move_nature":
+            if derived:
+                raise ValueError(
+                    "Nesta DRE as naturezas seguem a DRE Gerencial; mova a natureza lá ou mova a linha inteira aqui"
+                )
             if not operation.nature_code or not operation.target_code:
                 raise ValueError("Informe a natureza e a linha de destino")
             account_id = accounts_by_code.get(operation.nature_code)
@@ -194,6 +249,14 @@ def apply_operations(
         if operation.code is None:
             raise ValueError("Informe a linha")
         line = draft.get(operation.code)
+        if (
+            derived
+            and follows_base(line)
+            and operation.op in ("rename_line", "remove_line", "set_line_source")
+        ):
+            raise ValueError(
+                f"A linha {line.label} é uma natureza que segue a DRE Gerencial; mude-a lá, ou mova, oculte ou tire do resultado aqui"
+            )
         if operation.op == "rename_line":
             if not operation.label:
                 raise ValueError("Informe o novo nome")
@@ -261,8 +324,29 @@ def apply_operations(
             if any(line.code in item.operands for item in draft.order):
                 raise ValueError(f"Um total usa a linha {line.label}")
             del draft.order[draft.index(line.code)]
+    # A group the edits left empty goes, and no total reads it any more.
+    emptied = {
+        line.code
+        for line in draft.order
+        if _is_group(line)
+        and not any(item.parent_code == line.code for item in draft.order)
+    }
+    draft.order = [
+        line.model_copy(
+            update={"operands": [code for code in line.operands if code not in emptied]}
+        )
+        if line.operation == DreOperation.SUM_LINES
+        else line
+        for line in draft.order
+        if line.code not in emptied
+    ]
     result = draft.lines()
-    calculation_order(result)
+    try:
+        calculation_order(result)
+    except ValueError as error:
+        raise ValueError(
+            ENGINE_ERRORS.get(str(error), f"A estrutura ficaria inválida ({error})")
+        ) from error
     return StructureEdit(
         lines=result,
         assignments=sorted(mapping.values(), key=lambda item: str(item.account_id)),

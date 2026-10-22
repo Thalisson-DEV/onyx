@@ -309,6 +309,7 @@ export const TON_TOOL_NAMES: Record<string, string> = {
   ton_draft_automation: "Rascunho de automação",
   ton_get_dre_structure: "Estrutura da DRE",
   ton_propose_dre_structure_change: "Proposta na estrutura da DRE",
+  ton_propose_dre_create: "Proposta de DRE nova",
   ton_propose_dre_adjustment: "Proposta de ajuste da DRE",
   ton_propose_closing_treatment: "Proposta de tratamento",
   ton_propose_dre_recalculation: "Proposta de recálculo",

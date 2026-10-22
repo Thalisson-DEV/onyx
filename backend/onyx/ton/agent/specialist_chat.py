@@ -48,6 +48,7 @@ SPECIALIST_CHATS = (
             "ton_get_recent_changes",
             "ton_run_financial_test",
             "ton_propose_dre_structure_change",
+            "ton_propose_dre_create",
             "ton_propose_dre_adjustment",
             "ton_propose_closing_treatment",
             "ton_propose_dre_recalculation",

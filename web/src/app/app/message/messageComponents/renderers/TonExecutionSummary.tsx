@@ -27,6 +27,7 @@ interface TonExecutionSummaryProps {
 /** Tools that propose a change; every proposal keeps its own card. */
 const ACTION_TOOLS = [
   "ton_propose_dre_structure_change",
+  "ton_propose_dre_create",
   "ton_propose_dre_adjustment",
   "ton_propose_closing_treatment",
   "ton_propose_dre_recalculation",

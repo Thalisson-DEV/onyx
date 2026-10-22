@@ -184,3 +184,35 @@ def test_percentage_only_on_billing_lines() -> None:
             source=DreLineSource.ADJUSTMENT,
             billing_percent=Decimal(2),
         )
+
+
+def test_a_group_left_out_of_every_total_is_flagged() -> None:
+    from onyx.db.ton.agent_actions import _loose_warnings
+    from onyx.ton.dre.models import DreResultLineView
+
+    caixa = build(CAIXA, BASE)
+    edit = apply_operations(
+        caixa,
+        [],
+        [
+            LineOperation(op="add_group", label="IMPOSTOS S/ FATURAMENTO", after_code="s1"),
+            LineOperation(
+                op="add_line",
+                label="PIS",
+                parent_code="x1",
+                source=DreLineSource.BILLING,
+                billing_fields=[BillingField.SERVICE_AMOUNT],
+                billing_percent=Decimal(1),
+                negate=True,
+            ),
+        ],
+        {},
+        derived=True,
+    )
+    values = [
+        DreResultLineView.model_construct(code="x1", realizado=Decimal("-122982.54")),
+        DreResultLineView.model_construct(code="s9", realizado=Decimal("512507.22")),
+    ]
+    warnings = _loose_warnings(caixa, edit.lines, values)
+    assert len(warnings) == 1
+    assert "IMPOSTOS S/ FATURAMENTO" in warnings[0] and "x1" in warnings[0]

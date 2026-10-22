@@ -106,6 +106,8 @@ from onyx.ton.financial_domain.models import (
 from onyx.ton.financial_review.service import dataset_summary
 
 EXPIRY = datetime.timedelta(hours=24)
+# Starts a preview warning the chat must fix before showing the proposal.
+LOOSE_MARK = "ATENÇÃO:"
 # What decides where a source line reads its values.
 SOURCE_FIELDS = {"source", "billing_fields", "billing_period", "billing_percent", "negate"}
 CENT = Decimal("0.005")
@@ -330,6 +332,38 @@ def _compare(
     return result[:30]
 
 
+def _loose(lines: list[DreLineDefinition]) -> set[str]:
+    """Top-level lines and groups no total or result reads."""
+    read = {code for line in lines for code in line.operands}
+    return {
+        line.code
+        for line in lines
+        if line.parent_code is None
+        and line.line_type != DreLineType.RESULT
+        and line.code not in read
+    }
+
+
+def _loose_warnings(
+    before: list[DreLineDefinition],
+    after: list[DreLineDefinition],
+    values: list[DreResultLineView],
+) -> list[str]:
+    """A line or group the change leaves out of every total, with a value:
+    almost always a formula the proposal forgot."""
+    amounts = {item.code: item.realizado for item in values}
+    labels = {line.code: line.label for line in after}
+    warnings = []
+    for code in sorted(_loose(after) - _loose(before)):
+        amount = amounts.get(code)
+        if amount is not None and abs(amount) >= CENT:
+            warnings.append(
+                f"{LOOSE_MARK} “{labels[code]}” ({_brl(amount)}) não entra em nenhum total nem no "
+                f"resultado. Inclua o código {code} na fórmula do total certo (set_formula)."
+            )
+    return warnings
+
+
 def _blocker_note(blockers: dict[str, int]) -> list[str]:
     if not blockers:
         return []
@@ -410,7 +444,8 @@ def _preview_structure(
             resumo=summary,
             escopo=_scope_text(scope),
             linhas=_compare(before, after, request.lines),
-            avisos=_blocker_note(blockers)
+            avisos=_loose_warnings(current.lines, request.lines, after)
+            + _blocker_note(blockers)
             + [
                 "Ao aplicar, o TON grava uma nova versão da estrutura e recalcula a DRE consolidada do ano."
             ],
@@ -1851,6 +1886,21 @@ def propose(
         where = ".".join(str(item) for item in first["loc"])
         raise ValueError(f"Pedido incompleto ({where}): {first['msg']}") from error
     title, preview = PREVIEWS[kind](session, user, payload)  # type: ignore[operator]
+    if chat_session_id is not None:
+        # A newer proposal of the same kind replaces the open one, so the
+        # person never has two competing cards to click.
+        for older in session.scalars(
+            sa.select(AgentAction).where(
+                AgentAction.chat_session_id == chat_session_id,
+                AgentAction.kind == kind.value,
+                AgentAction.status == ActionStatus.PROPOSED.value,
+                AgentAction.proposed_by == user.id,
+            )
+        ):
+            older.status = ActionStatus.CANCELLED.value
+            older.error = "Substituída por uma proposta mais nova"
+            older.decided_by = user.id
+            older.decided_at = datetime.datetime.now(datetime.timezone.utc)
     row = AgentAction(
         chat_session_id=chat_session_id,
         kind=kind.value,

@@ -519,7 +519,13 @@ class TonProposeActionTool(TonDomainTool):
                 item.model_dump(mode="json") for item in view.preview.linhas
             ],
             "avisos": view.preview.avisos,
-            "instrucao": "O cartão com Aplicar e Cancelar já está na tela. Diga em poucas frases o que muda e peça para conferir e clicar em Aplicar. Nunca diga que já aplicou.",
+            "instrucao": (
+                "Há um ATENÇÃO nos avisos: a proposta tem um erro de fórmula. Faça agora uma nova proposta "
+                "corrigida (ela substitui esta) antes de responder à pessoa."
+                if any(item.startswith(agent_actions.LOOSE_MARK) for item in view.preview.avisos)
+                else "O cartão com Aplicar e Cancelar já está na tela. Diga em poucas frases o que muda e peça "
+                "para conferir e clicar em Aplicar. Nunca diga que já aplicou."
+            ),
         }
         return ToolResponse(
             rich_response=CustomToolCallSummary(

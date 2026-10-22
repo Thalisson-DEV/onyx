@@ -1499,6 +1499,32 @@ class DreStructure(Base):
     template_key: Mapped[str | None] = mapped_column(String(50))
 
 
+class DreStructureArchive(Base):
+    """Append-only: a DRE taken out of use or brought back. The structure and
+    its history are immutable; the latest event per structure wins."""
+
+    __tablename__ = "ton_dre_structure_archive"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    structure_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_dre_structure.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    reason: Mapped[str | None] = mapped_column(String(500))
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        Index("ix_ton_dre_structure_archive_structure", "structure_id", "created_at"),
+    )
+
+
 class DreStructureVersion(Base):
     __tablename__ = "ton_dre_structure_version"
     id: Mapped[UUID] = mapped_column(

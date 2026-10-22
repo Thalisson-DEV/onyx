@@ -163,6 +163,7 @@ TON_TABLE_NAMES: tuple[str, ...] = (
         "ton_dre_adjustment",
         "ton_agent_action",
         "ton_controller_rule",
+        "ton_dre_structure_archive",
     )
 )
 
@@ -733,7 +734,7 @@ class TestFailClosedMetadata:
         """Classify all TON model tables, including the financial domain."""
         ton_tables = {name for name in Base.metadata.tables if name.startswith("ton_")}
         assert ton_tables == set(TON_TABLE_NAMES)
-        assert len(TON_TABLE_NAMES) == 80
+        assert len(TON_TABLE_NAMES) == 81
 
     def test_no_ton_model_writes_to_a_source_system(self) -> None:
         """The advisory boundary is enforced by absence: no column here can carry

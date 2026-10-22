@@ -30,6 +30,7 @@ from onyx.db.ton.models import (
     DreAccountMapping,
     DreAdjustment,
     DreCalculationRun,
+    DreStructureArchive,
     DreResultLine,
     DreStructure,
     DreStructureVersion,
@@ -202,9 +203,12 @@ def _follow_base(
     session: Session, user: User, base: DreStructure, version: DreVersionView
 ) -> None:
     """New versions of the structures derived from ``base``, when it changed them."""
+    archived = archived_structure_ids(session)
     for structure in session.scalars(
         sa.select(DreStructure).where(DreStructure.base_structure_id == base.id)
     ):
+        if structure.id in archived:
+            continue
         template = derived.TEMPLATES.get(structure.template_key or "")
         latest = _latest(session, structure.id)
         if template is None or latest is None:
@@ -313,8 +317,14 @@ def copy_derived_structure(
             OnyxErrorCode.INVALID_INPUT,
             "Uma DRE nova parte da DRE Caixa ou da Econômica",
         )
-    if session.scalar(
-        sa.select(DreStructure.id).where(sa.func.lower(DreStructure.label) == label.lower())
+    archived = archived_structure_ids(session)
+    if any(
+        item not in archived
+        for item in session.scalars(
+            sa.select(DreStructure.id).where(
+                sa.func.lower(DreStructure.label) == label.lower()
+            )
+        )
     ):
         raise OnyxError(OnyxErrorCode.CONFLICT, f"Já existe a DRE “{label}”")
     latest = _latest(session, source.id)
@@ -337,38 +347,49 @@ def copy_derived_structure(
     )
 
 
-def remove_unused_structure(session: Session, user: User, structure_id: UUID) -> None:
-    """Deletes a derived DRE nobody calculated or adjusted yet."""
+def archived_structure_ids(session: Session) -> set[UUID]:
+    """DREs taken out of use: the latest archive event says archived."""
+    latest = (
+        sa.select(
+            DreStructureArchive.structure_id,
+            DreStructureArchive.archived,
+            sa.func.row_number()
+            .over(
+                partition_by=DreStructureArchive.structure_id,
+                order_by=(
+                    DreStructureArchive.created_at.desc(),
+                    DreStructureArchive.id.desc(),
+                ),
+            )
+            .label("rank"),
+        )
+    ).subquery()
+    return set(
+        session.scalars(
+            sa.select(latest.c.structure_id).where(
+                latest.c.rank == 1, latest.c.archived.is_(True)
+            )
+        )
+    )
+
+
+def set_structure_archived(
+    session: Session, user: User, structure_id: UUID, archived: bool, reason: str
+) -> None:
+    """Takes a DRE the Controladoria created out of use, or brings it back.
+    Its history stays; the managerial DRE is never archived."""
     _require_admin(user)
     structure = session.get(DreStructure, structure_id)
     if structure is None or structure.base_structure_id is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "DRE structure not found")
-    version_ids = list(
-        session.scalars(
-            sa.select(DreStructureVersion.id).where(
-                DreStructureVersion.structure_id == structure_id
-            )
+    session.add(
+        DreStructureArchive(
+            structure_id=structure_id,
+            archived=archived,
+            reason=reason[:500],
+            created_by=user.id,
         )
     )
-    used = session.scalar(
-        sa.select(DreCalculationRun.id)
-        .where(DreCalculationRun.structure_version_id.in_(version_ids))
-        .limit(1)
-    ) or session.scalar(
-        sa.select(DreAdjustment.id).where(DreAdjustment.structure_id == structure_id).limit(1)
-    )
-    if used is not None:
-        raise OnyxError(
-            OnyxErrorCode.CONFLICT,
-            "Esta DRE já foi calculada ou recebeu ajustes; ela fica, e pode ser renomeada ou ajustada",
-        )
-    session.execute(
-        sa.delete(DreAccountMapping).where(DreAccountMapping.version_id.in_(version_ids))
-    )
-    session.execute(
-        sa.delete(DreStructureVersion).where(DreStructureVersion.structure_id == structure_id)
-    )
-    session.delete(structure)
     session.flush()
 
 
@@ -453,9 +474,11 @@ def list_structures(
     session: Session, _user: User, limit: int, offset: int
 ) -> list[DreStructureView]:
     check_page(limit, offset)
+    archived = archived_structure_ids(session)
     rows = session.execute(
         sa.select(DreStructure, sa.func.max(DreStructureVersion.number))
         .join(DreStructureVersion)
+        .where(DreStructure.id.not_in(archived) if archived else sa.true())
         .group_by(DreStructure.id)
         .order_by(DreStructure.base_structure_id.is_not(None), DreStructure.key)
         .limit(limit)

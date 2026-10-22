@@ -252,7 +252,12 @@ def _structure(session: Session, ref: UUID | str | None) -> DreStructure:
         found = None
     if found is not None:
         return found
-    structures = list(session.scalars(sa.select(DreStructure).order_by(DreStructure.key)))
+    archived = dre.archived_structure_ids(session)
+    structures = [
+        item
+        for item in session.scalars(sa.select(DreStructure).order_by(DreStructure.key))
+        if item.id not in archived
+    ]
     wanted = _fold(text).removeprefix("dre ").strip()
     tiers = [
         [item for item in structures if _fold(item.label).removeprefix("dre ") == wanted],
@@ -427,9 +432,13 @@ def _create_plan(
         )
     base = session.get(DreStructure, source.base_structure_id)
     assert base is not None
-    if session.scalar(
-        sa.select(DreStructure.id).where(
-            sa.func.lower(DreStructure.label) == payload.label.strip().lower()
+    archived = dre.archived_structure_ids(session)
+    if any(
+        item not in archived
+        for item in session.scalars(
+            sa.select(DreStructure.id).where(
+                sa.func.lower(DreStructure.label) == payload.label.strip().lower()
+            )
         )
     ):
         raise ValueError(f"Já existe a DRE “{payload.label.strip()}”")
@@ -458,6 +467,7 @@ def _preview_create(
             avisos=[
                 "Depois de criada, as mudanças desta DRE (grupos, linhas de faturamento, percentuais, ajustes) são propostas à parte, sem mexer na DRE de origem.",
                 "Ela aparece na escolha de modelo da tela DRE; para ver valores, recalcule a DRE nova.",
+                "Desfazer arquiva a DRE nova: ela some das telas e o histórico fica guardado.",
             ],
             pode_desfazer=True,
         ),
@@ -488,11 +498,13 @@ def _undo_create(
     result: dict[str, Any],
 ) -> dict[str, Any]:
     try:
-        dre.remove_unused_structure(session, user, UUID(result["structure_id"]))
+        dre.set_structure_archived(
+            session, user, UUID(result["structure_id"]), True, "Desfeito pelo chat"
+        )
     except OnyxError as error:
         raise ValueError(error.detail) from error
     session.commit()
-    return {"removida": result.get("dre")}
+    return {"arquivada": result.get("dre")}
 
 
 def _recalculate(

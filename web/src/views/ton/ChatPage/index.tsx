@@ -148,7 +148,7 @@ function presentation(specialistPersonaId: number | null): AppPagePresentation {
 }
 
 export default function TonChatPage() {
-  const { canRead } = useTonAccess();
+  const { canEnter } = useTonAccess();
   const router = useRouter();
   const params = useSearchParams();
   const focus = params.get("foco");
@@ -171,7 +171,7 @@ export default function TonChatPage() {
     }
   }, [hasSession, personaId, initialized, params, router]);
 
-  if (!canRead || configuration.error || personaId === null) {
+  if (!canEnter || configuration.error || personaId === null) {
     return (
       <div className="flex flex-1 items-center justify-center p-6">
         <Text as="p" font="main-ui-body" color="text-03">

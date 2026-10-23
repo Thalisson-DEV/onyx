@@ -462,6 +462,11 @@ export const COPY = {
       collapse: (line: string) => `Recolher ${line}`,
       drill: (line: string) => `Ver composição de ${line}`,
       excluded: "fora do resultado",
+      showAccounts: (line: string) => `Abrir ${line} por conta NG`,
+      hideAccounts: (line: string) => `Fechar as contas NG de ${line}`,
+      accountsLoading: "Carregando contas NG…",
+      accountsFailed: "Não foi possível carregar as contas NG.",
+      noAccount: "Sem conta NG",
     },
     year: {
       lineHeader: "Linha · R$",
@@ -548,10 +553,12 @@ export const COPY = {
         by: (author: string | null, date: string) =>
           author ? `${author} · ${date}` : date,
         noReason: "Sem motivo informado",
-        noChanges: "Sem mudança na estrutura (só a versão inicial ou um recálculo).",
+        noChanges:
+          "Sem mudança na estrutura (só a versão inicial ou um recálculo).",
         restore: "Voltar para esta versão",
         preview: (number: number) => `Voltar para a versão ${number}`,
-        previewIntro: "Ao confirmar, o TON cria uma nova versão com estas mudanças:",
+        previewIntro:
+          "Ao confirmar, o TON cria uma nova versão com estas mudanças:",
         previewNone:
           "Nada a voltar: a estrutura em uso já é igual a esta versão (naturezas criadas depois dela são mantidas).",
         leftOut: (natures: string) =>
@@ -562,27 +569,51 @@ export const COPY = {
         cancel: "Cancelar",
         restoreFailed: "Não foi possível voltar para esta versão.",
         changes: {
-          LINE_ADDED: (line: string, _before: string | null, after: string | null) =>
-            after ? `Linha “${line}” criada em “${after}”` : `Linha “${line}” criada`,
+          LINE_ADDED: (
+            line: string,
+            _before: string | null,
+            after: string | null
+          ) =>
+            after
+              ? `Linha “${line}” criada em “${after}”`
+              : `Linha “${line}” criada`,
           LINE_REMOVED: (line: string, before: string | null) =>
-            before ? `Linha “${line}” removida de “${before}”` : `Linha “${line}” removida`,
-          LINE_RENAMED: (_line: string, before: string | null, after: string | null) =>
-            `“${before}” renomeada para “${after}”`,
-          LINE_MOVED: (line: string, before: string | null, after: string | null) =>
-            `“${line}” saiu de “${before}” para “${after}”`,
+            before
+              ? `Linha “${line}” removida de “${before}”`
+              : `Linha “${line}” removida`,
+          LINE_RENAMED: (
+            _line: string,
+            before: string | null,
+            after: string | null
+          ) => `“${before}” renomeada para “${after}”`,
+          LINE_MOVED: (
+            line: string,
+            before: string | null,
+            after: string | null
+          ) => `“${line}” saiu de “${before}” para “${after}”`,
           ORDER_CHANGED: (line: string) => `Ordem alterada em “${line}”`,
-          INTO_RESULT: (line: string) => `“${line}” voltou a entrar no resultado`,
+          INTO_RESULT: (line: string) =>
+            `“${line}” voltou a entrar no resultado`,
           OUT_OF_RESULT: (line: string) => `“${line}” saiu do resultado`,
-          FORMULA_CHANGED: (line: string, before: string | null, after: string | null) =>
-            `Cálculo de “${line}”: ${before || "—"} → ${after || "—"}`,
+          FORMULA_CHANGED: (
+            line: string,
+            before: string | null,
+            after: string | null
+          ) => `Cálculo de “${line}”: ${before || "—"} → ${after || "—"}`,
           HIDDEN: (line: string) => `“${line}” oculta na DRE`,
           SHOWN: (line: string) => `“${line}” voltou a aparecer na DRE`,
-          NATURE_LINKED: (line: string, _before: string | null, after: string | null) =>
-            `Natureza ${line} ligada a “${after}”`,
+          NATURE_LINKED: (
+            line: string,
+            _before: string | null,
+            after: string | null
+          ) => `Natureza ${line} ligada a “${after}”`,
           NATURE_UNLINKED: (line: string, before: string | null) =>
             `Natureza ${line} desligada de “${before}”`,
-          NATURE_RELINKED: (line: string, before: string | null, after: string | null) =>
-            `Natureza ${line}: “${before}” → “${after}”`,
+          NATURE_RELINKED: (
+            line: string,
+            before: string | null,
+            after: string | null
+          ) => `Natureza ${line}: “${before}” → “${after}”`,
         } as Record<
           string,
           (line: string, before: string | null, after: string | null) => string
@@ -619,6 +650,9 @@ export const COPY = {
     drawer: {
       title: "Composição da linha",
       close: "Fechar",
+      onlyAccount: (code: string, name: string) =>
+        `Somente a conta NG ${code}${name ? ` · ${name}` : ""}`,
+      allAccounts: "Ver todas as contas",
       actual: "Realizado",
       budget: "Orçado",
       facts: (count: number) => plural(count, "lançamento", "lançamentos"),
@@ -643,6 +677,7 @@ export const COPY = {
         date: "Data",
         unit: "Unidade",
         account: "Conta NG",
+        accountName: "Nome da conta",
         document: "Documento",
         history: "Histórico",
         amount: "Valor",
@@ -898,7 +933,8 @@ export const COPY = {
         label: "Linhas rejeitadas na importação",
         description:
           "Linhas do arquivo do NG que não puderam ser lidas, por exemplo com colunas deslocadas.",
-        action: "Decida se a linha pode ficar de fora ou se o arquivo precisa ser corrigido.",
+        action:
+          "Decida se a linha pode ficar de fora ou se o arquivo precisa ser corrigido.",
         rowTitle: "Linha rejeitada",
       },
       other: {
@@ -969,8 +1005,7 @@ export const COPY = {
         `${formatNumber(count)} itens selecionados`,
       batchBody:
         "A mesma decisão e o mesmo motivo valem para todos. Cada item fica registrado separadamente no histórico.",
-      impactMany: (count: number) =>
-        `Vale para ${formatNumber(count)} itens`,
+      impactMany: (count: number) => `Vale para ${formatNumber(count)} itens`,
       impactRecompute: "a base é recalculada em seguida",
       impactPair: "Vale para os dois lados desta nota (NG e faturamento)",
       impactRecordOnly: "fica registrada para o próximo recálculo",
@@ -1159,7 +1194,8 @@ export const COPY = {
       "Uma pessoa com permissão de importação precisa recalcular a prontidão.",
     log: {
       title: "Decisões recentes",
-      many: (count: number, kind: string) => `${kind} · ${formatNumber(count)} itens`,
+      many: (count: number, kind: string) =>
+        `${kind} · ${formatNumber(count)} itens`,
       empty: "Nenhuma decisão registrada até agora.",
       applied: "Aplicada",
       pending: "Aguardando recálculo",
@@ -2002,8 +2038,7 @@ export const COPY = {
     },
     eyebrow: "Configuração",
     title: "Administração do TON",
-    description:
-      "Fontes, automações e controles do produto para a Vale Norte.",
+    description: "Fontes, automações e controles do produto para a Vale Norte.",
     productSection: "Produto",
     technicalBadge: "Técnica",
     technicalHint: "Abre na administração técnica",

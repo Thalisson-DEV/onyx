@@ -14,6 +14,7 @@ import sqlalchemy as sa
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
+from onyx.auth.permissions import has_global_permission
 from onyx.db.enums import Permission
 from onyx.db.models import User
 from onyx.db.ton.acl import business_unit_visible_clause, is_ton_administrator
@@ -1408,10 +1409,31 @@ def normalize(
         raise
 
 
-def get_run(session: Session, user: User, run_id: UUID) -> FinancialNormalizationRun:
+def unit_reader(session: Session, user: User, unit_id: UUID | None = None) -> bool:
+    """A unit-scoped reader (a TON unit manager): holds the source read token
+    and sees ``unit_id`` (or, without one, at least one unit). Such a reader
+    gets the DRE of their units without any share of the sources, whose rows
+    cover every unit; everything else stays behind the source ACL."""
+    if is_ton_administrator(user) or not has_global_permission(
+        user, Permission.READ_TON_SOURCES
+    ):
+        return False
+    query = sa.select(BusinessUnit.id).where(business_unit_visible_clause(user))
+    if unit_id is not None:
+        query = query.where(BusinessUnit.id == unit_id)
+    return session.scalar(query.limit(1)) is not None
+
+
+def get_run(
+    session: Session, user: User, run_id: UUID, unit_id: UUID | None = None
+) -> FinancialNormalizationRun:
+    """``unit_id``: the result is read for that unit only, which a unit
+    reader may do without access to the sources."""
     run = session.get(FinancialNormalizationRun, run_id)
     if run is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "Normalization run not found")
+    if unit_id is not None and unit_reader(session, user, unit_id):
+        return run
     # Read access to every input is required before any financial result is returned.
     review = session.get(ReviewRun, run.review_run_id)
     assert review is not None
@@ -1437,7 +1459,9 @@ def list_runs(
             FinancialNormalizationRun.started_at.desc(), FinancialNormalizationRun.id
         )
     )
-    if is_ton_administrator(user):
+    if is_ton_administrator(user) or unit_reader(session, user):
+        # A unit reader picks the base of their unit's DRE; the list carries
+        # no rows of any source.
         return list(session.scalars(query.limit(limit).offset(offset)))
     result: list[FinancialNormalizationRun] = []
     position = 0
@@ -1863,7 +1887,7 @@ def readiness(
     period: datetime.date,
     unit_id: UUID | None,
 ) -> ReadinessView:
-    run = get_run(session, user, run_id)
+    run = get_run(session, user, run_id, unit_id)
     if run.status != "SUCCEEDED":
         raise OnyxError(OnyxErrorCode.CONFLICT, "Normalization did not succeed")
     if period.day != 1:
@@ -2067,7 +2091,7 @@ def load_dre_input_dataset(
     if cached is not None:
         return cached
     view = readiness(session, user, run_id, period, unit_id)
-    run = get_run(session, user, run_id)
+    run = get_run(session, user, run_id, unit_id)
     dataset = DreInputDataset(
         readiness=view,
         actuals=_fact_views(session, run, "ACTUAL", period, unit_id, None, 0),

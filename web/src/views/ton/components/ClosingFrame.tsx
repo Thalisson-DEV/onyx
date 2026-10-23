@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import type { ReactNode } from "react";
 import { Text } from "@opal/components";
+import { useUser } from "@/providers/UserProvider";
 import { useDeferredStart, useTonClosing } from "@/lib/ton/api";
 import { COPY, formatPeriod } from "@/lib/ton/copy";
 import { PageContainer, PageHeader } from "@/views/ton/components/ui";
@@ -33,6 +34,7 @@ export default function ClosingFrame({
   children,
   wide = false,
 }: ClosingFrameProps) {
+  const { isAdmin } = useUser();
   // Only the eyebrow needs it; the page under the frame loads first.
   const closing = useTonClosing(undefined, useDeferredStart());
   // The DRE picks its own unit; the closing scope would contradict it there.
@@ -53,30 +55,33 @@ export default function ClosingFrame({
         description={description}
         actions={actions}
       />
-      <nav
-        aria-label={COPY.closing.eyebrow}
-        className="flex shrink-0 gap-1 border-b border-01 -mt-2 overflow-x-auto overflow-y-hidden"
-      >
-        {TABS.map((tab) => {
-          const selected = tab.key === active;
-          return (
-            <Link
-              key={tab.key}
-              href={tab.href}
-              aria-current={selected ? "page" : undefined}
-              className={
-                selected
-                  ? "ton-focusable ton-brand-text px-3 py-2.5 border-b-2 border-(--vale-norte-green-80) -mb-px"
-                  : "ton-focusable px-3 py-2.5 border-b-2 border-transparent -mb-px text-text-03 hover:text-text-05"
-              }
-            >
-              <Text font="main-ui-action" color="inherit">
-                {COPY.closing.tabs[tab.key]}
-              </Text>
-            </Link>
-          );
-        })}
-      </nav>
+      {/* A unit manager has only the DRE: no closing overview, no queue. */}
+      {isAdmin && (
+        <nav
+          aria-label={COPY.closing.eyebrow}
+          className="flex shrink-0 gap-1 border-b border-01 -mt-2 overflow-x-auto overflow-y-hidden"
+        >
+          {TABS.map((tab) => {
+            const selected = tab.key === active;
+            return (
+              <Link
+                key={tab.key}
+                href={tab.href}
+                aria-current={selected ? "page" : undefined}
+                className={
+                  selected
+                    ? "ton-focusable ton-brand-text px-3 py-2.5 border-b-2 border-(--vale-norte-green-80) -mb-px"
+                    : "ton-focusable px-3 py-2.5 border-b-2 border-transparent -mb-px text-text-03 hover:text-text-05"
+                }
+              >
+                <Text font="main-ui-action" color="inherit">
+                  {COPY.closing.tabs[tab.key]}
+                </Text>
+              </Link>
+            );
+          })}
+        </nav>
+      )}
       {children}
     </PageContainer>
   );

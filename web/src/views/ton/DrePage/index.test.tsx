@@ -113,7 +113,12 @@ function responseFor(key: string | null): unknown {
     return [{ id: "structure-1", label: "Synthetic DRE" }];
   if (key.includes("/units?"))
     return [
-      { id: "unit-1", code: "SYN", name: "Synthetic unit", kind: "OPERATIONAL" },
+      {
+        id: "unit-1",
+        code: "SYN",
+        name: "Synthetic unit",
+        kind: "OPERATIONAL",
+      },
       { id: "unit-2", code: "SYM", name: "Second unit", kind: "OPERATIONAL" },
     ];
   if (key.includes("/calculations/units-year?"))
@@ -154,7 +159,14 @@ function responseFor(key: string | null): unknown {
   if (key.includes("/statement"))
     return {
       run: result,
-      version: { id: "version-1", number: 1, lines: definitions },
+      version: {
+        id: "version-1",
+        number: 1,
+        lines: definitions,
+        assignments: [
+          { account_id: "nature-1", line_code: "service", status: "APPROVED" },
+        ],
+      },
       lines,
     };
   if (key.includes("/series?"))
@@ -165,6 +177,19 @@ function responseFor(key: string | null): unknown {
         realizado: "-20",
         orcado: "0",
         variance: "-20",
+      },
+    ];
+  if (key.includes("/accounts?"))
+    return [
+      {
+        account_code: "9.8.0004",
+        account_label: "Synthetic agreements",
+        months: { "2026-01-01": "60.00" },
+      },
+      {
+        account_code: "9.8.0007",
+        account_label: "Synthetic overdue",
+        months: { "2026-01-01": "40.00" },
       },
     ];
   if (key.includes("/contributors?"))
@@ -293,12 +318,63 @@ it("renders the year side by side and month by month, with drill-down", async ()
   expect(container).not.toHaveTextContent("aaaaaaaa");
 });
 
+it("opens a natureza line into its NG accounts, as in the BI", async () => {
+  scenario = "ready";
+  const user = setupUser();
+  render(<DreWorkspaceView />);
+  // The accounts are read only when the line is opened.
+  expect(screen.queryByText("Synthetic agreements")).not.toBeInTheDocument();
+  await user.click(
+    screen.getByRole("button", {
+      name: "Abrir Synthetic service por conta NG",
+    })
+  );
+  expect(screen.getByText("Synthetic agreements")).toBeInTheDocument();
+  expect(screen.getByText("9.8.0007")).toBeInTheDocument();
+  expect(mockUseSWR).toHaveBeenCalledWith(
+    `/api/ton/dre/lines/service/accounts?run_ids=${result.id}`,
+    expect.anything()
+  );
+
+  // An account's month opens only its entries, with the account's amount.
+  await user.click(
+    screen.getByRole("button", {
+      name: "Ver lançamentos de 9.8.0007 Synthetic overdue em Janeiro",
+    })
+  );
+  expect(mockUseSWR).toHaveBeenCalledWith(
+    expect.stringContaining(
+      "/contributors?fact_type=ACTUAL&limit=25&offset=0&account_code=9.8.0007"
+    ),
+    expect.anything()
+  );
+  const drawer = screen.getByRole("dialog");
+  expect(drawer).toHaveTextContent(
+    "Somente a conta NG 9.8.0007 · Synthetic overdue"
+  );
+  // One account reads only realized entries: no budget switch.
+  expect(
+    within(drawer).queryByRole("button", { name: "Orçado" })
+  ).not.toBeInTheDocument();
+  // The account name sits beside its code, not only in a tooltip.
+  expect(
+    within(drawer).getByRole("columnheader", { name: "Nome da conta" })
+  ).toBeInTheDocument();
+  expect(drawer).toHaveTextContent("Synthetic account");
+  await user.click(
+    within(drawer).getByRole("button", { name: "Ver todas as contas" })
+  );
+  expect(drawer).not.toHaveTextContent("Somente a conta NG");
+});
+
 it("adds up a chosen set of units, without drill-down", async () => {
   scenario = "ready";
   const user = setupUser();
   render(<DreWorkspaceView />);
   await user.click(screen.getByRole("button", { name: "Consolidado" }));
-  await user.click(screen.getByRole("button", { name: "Operacionais ativas (2)" }));
+  await user.click(
+    screen.getByRole("button", { name: "Operacionais ativas (2)" })
+  );
   await user.click(screen.getByRole("button", { name: "Ver DRE" }));
   expect(
     screen.getByRole("heading", { name: /2 unidades/ })

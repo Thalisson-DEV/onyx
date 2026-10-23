@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Route } from "next";
 import { Button, InputSingleSelect, Text } from "@opal/components";
-import { cn } from "@opal/utils";
 import {
   SvgAlertTriangle,
   SvgArrowRight,
@@ -363,6 +362,7 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
   if (!open || !line) return null;
   const page = dre.contributors.data;
   const first = page?.rows[0];
+  const account = dre.selectedAccount;
   const columns = COPY.dre.drawer.columns;
   return (
     <>
@@ -396,6 +396,23 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
                 .filter(Boolean)
                 .join(" · ")}
             </Text>
+            {account && (
+              <span className="flex flex-wrap items-baseline gap-x-3">
+                <Text font="secondary-body" color="text-04">
+                  {COPY.dre.drawer.onlyAccount(
+                    account.code,
+                    account.label ?? ""
+                  )}
+                </Text>
+                <button
+                  type="button"
+                  className="ton-focusable ton-link-button"
+                  onClick={dre.select.allAccounts}
+                >
+                  {COPY.dre.drawer.allAccounts}
+                </button>
+              </span>
+            )}
           </div>
           <Button
             ref={closeRef}
@@ -408,15 +425,15 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
         <div className="flex flex-wrap items-end gap-x-10 gap-y-3 px-6 py-4 border-b border-01">
           <Metric
             label={COPY.dre.kpi.actual}
-            value={formatCurrency(line.realizado)}
+            value={formatCurrency(account ? account.amount : line.realizado)}
           />
-          {dre.budgetPresent && (
+          {dre.budgetPresent && !account && (
             <Metric
               label={COPY.dre.kpi.budget}
               value={formatCurrency(line.orcado)}
             />
           )}
-          {dre.budgetPresent && (
+          {dre.budgetPresent && !account && (
             <Metric
               label={COPY.dre.kpi.variance}
               value={formatCurrency(line.variance)}
@@ -430,24 +447,27 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
           )}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3">
-          <div
-            className={cn("ton-segmented", !dre.budgetPresent && "hidden")}
-            role="group"
-          >
-            {(["ACTUAL", "BUDGET"] as const).map((type) => (
-              <button
-                key={type}
-                type="button"
-                aria-pressed={dre.factType === type}
-                className="ton-focusable ton-segment"
-                onClick={() => dre.select.factType(type)}
-              >
-                {type === "ACTUAL"
-                  ? COPY.dre.drawer.actual
-                  : COPY.dre.drawer.budget}
-              </button>
-            ))}
-          </div>
+          {/* No budget, or one NG account: only the realized entries. The
+              segmented display beats a `hidden` class, so it is not rendered. */}
+          {!dre.budgetPresent || account ? (
+            <span />
+          ) : (
+            <div className="ton-segmented" role="group">
+              {(["ACTUAL", "BUDGET"] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  aria-pressed={dre.factType === type}
+                  className="ton-focusable ton-segment"
+                  onClick={() => dre.select.factType(type)}
+                >
+                  {type === "ACTUAL"
+                    ? COPY.dre.drawer.actual
+                    : COPY.dre.drawer.budget}
+                </button>
+              ))}
+            </div>
+          )}
           {first && (
             <Text font="secondary-body" color="text-03">
               {COPY.dre.drawer.sourceOnce(
@@ -476,6 +496,7 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
                   <th scope="col">{columns.date}</th>
                   <th scope="col">{columns.unit}</th>
                   <th scope="col">{columns.account}</th>
+                  <th scope="col">{columns.accountName}</th>
                   <th scope="col">{columns.document}</th>
                   <th scope="col" className="w-full">
                     {columns.history}
@@ -498,8 +519,9 @@ function DrillDrawer({ dre }: { dre: DreWorkspace }) {
                       <td>
                         {getBusinessLabel(fact.unit_name ?? fact.unit_code)}
                       </td>
-                      <td title={fact.source_account_label ?? undefined}>
-                        {fact.source_account_code ?? fact.account_code}
+                      <td>{fact.source_account_code ?? fact.account_code}</td>
+                      <td className="ton-ledger-account-name">
+                        {fact.source_account_label ?? fact.account_label}
                       </td>
                       <td>{fact.reference ?? "—"}</td>
                       <td className="ton-ledger-history">
@@ -615,7 +637,10 @@ function ReadyState({ dre }: { dre: DreWorkspace }) {
           title={
             dre.busy
               ? dre.progress
-                ? COPY.dre.recalculatingMonth(dre.progress.done, dre.progress.total)
+                ? COPY.dre.recalculatingMonth(
+                    dre.progress.done,
+                    dre.progress.total
+                  )
                 : COPY.dre.recalculating
               : COPY.dre.readyNoResult
           }
@@ -682,7 +707,12 @@ function ReadyState({ dre }: { dre: DreWorkspace }) {
         {summary && definition && (
           <dl className="ton-summary-strip">
             <div>
-              <dt>{COPY.dre.summaryMonth(getBusinessLabel(definition.label), monthName)}</dt>
+              <dt>
+                {COPY.dre.summaryMonth(
+                  getBusinessLabel(definition.label),
+                  monthName
+                )}
+              </dt>
               <dd>{valueOf(summary, definition, "realizado")}</dd>
             </div>
             <div>
@@ -757,14 +787,18 @@ function UnitsState({ dre }: { dre: DreWorkspace }) {
     "idle"
   );
   const data = dre.unitsYear.data;
-  const missing = new Set(data?.months.flatMap((month) => month.missing_unit_ids));
+  const missing = new Set(
+    data?.months.flatMap((month) => month.missing_unit_ids)
+  );
   const absent = dre.unitSet.filter(
     (id) => !data?.months.some((month) => month.ready_unit_ids.includes(id))
   );
   // Units without a result for the closing month are calculated right away.
   const autoKey = `${dre.unitSet.join(",")}|${dre.periodValue}|${dre.version?.id}`;
   const started = useRef<string | null>(null);
-  const lastMonth = data?.months.find((month) => month.period === dre.periodValue);
+  const lastMonth = data?.months.find(
+    (month) => month.period === dre.periodValue
+  );
   const toCalculate = data
     ? dre.unitSet.filter((id) => !lastMonth?.ready_unit_ids.includes(id))
     : [];
@@ -835,7 +869,9 @@ function UnitsState({ dre }: { dre: DreWorkspace }) {
                   .then((ok) => setExcelState(ok ? "idle" : "failed"));
               }}
             >
-              {excelState === "loading" ? COPY.dre.excelLoading : COPY.dre.excel}
+              {excelState === "loading"
+                ? COPY.dre.excelLoading
+                : COPY.dre.excel}
             </Button>
           </div>
         </div>

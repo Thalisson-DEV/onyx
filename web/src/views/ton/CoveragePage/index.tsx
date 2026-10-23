@@ -43,15 +43,15 @@ function toneOf(status: string): TonTone {
 }
 
 export default function CoveragePage() {
-  const { hasAdminAccess } = useUser();
+  const { isAdmin } = useUser();
   const registry = useSWR<Capability[]>(
-    hasAdminAccess ? "/api/ton/agent/capabilities" : null,
+    isAdmin ? "/api/ton/agent/capabilities" : null,
     errorHandlingFetcher
   );
   const capabilities = registry.data ?? [];
   const families = Array.from(new Set(capabilities.map((item) => item.family)));
 
-  if (!hasAdminAccess) {
+  if (!isAdmin) {
     return (
       <PageContainer>
         <EmptyState

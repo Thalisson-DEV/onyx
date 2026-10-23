@@ -12,6 +12,7 @@ const mockRename = jest.fn(async (_id: string, _name: string) => ({
 }));
 const mockDelete = jest.fn(async (_id: string) => ({ ok: true }));
 const mockSessions: Partial<ChatSession>[] = [];
+let mockAdmin = true;
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
@@ -19,10 +20,10 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 jest.mock("@/providers/UserProvider", () => ({
-  useUser: () => ({ hasAdminAccess: false }),
+  useUser: () => ({ isAdmin: mockAdmin }),
 }));
 jest.mock("@/lib/ton/api", () => ({
-  useTonAccess: () => ({ canRead: true }),
+  useTonAccess: () => ({ canEnter: true, canRead: true }),
   useTonPersona: () => ({ data: { persona_id: 7 } }),
 }));
 jest.mock("@/hooks/useChatSessions", () => ({
@@ -41,6 +42,7 @@ jest.mock("@/app/app/services/lib", () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockAdmin = true;
   mockSessions.splice(
     0,
     mockSessions.length,
@@ -58,7 +60,7 @@ test("lists only TON conversations and keeps the active section open", () => {
 
   expect(screen.getByRole("link", { name: "Margem de junho" })).toBeVisible();
   expect(screen.queryByText("Outra persona")).toBeNull();
-  expect(screen.getByRole("link", { name: "DRE" })).toHaveAttribute(
+  expect(screen.getByRole("link", { name: "DRE Gerencial" })).toHaveAttribute(
     "aria-current",
     "page"
   );
@@ -75,6 +77,25 @@ test("the rail keeps navigation by icon and hides the history", () => {
     "aria-current",
     "page"
   );
+});
+
+test("a unit manager sees only the DREs and the assistant", () => {
+  mockAdmin = false;
+  renderSidebar();
+
+  expect(screen.getByRole("link", { name: "Assistente" })).toBeVisible();
+  expect(screen.getByRole("link", { name: "Fechamento" })).toBeVisible();
+  for (const name of [
+    "Visão Geral",
+    "Ocorrências",
+    "Automações",
+    "Relatórios",
+    "Fontes",
+    "Pendências",
+    "Especialistas",
+  ]) {
+    expect(screen.queryByRole("link", { name })).toBeNull();
+  }
 });
 
 test("renames a conversation inline", async () => {

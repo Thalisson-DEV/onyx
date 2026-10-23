@@ -19,6 +19,7 @@ from onyx.error_handling.exceptions import OnyxError
 from onyx.ton.dre.models import (
     DreAssignmentApproval,
     DreContributorPage,
+    DreLineAccountView,
     DrePeriodPoint,
     DreReadinessView,
     DreRestoreRequest,
@@ -29,9 +30,9 @@ from onyx.ton.dre.models import (
     DreStatementView,
     DreStructureCreate,
     DreStructureView,
+    DreUnitsYearView,
     DreVersionCreate,
     DreVersionHistoryItem,
-    DreUnitsYearView,
     DreVersionView,
     DreYearView,
 )
@@ -177,7 +178,9 @@ def calculate(
 @router.post("/calculations/year")
 def calculate_year(
     scope: DreScope,
-    user: User = Depends(require_permission(Permission.IMPORT_TON_SOURCES)),
+    # Importers calculate any scope; a unit manager only their units (checked
+    # in the repository).
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
     session: Session = Depends(get_session),
 ) -> list[DreRunView]:
     """Every month from January to the scope's month, in one request."""
@@ -313,12 +316,24 @@ def list_contributors(
     fact_type: str,
     limit: int = Query(25, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    account_code: str | None = Query(None, max_length=100),
     user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
     session: Session = Depends(get_session),
 ) -> DreContributorPage:
     return repository.list_contributors(
-        session, user, run_id, line_code, fact_type, limit, offset
+        session, user, run_id, line_code, fact_type, limit, offset, account_code
     )
+
+
+@router.get("/lines/{line_code}/accounts")
+def list_line_accounts(
+    line_code: str,
+    run_ids: list[UUID] = Query(..., min_length=1, max_length=12),
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> list[DreLineAccountView]:
+    """The NG accounts of a natureza line in each month's result."""
+    return repository.list_line_accounts(session, user, run_ids, line_code)
 
 
 def _csv_safe(value: str) -> str:

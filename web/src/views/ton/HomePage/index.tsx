@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
@@ -661,7 +661,21 @@ export function HomeRail() {
   );
 }
 
+/** A unit manager has only the DRE of their units: home is that DRE. */
+function ManagerRedirect() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/ton/dre" as Route);
+  }, [router]);
+  return null;
+}
+
 export default function HomePage() {
+  const { isAdmin } = useUser();
+  return isAdmin ? <AdminHome /> : <ManagerRedirect />;
+}
+
+function AdminHome() {
   const closing = useTonClosing();
 
   return (

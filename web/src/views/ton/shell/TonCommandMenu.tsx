@@ -64,7 +64,7 @@ export default function TonCommandMenu({ trigger }: TonCommandMenuProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const { hasAdminAccess } = useUser();
+  const { isAdmin } = useUser();
   const { canRead, canReadReports } = useTonAccess();
   const reports = useTonReportGroups();
   const persona = useTonPersona();
@@ -131,7 +131,8 @@ export default function TonCommandMenu({ trigger }: TonCommandMenuProps) {
         label: items.automations,
         icon: SvgWorkflow,
         href: "/ton/automacoes",
-        keywords: "rotinas r3 agenda fluxos email e-mail workflow alerta aprovacao",
+        keywords:
+          "rotinas r3 agenda fluxos email e-mail workflow alerta aprovacao",
       },
       {
         key: "reports",
@@ -161,7 +162,7 @@ export default function TonCommandMenu({ trigger }: TonCommandMenuProps) {
         keywords: "historico",
       },
     ];
-    if (hasAdminAccess)
+    if (isAdmin)
       list.push({
         key: "admin",
         label: items.admin,
@@ -170,7 +171,7 @@ export default function TonCommandMenu({ trigger }: TonCommandMenuProps) {
         keywords: "configuracao acesso",
       });
     return list;
-  }, [hasAdminAccess]);
+  }, [isAdmin]);
 
   const go = useCallback(
     (href: Route) => {

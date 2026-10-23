@@ -196,7 +196,7 @@ def _unmapped_samples(
 def overview(
     session: Session, user: User, run_id: UUID, version_id: UUID, unit_id: UUID | None
 ) -> ReadinessOverview:
-    financial_domain.get_run(session, user, run_id)
+    financial_domain.get_run(session, user, run_id, unit_id)
     periods = list(
         session.scalars(
             sa.select(FinancialActualFact.calendar_period)

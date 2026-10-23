@@ -268,6 +268,17 @@ class DreContributorPage(BaseModel):
     rows: list[DreContributorView]
 
 
+class DreLineAccountView(BaseModel):
+    """One NG account (conta NG) inside a natureza line, month by month: the
+    level the Controladoria's BI shows between the natureza and the entries."""
+
+    account_code: str | None
+    account_label: str | None
+    # Period (ISO date) -> realized amount; the accounts of a month add up to
+    # the line of that month.
+    months: dict[str, Decimal]
+
+
 class DreStatementView(BaseModel):
     run: DreRunView
     version: DreVersionView

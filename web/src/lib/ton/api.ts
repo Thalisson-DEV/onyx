@@ -26,6 +26,10 @@ export const TON_API = {
 export const TON_REPORTS_RECENT = "/api/ton/agent/reports?limit=25";
 
 export interface TonAccess {
+  /** Enters the TON: the DRE of the visible units and the assistant. A unit
+   * manager has only this. */
+  canEnter: boolean;
+  /** Company-wide screens: sources, occurrences, closing, specialists. */
   canRead: boolean;
   canReadReports: boolean;
   canRunReports: boolean;
@@ -37,14 +41,15 @@ export interface TonAccess {
 export function useTonAccess(): TonAccess {
   const { user } = useUser();
   const permissions = user?.effective_permissions ?? [];
+  const canEnter = hasPermission(permissions, Permission.READ_TON_SOURCES);
   const canRead =
-    hasPermission(permissions, Permission.READ_TON_SOURCES) &&
-    hasPermission(permissions, Permission.READ_TON_OCCURRENCES);
+    canEnter && hasPermission(permissions, Permission.READ_TON_OCCURRENCES);
   const canReadReports = hasPermission(
     permissions,
     Permission.READ_TON_REPORTS
   );
   return {
+    canEnter,
     canRead,
     canReadReports,
     canRunReports:
@@ -143,9 +148,9 @@ export function useTonUnitNames(): (unitId: string) => string | null {
 }
 
 export function useTonPersona() {
-  const { canRead } = useTonAccess();
+  const { canEnter } = useTonAccess();
   return useSWR<{ persona_id: number | null }>(
-    canRead ? TON_API.configuration : null,
+    canEnter ? TON_API.configuration : null,
     errorHandlingFetcher,
     { revalidateOnFocus: false }
   );

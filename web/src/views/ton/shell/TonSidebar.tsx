@@ -51,6 +51,8 @@ interface NavChild {
   /** ?modelo= this child shows; the first DRE child also owns no modelo. */
   model?: string;
   defaultModel?: boolean;
+  /** Administrators only: a unit manager sees just the DRE and the assistant. */
+  adminOnly?: boolean;
 }
 
 interface NavItem {
@@ -60,6 +62,7 @@ interface NavItem {
   match: string[];
   exact?: boolean;
   children?: NavChild[];
+  adminOnly?: boolean;
 }
 
 const NAV: NavItem[] = [
@@ -69,6 +72,7 @@ const NAV: NavItem[] = [
     icon: SvgHome,
     match: ["/ton", "/ton/controladoria"],
     exact: true,
+    adminOnly: true,
   },
   {
     href: "/ton/chat",
@@ -105,6 +109,7 @@ const NAV: NavItem[] = [
         href: "/ton/pendencias",
         label: COPY.nav.pending,
         match: ["/ton/pendencias"],
+        adminOnly: true,
       },
     ],
   },
@@ -113,24 +118,28 @@ const NAV: NavItem[] = [
     label: COPY.nav.occurrences,
     icon: SvgShield,
     match: ["/ton/ocorrencias"],
+    adminOnly: true,
   },
   {
     href: "/ton/automacoes",
     label: COPY.nav.automations,
     icon: SvgWorkflow,
     match: ["/ton/automacoes", "/ton/rotinas", "/ton/fluxos"],
+    adminOnly: true,
   },
   {
     href: "/ton/relatorios",
     label: COPY.nav.reports,
     icon: SvgFileText,
     match: ["/ton/relatorios", "/ton/controladoria/reports"],
+    adminOnly: true,
   },
   {
     href: "/ton/fontes",
     label: COPY.nav.sources,
     icon: SvgServer,
     match: ["/ton/fontes", "/ton/data-sources"],
+    adminOnly: true,
   },
 ];
 
@@ -494,8 +503,8 @@ interface TonSidebarProps {
 export default function TonSidebar({ open, rail, onClose }: TonSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { hasAdminAccess } = useUser();
-  const { canRead } = useTonAccess();
+  const { isAdmin } = useUser();
+  const { canEnter, canRead } = useTonAccess();
   const inSession =
     pathname.startsWith("/ton/chat") &&
     searchParams.has(SEARCH_PARAM_NAMES.CHAT_ID);
@@ -554,30 +563,41 @@ export default function TonSidebar({ open, rail, onClose }: TonSidebarProps) {
             aria-label={COPY.shell.navigationLabel}
             className="flex flex-col gap-px"
           >
-            {NAV.map((item) =>
-              item.children ? (
-                <NavGroup
-                  key={item.href}
-                  item={item}
-                  pathname={pathname}
-                  rail={rail}
-                  onNavigate={onClose}
-                />
-              ) : (
-                <SidebarLink
-                  key={item.href}
-                  href={item.href}
-                  icon={item.icon}
-                  label={item.label}
-                  active={isActive(pathname, item.match, item.exact)}
-                  rail={rail}
-                  onNavigate={onClose}
-                />
+            {NAV.filter((item) => isAdmin || !item.adminOnly)
+              .map((item) =>
+                item.children
+                  ? {
+                      ...item,
+                      children: item.children.filter(
+                        (child) => isAdmin || !child.adminOnly
+                      ),
+                    }
+                  : item
               )
-            )}
+              .map((item) =>
+                item.children ? (
+                  <NavGroup
+                    key={item.href}
+                    item={item}
+                    pathname={pathname}
+                    rail={rail}
+                    onNavigate={onClose}
+                  />
+                ) : (
+                  <SidebarLink
+                    key={item.href}
+                    href={item.href}
+                    icon={item.icon}
+                    label={item.label}
+                    active={isActive(pathname, item.match, item.exact)}
+                    rail={rail}
+                    onNavigate={onClose}
+                  />
+                )
+              )}
           </nav>
 
-          {canRead && (
+          {canRead && isAdmin && (
             <section className="flex flex-col gap-px">
               {rail ? (
                 <hr className="ton-chrome-divider mx-1 mb-2" />
@@ -599,10 +619,10 @@ export default function TonSidebar({ open, rail, onClose }: TonSidebarProps) {
         </div>
 
         <div className="ton-sidebar-scroll flex flex-col flex-1 min-h-0 overflow-y-auto px-3 pt-2 pb-3">
-          {canRead && !rail && <ConversationHistory onNavigate={onClose} />}
+          {canEnter && !rail && <ConversationHistory onNavigate={onClose} />}
         </div>
 
-        {hasAdminAccess && (
+        {isAdmin && (
           <div
             className={cn(
               "flex flex-col py-2 border-t ton-chrome-divider",

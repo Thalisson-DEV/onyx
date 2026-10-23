@@ -326,9 +326,9 @@ function RecomputeLink({
 }
 
 export default function ClassificationPage() {
-  const { hasAdminAccess } = useUser();
+  const { isAdmin } = useUser();
   const fromPending = useSearchParams().get("voltar") === "pendencias";
-  const table = useClassificationTable(hasAdminAccess);
+  const table = useClassificationTable(isAdmin);
   const [tab, setTab] = useState("accounts");
   const [filter, setFilter] = useState<Filter>("open");
   const [query, setQuery] = useState("");
@@ -367,7 +367,7 @@ export default function ClassificationPage() {
     [rows, filter, query]
   );
 
-  if (!hasAdminAccess) {
+  if (!isAdmin) {
     return (
       <PageContainer>
         <EmptyState
@@ -527,13 +527,13 @@ export default function ClassificationPage() {
             newGroup
               ? NEW_GROUP
               : creatingFor
-              ? (table.data.natures.find(
-                  (item) =>
-                    item.account_id ===
-                    rows.find((row) => row.account_code === creatingFor)
-                      ?.account_id
-                )?.dre_group_code ?? null)
-              : null
+                ? (table.data.natures.find(
+                    (item) =>
+                      item.account_id ===
+                      rows.find((row) => row.account_code === creatingFor)
+                        ?.account_id
+                  )?.dre_group_code ?? null)
+                : null
           }
           initialName={newName}
           onClose={() => setCreatingFor(undefined)}

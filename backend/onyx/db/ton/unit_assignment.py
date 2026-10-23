@@ -22,19 +22,20 @@ from onyx.db.ton.financial_review import (
 from onyx.db.ton.models import (
     BusinessUnit,
     FinancialNormalizationRun,
-    ReviewRun,
     Finding,
     FindingEvidence,
     ImportProfileExecution,
     Occurrence,
     ParsedSourceRecord,
     RecordUnitAssignment,
+    ReviewRun,
     Rule,
 )
+from onyx.db.ton.sources import get_source
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
-from onyx.ton.financial_review.catalog import DEFAULT_CATALOG
 from onyx.ton.financial_domain.readiness_models import EvidenceRecordView
+from onyx.ton.financial_review.catalog import DEFAULT_CATALOG
 from onyx.ton.financial_review.models import (
     JustificationCategory,
     ReviewDecisionKind,
@@ -200,6 +201,9 @@ def list_unit_missing(session: Session, user: User) -> list[UnitMissingItemView]
     )
     if review is None or execution is None:
         return []
+    # The entries come straight from the NG file, which covers every unit:
+    # only who reads that source sees them.
+    get_source(session, user, review.source_id)
     states, _ = load_finding_states(
         session, review, datetime.datetime.now(datetime.timezone.utc)
     )
@@ -224,7 +228,9 @@ def list_unit_missing(session: Session, user: User) -> list[UnitMissingItemView]
         )
     }
     items: list[UnitMissingItemView] = []
-    for state in sorted(cases, key=lambda item: (item.sheet_month or 0, str(item.occurrence_id))):
+    for state in sorted(
+        cases, key=lambda item: (item.sheet_month or 0, str(item.occurrence_id))
+    ):
         evidence: list[EvidenceRecordView] = [
             ng_evidence(records[record_id], None)
             for record_id in state.record_ids

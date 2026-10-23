@@ -16,11 +16,10 @@ from sqlalchemy.orm import Session
 
 from onyx.db.enums import Permission
 from onyx.db.models import User
-from onyx.db.ton import financial_domain
+from onyx.db.ton import dre_line_sources, financial_domain
 from onyx.db.ton.acl import business_unit_visible_clause, is_ton_administrator
 from onyx.db.ton.audit import emit_ton_audit_event
 from onyx.db.ton.closing_treatments import versions_in_force
-from onyx.db.ton import dre_line_sources
 from onyx.db.ton.dre_line_sources import has_extra_sources, line_source_sums
 from onyx.db.ton.email_flows import record_dre_recalculated__no_commit
 from onyx.db.ton.enums import TonAuditResourceKind
@@ -30,9 +29,9 @@ from onyx.db.ton.models import (
     DreAccountMapping,
     DreAdjustment,
     DreCalculationRun,
-    DreStructureArchive,
     DreResultLine,
     DreStructure,
+    DreStructureArchive,
     DreStructureVersion,
     FinancialAccount,
     FinancialActualFact,
@@ -56,6 +55,7 @@ from onyx.ton.dre.models import (
     DreAssignmentApproval,
     DreContributorPage,
     DreContributorView,
+    DreLineAccountView,
     DreLineDefinition,
     DreLineSource,
     DreLineType,
@@ -70,11 +70,11 @@ from onyx.ton.dre.models import (
     DreStatementView,
     DreStructureCreate,
     DreStructureView,
+    DreUnitsYearMonth,
+    DreUnitsYearView,
     DreVersionCreate,
     DreVersionHistoryItem,
     DreVersionView,
-    DreUnitsYearMonth,
-    DreUnitsYearView,
     DreYearMonth,
     DreYearView,
 )
@@ -87,8 +87,7 @@ from onyx.ton.dre.xlsx_export import (
     expected_values,
     month_label,
 )
-from onyx.ton.financial_domain.models import DreInputDataset
-from onyx.ton.financial_domain.models import TreatmentEffect
+from onyx.ton.financial_domain.models import DreInputDataset, TreatmentEffect
 from onyx.utils.audit import AuditAction, AuditOutcome
 
 RESULT_SCALE = Decimal("1e-25")
@@ -566,7 +565,9 @@ def list_version_history(
     natures = _nature_labels(session, views)
     authors = {row.created_by for row in rows if row.created_by}
     emails = dict(
-        session.execute(sa.select(User.id, User.email).where(User.id.in_(authors))).all()
+        session.execute(
+            sa.select(User.id, User.email).where(User.id.in_(authors))
+        ).all()
     )
     items: list[DreVersionHistoryItem] = []
     for index, (row, view) in enumerate(zip(rows, views)):
@@ -667,7 +668,9 @@ def _line_sources(
 def _inputs(
     session: Session, user: User, scope: DreScope, *, write: bool
 ) -> tuple[DreVersionView, FinancialNormalizationRun, list[DreInputDataset]]:
-    run = financial_domain.get_run(session, user, scope.normalization_run_id)
+    run = financial_domain.get_run(
+        session, user, scope.normalization_run_id, scope.unit_id
+    )
     version_row = session.get(DreStructureVersion, scope.structure_version_id)
     if version_row is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "DRE version not found")
@@ -688,7 +691,9 @@ def _inputs(
         raise OnyxError(
             OnyxErrorCode.ADMIN_ONLY, "Consolidated DRE requires admin access"
         )
-    if write:
+    # A unit reader may calculate their unit: the result derives from data and
+    # rules others approved, and changes neither.
+    if write and not financial_domain.unit_reader(session, user, scope.unit_id):
         permission = Permission.IMPORT_TON_SOURCES
         review = session.get(ReviewRun, run.review_run_id)
         assert review is not None
@@ -1006,9 +1011,7 @@ def _execute_loaded(
     }
     if sources.identity:
         identity["adjustments"] = sources.identity
-    digest = hashlib.sha256(
-        json.dumps(identity, sort_keys=True).encode()
-    ).hexdigest()
+    digest = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
     session.execute(
         sa.text("SELECT pg_advisory_xact_lock(4433007, hashtext(:digest))"),
         {"digest": digest},
@@ -1101,7 +1104,7 @@ def get_calculation(session: Session, user: User, run_id: UUID) -> DreRunView:
     run = session.get(DreCalculationRun, run_id)
     if run is None:
         raise OnyxError(OnyxErrorCode.NOT_FOUND, "DRE calculation not found")
-    financial_domain.get_run(session, user, run.normalization_run_id)
+    financial_domain.get_run(session, user, run.normalization_run_id, run.unit_id)
     if run.unit_id is None and not is_ton_administrator(user):
         raise OnyxError(
             OnyxErrorCode.ADMIN_ONLY, "Consolidated DRE requires admin access"
@@ -1156,7 +1159,7 @@ def get_statement(session: Session, user: User, run_id: UUID) -> DreStatementVie
 def _check_scope_access(
     session: Session, user: User, normalization_run_id: UUID, unit_id: UUID | None
 ) -> None:
-    financial_domain.get_run(session, user, normalization_run_id)
+    financial_domain.get_run(session, user, normalization_run_id, unit_id)
     if unit_id is None and not is_ton_administrator(user):
         raise OnyxError(
             OnyxErrorCode.ADMIN_ONLY, "Consolidated DRE requires admin access"
@@ -1240,9 +1243,7 @@ def _latest_ready_runs(
             DreCalculationRun.period >= datetime.date(year, 1, 1),
             DreCalculationRun.period < datetime.date(year + 1, 1, 1),
         )
-        .order_by(
-            DreCalculationRun.finished_at.desc(), DreCalculationRun.id.desc()
-        )
+        .order_by(DreCalculationRun.finished_at.desc(), DreCalculationRun.id.desc())
     ):
         assert run.unit_id is not None
         latest.setdefault((run.unit_id, run.period), run)
@@ -1398,7 +1399,9 @@ def list_calculations(
     visible: list[DreRunView] = []
     for run in session.scalars(query):
         try:
-            financial_domain.get_run(session, user, run.normalization_run_id)
+            financial_domain.get_run(
+                session, user, run.normalization_run_id, run.unit_id
+            )
         except OnyxError as error:
             if error.error_code == OnyxErrorCode.NOT_FOUND:
                 continue
@@ -1431,7 +1434,9 @@ def list_contributors(
     fact_type: str,
     limit: int,
     offset: int,
+    account_code: str | None = None,
 ) -> DreContributorPage:
+    """``account_code``: only the entries of one NG account (actual facts)."""
     run = get_calculation(session, user, run_id)
     if run.status != "READY":
         raise OnyxError(OnyxErrorCode.CONFLICT, "DRE result is not ready")
@@ -1473,6 +1478,8 @@ def list_contributors(
     ]
     if run.scope.unit_id is not None:
         conditions.append(fact_model.unit_id == run.scope.unit_id)
+    if account_code is not None and fact_type == "ACTUAL":
+        conditions.append(ParsedSourceRecord.account_code == account_code)
     joined = (
         sa.select(
             fact_model,
@@ -1601,6 +1608,90 @@ def list_contributors(
     return DreContributorPage(total=total, rows=contributors)
 
 
+def list_line_accounts(
+    session: Session, user: User, run_ids: list[UUID], line_code: str
+) -> list[DreLineAccountView]:
+    """The NG accounts of a natureza line, one amount per month (one READY
+    result each), with the same amounts the line sums."""
+    totals: dict[tuple[str | None, str | None], dict[str, Decimal]] = defaultdict(dict)
+    for run_id in run_ids:
+        run = get_calculation(session, user, run_id)
+        if run.status != "READY":
+            raise OnyxError(OnyxErrorCode.CONFLICT, "DRE result is not ready")
+        definition = session.get(DreStructureVersion, run.scope.structure_version_id)
+        assert definition is not None
+        line = next(
+            (item for item in definition.lines if item["code"] == line_code), None
+        )
+        if line is None:
+            raise OnyxError(OnyxErrorCode.NOT_FOUND, "DRE line not found")
+        parsed = DreLineDefinition.model_validate(line)
+        if (
+            parsed.line_type != DreLineType.SOURCE_SUM
+            or parsed.source != DreLineSource.NG_ACCOUNTS
+        ):
+            return []
+        conditions = [
+            FinancialActualFact.run_id == run.scope.normalization_run_id,
+            FinancialActualFact.calendar_period == run.scope.period,
+            DreAccountMapping.version_id == run.scope.structure_version_id,
+            DreAccountMapping.line_code == line_code,
+            DreAccountMapping.status == "APPROVED",
+        ]
+        if run.scope.unit_id is not None:
+            conditions.append(FinancialActualFact.unit_id == run.scope.unit_id)
+        rows = session.execute(
+            sa.select(
+                FinancialActualFact,
+                ParsedSourceRecord.account_code,
+                ParsedSourceRecord.account_label,
+            )
+            .join(
+                DreAccountMapping,
+                DreAccountMapping.account_id == FinancialActualFact.account_id,
+            )
+            .join(
+                ParsedSourceRecord,
+                ParsedSourceRecord.id == FinancialActualFact.parsed_record_id,
+            )
+            .where(*conditions)
+        ).all()
+        normalization = session.get(
+            FinancialNormalizationRun, run.scope.normalization_run_id
+        )
+        assert normalization is not None
+        basis_index = financial_domain._basis_index(
+            session, normalization.amount_basis_revision_number
+        )
+        accounts = {
+            item.id: item for item in session.scalars(sa.select(FinancialAccount))
+        }
+        period = run.scope.period.isoformat()
+        for fact, code, label in rows:
+            _, amount, _ = financial_domain.actual_amounts(fact, basis_index, accounts)
+            if amount is None:
+                continue
+            months = totals[(code, label)]
+            months[period] = months.get(period, Decimal(0)) + amount
+    # One row per NG account code: the label of the latest entry names it.
+    merged: dict[str | None, DreLineAccountView] = {}
+    for (code, label), months in totals.items():
+        view = merged.get(code)
+        if view is None:
+            merged[code] = DreLineAccountView(
+                account_code=code, account_label=label, months=dict(months)
+            )
+            continue
+        for period, amount in months.items():
+            view.months[period] = view.months.get(period, Decimal(0)) + amount
+    for view in merged.values():
+        view.months = {
+            period: amount.quantize(Decimal("0.01"))
+            for period, amount in view.months.items()
+        }
+    return sorted(merged.values(), key=lambda item: item.account_code or "")
+
+
 def _line_source_contributors(
     session: Session, run: DreRunView, line: DreLineDefinition
 ) -> list[DreContributorView]:
@@ -1614,7 +1705,10 @@ def _line_source_contributors(
         for fact, record in dre_line_sources.billing_facts(
             session, scope.normalization_run_id, scope.period.year, scope.unit_id
         ):
-            if dre_line_sources.billing_month(fact, line.billing_period) != scope.period:
+            if (
+                dre_line_sources.billing_month(fact, line.billing_period)
+                != scope.period
+            ):
                 continue
             amount = sum(
                 (
@@ -1692,6 +1786,7 @@ def _line_source_contributors(
             )
         )
     return result
+
 
 def _export_entries(
     session: Session,
@@ -1778,9 +1873,7 @@ def _export_entries(
                 original_amount=original if treatment is not None else None,
             )
         )
-    entries.extend(
-        _line_source_entries(session, user, scope, lines, unit_ids)
-    )
+    entries.extend(_line_source_entries(session, user, scope, lines, unit_ids))
     return entries
 
 
@@ -2184,7 +2277,9 @@ def export_units_workbook(
         unit_id: frozenset(month.month for unit, month in latest if unit == unit_id)
         for unit_id in unique
     }
-    all_ready = frozenset.intersection(*months_of.values()) if months_of else frozenset()
+    all_ready = (
+        frozenset.intersection(*months_of.values()) if months_of else frozenset()
+    )
     scopes = [
         ScopeBlock(
             unit_code=None,

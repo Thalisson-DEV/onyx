@@ -81,7 +81,7 @@ export default function TonShell({ children }: TonShellProps) {
   const [rail, setRail] = useState(false);
   const { width, isMounted } = useScreenSize();
   const { user } = useUser();
-  const { canRead } = useTonAccess();
+  const { canEnter } = useTonAccess();
   const isChat = pathname.startsWith("/ton/chat");
   const docked = isMounted && width >= DOCKED_MIN_WIDTH;
 
@@ -124,7 +124,7 @@ export default function TonShell({ children }: TonShellProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   });
 
-  const content = user && !canRead ? <NoAccess /> : children;
+  const content = user && !canEnter ? <NoAccess /> : children;
 
   return (
     <div className="ton-shell">

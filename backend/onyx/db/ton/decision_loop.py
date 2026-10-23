@@ -161,7 +161,10 @@ def pending_after(session: Session, applied: DecisionVersions) -> int:
 
 
 def _previous_run(
-    session: Session, user: User, run: FinancialNormalizationRun
+    session: Session,
+    user: User,
+    run: FinancialNormalizationRun,
+    unit_id: UUID | None = None,
 ) -> FinancialNormalizationRun | None:
     """The newest earlier base over the same imported inputs, if visible."""
     candidates = session.scalars(
@@ -184,7 +187,7 @@ def _previous_run(
     if previous is None:
         return None
     try:
-        financial_domain.get_run(session, user, previous.id)
+        financial_domain.get_run(session, user, previous.id, unit_id)
     except OnyxError:
         return None
     return previous
@@ -197,8 +200,8 @@ def readiness_changes(
     version_id: UUID,
     unit_id: UUID | None,
 ) -> ReadinessChanges:
-    run = financial_domain.get_run(session, user, run_id)
-    previous = _previous_run(session, user, run)
+    run = financial_domain.get_run(session, user, run_id, unit_id)
+    previous = _previous_run(session, user, run, unit_id)
     after = financial_readiness.overview(session, user, run.id, version_id, unit_id)
     before = (
         {

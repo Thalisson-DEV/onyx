@@ -617,6 +617,18 @@ html:has(.ton-shell) body {
 .ton-statement .ton-statement-ytd {
   border-inline-start: 1px solid var(--border-01);
 }
+/* NG accounts (contas NG) opened under a natureza line. */
+.ton-statement tr[data-type="ACCOUNT"] th,
+.ton-statement tr[data-type="ACCOUNT"] td {
+  font-size: 0.8125rem;
+  color: var(--text-04);
+  background: var(--background-neutral-01);
+}
+.ton-statement tr[data-type="ACCOUNT"] .ton-account-code {
+  color: var(--text-03);
+  font-variant-numeric: tabular-nums;
+}
+
 .ton-statement-drill {
   color: var(--ton-brand);
   text-decoration: underline;
@@ -665,6 +677,12 @@ html:has(.ton-shell) body {
 .ton-ledger .ton-ledger-history {
   white-space: normal;
   min-width: 16rem;
+  color: var(--text-04);
+}
+.ton-ledger .ton-ledger-account-name {
+  white-space: normal;
+  min-width: 9rem;
+  max-width: 14rem;
   color: var(--text-04);
 }
 .ton-ledger .ton-ledger-end {
@@ -1968,4 +1986,17 @@ html:has(.ton-shell) body {
 .ton-paste-result.is-error {
   color: var(--status-error-05);
   background: var(--status-error-01);
+}
+
+/* First-access link of a TON user, shown once to the administrator. */
+.ton-team-link {
+  display: block;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--border-02);
+  border-radius: var(--ton-radius-control);
+  background: var(--background-neutral-01);
+  font-size: 0.75rem;
+  color: var(--text-04);
+  word-break: break-all;
+  user-select: all;
 }

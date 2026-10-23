@@ -17,9 +17,9 @@ import {
  * the assistant's AI provider. Same API, same provider modals.
  */
 export default function ModelsPage() {
-  const { hasAdminAccess } = useUser();
+  const { isAdmin } = useUser();
 
-  if (!hasAdminAccess) {
+  if (!isAdmin) {
     return (
       <PageContainer>
         <EmptyState

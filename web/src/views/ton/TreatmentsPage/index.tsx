@@ -359,15 +359,15 @@ function TreatmentGrid({
 }
 
 export default function TreatmentsPage() {
-  const { hasAdminAccess } = useUser();
-  const table = useTreatmentTable(hasAdminAccess);
+  const { isAdmin } = useUser();
+  const table = useTreatmentTable(isAdmin);
   // undefined: closed; null: new treatment; a view: new version of it.
   const [editing, setEditing] = useState<TreatmentView | null | undefined>(
     undefined
   );
   const [feedback, setFeedback] = useState<Feedback>(null);
 
-  if (!hasAdminAccess) {
+  if (!isAdmin) {
     return (
       <PageContainer>
         <EmptyState

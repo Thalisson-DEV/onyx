@@ -41,6 +41,7 @@ import {
 import { COPY, formatRelativeDateTime } from "@/lib/ton/copy";
 import { SHOW_UPSTREAM_SCREENS } from "@/lib/ton/product-surface";
 import { summarizeSources } from "@/lib/ton/sources";
+import { TEAM_COPY, useTeam } from "@/lib/ton/team";
 import { TREATMENTS_COPY, useTreatmentTable } from "@/lib/ton/treatments";
 import {
   CardHeader,
@@ -117,20 +118,23 @@ function AdminEntry({
 }
 
 export default function TonAdminPage() {
-  const { hasAdminAccess, adminCapabilities } = useUser();
+  const { isAdmin, adminCapabilities } = useUser();
   const sources = useTonDataSources();
   const llm = useAdminLLMProviders();
   const specialists = useTonSpecialists();
   const reports = useTonReportGroups();
   const persona = useTonPersona();
-  const classification = useClassificationTable(hasAdminAccess);
-  const treatments = useTreatmentTable(hasAdminAccess);
+  const classification = useClassificationTable(isAdmin);
+  const treatments = useTreatmentTable(isAdmin);
+  const team = useTeam(isAdmin);
+  // Every hook runs before the early return below.
+  const decisions = useDecisionLog();
   const schedule = useSWR<R3Schedule>(
-    hasAdminAccess ? "/api/ton/agent/routines/R3/schedule" : null,
+    isAdmin ? "/api/ton/agent/routines/R3/schedule" : null,
     errorHandlingFetcher
   );
 
-  if (!hasAdminAccess) {
+  if (!isAdmin) {
     return (
       <PageContainer>
         <EmptyState
@@ -147,7 +151,6 @@ export default function TonAdminPage() {
   const summary = summarizeSources(sources.data ?? []);
   const current = summary.imported;
   const configured = summary.required;
-  const decisions = useDecisionLog();
   const operational = (specialists.data ?? []).filter(
     (item) => specialistTone(item.status) !== "neutral"
   );
@@ -172,15 +175,22 @@ export default function TonAdminPage() {
           {COPY.admin.productSection}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {SHOW_UPSTREAM_SCREENS && (
-            <AdminEntry
-              icon={SvgUsers}
-              title={COPY.admin.access.title}
-              description={COPY.admin.access.description}
-              href={"/admin/users" as Route}
-              technical
-            />
-          )}
+          <AdminEntry
+            icon={SvgUsers}
+            title={TEAM_COPY.adminEntry.title}
+            description={TEAM_COPY.adminEntry.description}
+            href={"/ton/administracao/usuarios" as Route}
+            status={
+              team.data
+                ? {
+                    tone: "success",
+                    label: TEAM_COPY.adminEntry.status(
+                      team.data.filter((member) => member.active).length
+                    ),
+                  }
+                : null
+            }
+          />
           <AdminEntry
             icon={SvgServer}
             title={COPY.admin.sources.title}

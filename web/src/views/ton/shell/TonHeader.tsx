@@ -112,10 +112,10 @@ function DemoIndicator() {
 }
 
 function AccountMenu() {
-  const { user, hasAdminAccess, adminCapabilities } = useUser();
+  const { user, isAdmin, adminCapabilities } = useUser();
   const router = useRouter();
   const name = getUserDisplayName(user);
-  const adminRoute = hasAdminAccess
+  const adminRoute = isAdmin
     ? getFirstPermittedAdminRoute(adminCapabilities) || "/admin/language-models"
     : null;
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
+import useSWR from "swr";
 import { Text } from "@opal/components";
 import {
   SvgChevronDown,
@@ -10,8 +11,13 @@ import {
 } from "@opal/icons";
 import { cn } from "@opal/utils";
 import { COPY, formatAmount, formatMonthName } from "@/lib/ton/copy";
+import { errorHandlingFetcher } from "@/lib/fetcher";
 import { getBusinessLabel } from "@/lib/ton/labels";
-import type { DreDefinition, DreLine } from "@/views/admin/DrePage/types";
+import type {
+  DreDefinition,
+  DreLine,
+  DreLineAccount,
+} from "@/views/admin/DrePage/types";
 import type {
   DreWorkspace,
   YearMonthView,
@@ -42,6 +48,14 @@ function hiddenBy(
       definitions.find((item) => item.code === parent)?.parent_code ?? null;
   }
   return false;
+}
+
+/** A line fed by NG naturezas: it opens into its NG accounts, as in the BI. */
+function isNatureLine(definition: DreDefinition) {
+  return (
+    definition.line_type === "SOURCE_SUM" &&
+    (definition.source ?? "NG_ACCOUNTS") === "NG_ACCOUNTS"
+  );
 }
 
 function isPercent(definition: DreDefinition) {
@@ -90,6 +104,8 @@ function LineLabel({
   collapsed,
   onToggle,
   onDrill,
+  accountsOpen,
+  onAccounts,
 }: {
   definition: DreDefinition;
   definitions: DreDefinition[];
@@ -97,12 +113,35 @@ function LineLabel({
   onToggle: (code: string) => void;
   /** Opens the entries of the line; only lines fed by entries have it. */
   onDrill?: () => void;
+  accountsOpen?: boolean;
+  /** Shows or hides the NG accounts of a natureza line. */
+  onAccounts?: () => void;
 }) {
   const label = getBusinessLabel(definition.label);
   const hasChildren = definitions.some(
     (item) => item.parent_code === definition.code
   );
   const isCollapsed = collapsed.includes(definition.code);
+  const accountsToggle =
+    !hasChildren && onAccounts ? (
+      <button
+        type="button"
+        className="ton-focusable flex items-center justify-center w-5 h-5 rounded-04 text-text-03 hover:text-text-05"
+        aria-label={
+          accountsOpen
+            ? COPY.dre.table.hideAccounts(label)
+            : COPY.dre.table.showAccounts(label)
+        }
+        aria-expanded={!!accountsOpen}
+        onClick={onAccounts}
+      >
+        {accountsOpen ? (
+          <SvgChevronDown size={14} />
+        ) : (
+          <SvgChevronRight size={14} />
+        )}
+      </button>
+    ) : null;
   return (
     <span
       className="flex items-center gap-1"
@@ -129,7 +168,7 @@ function LineLabel({
           )}
         </button>
       ) : (
-        <span className="w-5 shrink-0" aria-hidden />
+        (accountsToggle ?? <span className="w-5 shrink-0" aria-hidden />)
       )}
       {onDrill && definition.line_type === "SOURCE_SUM" ? (
         <button
@@ -195,6 +234,149 @@ function DrillCell({
   );
 }
 
+function useOpenAccounts() {
+  const [open, setOpen] = useState<string[]>([]);
+  return {
+    open,
+    toggle(code: string) {
+      setOpen((old) =>
+        old.includes(code)
+          ? old.filter((item) => item !== code)
+          : [...old, code]
+      );
+    },
+  };
+}
+
+/** The NG accounts of a natureza line, one row each, right under it. */
+function AccountRows({
+  definition,
+  definitions,
+  runIds,
+  span,
+  cells,
+}: {
+  definition: DreDefinition;
+  definitions: DreDefinition[];
+  /** The month results whose accounts are read. */
+  runIds: string[];
+  /** Columns after the label, for the loading and error rows. */
+  span: number;
+  cells: (account: DreLineAccount) => ReactNode;
+}) {
+  const query = runIds
+    .map((id) => `run_ids=${encodeURIComponent(id)}`)
+    .join("&");
+  const accounts = useSWR<DreLineAccount[]>(
+    runIds.length
+      ? `/api/ton/dre/lines/${encodeURIComponent(definition.code)}/accounts?${query}`
+      : null,
+    errorHandlingFetcher
+  );
+  const indent = (depthOf(definition, definitions) + 1) * 16 + 24;
+  if (!accounts.data) {
+    return (
+      <tr data-type="ACCOUNT">
+        <th
+          scope="row"
+          colSpan={span + 1}
+          style={{ paddingInlineStart: indent }}
+        >
+          {accounts.error
+            ? COPY.dre.table.accountsFailed
+            : COPY.dre.table.accountsLoading}
+        </th>
+      </tr>
+    );
+  }
+  return (
+    <>
+      {accounts.data.map((account) => (
+        <tr key={account.account_code ?? ""} data-type="ACCOUNT">
+          <th
+            scope="row"
+            aria-label={
+              [account.account_code, account.account_label]
+                .filter(Boolean)
+                .join(" ") || COPY.dre.table.noAccount
+            }
+          >
+            <span
+              className="flex items-baseline gap-2"
+              style={{ paddingInlineStart: indent }}
+            >
+              <span className="ton-account-code shrink-0">
+                {account.account_code ?? ""}
+              </span>
+              <span className="truncate">
+                {account.account_label ??
+                  (account.account_code ? "" : COPY.dre.table.noAccount)}
+              </span>
+            </span>
+          </th>
+          {cells(account)}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+/** An account's value in one month, opening its entries when it has a code. */
+function AccountCell({
+  dre,
+  definition,
+  account,
+  period,
+}: {
+  dre: DreWorkspace;
+  definition: DreDefinition;
+  account: DreLineAccount;
+  period: string;
+}) {
+  const value = account.months[period];
+  const code = account.account_code;
+  if (value == null || !code) {
+    return (
+      <td>
+        <Amount value={value} definition={definition} />
+      </td>
+    );
+  }
+  return (
+    <td>
+      <button
+        type="button"
+        className="ton-focusable ton-cell-drill"
+        aria-label={T.drillCell(
+          `${code} ${account.account_label ?? ""}`.trim(),
+          formatMonthName(period)
+        )}
+        onClick={() =>
+          dre.select.line(definition.code, period, {
+            code,
+            label: account.account_label,
+            amount: value,
+          })
+        }
+      >
+        <Amount value={value} definition={definition} />
+      </button>
+    </td>
+  );
+}
+
+function sumOf(account: DreLineAccount, periods: string[]): string | null {
+  let total = 0;
+  let any = false;
+  for (const period of periods) {
+    const value = account.months[period];
+    if (value == null) continue;
+    total += Number(value);
+    any = true;
+  }
+  return any ? total.toFixed(2) : null;
+}
+
 function byCode(month: YearMonthView | undefined) {
   return new Map((month?.lines ?? []).map((line) => [line.code, line]));
 }
@@ -202,6 +384,7 @@ function byCode(month: YearMonthView | undefined) {
 /** Lines from top to bottom, one column per selected month, then the year. */
 function ColumnsView({ dre }: { dre: DreWorkspace }) {
   const { collapsed, toggle } = useCollapsed();
+  const accounts = useOpenAccounts();
   const definitions = dre.definitions;
   const months = dre.shownMonths;
   const monthLines = months.map(byCode);
@@ -245,36 +428,84 @@ function ColumnsView({ dre }: { dre: DreWorkspace }) {
         <tbody>
           {definitions.map((definition) => {
             if (hiddenBy(definition, definitions, collapsed)) return null;
+            const canOpen =
+              !dre.multi &&
+              isNatureLine(definition) &&
+              dre.natureLineCodes.has(definition.code);
+            const open = canOpen && accounts.open.includes(definition.code);
+            const periods = months.map((month) => month.period);
             return (
-              <tr key={definition.code} data-type={definition.line_type}>
-                <th scope="row">
-                  <LineLabel
+              <Fragment key={definition.code}>
+                <tr data-type={definition.line_type}>
+                  <th scope="row">
+                    <LineLabel
+                      definition={definition}
+                      definitions={definitions}
+                      collapsed={collapsed}
+                      onToggle={toggle}
+                      onDrill={
+                        latestShown && !dre.multi
+                          ? () => dre.select.line(definition.code, latestShown)
+                          : undefined
+                      }
+                      accountsOpen={open}
+                      onAccounts={
+                        canOpen
+                          ? () => accounts.toggle(definition.code)
+                          : undefined
+                      }
+                    />
+                  </th>
+                  {months.map((month, index) => (
+                    <DrillCell
+                      key={month.period}
+                      dre={dre}
+                      definition={definition}
+                      month={month}
+                      line={monthLines[index]?.get(definition.code)}
+                    />
+                  ))}
+                  {months.length > 1 && (
+                    <td className="ton-statement-ytd">
+                      <Amount
+                        value={totalOf(definition.code)}
+                        definition={definition}
+                      />
+                    </td>
+                  )}
+                </tr>
+                {open && (
+                  <AccountRows
                     definition={definition}
                     definitions={definitions}
-                    collapsed={collapsed}
-                    onToggle={toggle}
-                    onDrill={
-                      latestShown && !dre.multi
-                        ? () => dre.select.line(definition.code, latestShown)
-                        : undefined
-                    }
+                    runIds={months.flatMap((month) =>
+                      month.runId ? [month.runId] : []
+                    )}
+                    span={months.length + (months.length > 1 ? 1 : 0)}
+                    cells={(account) => (
+                      <>
+                        {months.map((month) => (
+                          <AccountCell
+                            key={month.period}
+                            dre={dre}
+                            definition={definition}
+                            account={account}
+                            period={month.period}
+                          />
+                        ))}
+                        {months.length > 1 && (
+                          <td className="ton-statement-ytd">
+                            <Amount
+                              value={sumOf(account, periods)}
+                              definition={definition}
+                            />
+                          </td>
+                        )}
+                      </>
+                    )}
                   />
-                </th>
-                {months.map((month, index) => (
-                  <DrillCell
-                    key={month.period}
-                    dre={dre}
-                    definition={definition}
-                    month={month}
-                    line={monthLines[index]?.get(definition.code)}
-                  />
-                ))}
-                {months.length > 1 && (
-                  <td className="ton-statement-ytd">
-                    <Amount value={totalOf(definition.code)} definition={definition} />
-                  </td>
                 )}
-              </tr>
+              </Fragment>
             );
           })}
         </tbody>
@@ -295,9 +526,12 @@ function MonthBlock({
   onToggle: () => void;
 }) {
   const { collapsed, toggle } = useCollapsed();
+  const accounts = useOpenAccounts();
   const definitions = dre.definitions;
   const lines = byCode(month);
   const period = month.period;
+  // The accounts' year to date reads every month up to this one.
+  const untilMonths = dre.yearMonths.filter((item) => item.period <= period);
   const summary = dre.summaryDefinition;
   const result = summary ? lines.get(summary.code) : undefined;
   const id = `ton-dre-month-${period}`;
@@ -351,47 +585,102 @@ function MonthBlock({
               {definitions.map((definition) => {
                 if (hiddenBy(definition, definitions, collapsed)) return null;
                 const line = lines.get(definition.code);
+                const canOpen =
+                  !dre.multi &&
+                  isNatureLine(definition) &&
+                  dre.natureLineCodes.has(definition.code);
+                const open = canOpen && accounts.open.includes(definition.code);
                 return (
-                  <tr key={definition.code} data-type={definition.line_type}>
-                    <th scope="row">
-                      <LineLabel
+                  <Fragment key={definition.code}>
+                    <tr data-type={definition.line_type}>
+                      <th scope="row">
+                        <LineLabel
+                          definition={definition}
+                          definitions={definitions}
+                          collapsed={collapsed}
+                          onToggle={toggle}
+                          onDrill={
+                            dre.multi
+                              ? undefined
+                              : () => dre.select.line(definition.code, period)
+                          }
+                          accountsOpen={open}
+                          onAccounts={
+                            canOpen
+                              ? () => accounts.toggle(definition.code)
+                              : undefined
+                          }
+                        />
+                      </th>
+                      <DrillCell
+                        dre={dre}
                         definition={definition}
-                        definitions={definitions}
-                        collapsed={collapsed}
-                        onToggle={toggle}
-                        onDrill={
-                          dre.multi
-                            ? undefined
-                            : () => dre.select.line(definition.code, period)
-                        }
+                        month={month}
+                        line={line}
                       />
-                    </th>
-                    <DrillCell
-                      dre={dre}
-                      definition={definition}
-                      month={month}
-                      line={line}
-                    />
-                    {dre.budgetPresent && (
-                      <td>
-                        <Amount value={line?.orcado} definition={definition} />
-                      </td>
-                    )}
-                    {dre.budgetPresent && (
-                      <td>
+                      {dre.budgetPresent && (
+                        <td>
+                          <Amount
+                            value={line?.orcado}
+                            definition={definition}
+                          />
+                        </td>
+                      )}
+                      {dre.budgetPresent && (
+                        <td>
+                          <Amount
+                            value={line?.variance}
+                            definition={definition}
+                          />
+                        </td>
+                      )}
+                      <td className="ton-statement-ytd">
                         <Amount
-                          value={line?.variance}
+                          value={line?.realizado_ytd}
                           definition={definition}
                         />
                       </td>
-                    )}
-                    <td className="ton-statement-ytd">
-                      <Amount
-                        value={line?.realizado_ytd}
+                    </tr>
+                    {open && (
+                      <AccountRows
                         definition={definition}
+                        definitions={definitions}
+                        runIds={untilMonths.flatMap((item) =>
+                          item.runId ? [item.runId] : []
+                        )}
+                        span={dre.budgetPresent ? 4 : 2}
+                        cells={(account) => (
+                          <>
+                            <AccountCell
+                              dre={dre}
+                              definition={definition}
+                              account={account}
+                              period={period}
+                            />
+                            {dre.budgetPresent && (
+                              <td>
+                                <Amount value={null} definition={definition} />
+                              </td>
+                            )}
+                            {dre.budgetPresent && (
+                              <td>
+                                <Amount value={null} definition={definition} />
+                              </td>
+                            )}
+                            <td className="ton-statement-ytd">
+                              <Amount
+                                value={sumOf(
+                                  account,
+                                  untilMonths.map((item) => item.period)
+                                )}
+                                definition={definition}
+                              />
+                            </td>
+                          </>
+                        )}
                       />
-                    </td>
-                  </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -443,9 +732,7 @@ function StackedView({ dre }: { dre: DreWorkspace }) {
 
 /** View switch and the months to show; blocked months cannot be picked. */
 function MonthControls({ dre }: { dre: DreWorkspace }) {
-  const calculated = new Set(
-    dre.yearMonths.map((month) => month.period)
-  );
+  const calculated = new Set(dre.yearMonths.map((month) => month.period));
   const shown = new Set(dre.shownMonths.map((month) => month.period));
   const periods = dre.periods.filter(
     (item) => !dre.periodValue || item.scope.period <= dre.periodValue

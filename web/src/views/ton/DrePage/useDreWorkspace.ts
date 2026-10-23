@@ -25,6 +25,13 @@ import type {
 } from "@/views/admin/DrePage/types";
 
 export const CONTRIBUTOR_PAGE = 25;
+
+/** An NG account of a natureza line, with its amount in the drilled month. */
+export interface DrillAccount {
+  code: string;
+  label: string | null;
+  amount: string;
+}
 export const CONSOLIDATED = "consolidated";
 
 /** One month of the year as the statement shows it, for one unit or a set. */
@@ -66,7 +73,10 @@ export function useDreWorkspace() {
   const { user } = useUser();
   const permissions = user?.effective_permissions ?? [];
   const canRead = hasPermission(permissions, Permission.READ_TON_SOURCES);
-  const canRun = hasPermission(permissions, Permission.IMPORT_TON_SOURCES);
+  // Importers calculate any scope; a reader (a unit manager) calculates the
+  // units they see, which the API enforces.
+  const canRun =
+    canRead || hasPermission(permissions, Permission.IMPORT_TON_SOURCES);
   const isAdmin = hasPermission(
     permissions,
     Permission.FULL_ADMIN_PANEL_ACCESS
@@ -85,6 +95,8 @@ export function useDreWorkspace() {
   const multi = unitSet.length >= 2;
   const [periodChoice, setPeriodChoice] = useState("");
   const [lineChoice, setLineChoice] = useState<string | null>(null);
+  // The drawer of a natureza line opened from one of its NG accounts.
+  const [accountChoice, setAccountChoice] = useState<DrillAccount | null>(null);
   const [drillPeriod, setDrillPeriod] = useState<string | null>(null);
   // null: every calculated month of the year.
   const [monthChoice, setMonthChoice] = useState<string[] | null>(null);
@@ -110,7 +122,9 @@ export function useDreWorkspace() {
     errorHandlingFetcher
   );
   const units = useSWR<Unit[]>(
-    canRead ? "/api/ton/financial-domain/units?limit=100&active_only=true" : null,
+    canRead
+      ? "/api/ton/financial-domain/units?limit=100&active_only=true"
+      : null,
     errorHandlingFetcher
   );
   const normalizationId = normalizationChoice || normalizations.data?.[0]?.id;
@@ -210,10 +224,16 @@ export function useDreWorkspace() {
   const allDefinitions =
     (multi ? unitsYear.data?.version.lines : statement.data?.version.lines) ??
     [];
+  // Lines that receive NG naturezas: they open into their NG accounts.
+  const natureLineCodes = new Set(
+    (statement.data?.version.assignments ?? []).map((item) => item.line_code)
+  );
   // A line hidden in the structure (and everything under it) stays in every
   // total but leaves the screen, as it leaves the Excel.
   const hiddenCodes = new Set<string>();
-  for (const line of [...allDefinitions].sort((a, b) => a.position - b.position)) {
+  for (const line of [...allDefinitions].sort(
+    (a, b) => a.position - b.position
+  )) {
     if (line.hidden || (line.parent_code && hiddenCodes.has(line.parent_code)))
       hiddenCodes.add(line.code);
   }
@@ -233,15 +253,15 @@ export function useDreWorkspace() {
     errorHandlingFetcher
   );
   const drillLines =
-    yearMonths.find((month) => month.period === drillRun?.scope.period)?.lines ??
-    statement.data?.lines;
+    yearMonths.find((month) => month.period === drillRun?.scope.period)
+      ?.lines ?? statement.data?.lines;
   const selectedLine = drillLines?.find((line) => line.code === lineChoice);
   const selectedDefinition = definitions.find(
     (line) => line.code === lineChoice
   );
   const contributors = useSWR<ContributorPage>(
     drillRun && selectedDefinition?.line_type === "SOURCE_SUM"
-      ? `/api/ton/dre/calculations/${drillRun.id}/lines/${encodeURIComponent(selectedDefinition.code)}/contributors?fact_type=${factType}&limit=${CONTRIBUTOR_PAGE}&offset=${offset}`
+      ? `/api/ton/dre/calculations/${drillRun.id}/lines/${encodeURIComponent(selectedDefinition.code)}/contributors?fact_type=${factType}&limit=${CONTRIBUTOR_PAGE}&offset=${offset}${accountChoice ? `&account_code=${encodeURIComponent(accountChoice.code)}` : ""}`
       : null,
     errorHandlingFetcher
   );
@@ -314,6 +334,7 @@ export function useDreWorkspace() {
   function resetSelection() {
     setLineChoice(null);
     setDrillPeriod(null);
+    setAccountChoice(null);
     setOffset(0);
     setCalculation("idle");
   }
@@ -462,11 +483,13 @@ export function useDreWorkspace() {
     view,
     drillRun,
     definitions,
+    natureLineCodes,
     summary,
     summaryDefinition,
     series,
     selectedLine,
     selectedDefinition,
+    selectedAccount: accountChoice,
     contributors,
     factType,
     offset,
@@ -529,10 +552,16 @@ export function useDreWorkspace() {
       allMonths() {
         setMonthChoice(null);
       },
-      line(code: string | null, period?: string) {
+      line(code: string | null, period?: string, account?: DrillAccount) {
         setLineChoice(code);
         setDrillPeriod(period ?? null);
+        setAccountChoice(account ?? null);
         setFactType("ACTUAL");
+        setOffset(0);
+      },
+      /** Back to every NG account of the open line. */
+      allAccounts() {
+        setAccountChoice(null);
         setOffset(0);
       },
       factType(value: "ACTUAL" | "BUDGET") {

@@ -30,13 +30,27 @@ export interface DreDefinition {
   hidden?: boolean;
   /** Keeps its value but the group above does not add it. */
   excluded?: boolean;
+  /** Where a SOURCE_SUM line reads: NG naturezas (default), billing, adjustments. */
+  source?: "NG_ACCOUNTS" | "BILLING" | "ADJUSTMENT";
+}
+
+/** One NG account (conta NG) of a natureza line, month by month. */
+export interface DreLineAccount {
+  account_code: string | null;
+  account_label: string | null;
+  /** Period (ISO date) -> realized amount. */
+  months: Record<string, string>;
 }
 
 export interface DreVersion {
   id: string;
   number: number;
   lines: DreDefinition[];
-  assignments?: Array<{ account_id: string; line_code: string; status: string }>;
+  assignments?: Array<{
+    account_id: string;
+    line_code: string;
+    status: string;
+  }>;
 }
 
 export interface PeriodReadiness {

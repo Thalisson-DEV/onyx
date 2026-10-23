@@ -6,7 +6,7 @@ from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from onyx.ton.agent.structure_ops import LineOperation
 from onyx.ton.financial_domain.models import TreatmentEffect, TreatmentStatus
@@ -128,15 +128,46 @@ class SourceImportPayload(ScopeInput):
 
 class ClassificationItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    # NG account code, as in the export (ex.: 8.1.0001).
-    account_code: str = Field(min_length=1, max_length=100)
-    # Natureza code (ex.: 3.03) or name (ex.: LOCAÇÃO).
+    # NG account code, as in the export (ex.: 8.1.0001), or its exact name as
+    # the Controladoria's BI lists it (ex.: Acordos com Fornecedores).
+    account_code: str = Field(min_length=1, max_length=200)
+    # Natureza code (ex.: 3.03) or name (ex.: LOCAÇÃO), existing or one of
+    # new_naturezas.
     natureza: str = Field(min_length=1, max_length=200)
 
 
+class NewNature(BaseModel):
+    """A natureza created by the proposal, with its line in the managerial DRE."""
+
+    model_config = ConfigDict(extra="forbid")
+    natureza: str = Field(min_length=2, max_length=100)
+    # Existing DRE group, by code (g1) or name (1 RECEITA LÍQUIDA).
+    group: str | None = Field(default=None, max_length=200)
+    # A group created with it (ex.: 5 NÃO CLASSIFICADO); naturezas naming the
+    # same new group land together in it.
+    new_group: str | None = Field(default=None, min_length=2, max_length=100)
+    # New group only: whether the result adds it.
+    in_result: bool = True
+
+    @model_validator(mode="after")
+    def one_group(self) -> "NewNature":
+        if (self.group is None) == (self.new_group is None):
+            raise ValueError(
+                "Informe group (grupo existente) ou new_group (grupo novo)"
+            )
+        return self
+
+
 class ClassificationPayload(ScopeInput):
-    items: list[ClassificationItem] = Field(min_length=1, max_length=100)
+    items: list[ClassificationItem] = Field(default_factory=list, max_length=200)
+    new_naturezas: list[NewNature] = Field(default_factory=list, max_length=30)
     reason: str = Field(default="", max_length=500)
+
+    @model_validator(mode="after")
+    def something_to_do(self) -> "ClassificationPayload":
+        if not self.items and not self.new_naturezas:
+            raise ValueError("Informe contas a classificar ou naturezas novas")
+        return self
 
 
 class ClassificationConfirmPayload(ScopeInput):
@@ -212,7 +243,9 @@ class LedgerRegisterPayload(ScopeInput):
     # Overrides the suggested criticality for every case.
     criticality: Criticality | None = None
     # PAD-CTRL-001 bands, % of the unit's revenue: critical, high, medium.
-    bands: list[float] = Field(default_factory=lambda: [1.0, 0.3, 0.1], min_length=3, max_length=3)
+    bands: list[float] = Field(
+        default_factory=lambda: [1.0, 0.3, 0.1], min_length=3, max_length=3
+    )
     responsible: str | None = Field(default=None, max_length=200)
     deadline: datetime.date | None = None
     note: str | None = Field(default=None, max_length=2000)
@@ -232,7 +265,9 @@ class R1SchedulePayload(ScopeInput):
         default_factory=lambda: ["T1", "T2", "T3", "T4", "T6", "T8", "T9", "T10"]
     )
     hour: int = Field(default=7, ge=0, le=23)
-    bands: list[float] = Field(default_factory=lambda: [1.0, 0.3, 0.1], min_length=3, max_length=3)
+    bands: list[float] = Field(
+        default_factory=lambda: [1.0, 0.3, 0.1], min_length=3, max_length=3
+    )
 
 
 class PreviewLine(BaseModel):

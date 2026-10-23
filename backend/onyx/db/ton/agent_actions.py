@@ -5,6 +5,7 @@ written. ``apply`` runs the same repository functions the screens use, with
 the permissions of the person who clicks, and records the outcome.
 """
 
+import dataclasses
 import datetime
 import io
 from uuid import uuid4
@@ -39,6 +40,7 @@ from onyx.db.ton.models import (
     Occurrence,
     TonAutomation,
     DreStructure,
+    DreStructureVersion,
     FinancialAccount,
 )
 from onyx.db.ton.enums import AnalysisTrigger, OccurrenceCriticality
@@ -72,6 +74,7 @@ from onyx.ton.agent.action_models import (
 from onyx.ton.account_classification.models import (
     ClassificationChange,
     ClassificationConfirmBatch,
+    NatureCreate,
 )
 from onyx.ton.agent.structure_ops import apply_operations
 from onyx.ton.dre.derived import OWN_PREFIX
@@ -1119,49 +1122,230 @@ def _nature_for(table: Any, text: str) -> Any:
     raise ValueError(f"Natureza “{text}” não identificada. Opções: {options}")
 
 
+OUT_OF_RESULT = "fora do resultado"
+
+
+@dataclasses.dataclass(frozen=True)
+class _NewNaturePlan:
+    natureza: str
+    # Existing group code; None when the natureza comes with a new group.
+    group_code: str | None
+    group_label: str
+    new_group: bool
+    in_result: bool
+
+
+@dataclasses.dataclass(frozen=True)
+class _ClassificationPlan:
+    source_id: UUID
+    # (NG account code, its row, the natureza it gets: a NatureView or the name
+    # of a new one).
+    moves: list[tuple[str, Any, Any]]
+    new: list[_NewNaturePlan]
+
+
+def _account_row(table: Any, text: str) -> Any:
+    """An NG account by its code or by its exact name (as the BI lists it)."""
+    by_code = {row.account_code: row for row in table.rows}
+    if text in by_code:
+        return by_code[text]
+    folded = _fold(text)
+    named = [row for row in table.rows if _fold(row.description) == folded]
+    if len(named) == 1:
+        return named[0]
+    if len(named) > 1:
+        options = "; ".join(f"{row.account_code} ({row.natureza or 'sem natureza'})" for row in named)
+        raise ValueError(f"“{text}” é o nome de mais de uma conta do NG: {options}. Use o código.")
+    similar = [row for row in table.rows if folded and folded in _fold(row.description)]
+    hint = (
+        " Parecidas: " + "; ".join(f"{row.account_code} {row.description}" for row in similar[:8])
+        if similar
+        else ""
+    )
+    raise ValueError(f"A conta “{text}” não está na base do NG.{hint}")
+
+
+def _group_for(table: Any, text: str) -> Any:
+    """A DRE group by code (g1), name, or its leading number (2 CUSTOS MÃO OBRA)."""
+    folded = _fold(text)
+    for group in table.groups:
+        if group.code == text or _fold(group.label) == folded:
+            return group
+    number = folded.split(" ", 1)[0]
+    if number.isdigit():
+        numbered = [g for g in table.groups if _fold(g.label).split(" ", 1)[0] == number]
+        if len(numbered) == 1:
+            return numbered[0]
+    partial = [g for g in table.groups if folded in _fold(g.label)]
+    if len(partial) == 1:
+        return partial[0]
+    options = ", ".join(f"{g.code} {g.label}" for g in table.groups)
+    raise ValueError(f"Grupo “{text}” não identificado. Grupos da DRE: {options}")
+
+
 def _classification_plan(
     session: Session, user: User, payload: ClassificationPayload
-) -> tuple[UUID, list[tuple[str, Any, Any]]]:
+) -> _ClassificationPlan:
     source_id, context = _natures(session, user)
     table = context["table"]
-    rows = {row.account_code: row for row in table.rows}
-    plan = []
+    # Naturezas with a line in the DRE; one without (an undone creation) may
+    # be created again.
+    existing = {_fold(item.natureza) for item in table.natures if item.dre_group_code}
+    new: list[_NewNaturePlan] = []
+    new_groups: dict[str, bool] = {}
+    for item in payload.new_naturezas:
+        name = " ".join(item.natureza.split()).upper()
+        if _fold(name) in existing:
+            raise ValueError(f"A natureza {name} já existe; use-a direto nas contas")
+        if any(_fold(other.natureza) == _fold(name) for other in new):
+            raise ValueError(f"A natureza {name} aparece duas vezes")
+        if item.group is not None:
+            group = _group_for(table, item.group)
+            new.append(_NewNaturePlan(name, group.code, group.label, False, True))
+            continue
+        label = " ".join((item.new_group or "").split()).upper()
+        in_result = new_groups.setdefault(_fold(label), item.in_result)
+        new.append(_NewNaturePlan(name, None, label, True, in_result))
+    created = {_fold(item.natureza): item for item in new}
+    moves = []
+    seen: set[str] = set()
     for item in payload.items:
-        row = rows.get(item.account_code)
-        if row is None:
-            raise ValueError(f"A conta {item.account_code} não está na base do NG")
-        plan.append((item.account_code, row, _nature_for(table, item.natureza)))
-    return source_id, plan
+        row = _account_row(table, item.account_code)
+        if row.account_code in seen:
+            raise ValueError(f"A conta {row.account_code} aparece duas vezes")
+        seen.add(row.account_code)
+        target = created.get(_fold(item.natureza)) or _nature_for(table, item.natureza)
+        moves.append((row.account_code, row, target))
+    return _ClassificationPlan(source_id=source_id, moves=moves, new=new)
+
+
+def _target_text(target: Any) -> str:
+    if isinstance(target, _NewNaturePlan):
+        return f"{target.natureza} (nova)"
+    return f"{target.code} {target.natureza}"
+
+
+def _in_result(target: Any) -> bool:
+    if isinstance(target, _NewNaturePlan):
+        return target.in_result and OUT_OF_RESULT not in _fold(target.group_label)
+    return OUT_OF_RESULT not in _fold(target.dre_group or "")
 
 
 def _preview_classification(
     session: Session, user: User, payload: ClassificationPayload
 ) -> tuple[str, ActionPreview]:
-    _, plan = _classification_plan(session, user, payload)
-    summary = [
-        f"{code} {row.description}: {row.natureza or 'sem natureza'} → {nature.code} {nature.natureza} "
+    plan = _classification_plan(session, user, payload)
+    summary = []
+    announced: set[str] = set()
+    for item in plan.new:
+        if item.new_group and item.group_label not in announced:
+            announced.add(item.group_label)
+            where = "dentro do resultado" if item.in_result else "fora do resultado"
+            summary.append(f"Novo grupo {item.group_label} na DRE gerencial ({where})")
+        summary.append(f"Nova natureza {item.natureza} no grupo {item.group_label}")
+    summary += [
+        f"{code} {row.description}: {row.natureza or 'sem natureza'} → {_target_text(target)} "
         f"({row.entries} lançamentos, {_brl(row.total_amount)})"
-        for code, row, nature in plan
+        for code, row, target in plan.moves
     ]
+    warnings = []
+    for code, row, target in plan.moves:
+        was_in = OUT_OF_RESULT not in _fold(row.dre_group or "") and row.natureza is not None
+        now_in = _in_result(target)
+        if was_in != now_in:
+            change = "passa a entrar no resultado" if now_in else "sai do resultado"
+            warnings.append(f"{code} {row.description} ({_brl(row.total_amount)}) {change}.")
+    empty = [
+        item.natureza
+        for item in plan.new
+        if not any(target is item for _, _, target in plan.moves)
+    ]
+    if empty:
+        warnings.append(
+            "Natureza sem conta do NG nesta proposta (fica zerada até receber uma): " + ", ".join(empty)
+        )
+    if any(item.new_group for item in plan.new):
+        warnings.append(
+            "Nas DREs Caixa e Econômica, um grupo novo da gerencial entra em “Fora do resultado”; "
+            "mova-o lá se ele deve compor o resultado."
+        )
+    warnings.append(
+        "Ao aplicar, o TON cria as naturezas, grava a classificação, atualiza a base e recalcula o consolidado."
+    )
+    title = (
+        f"Criar {len(plan.new)} natureza(s) e classificar {len(plan.moves)} conta(s) do NG"
+        if plan.new
+        else f"Classificar {len(plan.moves)} conta(s) do NG"
+    )
     return (
-        f"Classificar {len(plan)} conta(s) do NG",
+        title,
         ActionPreview(
-            resumo=summary[:40] + ([f"… e mais {len(summary) - 40}"] if len(summary) > 40 else []),
-            avisos=["A DRE muda depois de atualizar a base; ao aplicar, o TON atualiza e recalcula o consolidado."],
+            resumo=summary[:60] + ([f"… e mais {len(summary) - 60}"] if len(summary) > 60 else []),
+            avisos=warnings,
             pode_desfazer=True,
         ),
     )
 
 
+def _create_natures(
+    session: Session, user: User, plan: _ClassificationPlan, reason: str
+) -> dict[str, Any]:
+    """The new naturezas, in order; naturezas of the same new group share it."""
+    structure = _structure(session, None)
+    before = dre.get_latest_version(session, user, structure.id).number
+    groups: dict[str, str] = {}
+    created = []
+    for item in plan.new:
+        group_code = item.group_code or groups.get(_fold(item.group_label))
+        view = account_classification.create_nature(
+            session,
+            user,
+            NatureCreate(
+                natureza=item.natureza,
+                dre_group_code=group_code or "",
+                new_group_label=None if group_code else item.group_label,
+                new_group_in_result=item.in_result,
+                reason=reason,
+            ),
+        )
+        if view.dre_group_code:
+            groups[_fold(item.group_label)] = view.dre_group_code
+        created.append(str(view.account_id))
+    session.commit()
+    after = dre.get_latest_version(session, user, structure.id).number
+    return {
+        "structure_id": str(structure.id),
+        "estrutura_antes": before,
+        "estrutura_depois": after,
+        "naturezas_criadas": created,
+    }
+
+
 def _apply_classification(
     session: Session, user: User, payload: ClassificationPayload
 ) -> dict[str, Any]:
-    source_id, plan = _classification_plan(session, user, payload)
+    plan = _classification_plan(session, user, payload)
+    natures = (
+        _create_natures(session, user, plan, payload.reason) if plan.new else {}
+    )
+    source_id = plan.source_id
+    if plan.new:
+        # The naturezas just created, by name.
+        _, context = _natures(session, user)
+        by_name = {_fold(item.natureza): item for item in context["table"].natures}
+        moves = [
+            (code, row, by_name[_fold(target.natureza)])
+            if isinstance(target, _NewNaturePlan)
+            else (code, row, target)
+            for code, row, target in plan.moves
+        ]
+    else:
+        moves = plan.moves
     previous = [
         {"account_code": code, "natureza": row.account_id and str(row.account_id)}
-        for code, row, _ in plan
+        for code, row, _ in moves
     ]
-    for code, _row, nature in plan:
+    for code, _row, nature in moves:
         account_classification.change_classification(
             session,
             user,
@@ -1175,8 +1359,9 @@ def _apply_classification(
     structure = _structure(session, None)
     scope = _scope(session, user, payload)
     return {
-        "classificadas": len(plan),
+        "classificadas": len(moves),
         "anteriores": previous,
+        **natures,
         **_recalculate(session, user, structure.id, scope.period, [None]),
     }
 
@@ -1185,6 +1370,13 @@ def _undo_classification(
     session: Session, user: User, payload: ClassificationPayload, result: dict[str, Any]
 ) -> dict[str, Any]:
     source_id, _ = _natures(session, user)
+    if result.get("naturezas_criadas"):
+        structure_id = UUID(result["structure_id"])
+        latest = dre.get_latest_version(session, user, structure_id)
+        if latest.number != result["estrutura_depois"]:
+            raise ValueError(
+                "A DRE gerencial recebeu outra versão depois desta; desfaça pelo Histórico da estrutura"
+            )
     restored = 0
     for item in result["anteriores"]:
         if not item["natureza"]:
@@ -1201,6 +1393,31 @@ def _undo_classification(
         )
         restored += 1
     session.commit()
+    if result.get("naturezas_criadas"):
+        # The managerial DRE exactly as before the proposal (a restore would
+        # keep the new natureza lines); the natureza accounts stay, without
+        # NG accounts or lines, in the history.
+        structure_id = UUID(result["structure_id"])
+        target = session.scalar(
+            sa.select(DreStructureVersion).where(
+                DreStructureVersion.structure_id == structure_id,
+                DreStructureVersion.number == int(result["estrutura_antes"]),
+            )
+        )
+        if target is None:
+            raise ValueError("A versão anterior da DRE gerencial não foi encontrada")
+        before = dre.get_version(session, user, target.id)
+        dre.create_version(
+            session,
+            user,
+            structure_id,
+            DreVersionCreate(
+                lines=before.lines,
+                assignments=before.assignments,
+                reason=f"Volta para a versão {before.number}: Desfeito pelo chat",
+            ),
+        )
+        session.commit()
     _refresh_base(session, user)
     structure = _structure(session, None)
     scope = _scope(session, user, payload)

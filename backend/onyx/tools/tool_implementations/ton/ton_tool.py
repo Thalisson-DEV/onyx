@@ -933,9 +933,17 @@ class TonProposeClassificationTool(TonProposeActionTool):
     KIND = ActionKind.ACCOUNT_CLASSIFICATION
     PAYLOAD = ClassificationPayload
     DESCRIPTION = (
-        "Propor a natureza de contas do NG (classificação contábil): uma ou várias contas, cada uma com a "
-        "natureza (código ou nome). Use a fila de ton_list_classification_queue para os códigos. Ao aplicar, "
-        "grava a classificação, atualiza a base e recalcula a DRE. Pode desfazer."
+        "Propor a natureza de contas do NG (classificação contábil) e, na mesma proposta, criar naturezas novas "
+        "(new_naturezas: em um grupo existente, group, ou num grupo novo, new_group, dentro ou fora do resultado). "
+        "Cada conta vai por código (8.1.0001) ou pelo nome exato da conta no NG; a natureza, por código, nome ou "
+        "uma das novas. Pedidos no formato do BI da Controladoria — GRUPO › NATUREZA › detalhamento — são isto: "
+        "o detalhamento são contas do NG (veja ton_list_classification_queue ou ton_search_entries); compare "
+        "com a classificação atual e proponha só o que muda, numa proposta única: naturezas que faltam e contas "
+        "que estão em outra natureza. Itens com código de rubrica de folha (ex.: 0001 - Salário Contratual) vêm "
+        "do sistema de folha, não do NG: diga isso e não os invente; impostos, provisões e taxas calculadas são "
+        "linhas de faturamento ou ajuste (ton_propose_dre_structure_change). Não crie linhas de ajuste zeradas "
+        "para contas que existem no NG. A prévia avisa contas que entram ou saem do resultado. Ao aplicar, cria "
+        "as naturezas, grava a classificação, atualiza a base e recalcula a DRE. Pode desfazer."
     )
 
 
@@ -1075,7 +1083,8 @@ class TonClassificationQueueTool(TonFunctionTool):
     NAME = "ton_list_classification_queue"
     DESCRIPTION = (
         "Listar contas do NG sem natureza ou aguardando confirmação, com a sugestão do assistente, número de "
-        "lançamentos e valor, e as naturezas disponíveis."
+        "lançamentos e valor, e as naturezas disponíveis. Com status=ALL e compact=true, devolve o plano inteiro "
+        "(conta, nome, natureza atual e grupo da DRE): use para comparar com uma estrutura de BI."
     )
     PARAMETERS = {
         "status": {
@@ -1084,12 +1093,17 @@ class TonClassificationQueueTool(TonFunctionTool):
             "description": "Padrão: pendentes e aguardando confirmação.",
         },
         "text": {"type": "string", "description": "Filtro pelo código ou descrição da conta."},
+        "compact": {
+            "type": "boolean",
+            "description": "Todas as contas, só conta, nome, natureza e grupo (sem valores).",
+        },
     }
 
     def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
         from onyx.db.ton import account_classification
 
         table = account_classification.classification_table(session, user, None)
+        groups = {item.natureza: item.dre_group for item in table.natures}
         status = kwargs.get("status")
         text = str(kwargs.get("text") or "").lower()
         rows = [
@@ -1103,6 +1117,19 @@ class TonClassificationQueueTool(TonFunctionTool):
             and (not text or text in f"{row.account_code} {row.description}".lower())
         ]
         rows.sort(key=lambda row: -abs(row.total_amount))
+        if kwargs.get("compact"):
+            rows.sort(key=lambda row: row.account_code)
+            return {
+                "kind": "classification_plan",
+                "total": len(rows),
+                "contas": [
+                    [row.account_code, row.description, row.natureza, groups.get(row.natureza or "")]
+                    for row in rows[:400]
+                ],
+                "colunas": ["conta", "nome", "natureza", "grupo"],
+                "naturezas": [f"{item.code} {item.natureza} ({item.dre_group})" for item in table.natures],
+                "grupos": [f"{item.code} {item.label}" for item in table.groups],
+            }
         return {
             "kind": "classification_queue",
             "total": len(rows),

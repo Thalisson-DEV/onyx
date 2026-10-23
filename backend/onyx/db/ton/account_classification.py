@@ -859,7 +859,9 @@ def _with_new_group(
         if line.line_type == DreLineType.RESULT
         and line.operation == DreOperation.SUM_LINES
     ]
-    target = max(totals, key=lambda line: line.position) if in_result and totals else None
+    target = (
+        max(totals, key=lambda line: line.position) if in_result and totals else None
+    )
     position = target.position if target else max(line.position for line in lines) + 1
     shifted = [
         line.model_copy(update={"position": line.position + 1})
@@ -892,15 +894,16 @@ def create_nature(session: Session, user: User, request: NatureCreate) -> Nature
     structure version with its own line, like a row added to AUXILIARES."""
     _require_admin(user)
     name = " ".join(request.natureza.split()).upper()
-    if session.scalar(
-        sa.select(FinancialAccount.id).where(
-            sa.func.upper(FinancialAccount.label) == name
-        )
-    ):
-        raise OnyxError(OnyxErrorCode.CONFLICT, "Natureza already exists")
     layout = _dre_layout(session)
     if layout.version is None:
         raise OnyxError(OnyxErrorCode.INVALID_INPUT, "Unknown DRE group")
+    # A natureza whose line left the DRE (an undone creation) comes back with
+    # a new line instead of a second account with the same name.
+    existing = session.scalar(
+        sa.select(FinancialAccount).where(sa.func.upper(FinancialAccount.label) == name)
+    )
+    if existing is not None and existing.id in layout.account_group:
+        raise OnyxError(OnyxErrorCode.CONFLICT, "Natureza already exists")
     lines = [DreLineDefinition.model_validate(item) for item in layout.version.lines]
     if request.new_group_label:
         lines, group = _with_new_group(
@@ -947,7 +950,7 @@ def create_nature(session: Session, user: User, request: NatureCreate) -> Nature
         else None
     )
     sibling_account = session.get(FinancialAccount, template) if template else None
-    account = create_account(
+    account = existing or create_account(
         session,
         user,
         AccountCreate(

@@ -20,7 +20,7 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 jest.mock("@/providers/UserProvider", () => ({
-  useUser: () => ({ isAdmin: mockAdmin }),
+  useUser: () => ({ isAdmin: mockAdmin, user: { id: "u1" } }),
 }));
 jest.mock("@/lib/ton/api", () => ({
   useTonAccess: () => ({ canEnter: true, canRead: true }),
@@ -87,7 +87,7 @@ test("a unit manager sees only the DREs and the assistant", () => {
   expect(screen.getByRole("link", { name: "Fechamento" })).toBeVisible();
   for (const name of [
     "Visão Geral",
-    "Ocorrências",
+    "Plano de correção",
     "Automações",
     "Relatórios",
     "Fontes",

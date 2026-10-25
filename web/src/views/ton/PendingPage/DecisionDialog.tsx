@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
-import { Button, InputTypeIn, Modal, Text } from "@opal/components";
+import { Button, InputTypeIn, Text } from "@opal/components";
+import { Drawer } from "@/views/ton/components/kit";
 import { SvgArrowRight, SvgBubbleText, SvgCheckCircle } from "@opal/icons";
 import type { Route } from "next";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
@@ -252,9 +253,14 @@ function BatchTable({ rows }: { rows: BlockerRow[] }) {
               <tr key={`${item.occurrence_id ?? item.item_id ?? index}`}>
                 <td>{first?.document ?? "—"}</td>
                 <td className="w-full">
-                  {first?.account ?? first?.counterparty ?? item.rule_title ?? ""}
+                  {first?.account ??
+                    first?.counterparty ??
+                    item.rule_title ??
+                    ""}
                   {first?.description && (
-                    <span className="ton-batch-history">{first.description}</span>
+                    <span className="ton-batch-history">
+                      {first.description}
+                    </span>
                   )}
                 </td>
                 <td className="whitespace-nowrap">
@@ -374,10 +380,10 @@ export default function DecisionDialog({
     ? assigning
       ? DIALOG.assignUnit
       : reviewDecision
-      ? DIALOG.defaultReason(
-          COPY.pending.reviewDecisions[reviewDecision] ?? reviewDecision
-        )
-      : ""
+        ? DIALOG.defaultReason(
+            COPY.pending.reviewDecisions[reviewDecision] ?? reviewDecision
+          )
+        : ""
     : isReconciliation
       ? decision
         ? DIALOG.defaultReason(COPY.pending.decisions[decision])
@@ -391,8 +397,7 @@ export default function DecisionDialog({
   // Reconciliation items of the same closing month: one reason can settle a
   // whole list (for example every August note with a different number).
   const siblings = useSWR<{ rows: BlockerRow[] }>(
-    !batch &&
-      ((isReview && row.rule_key) || (isReconciliation && row.item_id))
+    !batch && ((isReview && row.rule_key) || (isReconciliation && row.item_id))
       ? `/api/ton/financial-domain/normalizations/${scope.runId}/readiness/blockers/${category.blocker}?structure_version_id=${scope.version.id}&limit=100${isReconciliation ? `&period=${scope.period.scope.period}` : ""}${scope.unitId ? `&unit_id=${scope.unitId}` : ""}`
       : null,
     errorHandlingFetcher
@@ -514,12 +519,14 @@ export default function DecisionDialog({
         reason,
       });
     } else if (isReview && assigning && assignUnit && row.occurrence_id) {
-      const pool = batch ?? (applyToAll && sameRule.length > 1 ? sameRule : [row]);
+      const pool =
+        batch ?? (applyToAll && sameRule.length > 1 ? sameRule : [row]);
       const ids = pool.flatMap((item) =>
         item.occurrence_id ? [item.occurrence_id] : []
       );
       for (const [index, occurrenceId] of ids.entries()) {
-        if (ids.length > 1) setBatchProgress({ done: index, total: ids.length });
+        if (ids.length > 1)
+          setBatchProgress({ done: index, total: ids.length });
         await postTonJson(
           `/api/ton/financial-review/occurrences/${occurrenceId}/unit-assignment`,
           { unit_id: assignUnit, reason: reasonInput.trim() }
@@ -527,12 +534,14 @@ export default function DecisionDialog({
       }
       setBatchProgress(null);
     } else if (isReview && reviewDecision && row.occurrence_id) {
-      const pool = batch ?? (applyToAll && sameRule.length > 1 ? sameRule : [row]);
+      const pool =
+        batch ?? (applyToAll && sameRule.length > 1 ? sameRule : [row]);
       const ids = pool.flatMap((item) =>
         item.occurrence_id ? [item.occurrence_id] : []
       );
       for (const [index, occurrenceId] of ids.entries()) {
-        if (ids.length > 1) setBatchProgress({ done: index, total: ids.length });
+        if (ids.length > 1)
+          setBatchProgress({ done: index, total: ids.length });
         await postTonJson(
           `/api/ton/financial-review/occurrences/${occurrenceId}/decisions`,
           {
@@ -558,7 +567,8 @@ export default function DecisionDialog({
         .filter((item) => decision !== "NG_AUTHORITATIVE" || item.paired)
         .flatMap((item) => (item.item_id ? [item.item_id] : []));
       for (const [index, itemId] of ids.entries()) {
-        if (ids.length > 1) setBatchProgress({ done: index, total: ids.length });
+        if (ids.length > 1)
+          setBatchProgress({ done: index, total: ids.length });
         await postTonJson(
           `/api/ton/financial-domain/normalizations/${scope.runId}/reconciliation/items/${itemId}/decision`,
           { decision, reason }
@@ -671,535 +681,525 @@ export default function DecisionDialog({
       ? DIALOG.impactPair
       : decisionCount > 1
         ? DIALOG.impactMany(decisionCount)
-      : LOOP.preview.scope(
-          plural(row.record_count, "registro", "registros"),
-          rowPeriods(row)
-        ),
+        : LOOP.preview.scope(
+            plural(row.record_count, "registro", "registros"),
+            rowPeriods(row)
+          ),
     willApply ? DIALOG.impactRecompute : DIALOG.impactRecordOnly,
   ].join(" · ");
 
   return (
-    <Modal
+    <Drawer
       open
-      onOpenChange={(open) => {
-        if (!open && !busy) onClose();
+      modal
+      onClose={() => {
+        if (!busy) onClose();
       }}
+      storageKey="decision"
+      defaultWidth={1040}
+      eyebrow={COPY.pending.title}
+      title={phase === "result" ? LOOP.result.title : category.label}
     >
-      <Modal.Content width="full">
-        <Modal.Header
-          title={phase === "result" ? LOOP.result.title : category.label}
-          onClose={() => !busy && onClose()}
-        />
-        <Modal.Body>
-          <div className="w-full flex flex-col gap-5">
-            {phase === "result" && rejected && (
-              <div className="flex items-center gap-2">
-                <SvgCheckCircle size={18} className="ton-brand-text" />
-                <Text font="main-ui-body" color="text-04">
-                  {LOOP.result.rejected}
-                </Text>
-              </div>
-            )}
+      <div className="w-full flex flex-col gap-5">
+        {phase === "result" && rejected && (
+          <div className="flex items-center gap-2">
+            <SvgCheckCircle size={18} className="ton-brand-text" />
+            <Text font="main-ui-body" color="text-04">
+              {LOOP.result.rejected}
+            </Text>
+          </div>
+        )}
 
-            {phase === "result" && result && (
-              <ResultView
-                count={decisionCount}
-                result={result}
-                periodLabel={periodLabel}
-                onNext={onNext}
-                onClose={onClose}
+        {phase === "result" && result && (
+          <ResultView
+            count={decisionCount}
+            result={result}
+            periodLabel={periodLabel}
+            onNext={onNext}
+            onClose={onClose}
+          />
+        )}
+
+        {phase !== "result" && (
+          <div className="ton-decision-layout">
+            <div className="flex flex-col gap-4 min-w-0">
+              <FactCard
+                row={row}
+                category={category}
+                batch={batch}
+                titleOnly={Boolean(duplicate) || (isReconciliation && !batch)}
               />
-            )}
-
-            {phase !== "result" && (
-              <div className="ton-decision-layout">
-                <div className="flex flex-col gap-4 min-w-0">
-                  <FactCard
-                    row={row}
-                    category={category}
-                    batch={batch}
-                    titleOnly={Boolean(duplicate) || (isReconciliation && !batch)}
-                  />
-                  {duplicate ? (
-                    <DuplicateCompare
-                      kept={duplicate.kept}
-                      repeated={duplicate.repeated}
-                    />
-                  ) : isReconciliation && !batch ? (
-                    <ReconciliationCompare
-                      records={
-                        pair.length
-                          ? pair.flatMap((item) => item.records)
-                          : row.records
-                      }
-                    />
-                  ) : (
-                    showEvidence && (
-                      <Section title={LOOP.evidenceTitle}>
-                        {batch ? (
-                          <BatchTable rows={batch} />
-                        ) : (
-                          <EvidenceRecords
-                            records={row.records}
-                            total={row.record_count}
-                            reconciliation={isReconciliation}
-                          />
-                        )}
-                        {row.legacy_evidence && (
-                          <Text font="secondary-body" color="text-03">
-                            {`${row.legacy_evidence.reference_label}: ${row.legacy_evidence.suggested_code}${row.legacy_evidence.suggested_label ? ` — ${row.legacy_evidence.suggested_label}` : ""}`}
-                          </Text>
-                        )}
-                      </Section>
-                    )
-                  )}
-                  {evidenceBasis(row) && !batch && (
-                    <section className="flex flex-col gap-1 rounded-12 border border-01 p-3">
-                      <div className="flex items-center gap-2">
-                        <SvgCheckCircle size={16} className="ton-brand-text" />
-                        <Text font="main-ui-action" color="text-05">
-                          {rowSuggestion(row)}
-                        </Text>
-                      </div>
+              {duplicate ? (
+                <DuplicateCompare
+                  kept={duplicate.kept}
+                  repeated={duplicate.repeated}
+                />
+              ) : isReconciliation && !batch ? (
+                <ReconciliationCompare
+                  records={
+                    pair.length
+                      ? pair.flatMap((item) => item.records)
+                      : row.records
+                  }
+                />
+              ) : (
+                showEvidence && (
+                  <Section title={LOOP.evidenceTitle}>
+                    {batch ? (
+                      <BatchTable rows={batch} />
+                    ) : (
+                      <EvidenceRecords
+                        records={row.records}
+                        total={row.record_count}
+                        reconciliation={isReconciliation}
+                      />
+                    )}
+                    {row.legacy_evidence && (
                       <Text font="secondary-body" color="text-03">
-                        {LOOP.evidenceReady.body(evidenceBasis(row) ?? "")}
+                        {`${row.legacy_evidence.reference_label}: ${row.legacy_evidence.suggested_code}${row.legacy_evidence.suggested_label ? ` — ${row.legacy_evidence.suggested_label}` : ""}`}
                       </Text>
-                    </section>
+                    )}
+                  </Section>
+                )
+              )}
+              {evidenceBasis(row) && !batch && (
+                <section className="flex flex-col gap-1 rounded-12 border border-01 p-3">
+                  <div className="flex items-center gap-2">
+                    <SvgCheckCircle size={16} className="ton-brand-text" />
+                    <Text font="main-ui-action" color="text-05">
+                      {rowSuggestion(row)}
+                    </Text>
+                  </div>
+                  <Text font="secondary-body" color="text-03">
+                    {LOOP.evidenceReady.body(evidenceBasis(row) ?? "")}
+                  </Text>
+                </section>
+              )}
+              {category.noActual && (
+                <div className="flex flex-col gap-2">
+                  <Text font="main-ui-body" color="text-04">
+                    {COPY.pending.noActual.action}
+                  </Text>
+                  <div>
+                    <Button href="/ton/fontes" rightIcon={SvgArrowRight}>
+                      {COPY.pending.noActual.cta}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <aside className="ton-decision-panel">
+              <div className="flex flex-col gap-1.5">
+                <Text as="h3" font="heading-h3" color="text-05">
+                  {DIALOG.decision}
+                </Text>
+                {explain && (
+                  <span>
+                    <StatusPill tone={explain.changes ? "warning" : "neutral"}>
+                      {explain.changes
+                        ? LOOP.explain.changesNumbers
+                        : LOOP.explain.keepsNumbers}
+                    </StatusPill>
+                  </span>
+                )}
+              </div>
+
+              {!category.noActual && !canEdit && (
+                <Text font="main-ui-body" color="text-03">
+                  {category.key === "other"
+                    ? category.action
+                    : DIALOG.noPermission}
+                </Text>
+              )}
+
+              {canEdit && isMapping && (
+                <div className="flex flex-col gap-2">
+                  <InputTypeIn
+                    searchIcon
+                    value={targetSearch}
+                    onChange={(event) => setTargetSearch(event.target.value)}
+                    placeholder={DIALOG.searchTarget}
+                    aria-label={DIALOG.searchTarget}
+                  />
+                  <div
+                    role="radiogroup"
+                    aria-label={DIALOG.decision}
+                    className="ton-choice-list"
+                  >
+                    {allTargets.map((target) => (
+                      <OptionCard
+                        key={target.id}
+                        compact
+                        selected={target.id === targetId}
+                        title={getBusinessLabel(
+                          target.name ?? target.label ?? target.code
+                        )}
+                        help={target.code}
+                        onSelect={() => setTargetId(target.id)}
+                      />
+                    ))}
+                  </div>
+                  {targets.isLoading && (
+                    <LoadingBlock label={COPY.common.loading} lines={1} />
                   )}
-                  {category.noActual && (
-                    <div className="flex flex-col gap-2">
-                      <Text font="main-ui-body" color="text-04">
-                        {COPY.pending.noActual.action}
-                      </Text>
-                      <div>
-                        <Button href="/ton/fontes" rightIcon={SvgArrowRight}>
-                          {COPY.pending.noActual.cta}
-                        </Button>
-                      </div>
+                  {(category.key === "accounts" ||
+                    category.key === "budgetAccounts") &&
+                    access.canConfigure && (
+                      <details className="ton-more">
+                        <summary>{DIALOG.createAccount}</summary>
+                        <div className="flex flex-col gap-2 pt-2">
+                          <InputTypeIn
+                            value={accountCode}
+                            onChange={(event) =>
+                              setAccountCode(event.target.value)
+                            }
+                            aria-label={DIALOG.accountCode}
+                            placeholder={DIALOG.accountCode}
+                          />
+                          <InputTypeIn
+                            value={accountLabel}
+                            onChange={(event) =>
+                              setAccountLabel(event.target.value)
+                            }
+                            aria-label={DIALOG.accountLabel}
+                            placeholder={DIALOG.accountLabel}
+                          />
+                          <div>
+                            <Button
+                              size="sm"
+                              prominence="secondary"
+                              disabled={
+                                !accountCode.trim() || !accountLabel.trim()
+                              }
+                              onClick={createAccount}
+                            >
+                              {DIALOG.createAccount}
+                            </Button>
+                          </div>
+                        </div>
+                      </details>
+                    )}
+                </div>
+              )}
+
+              {canEdit && category.key === "amountBasis" && (
+                <div
+                  role="radiogroup"
+                  aria-label={DIALOG.decision}
+                  className="ton-choice-list"
+                >
+                  {(["MOVEMENT", "FINAL"] as const).map((value) => (
+                    <OptionCard
+                      key={value}
+                      compact
+                      selected={basis === value}
+                      title={
+                        value === "MOVEMENT"
+                          ? DIALOG.movement
+                          : DIALOG.finalAmount
+                      }
+                      onSelect={() => setBasis(value)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {canEdit && isDre && (
+                <div
+                  role="radiogroup"
+                  aria-label={DIALOG.decision}
+                  className="ton-choice-list"
+                >
+                  {scope.version.lines
+                    .filter((line) => line.line_type === "SOURCE_SUM")
+                    .map((line) => (
+                      <OptionCard
+                        key={line.code}
+                        compact
+                        selected={line.code === lineCode}
+                        title={getBusinessLabel(line.label)}
+                        onSelect={() => setLineCode(line.code)}
+                      />
+                    ))}
+                </div>
+              )}
+
+              {canEdit && category.key === "budgetPeriods" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label className="flex flex-col gap-1">
+                    <Text font="secondary-action" color="text-04">
+                      {DIALOG.startMonth}
+                    </Text>
+                    <InputTypeIn
+                      type="month"
+                      value={startMonth}
+                      onChange={(event) => setStartMonth(event.target.value)}
+                      aria-label={DIALOG.startMonth}
+                    />
+                  </label>
+                  <label className="flex flex-col gap-1">
+                    <Text font="secondary-action" color="text-04">
+                      {DIALOG.endMonth}
+                    </Text>
+                    <InputTypeIn
+                      type="month"
+                      value={endMonth}
+                      onChange={(event) => setEndMonth(event.target.value)}
+                      aria-label={DIALOG.endMonth}
+                    />
+                  </label>
+                </div>
+              )}
+
+              {canEdit && isReconciliation && (
+                <div
+                  role="radiogroup"
+                  aria-label={DIALOG.decision}
+                  className="flex flex-col gap-2"
+                >
+                  {RECONCILIATION_DECISIONS.filter(
+                    (value) => value !== "NG_AUTHORITATIVE" || row.paired
+                  ).map((value) => (
+                    <OptionCard
+                      key={value}
+                      selected={decision === value}
+                      title={COPY.pending.decisions[value]}
+                      help={LOOP.explain.options[value]}
+                      onSelect={() => setDecision(value)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {canEdit && isReview && (
+                <div
+                  role="radiogroup"
+                  aria-label={DIALOG.decision}
+                  className="flex flex-col gap-2"
+                >
+                  {unitMissing && (
+                    <OptionCard
+                      selected={assigning}
+                      title={DIALOG.assignUnit}
+                      help={DIALOG.assignUnitHelp}
+                      onSelect={() => {
+                        setAssigning(true);
+                        setReviewDecision(null);
+                      }}
+                    />
+                  )}
+                  {unitMissing && assigning && (
+                    <select
+                      className="ton-select ton-focusable"
+                      aria-label={DIALOG.assignUnitPick}
+                      value={assignUnit}
+                      onChange={(event) => setAssignUnit(event.target.value)}
+                    >
+                      <option value="">{DIALOG.assignUnitPick}</option>
+                      {(activeUnits.data ?? []).map((unit) => (
+                        <option key={unit.id} value={unit.id}>
+                          {getBusinessLabel(unit.name ?? unit.code)}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {reviewOrder.map((value) => (
+                    <OptionCard
+                      key={value}
+                      selected={!assigning && reviewDecision === value}
+                      title={
+                        ruleCopy?.[value]?.title ??
+                        COPY.pending.reviewDecisions[value] ??
+                        value
+                      }
+                      help={
+                        ruleCopy?.[value]?.help ??
+                        COPY.pending.reviewDecisionHelp[value] ??
+                        ""
+                      }
+                      onSelect={() => {
+                        setAssigning(false);
+                        setReviewDecision(value);
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {canEdit &&
+                isReview &&
+                reviewDecision === "JUSTIFY_EXCEPTION" && (
+                  <div className="flex flex-col gap-1.5">
+                    <Text font="secondary-action" color="text-04">
+                      {COPY.pending.justification.label}
+                    </Text>
+                    <div className="flex flex-wrap gap-1.5">
+                      {JUSTIFICATIONS.map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          aria-pressed={justification === value}
+                          className="ton-chip ton-focusable"
+                          onClick={() => setJustification(value)}
+                        >
+                          {COPY.pending.justification[value] ?? value}
+                        </button>
+                      ))}
                     </div>
+                  </div>
+                )}
+
+              {canEdit &&
+                !batch &&
+                (isReview || isReconciliation) &&
+                sameRule.length > Math.max(1, pair.length) && (
+                  <label
+                    aria-label={batchLabel}
+                    className="ton-apply-all flex items-start gap-2.5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={applyToAll}
+                      onChange={(event) => setApplyToAll(event.target.checked)}
+                    />
+                    <span className="flex flex-col gap-0.5">
+                      <Text font="main-ui-action" color="text-05">
+                        {batchLabel}
+                      </Text>
+                      <Text font="secondary-body" color="text-03">
+                        {DIALOG.applyToAllHint}
+                      </Text>
+                    </span>
+                  </label>
+                )}
+
+              {canEdit && !category.noActual && (
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex flex-col gap-1">
+                    <Text font="secondary-action" color="text-04">
+                      {isReview
+                        ? DIALOG.noteOptional
+                        : reasonOptional
+                          ? DIALOG.reasonOptional
+                          : DIALOG.reason}
+                    </Text>
+                    <InputTypeIn
+                      value={reasonInput}
+                      onChange={(event) => setReason(event.target.value)}
+                      placeholder={DIALOG.reasonPlaceholder}
+                      aria-label={DIALOG.reason}
+                    />
+                  </label>
+                  {category.key !== "review" &&
+                    (COPY.pending.quickReasons[category.key] ?? []).length >
+                      0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {(COPY.pending.quickReasons[category.key] ?? []).map(
+                          (text) => (
+                            <button
+                              key={text}
+                              type="button"
+                              aria-pressed={reasonInput === text}
+                              className="ton-chip ton-focusable"
+                              onClick={() => setReason(text)}
+                            >
+                              {text}
+                            </button>
+                          )
+                        )}
+                      </div>
+                    )}
+                </div>
+              )}
+
+              {canEdit && isReview && (
+                <details className="ton-more">
+                  <summary>{DIALOG.moreOptions}</summary>
+                  <label className="flex flex-col gap-1 pt-2">
+                    <Text font="secondary-action" color="text-04">
+                      {DIALOG.authorization}
+                    </Text>
+                    <InputTypeIn
+                      value={authorization}
+                      onChange={(event) => setAuthorization(event.target.value)}
+                      placeholder={DIALOG.authorizationPlaceholder}
+                      aria-label={DIALOG.authorization}
+                    />
+                  </label>
+                </details>
+              )}
+
+              {busy && (
+                <LoadingBlock
+                  label={
+                    phase === "recording"
+                      ? batchProgress
+                        ? DIALOG.recordingMany(
+                            batchProgress.done + 1,
+                            batchProgress.total
+                          )
+                        : LOOP.working.recording
+                      : LOOP.working.recomputing
+                  }
+                  lines={1}
+                />
+              )}
+              {failure && (
+                <Text font="main-ui-body" color="status-error-05">
+                  {failure}
+                </Text>
+              )}
+
+              <div className="ton-decision-footer">
+                {canEdit && (
+                  <Text font="secondary-body" color="text-03">
+                    {impactText}
+                  </Text>
+                )}
+                <div className="flex flex-wrap gap-2 justify-end">
+                  {canEdit &&
+                    (category.key === "units" || category.key === "accounts") &&
+                    (row.candidate?.evidence === "EXACT_CODE" ||
+                      row.legacy_evidence) && (
+                      <Button
+                        prominence="secondary"
+                        disabled={busy || !reason.trim()}
+                        onClick={reject}
+                      >
+                        {DIALOG.reject}
+                      </Button>
+                    )}
+                  {category.key !== "other" && !batch && (
+                    <Button
+                      prominence="tertiary"
+                      icon={SvgBubbleText}
+                      href={askTonHref(category, row)}
+                    >
+                      {LOOP.explain.askTonShort}
+                    </Button>
+                  )}
+                  {canEdit ? (
+                    <Button
+                      disabled={busy || !reason.trim() || !hasTarget}
+                      onClick={() => void confirm()}
+                    >
+                      {decisionCount > 1
+                        ? DIALOG.confirmMany(decisionCount)
+                        : DIALOG.confirm}
+                    </Button>
+                  ) : (
+                    <Button prominence="secondary" onClick={onClose}>
+                      {DIALOG.close}
+                    </Button>
                   )}
                 </div>
-
-                <aside className="ton-decision-panel">
-                  <div className="flex flex-col gap-1.5">
-                    <Text as="h3" font="heading-h3" color="text-05">
-                      {DIALOG.decision}
-                    </Text>
-                    {explain && (
-                      <span>
-                        <StatusPill tone={explain.changes ? "warning" : "neutral"}>
-                          {explain.changes
-                            ? LOOP.explain.changesNumbers
-                            : LOOP.explain.keepsNumbers}
-                        </StatusPill>
-                      </span>
-                    )}
-                  </div>
-
-                  {!category.noActual && !canEdit && (
-                    <Text font="main-ui-body" color="text-03">
-                      {category.key === "other"
-                        ? category.action
-                        : DIALOG.noPermission}
-                    </Text>
-                  )}
-
-                  {canEdit && isMapping && (
-                    <div className="flex flex-col gap-2">
-                      <InputTypeIn
-                        searchIcon
-                        value={targetSearch}
-                        onChange={(event) =>
-                          setTargetSearch(event.target.value)
-                        }
-                        placeholder={DIALOG.searchTarget}
-                        aria-label={DIALOG.searchTarget}
-                      />
-                      <div
-                        role="radiogroup"
-                        aria-label={DIALOG.decision}
-                        className="ton-choice-list"
-                      >
-                        {allTargets.map((target) => (
-                          <OptionCard
-                            key={target.id}
-                            compact
-                            selected={target.id === targetId}
-                            title={getBusinessLabel(
-                              target.name ?? target.label ?? target.code
-                            )}
-                            help={target.code}
-                            onSelect={() => setTargetId(target.id)}
-                          />
-                        ))}
-                      </div>
-                      {targets.isLoading && (
-                        <LoadingBlock label={COPY.common.loading} lines={1} />
-                      )}
-                      {(category.key === "accounts" ||
-                        category.key === "budgetAccounts") &&
-                        access.canConfigure && (
-                          <details className="ton-more">
-                            <summary>{DIALOG.createAccount}</summary>
-                            <div className="flex flex-col gap-2 pt-2">
-                              <InputTypeIn
-                                value={accountCode}
-                                onChange={(event) =>
-                                  setAccountCode(event.target.value)
-                                }
-                                aria-label={DIALOG.accountCode}
-                                placeholder={DIALOG.accountCode}
-                              />
-                              <InputTypeIn
-                                value={accountLabel}
-                                onChange={(event) =>
-                                  setAccountLabel(event.target.value)
-                                }
-                                aria-label={DIALOG.accountLabel}
-                                placeholder={DIALOG.accountLabel}
-                              />
-                              <div>
-                                <Button
-                                  size="sm"
-                                  prominence="secondary"
-                                  disabled={
-                                    !accountCode.trim() || !accountLabel.trim()
-                                  }
-                                  onClick={createAccount}
-                                >
-                                  {DIALOG.createAccount}
-                                </Button>
-                              </div>
-                            </div>
-                          </details>
-                        )}
-                    </div>
-                  )}
-
-                  {canEdit && category.key === "amountBasis" && (
-                    <div
-                      role="radiogroup"
-                      aria-label={DIALOG.decision}
-                      className="ton-choice-list"
-                    >
-                      {(["MOVEMENT", "FINAL"] as const).map((value) => (
-                        <OptionCard
-                          key={value}
-                          compact
-                          selected={basis === value}
-                          title={
-                            value === "MOVEMENT"
-                              ? DIALOG.movement
-                              : DIALOG.finalAmount
-                          }
-                          onSelect={() => setBasis(value)}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {canEdit && isDre && (
-                    <div
-                      role="radiogroup"
-                      aria-label={DIALOG.decision}
-                      className="ton-choice-list"
-                    >
-                      {scope.version.lines
-                        .filter((line) => line.line_type === "SOURCE_SUM")
-                        .map((line) => (
-                          <OptionCard
-                            key={line.code}
-                            compact
-                            selected={line.code === lineCode}
-                            title={getBusinessLabel(line.label)}
-                            onSelect={() => setLineCode(line.code)}
-                          />
-                        ))}
-                    </div>
-                  )}
-
-                  {canEdit && category.key === "budgetPeriods" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <label className="flex flex-col gap-1">
-                        <Text font="secondary-action" color="text-04">
-                          {DIALOG.startMonth}
-                        </Text>
-                        <InputTypeIn
-                          type="month"
-                          value={startMonth}
-                          onChange={(event) => setStartMonth(event.target.value)}
-                          aria-label={DIALOG.startMonth}
-                        />
-                      </label>
-                      <label className="flex flex-col gap-1">
-                        <Text font="secondary-action" color="text-04">
-                          {DIALOG.endMonth}
-                        </Text>
-                        <InputTypeIn
-                          type="month"
-                          value={endMonth}
-                          onChange={(event) => setEndMonth(event.target.value)}
-                          aria-label={DIALOG.endMonth}
-                        />
-                      </label>
-                    </div>
-                  )}
-
-                  {canEdit && isReconciliation && (
-                    <div
-                      role="radiogroup"
-                      aria-label={DIALOG.decision}
-                      className="flex flex-col gap-2"
-                    >
-                      {RECONCILIATION_DECISIONS.filter(
-                        (value) => value !== "NG_AUTHORITATIVE" || row.paired
-                      ).map((value) => (
-                        <OptionCard
-                          key={value}
-                          selected={decision === value}
-                          title={COPY.pending.decisions[value]}
-                          help={LOOP.explain.options[value]}
-                          onSelect={() => setDecision(value)}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {canEdit && isReview && (
-                    <div
-                      role="radiogroup"
-                      aria-label={DIALOG.decision}
-                      className="flex flex-col gap-2"
-                    >
-                      {unitMissing && (
-                        <OptionCard
-                          selected={assigning}
-                          title={DIALOG.assignUnit}
-                          help={DIALOG.assignUnitHelp}
-                          onSelect={() => {
-                            setAssigning(true);
-                            setReviewDecision(null);
-                          }}
-                        />
-                      )}
-                      {unitMissing && assigning && (
-                        <select
-                          className="ton-select ton-focusable"
-                          aria-label={DIALOG.assignUnitPick}
-                          value={assignUnit}
-                          onChange={(event) => setAssignUnit(event.target.value)}
-                        >
-                          <option value="">{DIALOG.assignUnitPick}</option>
-                          {(activeUnits.data ?? []).map((unit) => (
-                            <option key={unit.id} value={unit.id}>
-                              {getBusinessLabel(unit.name ?? unit.code)}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                      {reviewOrder.map((value) => (
-                        <OptionCard
-                          key={value}
-                          selected={!assigning && reviewDecision === value}
-                          title={
-                            ruleCopy?.[value]?.title ??
-                            COPY.pending.reviewDecisions[value] ??
-                            value
-                          }
-                          help={
-                            ruleCopy?.[value]?.help ??
-                            COPY.pending.reviewDecisionHelp[value] ??
-                            ""
-                          }
-                          onSelect={() => {
-                            setAssigning(false);
-                            setReviewDecision(value);
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {canEdit &&
-                    isReview &&
-                    reviewDecision === "JUSTIFY_EXCEPTION" && (
-                      <div className="flex flex-col gap-1.5">
-                        <Text font="secondary-action" color="text-04">
-                          {COPY.pending.justification.label}
-                        </Text>
-                        <div className="flex flex-wrap gap-1.5">
-                          {JUSTIFICATIONS.map((value) => (
-                            <button
-                              key={value}
-                              type="button"
-                              aria-pressed={justification === value}
-                              className="ton-chip ton-focusable"
-                              onClick={() => setJustification(value)}
-                            >
-                              {COPY.pending.justification[value] ?? value}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                  {canEdit &&
-                    !batch &&
-                    (isReview || isReconciliation) &&
-                    sameRule.length > Math.max(1, pair.length) && (
-                      <label
-                        aria-label={batchLabel}
-                        className="ton-apply-all flex items-start gap-2.5"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={applyToAll}
-                          onChange={(event) =>
-                            setApplyToAll(event.target.checked)
-                          }
-                        />
-                        <span className="flex flex-col gap-0.5">
-                          <Text font="main-ui-action" color="text-05">
-                            {batchLabel}
-                          </Text>
-                          <Text font="secondary-body" color="text-03">
-                            {DIALOG.applyToAllHint}
-                          </Text>
-                        </span>
-                      </label>
-                    )}
-
-                  {canEdit && !category.noActual && (
-                    <div className="flex flex-col gap-1.5">
-                      <label className="flex flex-col gap-1">
-                        <Text font="secondary-action" color="text-04">
-                          {isReview
-                            ? DIALOG.noteOptional
-                            : reasonOptional
-                              ? DIALOG.reasonOptional
-                              : DIALOG.reason}
-                        </Text>
-                        <InputTypeIn
-                          value={reasonInput}
-                          onChange={(event) => setReason(event.target.value)}
-                          placeholder={DIALOG.reasonPlaceholder}
-                          aria-label={DIALOG.reason}
-                        />
-                      </label>
-                      {category.key !== "review" &&
-                        (COPY.pending.quickReasons[category.key] ?? []).length >
-                          0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {(COPY.pending.quickReasons[category.key] ?? []).map(
-                            (text) => (
-                              <button
-                                key={text}
-                                type="button"
-                                aria-pressed={reasonInput === text}
-                                className="ton-chip ton-focusable"
-                                onClick={() => setReason(text)}
-                              >
-                                {text}
-                              </button>
-                            )
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {canEdit && isReview && (
-                    <details className="ton-more">
-                      <summary>{DIALOG.moreOptions}</summary>
-                      <label className="flex flex-col gap-1 pt-2">
-                        <Text font="secondary-action" color="text-04">
-                          {DIALOG.authorization}
-                        </Text>
-                        <InputTypeIn
-                          value={authorization}
-                          onChange={(event) =>
-                            setAuthorization(event.target.value)
-                          }
-                          placeholder={DIALOG.authorizationPlaceholder}
-                          aria-label={DIALOG.authorization}
-                        />
-                      </label>
-                    </details>
-                  )}
-
-                  {busy && (
-                    <LoadingBlock
-                      label={
-                        phase === "recording"
-                          ? batchProgress
-                            ? DIALOG.recordingMany(
-                                batchProgress.done + 1,
-                                batchProgress.total
-                              )
-                            : LOOP.working.recording
-                          : LOOP.working.recomputing
-                      }
-                      lines={1}
-                    />
-                  )}
-                  {failure && (
-                    <Text font="main-ui-body" color="status-error-05">
-                      {failure}
-                    </Text>
-                  )}
-
-                  <div className="ton-decision-footer">
-                    {canEdit && (
-                      <Text font="secondary-body" color="text-03">
-                        {impactText}
-                      </Text>
-                    )}
-                    <div className="flex flex-wrap gap-2 justify-end">
-                      {canEdit &&
-                        (category.key === "units" ||
-                          category.key === "accounts") &&
-                        (row.candidate?.evidence === "EXACT_CODE" ||
-                          row.legacy_evidence) && (
-                          <Button
-                            prominence="secondary"
-                            disabled={busy || !reason.trim()}
-                            onClick={reject}
-                          >
-                            {DIALOG.reject}
-                          </Button>
-                        )}
-                      {category.key !== "other" && !batch && (
-                        <Button
-                          prominence="tertiary"
-                          icon={SvgBubbleText}
-                          href={askTonHref(category, row)}
-                        >
-                          {LOOP.explain.askTonShort}
-                        </Button>
-                      )}
-                      {canEdit ? (
-                        <Button
-                          disabled={busy || !reason.trim() || !hasTarget}
-                          onClick={() => void confirm()}
-                        >
-                          {decisionCount > 1
-                            ? DIALOG.confirmMany(decisionCount)
-                            : DIALOG.confirm}
-                        </Button>
-                      ) : (
-                        <Button prominence="secondary" onClick={onClose}>
-                          {DIALOG.close}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </aside>
               </div>
-            )}
+            </aside>
           </div>
-        </Modal.Body>
-      </Modal.Content>
-    </Modal>
+        )}
+      </div>
+    </Drawer>
   );
 }
 

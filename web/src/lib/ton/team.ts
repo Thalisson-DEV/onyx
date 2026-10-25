@@ -65,7 +65,7 @@ export const TEAM_COPY = {
     ADMIN:
       "Vê todas as unidades e o consolidado, fecha a DRE, importa fontes e gerencia usuários.",
     MANAGER:
-      "Só consulta a DRE, os lançamentos e o assistente das unidades escolhidas. Não altera nada.",
+      "Consulta a DRE, os lançamentos e o assistente das unidades escolhidas e envia as contas a pagar delas.",
   } as const,
   allUnits: "Todas",
   unitsCount: (count: number) =>

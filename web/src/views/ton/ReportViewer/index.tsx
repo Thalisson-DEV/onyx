@@ -368,7 +368,7 @@ export default function ReportViewer({ revisionId }: { revisionId: string }) {
     errorHandlingFetcher
   );
   return (
-    <PageContainer className="max-w-[960px]">
+    <PageContainer width="reading">
       <div
         className="flex flex-wrap items-center justify-between gap-3"
         data-print-hide

@@ -1,8 +1,23 @@
 "use client";
 
+import { SideModal } from "@/views/ton/components/kit";
 import { useState } from "react";
-import { Button, InputSwitch, InputTextArea, InputTypeIn, Modal, Text } from "@opal/components";
-import { SvgArrowUp, SvgPlayCircle, SvgPlus, SvgSettings, SvgSparkle, SvgTrash, SvgX } from "@opal/icons";
+import {
+  Button,
+  InputSwitch,
+  InputTextArea,
+  InputTypeIn,
+  Text,
+} from "@opal/components";
+import {
+  SvgArrowUp,
+  SvgPlayCircle,
+  SvgPlus,
+  SvgSettings,
+  SvgSparkle,
+  SvgTrash,
+  SvgX,
+} from "@opal/icons";
 import {
   AUTOMATIONS_API,
   COPY,
@@ -20,7 +35,11 @@ import {
 } from "@/lib/ton/automations";
 import { asText } from "@/lib/ton/automationTree";
 import { prettyName } from "@/views/ton/AutomationsPage/designer/dynamic";
-import { ChipsInput, Field, Select } from "@/views/ton/AutomationsPage/designer/fields";
+import {
+  ChipsInput,
+  Field,
+  Select,
+} from "@/views/ton/AutomationsPage/designer/fields";
 
 // ---------------------------------------------------------------------------
 // Settings (side panel)
@@ -39,19 +58,31 @@ function slug(text: string): string {
 
 function renameIn(value: JsonValue, from: RegExp, to: string): JsonValue {
   if (typeof value === "string") return value.replace(from, to);
-  if (Array.isArray(value)) return value.map((item) => renameIn(item, from, to));
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, renameIn(item, from, to)]));
+  if (Array.isArray(value))
+    return value.map((item) => renameIn(item, from, to));
+  if (value && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        renameIn(item, from, to),
+      ])
+    );
   return value;
 }
 
 /** Rename a variable everywhere it is read or written. */
-function renameVariable(definition: Definition, from: string, to: string): Definition {
+function renameVariable(
+  definition: Definition,
+  from: string,
+  to: string
+): Definition {
   if (from === to) return definition;
   const pattern = new RegExp(`\\bvars\\.${from}\\b`, "g");
   const walk = (nodes: FlowNode[]): FlowNode[] =>
     nodes.map((node) => {
       let params = renameIn(node.params, pattern, `vars.${to}`) as Params;
-      if (node.type.startsWith("variable.") && params.name === from) params = { ...params, name: to };
+      if (node.type.startsWith("variable.") && params.name === from)
+        params = { ...params, name: to };
       return {
         ...node,
         params,
@@ -59,8 +90,14 @@ function renameVariable(definition: Definition, from: string, to: string): Defin
         else: node.else && walk(node.else),
         default: node.default && walk(node.default),
         steps: node.steps && walk(node.steps),
-        cases: node.cases?.map((item) => ({ ...item, steps: walk(item.steps) })),
-        branches: node.branches?.map((branch) => ({ ...branch, steps: walk(branch.steps) })),
+        cases: node.cases?.map((item) => ({
+          ...item,
+          steps: walk(item.steps),
+        })),
+        branches: node.branches?.map((branch) => ({
+          ...branch,
+          steps: walk(branch.steps),
+        })),
       };
     });
   return { ...definition, steps: walk(definition.steps) };
@@ -71,28 +108,62 @@ interface SettingsPanelProps {
   catalog: CatalogView;
   kind: AutomationKind;
   description: string;
-  onChange: (patch: { definition?: Definition; kind?: AutomationKind; description?: string }) => void;
+  onChange: (patch: {
+    definition?: Definition;
+    kind?: AutomationKind;
+    description?: string;
+  }) => void;
   onClose: () => void;
 }
 
-export function SettingsPanel({ definition, catalog, kind, description, onChange, onClose }: SettingsPanelProps) {
+export function SettingsPanel({
+  definition,
+  catalog,
+  kind,
+  description,
+  onChange,
+  onClose,
+}: SettingsPanelProps) {
   const variables = definition.variables;
   const kindInfo = catalog.kinds.find((item) => item.key === kind);
   function setVariable(index: number, patch: Partial<VariableDecl>) {
     const current = variables[index]!;
-    let next: Definition = { ...definition, variables: variables.map((item, i) => (i === index ? { ...item, ...patch } : item)) };
-    if (patch.name && patch.name !== current.name) next = renameVariable(next, current.name, patch.name);
+    let next: Definition = {
+      ...definition,
+      variables: variables.map((item, i) =>
+        i === index ? { ...item, ...patch } : item
+      ),
+    };
+    if (patch.name && patch.name !== current.name)
+      next = renameVariable(next, current.name, patch.name);
     onChange({ definition: next });
   }
   function addVariable() {
     const taken = new Set(variables.map((item) => item.name));
     let index = variables.length + 1;
     while (taken.has(`valor_${index}`)) index += 1;
-    onChange({ definition: { ...definition, variables: [...variables, { name: `valor_${index}`, description: `Valor ${index}`, type: "string", value: "" }] } });
+    onChange({
+      definition: {
+        ...definition,
+        variables: [
+          ...variables,
+          {
+            name: `valor_${index}`,
+            description: `Valor ${index}`,
+            type: "string",
+            value: "",
+          },
+        ],
+      },
+    });
   }
   const context = { definition, catalog, nodeId: "trigger" };
   return (
-    <aside className="ton-auto-panel" aria-label={D.settings} data-group="trigger">
+    <aside
+      className="ton-auto-panel"
+      aria-label={D.settings}
+      data-group="trigger"
+    >
       <header className="ton-auto-panel-head">
         <span className="ton-auto-node-icon">
           <SvgSettings size={18} />
@@ -101,7 +172,13 @@ export function SettingsPanel({ definition, catalog, kind, description, onChange
           {D.settings}
         </Text>
         <span className="flex-1" />
-        <Button size="sm" prominence="tertiary" icon={SvgX} aria-label={D.closePanel} onClick={onClose} />
+        <Button
+          size="sm"
+          prominence="tertiary"
+          icon={SvgX}
+          aria-label={D.closePanel}
+          onClick={onClose}
+        />
       </header>
       <div className="ton-auto-panel-body ton-auto-sections">
         <section className="ton-auto-section">
@@ -109,10 +186,28 @@ export function SettingsPanel({ definition, catalog, kind, description, onChange
             {D.settingsAbout}
           </Text>
           <Field label={D.kind} hint={kindInfo?.description}>
-            <Select value={kind} label={D.kind} options={catalog.kinds.map((item): [string, string] => [item.key, item.label])} onChange={(value) => onChange({ kind: value as AutomationKind })} />
+            <Select
+              value={kind}
+              label={D.kind}
+              options={catalog.kinds.map((item): [string, string] => [
+                item.key,
+                item.label,
+              ])}
+              onChange={(value) => onChange({ kind: value as AutomationKind })}
+            />
           </Field>
           <Field label={D.description}>
-            <InputTextArea rows={2} autoResize maxRows={5} aria-label={D.description} placeholder={D.descriptionPlaceholder} value={description} onChange={(event) => onChange({ description: event.target.value })} />
+            <InputTextArea
+              rows={2}
+              autoResize
+              maxRows={5}
+              aria-label={D.description}
+              placeholder={D.descriptionPlaceholder}
+              value={description}
+              onChange={(event) =>
+                onChange({ description: event.target.value })
+              }
+            />
           </Field>
         </section>
         <section className="ton-auto-section">
@@ -132,20 +227,58 @@ export function SettingsPanel({ definition, catalog, kind, description, onChange
                   onChange={(event) => {
                     const text = event.target.value;
                     const name = slug(text || variable.name);
-                    const clash = variables.some((item, i) => i !== index && item.name === name);
-                    setVariable(index, { description: text, name: clash ? variable.name : name });
+                    const clash = variables.some(
+                      (item, i) => i !== index && item.name === name
+                    );
+                    setVariable(index, {
+                      description: text,
+                      name: clash ? variable.name : name,
+                    });
                   }}
                 />
-                <Select value={variable.type} label={D.variableType} options={Object.entries(D.variableTypes)} onChange={(type) => setVariable(index, { type: type as VariableDecl["type"] })} />
+                <Select
+                  value={variable.type}
+                  label={D.variableType}
+                  options={Object.entries(D.variableTypes)}
+                  onChange={(type) =>
+                    setVariable(index, { type: type as VariableDecl["type"] })
+                  }
+                />
               </div>
               <div className="ton-auto-variable-grid">
-                <InputTypeIn aria-label={D.variableValue} placeholder={D.variableValue} value={asText(variable.value)} onChange={(event) => setVariable(index, { value: event.target.value })} />
-                <Button size="sm" prominence="tertiary" icon={SvgTrash} aria-label={D.remove} tooltip={D.remove} onClick={() => onChange({ definition: { ...definition, variables: variables.filter((_, i) => i !== index) } })} />
+                <InputTypeIn
+                  aria-label={D.variableValue}
+                  placeholder={D.variableValue}
+                  value={asText(variable.value)}
+                  onChange={(event) =>
+                    setVariable(index, { value: event.target.value })
+                  }
+                />
+                <Button
+                  size="sm"
+                  prominence="tertiary"
+                  icon={SvgTrash}
+                  aria-label={D.remove}
+                  tooltip={D.remove}
+                  onClick={() =>
+                    onChange({
+                      definition: {
+                        ...definition,
+                        variables: variables.filter((_, i) => i !== index),
+                      },
+                    })
+                  }
+                />
               </div>
             </div>
           ))}
           <div>
-            <Button size="sm" prominence="secondary" icon={SvgPlus} onClick={addVariable}>
+            <Button
+              size="sm"
+              prominence="secondary"
+              icon={SvgPlus}
+              onClick={addVariable}
+            >
               {D.addVariable}
             </Button>
           </div>
@@ -157,7 +290,17 @@ export function SettingsPanel({ definition, catalog, kind, description, onChange
           <Field label={D.notifyOnFailure}>
             <ChipsInput
               values={definition.settings.notify_on_failure}
-              onChange={(values) => onChange({ definition: { ...definition, settings: { ...definition.settings, notify_on_failure: values } } })}
+              onChange={(values) =>
+                onChange({
+                  definition: {
+                    ...definition,
+                    settings: {
+                      ...definition.settings,
+                      notify_on_failure: values,
+                    },
+                  },
+                })
+              }
               label={D.notifyOnFailure}
               placeholder="nome@valenorte.com.br"
               context={context}
@@ -170,7 +313,17 @@ export function SettingsPanel({ definition, catalog, kind, description, onChange
               max={720}
               aria-label={D.timeoutHours}
               value={String(definition.settings.timeout_hours)}
-              onChange={(event) => onChange({ definition: { ...definition, settings: { ...definition.settings, timeout_hours: Number(event.target.value) || 168 } } })}
+              onChange={(event) =>
+                onChange({
+                  definition: {
+                    ...definition,
+                    settings: {
+                      ...definition.settings,
+                      timeout_hours: Number(event.target.value) || 168,
+                    },
+                  },
+                })
+              }
             />
           </Field>
         </section>
@@ -196,7 +349,12 @@ interface AskPanelProps {
   onClose: () => void;
 }
 
-export function AskPanel({ automationId, definition, onApplied, onClose }: AskPanelProps) {
+export function AskPanel({
+  automationId,
+  definition,
+  onApplied,
+  onClose,
+}: AskPanelProps) {
   const [request, setRequest] = useState("");
   const [busy, setBusy] = useState(false);
   const [entries, setEntries] = useState<AskEntry[]>([]);
@@ -205,21 +363,36 @@ export function AskPanel({ automationId, definition, onApplied, onClose }: AskPa
     if (asked.length < 5 || busy) return;
     setBusy(true);
     setRequest("");
-    setEntries((current) => [...current, { request: asked, result: null, error: null }]);
+    setEntries((current) => [
+      ...current,
+      { request: asked, result: null, error: null },
+    ]);
     let entry: AskEntry;
     try {
-      const result = await send<DraftResult>(`${AUTOMATIONS_API}/drafts`, { request: asked, automation_id: automationId, definition });
+      const result = await send<DraftResult>(`${AUTOMATIONS_API}/drafts`, {
+        request: asked,
+        automation_id: automationId,
+        definition,
+      });
       entry = { request: asked, result, error: null };
       onApplied(result);
     } catch (failure) {
-      entry = { request: asked, result: null, error: failure instanceof Error ? failure.message : String(failure) };
+      entry = {
+        request: asked,
+        result: null,
+        error: failure instanceof Error ? failure.message : String(failure),
+      };
     } finally {
       setBusy(false);
     }
     setEntries((current) => [...current.slice(0, -1), entry]);
   }
   return (
-    <aside className="ton-auto-panel ton-auto-ask" aria-label={D.askTitle} data-group="ai">
+    <aside
+      className="ton-auto-panel ton-auto-ask"
+      aria-label={D.askTitle}
+      data-group="ai"
+    >
       <header className="ton-auto-panel-head">
         <span className="ton-auto-node-icon">
           <SvgSparkle size={18} />
@@ -228,7 +401,13 @@ export function AskPanel({ automationId, definition, onApplied, onClose }: AskPa
           {D.askTitle}
         </Text>
         <span className="flex-1" />
-        <Button size="sm" prominence="tertiary" icon={SvgX} aria-label={D.closePanel} onClick={onClose} />
+        <Button
+          size="sm"
+          prominence="tertiary"
+          icon={SvgX}
+          aria-label={D.closePanel}
+          onClick={onClose}
+        />
       </header>
       <div className="ton-auto-panel-body">
         {entries.length === 0 ? (
@@ -238,7 +417,12 @@ export function AskPanel({ automationId, definition, onApplied, onClose }: AskPa
             </Text>
             <div className="ton-auto-ask-examples">
               {D.askExamples.map((example) => (
-                <button key={example} type="button" className="ton-auto-ask-example ton-focusable" onClick={() => setRequest(example)}>
+                <button
+                  key={example}
+                  type="button"
+                  className="ton-auto-ask-example ton-focusable"
+                  onClick={() => setRequest(example)}
+                >
                   {example}
                 </button>
               ))}
@@ -254,13 +438,20 @@ export function AskPanel({ automationId, definition, onApplied, onClose }: AskPa
                 {entry.result ? (
                   <div className="ton-auto-ask-bubble" data-from="ton">
                     <strong>{D.askApplied}</strong>
-                    {entry.result.summary && <span>{entry.result.summary}</span>}
-                    {[...entry.result.missing, ...entry.result.problems].length > 0 && (
+                    {entry.result.summary && (
+                      <span>{entry.result.summary}</span>
+                    )}
+                    {[...entry.result.missing, ...entry.result.problems]
+                      .length > 0 && (
                       <span className="flex flex-col gap-0.5">
-                        <span className="ton-auto-ask-missing">{D.askMissing}</span>
-                        {[...entry.result.missing, ...entry.result.problems].slice(0, 6).map((item) => (
-                          <span key={item}>{`• ${item}`}</span>
-                        ))}
+                        <span className="ton-auto-ask-missing">
+                          {D.askMissing}
+                        </span>
+                        {[...entry.result.missing, ...entry.result.problems]
+                          .slice(0, 6)
+                          .map((item) => (
+                            <span key={item}>{`• ${item}`}</span>
+                          ))}
                       </span>
                     )}
                   </div>
@@ -269,7 +460,11 @@ export function AskPanel({ automationId, definition, onApplied, onClose }: AskPa
                     {entry.error}
                   </div>
                 ) : (
-                  <div className="ton-auto-ask-bubble" data-from="ton" data-busy>
+                  <div
+                    className="ton-auto-ask-bubble"
+                    data-from="ton"
+                    data-busy
+                  >
                     {D.asking}
                   </div>
                 )}
@@ -300,7 +495,13 @@ export function AskPanel({ automationId, definition, onApplied, onClose }: AskPa
             }
           }}
         />
-        <Button type="submit" icon={SvgArrowUp} disabled={busy || request.trim().length < 5} aria-label={D.askSubmit} tooltip={D.askSubmit} />
+        <Button
+          type="submit"
+          icon={SvgArrowUp}
+          disabled={busy || request.trim().length < 5}
+          aria-label={D.askSubmit}
+          tooltip={D.askSubmit}
+        />
       </form>
     </aside>
   );
@@ -320,17 +521,34 @@ interface RunModalProps {
   onClose: () => void;
 }
 
-export function RunModal({ open, test, definition, busy, error, onRun, onClose }: RunModalProps) {
+export function RunModal({
+  open,
+  test,
+  definition,
+  busy,
+  error,
+  onRun,
+  onClose,
+}: RunModalProps) {
   const [values, setValues] = useState<Record<string, JsonValue>>({});
   const fields =
-    definition.trigger.type === "trigger.manual" && Array.isArray(definition.trigger.params.inputs)
-      ? definition.trigger.params.inputs.filter((field): field is Record<string, JsonValue> => !!field && typeof field === "object" && !Array.isArray(field))
+    definition.trigger.type === "trigger.manual" &&
+    Array.isArray(definition.trigger.params.inputs)
+      ? definition.trigger.params.inputs.filter(
+          (field): field is Record<string, JsonValue> =>
+            !!field && typeof field === "object" && !Array.isArray(field)
+        )
       : [];
   return (
-    <Modal open={open} onOpenChange={(value) => !value && onClose()}>
-      <Modal.Content width="md">
-        <Modal.Header icon={SvgPlayCircle} title={test ? COPY.testTitle : COPY.inputsTitle} description={test ? COPY.testHint : COPY.runHint} onClose={onClose} />
-        <Modal.Body>
+    <SideModal open={open} onOpenChange={(value) => !value && onClose()}>
+      <SideModal.Content width="md">
+        <SideModal.Header
+          icon={SvgPlayCircle}
+          title={test ? COPY.testTitle : COPY.inputsTitle}
+          description={test ? COPY.testHint : COPY.runHint}
+          onClose={onClose}
+        />
+        <SideModal.Body>
           <div className="w-full flex flex-col gap-4">
             {fields.map((field) => {
               const name = asText(field.name);
@@ -338,25 +556,62 @@ export function RunModal({ open, test, definition, busy, error, onRun, onClose }
               const kind = asText(field.type) || "text";
               if (kind === "boolean") {
                 return (
-                  <Field key={name} label={label} required={field.required === true}>
-                    <InputSwitch checked={values[name] === true} onCheckedChange={(checked) => setValues({ ...values, [name]: checked })} aria-label={label} />
+                  <Field
+                    key={name}
+                    label={label}
+                    required={field.required === true}
+                  >
+                    <InputSwitch
+                      checked={values[name] === true}
+                      onCheckedChange={(checked) =>
+                        setValues({ ...values, [name]: checked })
+                      }
+                      aria-label={label}
+                    />
                   </Field>
                 );
               }
               if (kind === "longtext") {
                 return (
-                  <Field key={name} label={label} required={field.required === true}>
-                    <InputTextArea rows={5} autoResize maxRows={16} aria-label={label} value={asText(values[name])} onChange={(event) => setValues({ ...values, [name]: event.target.value })} />
+                  <Field
+                    key={name}
+                    label={label}
+                    required={field.required === true}
+                  >
+                    <InputTextArea
+                      rows={5}
+                      autoResize
+                      maxRows={16}
+                      aria-label={label}
+                      value={asText(values[name])}
+                      onChange={(event) =>
+                        setValues({ ...values, [name]: event.target.value })
+                      }
+                    />
                   </Field>
                 );
               }
               return (
-                <Field key={name} label={label} required={field.required === true}>
+                <Field
+                  key={name}
+                  label={label}
+                  required={field.required === true}
+                >
                   <InputTypeIn
-                    type={kind === "number" ? "number" : kind === "date" ? "date" : kind === "email" ? "email" : "text"}
+                    type={
+                      kind === "number"
+                        ? "number"
+                        : kind === "date"
+                          ? "date"
+                          : kind === "email"
+                            ? "email"
+                            : "text"
+                    }
                     aria-label={label}
                     value={asText(values[name])}
-                    onChange={(event) => setValues({ ...values, [name]: event.target.value })}
+                    onChange={(event) =>
+                      setValues({ ...values, [name]: event.target.value })
+                    }
                   />
                 </Field>
               );
@@ -367,17 +622,20 @@ export function RunModal({ open, test, definition, busy, error, onRun, onClose }
               </Text>
             )}
           </div>
-        </Modal.Body>
-        <Modal.Footer>
+        </SideModal.Body>
+        <SideModal.Footer>
           <Button prominence="secondary" onClick={onClose}>
             {COPY.cancel}
           </Button>
-          <Button icon={SvgPlayCircle} disabled={busy} onClick={() => onRun(values)}>
+          <Button
+            icon={SvgPlayCircle}
+            disabled={busy}
+            onClick={() => onRun(values)}
+          >
             {test ? COPY.test : COPY.run}
           </Button>
-        </Modal.Footer>
-      </Modal.Content>
-    </Modal>
+        </SideModal.Footer>
+      </SideModal.Content>
+    </SideModal>
   );
 }
-

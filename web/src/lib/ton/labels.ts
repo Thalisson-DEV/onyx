@@ -289,6 +289,7 @@ export const TON_TOOL_NAMES: Record<string, string> = {
   ton_list_sources: "Fontes financeiras",
   ton_get_source_status: "Estado da fonte",
   ton_list_findings: "Pendências financeiras",
+  ton_list_payables: "Agenda de pagamentos",
   ton_get_finding: "Evidência da pendência",
   ton_get_financial_review_summary: "Resumo da revisão financeira",
   ton_get_dre_readiness: "Prontidão da DRE",

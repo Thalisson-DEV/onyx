@@ -31,6 +31,7 @@ import { getBusinessLabel } from "@/lib/ton/labels";
 import YearStatement from "@/views/ton/DrePage/YearStatement";
 import StructureEditor from "@/views/ton/DrePage/StructureEditor";
 import UnitPicker from "@/views/ton/DrePage/UnitPicker";
+import LineDrawer, { scopeLabel } from "@/views/ton/DrePage/LineDrawer";
 import type { DreDefinition, DreLine } from "@/views/admin/DrePage/types";
 import ClosingFrame from "@/views/ton/components/ClosingFrame";
 import { askHref } from "@/views/ton/shell/TonCommandMenu";
@@ -89,7 +90,7 @@ interface SelectProps {
 function Select({ label, value, options, onChange }: SelectProps) {
   return (
     <label className="flex flex-col gap-1 min-w-56">
-      <span className="ton-eyebrow">{label}</span>
+      <span className="tn-field-label">{label}</span>
       <InputSingleSelect value={value} onValueChange={onChange}>
         <InputSingleSelect.Trigger placeholder={label} aria-label={label} />
         <InputSingleSelect.Content>
@@ -337,280 +338,6 @@ function valueOf(
     : formatCurrency(line[field]);
 }
 
-function scopeLabel(dre: DreWorkspace): string {
-  if (!dre.unitId || dre.unitId === CONSOLIDATED) return COPY.dre.consolidated;
-  const unit = dre.units.find((item) => item.id === dre.unitId);
-  if (!unit) return "";
-  return getBusinessLabel(unit.name ?? unit.code);
-}
-
-function DrillDrawer({ dre }: { dre: DreWorkspace }) {
-  const line = dre.selectedLine;
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const open = !!line && dre.selectedDefinition?.line_type === "SOURCE_SUM";
-
-  useEffect(() => {
-    if (!open) return;
-    closeRef.current?.focus();
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") dre.select.line(null);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, dre.select]);
-
-  if (!open || !line) return null;
-  const page = dre.contributors.data;
-  const first = page?.rows[0];
-  const account = dre.selectedAccount;
-  const columns = COPY.dre.drawer.columns;
-  return (
-    <>
-      <div
-        aria-hidden
-        className="ton-scrim fixed inset-0 z-40"
-        onClick={() => dre.select.line(null)}
-      />
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="ton-drill-title"
-        className="ton-drawer fixed inset-y-0 end-0 z-50 flex flex-col w-full lg:w-[min(1040px,calc(100vw-6rem))]"
-      >
-        <header className="flex items-start justify-between gap-4 px-6 pt-5 pb-4 border-b border-01">
-          <div className="flex flex-col gap-1 min-w-0">
-            <span className="ton-eyebrow">{COPY.dre.drawer.title}</span>
-            <Text
-              as="h2"
-              id="ton-drill-title"
-              font="heading-h2"
-              color="text-05"
-            >
-              {getBusinessLabel(line.label)}
-            </Text>
-            <Text font="secondary-body" color="text-03">
-              {[
-                dre.drillRun ? formatPeriod(dre.drillRun.scope.period) : null,
-                scopeLabel(dre),
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </Text>
-            {account && (
-              <span className="flex flex-wrap items-baseline gap-x-3">
-                <Text font="secondary-body" color="text-04">
-                  {COPY.dre.drawer.onlyAccount(
-                    account.code,
-                    account.label ?? ""
-                  )}
-                </Text>
-                <button
-                  type="button"
-                  className="ton-focusable ton-link-button"
-                  onClick={dre.select.allAccounts}
-                >
-                  {COPY.dre.drawer.allAccounts}
-                </button>
-              </span>
-            )}
-          </div>
-          <Button
-            ref={closeRef}
-            icon={SvgX}
-            prominence="tertiary"
-            aria-label={COPY.dre.drawer.close}
-            onClick={() => dre.select.line(null)}
-          />
-        </header>
-        <div className="flex flex-wrap items-end gap-x-10 gap-y-3 px-6 py-4 border-b border-01">
-          <Metric
-            label={COPY.dre.kpi.actual}
-            value={formatCurrency(account ? account.amount : line.realizado)}
-          />
-          {dre.budgetPresent && !account && (
-            <Metric
-              label={COPY.dre.kpi.budget}
-              value={formatCurrency(line.orcado)}
-            />
-          )}
-          {dre.budgetPresent && !account && (
-            <Metric
-              label={COPY.dre.kpi.variance}
-              value={formatCurrency(line.variance)}
-            />
-          )}
-          {page && (
-            <Metric
-              label={COPY.dre.drawer.entries}
-              value={formatNumber(page.total)}
-            />
-          )}
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3">
-          {/* No budget, or one NG account: only the realized entries. The
-              segmented display beats a `hidden` class, so it is not rendered. */}
-          {!dre.budgetPresent || account ? (
-            <span />
-          ) : (
-            <div className="ton-segmented" role="group">
-              {(["ACTUAL", "BUDGET"] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  aria-pressed={dre.factType === type}
-                  className="ton-focusable ton-segment"
-                  onClick={() => dre.select.factType(type)}
-                >
-                  {type === "ACTUAL"
-                    ? COPY.dre.drawer.actual
-                    : COPY.dre.drawer.budget}
-                </button>
-              ))}
-            </div>
-          )}
-          {first && (
-            <Text font="secondary-body" color="text-03">
-              {COPY.dre.drawer.sourceOnce(
-                first.source_name,
-                first.original_filename
-              )}
-            </Text>
-          )}
-        </div>
-        <div className="flex-1 overflow-auto px-6 pb-4">
-          {dre.contributors.isLoading && (
-            <LoadingBlock label={COPY.common.loading} lines={6} />
-          )}
-          {dre.contributors.error && (
-            <ErrorState compact onRetry={() => dre.contributors.mutate()} />
-          )}
-          {page && page.rows.length === 0 && (
-            <Text as="p" font="secondary-body" color="text-03">
-              {COPY.dre.drawer.empty}
-            </Text>
-          )}
-          {page && page.rows.length > 0 && (
-            <table className="ton-ledger w-full border-collapse">
-              <thead>
-                <tr>
-                  <th scope="col">{columns.date}</th>
-                  <th scope="col">{columns.unit}</th>
-                  <th scope="col">{columns.account}</th>
-                  <th scope="col">{columns.accountName}</th>
-                  <th scope="col">{columns.document}</th>
-                  <th scope="col" className="w-full">
-                    {columns.history}
-                  </th>
-                  <th scope="col" className="ton-ledger-end">
-                    {columns.amount}
-                  </th>
-                  <th scope="col">{columns.origin}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {page.rows.map((fact) => {
-                  const flagged =
-                    !!fact.review_status && fact.review_status !== "ACCEPTED";
-                  return (
-                    <tr key={fact.id}>
-                      <td>
-                        {fact.record_date ? formatDay(fact.record_date) : "—"}
-                      </td>
-                      <td>
-                        {getBusinessLabel(fact.unit_name ?? fact.unit_code)}
-                      </td>
-                      <td>{fact.source_account_code ?? fact.account_code}</td>
-                      <td className="ton-ledger-account-name">
-                        {fact.source_account_label ?? fact.account_label}
-                      </td>
-                      <td>{fact.reference ?? "—"}</td>
-                      <td className="ton-ledger-history">
-                        <span>{fact.description || "—"}</span>
-                        {fact.treatment_title && (
-                          <span className="ton-ledger-muted block pt-1">
-                            {COPY.dre.drawer.treatedDetail(
-                              formatCurrency(
-                                fact.original_amount ?? fact.amount
-                              ),
-                              fact.treatment_title,
-                              fact.treatment_version,
-                              fact.original_account_label
-                            )}
-                          </span>
-                        )}
-                        {flagged && (
-                          <span className="block pt-1">
-                            <StatusPill tone="warning">
-                              {`${COPY.dre.drawer.review}: ${getBusinessLabel(fact.review_status ?? "")}`}
-                            </StatusPill>
-                          </span>
-                        )}
-                      </td>
-                      <td className="ton-ledger-end ton-ledger-amount">
-                        {formatCurrency(fact.amount)}
-                        {fact.treatment_title && (
-                          <span className="block pt-1">
-                            <StatusPill tone="brand">
-                              {COPY.dre.drawer.treated}
-                            </StatusPill>
-                          </span>
-                        )}
-                      </td>
-                      <td className="ton-ledger-muted">
-                        {COPY.dre.drawer.row(
-                          fact.sheet_name,
-                          fact.source_row_number
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
-        {page && (
-          <footer className="flex flex-wrap items-center justify-between gap-2 px-6 py-3 border-t border-01">
-            <Text font="secondary-body" color="text-03">
-              {`${COPY.dre.drawer.sorted} · ${COPY.dre.drawer.page(
-                page.total === 0 ? 0 : dre.offset + 1,
-                Math.min(dre.offset + CONTRIBUTOR_PAGE, page.total),
-                page.total
-              )}`}
-            </Text>
-            {page.total > CONTRIBUTOR_PAGE && (
-              <div className="flex gap-1">
-                <Button
-                  size="sm"
-                  prominence="secondary"
-                  disabled={dre.offset === 0}
-                  onClick={() =>
-                    dre.select.offset(
-                      Math.max(0, dre.offset - CONTRIBUTOR_PAGE)
-                    )
-                  }
-                >
-                  {COPY.dre.drawer.previous}
-                </Button>
-                <Button
-                  size="sm"
-                  prominence="secondary"
-                  disabled={dre.offset + CONTRIBUTOR_PAGE >= page.total}
-                  onClick={() =>
-                    dre.select.offset(dre.offset + CONTRIBUTOR_PAGE)
-                  }
-                >
-                  {COPY.dre.drawer.next}
-                </Button>
-              </div>
-            )}
-          </footer>
-        )}
-      </aside>
-    </>
-  );
-}
-
 function ReadyState({ dre }: { dre: DreWorkspace }) {
   const [editing, setEditing] = useState(false);
   const [savedVersion, setSavedVersion] = useState<number | null>(null);
@@ -761,7 +488,7 @@ function ReadyState({ dre }: { dre: DreWorkspace }) {
           {`${COPY.dre.version}: ${COPY.dre.versionStructure(dre.statement.data.version.number)} · ${formatDateTime(run.finished_at)}`}
         </Text>
       )}
-      <DrillDrawer dre={dre} />
+      <LineDrawer dre={dre} />
       {editing && dre.version && dre.structureId && (
         <StructureEditor
           structureId={dre.structureId}

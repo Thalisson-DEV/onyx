@@ -26,6 +26,13 @@ import type {
   ReportGroup,
 } from "@/lib/ton/types";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
+import {
+  brl,
+  daysUntil,
+  titleNumber,
+  useTitles,
+  type TitleRow,
+} from "@/lib/ton/payables";
 
 const QUEUE = COPY.workQueue;
 
@@ -42,7 +49,7 @@ interface OverduePage {
   has_more: boolean;
 }
 
-export type WorkImpact = "blocks" | "follow";
+export type WorkImpact = "blocks" | "urgent" | "follow";
 export type WorkOrigin = keyof typeof COPY.workQueue.origins;
 
 export interface WorkItem {
@@ -149,8 +156,7 @@ export function buildWorkQueue(input: WorkInputs): WorkItem[] {
   // The order a controller works in: classifying accounts settles items in
   // the other lists, so it comes first; the billing comparison comes last.
   const rank = (code: string) =>
-    (BLOCKER_WORK_ORDER.indexOf(code) + 1 || BLOCKER_WORK_ORDER.length + 1) *
-    1;
+    (BLOCKER_WORK_ORDER.indexOf(code) + 1 || BLOCKER_WORK_ORDER.length + 1) * 1;
   for (const [blocker, count] of blockers
     .filter(([code]) => isDecisionBlocker(code))
     .sort((a, b) => rank(a[0]) - rank(b[0]) || b[1] - a[1])) {
@@ -260,12 +266,81 @@ export function useOverdueActions() {
   );
 }
 
+const OPEN_TITLES = [
+  "WAITING_ATTACHMENT",
+  "WAITING_SUPPLIER",
+  "RECEIVED",
+  "RETURNED",
+  "CONFERRED",
+  "RELEASED",
+];
+
+/** Payable titles that need someone today: overdue and blocked ones. */
+export function payableItems(titles: TitleRow[]): WorkItem[] {
+  const open = titles.filter(
+    (row) => row.kind === "REAL" && OPEN_TITLES.includes(row.status)
+  );
+  const late = open.filter((row) => daysUntil(row.due_date) < 0);
+  const today = open.filter((row) => daysUntil(row.due_date) === 0);
+  const blocked = open.filter((row) => row.blocking > 0);
+  const sum = (rows: TitleRow[]) =>
+    brl(rows.reduce((total, row) => total + Number(row.amount), 0));
+  const items: WorkItem[] = [];
+  if (late.length)
+    items.push({
+      key: "payables-late",
+      impact: "urgent",
+      origin: "payables",
+      title: QUEUE.payablesLate(late.length, sum(late)),
+      detail: late
+        .slice(0, 3)
+        .map((row) => `${titleNumber(row.number)} · ${row.supplier_name}`)
+        .join(" · "),
+      owner: null,
+      deadline: null,
+      href: "/ton/contas-a-pagar" as Route,
+      action: QUEUE.open,
+    });
+  if (today.length)
+    items.push({
+      key: "payables-today",
+      impact: "follow",
+      origin: "payables",
+      title: QUEUE.payablesToday(today.length, sum(today)),
+      detail: null,
+      owner: null,
+      deadline: null,
+      href: "/ton/contas-a-pagar" as Route,
+      action: QUEUE.open,
+    });
+  if (blocked.length)
+    items.push({
+      key: "payables-blocked",
+      impact: "urgent",
+      origin: "payables",
+      title: QUEUE.payablesBlocked(blocked.length, sum(blocked)),
+      detail: blocked
+        .slice(0, 3)
+        .map(
+          (row) =>
+            `${titleNumber(row.number)}${row.top_issue ? ` · ${row.top_issue}` : ""}`
+        )
+        .join(" · "),
+      owner: null,
+      deadline: null,
+      href: "/ton/contas-a-pagar" as Route,
+      action: QUEUE.review,
+    });
+  return items;
+}
+
 export function useWorkQueue() {
   const closing = useTonClosing();
   const sources = useTonDataSources();
   const reports = useTonReportGroups();
   const decisions = useDecisionLog();
   const overdue = useOverdueActions();
+  const titles = useTitles();
   const changes = useReadinessChanges(
     closing.data?.normalization_run_id,
     closing.data?.structure_version_id,
@@ -274,7 +349,7 @@ export function useWorkQueue() {
   const change = changes.data?.periods.find(
     (item) => item.period === closing.data?.period
   );
-  const items = closing.data
+  const closingItems = closing.data
     ? buildWorkQueue({
         closing: closing.data,
         change,
@@ -285,6 +360,11 @@ export function useWorkQueue() {
         overdue: overdue.data?.items ?? [],
       })
     : [];
+  // Payables share the day: after what blocks the DRE, before the rest.
+  const rank: Record<WorkImpact, number> = { blocks: 0, urgent: 1, follow: 2 };
+  const items = [...closingItems, ...payableItems(titles.data ?? [])].sort(
+    (a, b) => rank[a.impact] - rank[b.impact]
+  );
   return {
     items,
     isLoading: closing.isLoading || changes.isLoading,

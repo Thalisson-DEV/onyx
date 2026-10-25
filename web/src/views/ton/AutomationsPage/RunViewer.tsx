@@ -1,10 +1,18 @@
 "use client";
 
+import { SideModal } from "@/views/ton/components/kit";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import { Button, Modal, Text } from "@opal/components";
-import { SvgArrowLeft, SvgEdit, SvgMail, SvgRefreshCw, SvgUserCheck, SvgX } from "@opal/icons";
+import { Button, Text } from "@opal/components";
+import {
+  SvgArrowLeft,
+  SvgEdit,
+  SvgMail,
+  SvgRefreshCw,
+  SvgUserCheck,
+  SvgX,
+} from "@opal/icons";
 import {
   AUTOMATIONS_API,
   MODE_LABELS,
@@ -27,37 +35,70 @@ import { formatDateTime } from "@/lib/ton/copy";
 import { ErrorState, LoadingBlock } from "@/views/ton/components/ui";
 import ApprovalModal from "@/views/ton/AutomationsPage/ApprovalModal";
 import Canvas from "@/views/ton/AutomationsPage/designer/Canvas";
-import { formatDuration, type NodeRunState } from "@/views/ton/AutomationsPage/designer/CanvasNodes";
-import { prettyName, specMap } from "@/views/ton/AutomationsPage/designer/dynamic";
+import {
+  formatDuration,
+  type NodeRunState,
+} from "@/views/ton/AutomationsPage/designer/CanvasNodes";
+import {
+  prettyName,
+  specMap,
+} from "@/views/ton/AutomationsPage/designer/dynamic";
 import { nodeIcon } from "@/views/ton/AutomationsPage/designer/icons";
 import { nodeSummary } from "@/views/ton/AutomationsPage/designer/summary";
 
-const PRIORITY: StepStatus[] = ["RUNNING", "WAITING", "FAILED", "TIMED_OUT", "CANCELLED", "SUCCEEDED", "SKIPPED"];
+const PRIORITY: StepStatus[] = [
+  "RUNNING",
+  "WAITING",
+  "FAILED",
+  "TIMED_OUT",
+  "CANCELLED",
+  "SUCCEEDED",
+  "SKIPPED",
+];
 
 function aggregate(steps: StepView[]): Map<string, NodeRunState> {
   const map = new Map<string, NodeRunState>();
   for (const step of steps) {
     const current = map.get(step.node_id);
     if (!current) {
-      map.set(step.node_id, { status: step.status, durationMs: step.duration_ms, iterations: 1, failedIterations: step.status === "FAILED" ? 1 : 0 });
+      map.set(step.node_id, {
+        status: step.status,
+        durationMs: step.duration_ms,
+        iterations: 1,
+        failedIterations: step.status === "FAILED" ? 1 : 0,
+      });
       continue;
     }
     current.iterations += 1;
     if (step.status === "FAILED") current.failedIterations += 1;
-    if (PRIORITY.indexOf(step.status) < PRIORITY.indexOf(current.status)) current.status = step.status;
+    if (PRIORITY.indexOf(step.status) < PRIORITY.indexOf(current.status))
+      current.status = step.status;
     current.durationMs = (current.durationMs ?? 0) + (step.duration_ms ?? 0);
   }
   return map;
 }
 
-function JsonBlock({ value }: { value: JsonValue | Record<string, JsonValue> | null | undefined }) {
+function JsonBlock({
+  value,
+}: {
+  value: JsonValue | Record<string, JsonValue> | null | undefined;
+}) {
   const text = JSON.stringify(value ?? null, null, 2);
-  return <pre className="ton-auto-json">{text.length > 60_000 ? `${text.slice(0, 60_000)}\n…` : text}</pre>;
+  return (
+    <pre className="ton-auto-json">
+      {text.length > 60_000 ? `${text.slice(0, 60_000)}\n…` : text}
+    </pre>
+  );
 }
 
-function friendlyValue(value: JsonValue | undefined, options?: Map<string, string>): string {
+function friendlyValue(
+  value: JsonValue | undefined,
+  options?: Map<string, string>
+): string {
   if (options && (typeof value === "string" || Array.isArray(value))) {
-    const values = (Array.isArray(value) ? value : [value]).map((item) => options.get(String(item)) ?? String(item));
+    const values = (Array.isArray(value) ? value : [value]).map(
+      (item) => options.get(String(item)) ?? String(item)
+    );
     if (values.length) return values.join(", ");
   }
   if (value === null || value === undefined || value === "") return "—";
@@ -69,14 +110,30 @@ function friendlyValue(value: JsonValue | undefined, options?: Map<string, strin
   }
   if (Array.isArray(value)) {
     if (!value.length) return R.emptyList;
-    if (value.every((item) => typeof item === "string" || typeof item === "number")) return value.slice(0, 8).join(", ") + (value.length > 8 ? ` +${value.length - 8}` : "");
+    if (
+      value.every(
+        (item) => typeof item === "string" || typeof item === "number"
+      )
+    )
+      return (
+        value.slice(0, 8).join(", ") +
+        (value.length > 8 ? ` +${value.length - 8}` : "")
+      );
     return R.items(value.length);
   }
   return R.record;
 }
 
 /** Inputs or outputs as label → value, named like the designer; raw data on demand. */
-function DataList({ value, labels, options }: { value: Record<string, JsonValue> | null | undefined; labels: Map<string, string>; options?: Map<string, Map<string, string>> }) {
+function DataList({
+  value,
+  labels,
+  options,
+}: {
+  value: Record<string, JsonValue> | null | undefined;
+  labels: Map<string, string>;
+  options?: Map<string, Map<string, string>>;
+}) {
   const entries = Object.entries(value ?? {}).filter(([key]) => key !== "html");
   if (!entries.length) {
     return (
@@ -97,11 +154,22 @@ function DataList({ value, labels, options }: { value: Record<string, JsonValue>
   );
 }
 
-function TechnicalData({ inputs, outputs }: { inputs: JsonValue | Record<string, JsonValue> | null | undefined; outputs: JsonValue | Record<string, JsonValue> | null | undefined }) {
+function TechnicalData({
+  inputs,
+  outputs,
+}: {
+  inputs: JsonValue | Record<string, JsonValue> | null | undefined;
+  outputs: JsonValue | Record<string, JsonValue> | null | undefined;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div className="flex flex-col gap-2">
-      <button type="button" className="ton-auto-link ton-focusable self-start" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+      <button
+        type="button"
+        className="ton-auto-link ton-focusable self-start"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+      >
         {open ? R.hideTechnical : R.showTechnical}
       </button>
       {open && (
@@ -120,9 +188,13 @@ function TechnicalData({ inputs, outputs }: { inputs: JsonValue | Record<string,
   );
 }
 
-function asRecord(value: JsonValue | Record<string, JsonValue> | null | undefined): Record<string, JsonValue> | null {
+function asRecord(
+  value: JsonValue | Record<string, JsonValue> | null | undefined
+): Record<string, JsonValue> | null {
   // SAFETY: run payloads are JSON objects written by the engine.
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, JsonValue>) : null;
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, JsonValue>)
+    : null;
 }
 
 function bannerTone(run: RunSummary): string {
@@ -160,18 +232,38 @@ interface StepPanelProps {
   onApprove: (approval: ApprovalView) => void;
 }
 
-function StepPanel({ run, nodeId, spec, onClose, onOpenEmail, onApprove }: StepPanelProps) {
+function StepPanel({
+  run,
+  nodeId,
+  spec,
+  onClose,
+  onOpenEmail,
+  onApprove,
+}: StepPanelProps) {
   const steps = run.steps.filter((step) => step.node_id === nodeId);
   const [index, setIndex] = useState(Math.max(0, steps.length - 1));
   const step = steps[Math.min(index, steps.length - 1)];
   const Icon = nodeIcon(spec?.icon);
   const node = nodeId === "trigger" ? null : findNode(run.definition, nodeId);
-  const approval = run.approvals.find((item) => item.node_id === nodeId && item.status === "PENDING");
-  const outputLabels = new Map((spec?.outputs ?? []).map((output) => [output.key, output.label]));
-  const paramLabels = new Map((spec?.params ?? []).map((param) => [param.key, param.label]));
-  const paramOptions = new Map((spec?.params ?? []).filter((param) => param.options.length).map((param) => [param.key, new Map(param.options)]));
+  const approval = run.approvals.find(
+    (item) => item.node_id === nodeId && item.status === "PENDING"
+  );
+  const outputLabels = new Map(
+    (spec?.outputs ?? []).map((output) => [output.key, output.label])
+  );
+  const paramLabels = new Map(
+    (spec?.params ?? []).map((param) => [param.key, param.label])
+  );
+  const paramOptions = new Map(
+    (spec?.params ?? [])
+      .filter((param) => param.options.length)
+      .map((param) => [param.key, new Map(param.options)])
+  );
   return (
-    <aside className="ton-auto-panel" data-group={nodeId === "trigger" ? "trigger" : spec?.group}>
+    <aside
+      className="ton-auto-panel"
+      data-group={nodeId === "trigger" ? "trigger" : spec?.group}
+    >
       <header className="ton-auto-panel-head">
         <span className="ton-auto-node-icon">
           <Icon size={18} />
@@ -181,20 +273,41 @@ function StepPanel({ run, nodeId, spec, onClose, onOpenEmail, onApprove }: StepP
             {node?.label || spec?.label || nodeId}
           </Text>
           <Text font="secondary-body" color="text-03">
-            {step ? `${STEP_STATUS_LABELS[step.status]}${step.duration_ms !== null ? ` · ${formatDuration(step.duration_ms)}` : ""}${step.attempt > 1 ? ` · ${R.attempts(step.attempt)}` : ""}` : nodeId === "trigger" ? RUN_STATUS_LABELS.SUCCEEDED : R.notRun}
+            {step
+              ? `${STEP_STATUS_LABELS[step.status]}${step.duration_ms !== null ? ` · ${formatDuration(step.duration_ms)}` : ""}${step.attempt > 1 ? ` · ${R.attempts(step.attempt)}` : ""}`
+              : nodeId === "trigger"
+                ? RUN_STATUS_LABELS.SUCCEEDED
+                : R.notRun}
           </Text>
         </div>
-        <Button size="sm" prominence="tertiary" icon={SvgX} aria-label={R.cancel} onClick={onClose} />
+        <Button
+          size="sm"
+          prominence="tertiary"
+          icon={SvgX}
+          aria-label={R.cancel}
+          onClick={onClose}
+        />
       </header>
       <div className="ton-auto-panel-body">
         {steps.length > 1 && (
-          <div className="ton-auto-iterations" role="group" aria-label={R.iteration}>
+          <div
+            className="ton-auto-iterations"
+            role="group"
+            aria-label={R.iteration}
+          >
             <Text font="secondary-action" color="text-04">
               {R.iteration}
             </Text>
             <div className="ton-auto-weekdays">
               {steps.map((item, position) => (
-                <button key={item.iteration} type="button" className="ton-auto-weekday ton-focusable" data-active={position === index || undefined} data-status={item.status} onClick={() => setIndex(position)}>
+                <button
+                  key={item.iteration}
+                  type="button"
+                  className="ton-auto-weekday ton-focusable"
+                  data-active={position === index || undefined}
+                  data-status={item.status}
+                  onClick={() => setIndex(position)}
+                >
                   {position + 1}
                 </button>
               ))}
@@ -211,7 +324,10 @@ function StepPanel({ run, nodeId, spec, onClose, onOpenEmail, onApprove }: StepP
             <Text font="secondary-action" color="text-04">
               {R.triggerOutput}
             </Text>
-            <DataList value={asRecord(run.trigger_output)} labels={outputLabels} />
+            <DataList
+              value={asRecord(run.trigger_output)}
+              labels={outputLabels}
+            />
             <TechnicalData inputs={null} outputs={run.trigger_output} />
           </>
         ) : !step ? (
@@ -227,11 +343,17 @@ function StepPanel({ run, nodeId, spec, onClose, onOpenEmail, onApprove }: StepP
                 </Text>
               </div>
             )}
-            {node?.type === "email.send" && step.outputs && typeof step.outputs.html === "string" && (
-              <Button prominence="secondary" icon={SvgMail} onClick={() => onOpenEmail(step)}>
-                {R.openEmail}
-              </Button>
-            )}
+            {node?.type === "email.send" &&
+              step.outputs &&
+              typeof step.outputs.html === "string" && (
+                <Button
+                  prominence="secondary"
+                  icon={SvgMail}
+                  onClick={() => onOpenEmail(step)}
+                >
+                  {R.openEmail}
+                </Button>
+              )}
             <Text font="secondary-action" color="text-04">
               {R.outputs}
             </Text>
@@ -239,8 +361,23 @@ function StepPanel({ run, nodeId, spec, onClose, onOpenEmail, onApprove }: StepP
             <Text font="secondary-action" color="text-04">
               {R.inputs}
             </Text>
-            <DataList value={asRecord(step.inputs)} labels={paramLabels} options={paramOptions} />
-            <TechnicalData inputs={step.inputs} outputs={step.outputs ? Object.fromEntries(Object.entries(step.outputs).filter(([key]) => key !== "html")) : null} />
+            <DataList
+              value={asRecord(step.inputs)}
+              labels={paramLabels}
+              options={paramOptions}
+            />
+            <TechnicalData
+              inputs={step.inputs}
+              outputs={
+                step.outputs
+                  ? Object.fromEntries(
+                      Object.entries(step.outputs).filter(
+                        ([key]) => key !== "html"
+                      )
+                    )
+                  : null
+              }
+            />
           </>
         )}
       </div>
@@ -248,7 +385,13 @@ function StepPanel({ run, nodeId, spec, onClose, onOpenEmail, onApprove }: StepP
   );
 }
 
-export default function RunViewer({ automationId, runId }: { automationId: string; runId: string }) {
+export default function RunViewer({
+  automationId,
+  runId,
+}: {
+  automationId: string;
+  runId: string;
+}) {
   const router = useRouter();
   const run = useRun(runId);
   const catalog = useAutomationCatalog();
@@ -256,14 +399,25 @@ export default function RunViewer({ automationId, runId }: { automationId: strin
   const [email, setEmail] = useState<StepView | null>(null);
   const [approval, setApproval] = useState<ApprovalView | null>(null);
   const [busy, setBusy] = useState(false);
-  const specs = useMemo(() => (catalog.data ? specMap(catalog.data) : new Map<string, NodeTypeView>()), [catalog.data]);
+  const specs = useMemo(
+    () =>
+      catalog.data ? specMap(catalog.data) : new Map<string, NodeTypeView>(),
+    [catalog.data]
+  );
   const states = useMemo(() => {
     const map = aggregate(run.data?.steps ?? []);
-    if (run.data) map.set("trigger", { status: "SUCCEEDED", durationMs: null, iterations: 1, failedIterations: 0 });
+    if (run.data)
+      map.set("trigger", {
+        status: "SUCCEEDED",
+        durationMs: null,
+        iterations: 1,
+        failedIterations: 0,
+      });
     return map;
   }, [run.data]);
 
-  if (run.error || catalog.error) return <ErrorState onRetry={() => void run.mutate()} />;
+  if (run.error || catalog.error)
+    return <ErrorState onRetry={() => void run.mutate()} />;
   if (!run.data || !catalog.data) return <LoadingBlock label="…" />;
   const data = run.data;
   const catalogData = catalog.data;
@@ -271,8 +425,14 @@ export default function RunViewer({ automationId, runId }: { automationId: strin
   async function act(action: "resubmit" | "cancel") {
     setBusy(true);
     try {
-      const result = await send<RunSummary>(`${AUTOMATIONS_API}/runs/${runId}/${action}`, {});
-      if (action === "resubmit") router.push(`/ton/automacoes/${automationId}/execucoes/${result.id}` as Route);
+      const result = await send<RunSummary>(
+        `${AUTOMATIONS_API}/runs/${runId}/${action}`,
+        {}
+      );
+      if (action === "resubmit")
+        router.push(
+          `/ton/automacoes/${automationId}/execucoes/${result.id}` as Route
+        );
       else await run.mutate();
     } finally {
       setBusy(false);
@@ -281,13 +441,28 @@ export default function RunViewer({ automationId, runId }: { automationId: strin
 
   const summary = (id: string) =>
     id === "trigger"
-      ? nodeSummary(null, specs.get(data.definition.trigger.type), data.definition, catalogData)
-      : nodeSummary(findNode(data.definition, id) ?? null, specs.get(findNode(data.definition, id)?.type ?? ""), data.definition, catalogData);
+      ? nodeSummary(
+          null,
+          specs.get(data.definition.trigger.type),
+          data.definition,
+          catalogData
+        )
+      : nodeSummary(
+          findNode(data.definition, id) ?? null,
+          specs.get(findNode(data.definition, id)?.type ?? ""),
+          data.definition,
+          catalogData
+        );
 
   return (
     <div className="ton-auto-designer">
       <header className="ton-auto-topbar">
-        <Button size="sm" prominence="tertiary" icon={SvgArrowLeft} href={`/ton/automacoes/${automationId}`}>
+        <Button
+          size="sm"
+          prominence="tertiary"
+          icon={SvgArrowLeft}
+          href={`/ton/automacoes/${automationId}`}
+        >
           {data.automation_name}
         </Button>
         <Text font="secondary-body" color="text-03">
@@ -295,16 +470,33 @@ export default function RunViewer({ automationId, runId }: { automationId: strin
         </Text>
         <span className="flex-1" />
         {data.can_cancel && (
-          <Button size="sm" prominence="tertiary" icon={SvgX} disabled={busy} onClick={() => void act("cancel")}>
+          <Button
+            size="sm"
+            prominence="tertiary"
+            icon={SvgX}
+            disabled={busy}
+            onClick={() => void act("cancel")}
+          >
             {R.cancel}
           </Button>
         )}
         {data.can_resubmit && (
-          <Button size="sm" prominence="secondary" icon={SvgRefreshCw} disabled={busy} onClick={() => void act("resubmit")}>
+          <Button
+            size="sm"
+            prominence="secondary"
+            icon={SvgRefreshCw}
+            disabled={busy}
+            onClick={() => void act("resubmit")}
+          >
             {R.resubmit}
           </Button>
         )}
-        <Button size="sm" prominence="tertiary" icon={SvgEdit} href={`/ton/automacoes/${automationId}/editar`}>
+        <Button
+          size="sm"
+          prominence="tertiary"
+          icon={SvgEdit}
+          href={`/ton/automacoes/${automationId}/editar`}
+        >
           {R.edit}
         </Button>
       </header>
@@ -315,7 +507,13 @@ export default function RunViewer({ automationId, runId }: { automationId: strin
         {data.approvals
           .filter((item) => item.status === "PENDING")
           .map((item) => (
-            <Button key={item.id} size="sm" prominence="secondary" icon={SvgUserCheck} onClick={() => setApproval(item)}>
+            <Button
+              key={item.id}
+              size="sm"
+              prominence="secondary"
+              icon={SvgUserCheck}
+              onClick={() => setApproval(item)}
+            >
               {`${R.answer}: ${item.title}`}
             </Button>
           ))}
@@ -339,17 +537,32 @@ export default function RunViewer({ automationId, runId }: { automationId: strin
             key={selected}
             run={data}
             nodeId={selected}
-            spec={specs.get(selected === "trigger" ? data.definition.trigger.type : findNode(data.definition, selected)?.type ?? "")}
+            spec={specs.get(
+              selected === "trigger"
+                ? data.definition.trigger.type
+                : (findNode(data.definition, selected)?.type ?? "")
+            )}
             onClose={() => setSelected(null)}
             onOpenEmail={setEmail}
             onApprove={setApproval}
           />
         )}
       </div>
-      <Modal open={email !== null} onOpenChange={(value) => !value && setEmail(null)}>
-        <Modal.Content width="lg" height="lg">
-          <Modal.Header icon={SvgMail} title={email?.outputs && typeof email.outputs.subject === "string" ? email.outputs.subject : R.openEmail} onClose={() => setEmail(null)} />
-          <Modal.Body alignItems="stretch">
+      <SideModal
+        open={email !== null}
+        onOpenChange={(value) => !value && setEmail(null)}
+      >
+        <SideModal.Content width="lg" height="lg">
+          <SideModal.Header
+            icon={SvgMail}
+            title={
+              email?.outputs && typeof email.outputs.subject === "string"
+                ? email.outputs.subject
+                : R.openEmail
+            }
+            onClose={() => setEmail(null)}
+          />
+          <SideModal.Body alignItems="stretch">
             {email && (
               <iframe
                 title={R.openEmail}
@@ -358,10 +571,14 @@ export default function RunViewer({ automationId, runId }: { automationId: strin
                 className="ton-flow-preview"
               />
             )}
-          </Modal.Body>
-        </Modal.Content>
-      </Modal>
-      <ApprovalModal approval={approval} onClose={() => setApproval(null)} onDecided={() => void run.mutate()} />
+          </SideModal.Body>
+        </SideModal.Content>
+      </SideModal>
+      <ApprovalModal
+        approval={approval}
+        onClose={() => setApproval(null)}
+        onDecided={() => void run.mutate()}
+      />
     </div>
   );
 }

@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
-import { useEffect, useState, type ReactElement, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import {
   Button,
   LineItemButton,
@@ -27,6 +33,7 @@ import {
   SvgShield,
   SvgTrash,
   SvgUsers,
+  SvgWallet,
   SvgWorkflow,
 } from "@opal/icons";
 import { ConfirmationModalLayout, toast } from "@opal/layouts";
@@ -63,6 +70,8 @@ interface NavItem {
   exact?: boolean;
   children?: NavChild[];
   adminOnly?: boolean;
+  /** Group label shown above the first item of a section. */
+  section?: "finance" | "operation";
 }
 
 const NAV: NavItem[] = [
@@ -114,11 +123,19 @@ const NAV: NavItem[] = [
     ],
   },
   {
+    href: "/ton/contas-a-pagar" as Route,
+    label: COPY.nav.payables,
+    icon: SvgWallet,
+    match: ["/ton/contas-a-pagar"],
+    section: "finance",
+  },
+  {
     href: "/ton/ocorrencias" as Route,
     label: COPY.nav.occurrences,
     icon: SvgShield,
     match: ["/ton/ocorrencias"],
     adminOnly: true,
+    section: "finance",
   },
   {
     href: "/ton/automacoes",
@@ -126,6 +143,7 @@ const NAV: NavItem[] = [
     icon: SvgWorkflow,
     match: ["/ton/automacoes", "/ton/rotinas", "/ton/fluxos"],
     adminOnly: true,
+    section: "operation",
   },
   {
     href: "/ton/relatorios",
@@ -133,6 +151,7 @@ const NAV: NavItem[] = [
     icon: SvgFileText,
     match: ["/ton/relatorios", "/ton/controladoria/reports"],
     adminOnly: true,
+    section: "operation",
   },
   {
     href: "/ton/fontes",
@@ -140,6 +159,7 @@ const NAV: NavItem[] = [
     icon: SvgServer,
     match: ["/ton/fontes", "/ton/data-sources"],
     adminOnly: true,
+    section: "operation",
   },
 ];
 
@@ -503,8 +523,11 @@ interface TonSidebarProps {
 export default function TonSidebar({ open, rail, onClose }: TonSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isAdmin } = useUser();
+  const { isAdmin, user } = useUser();
   const { canEnter, canRead } = useTonAccess();
+  // Until the person is known, the menu would show the reduced manager set
+  // and then jump; a quiet placeholder keeps the frame still.
+  const loadingUser = !user;
   const inSession =
     pathname.startsWith("/ton/chat") &&
     searchParams.has(SEARCH_PARAM_NAMES.CHAT_ID);
@@ -563,38 +586,63 @@ export default function TonSidebar({ open, rail, onClose }: TonSidebarProps) {
             aria-label={COPY.shell.navigationLabel}
             className="flex flex-col gap-px"
           >
-            {NAV.filter((item) => isAdmin || !item.adminOnly)
-              .map((item) =>
-                item.children
-                  ? {
-                      ...item,
-                      children: item.children.filter(
-                        (child) => isAdmin || !child.adminOnly
-                      ),
-                    }
-                  : item
-              )
-              .map((item) =>
-                item.children ? (
-                  <NavGroup
-                    key={item.href}
-                    item={item}
-                    pathname={pathname}
-                    rail={rail}
-                    onNavigate={onClose}
-                  />
-                ) : (
-                  <SidebarLink
-                    key={item.href}
-                    href={item.href}
-                    icon={item.icon}
-                    label={item.label}
-                    active={isActive(pathname, item.match, item.exact)}
-                    rail={rail}
-                    onNavigate={onClose}
-                  />
+            {loadingUser &&
+              Array.from({ length: 9 }, (_, index) => (
+                <span
+                  key={index}
+                  aria-hidden
+                  className="ton-nav-skeleton"
+                  style={{ width: `${60 + ((index * 17) % 30)}%` }}
+                />
+              ))}
+            {!loadingUser &&
+              NAV.filter((item) => isAdmin || !item.adminOnly)
+                .map((item) =>
+                  item.children
+                    ? {
+                        ...item,
+                        children: item.children.filter(
+                          (child) => isAdmin || !child.adminOnly
+                        ),
+                      }
+                    : item
                 )
-              )}
+                .map((item, index, items) => {
+                  const opens =
+                    item.section && items[index - 1]?.section !== item.section;
+                  const link = item.children ? (
+                    <NavGroup
+                      key={item.href}
+                      item={item}
+                      pathname={pathname}
+                      rail={rail}
+                      onNavigate={onClose}
+                    />
+                  ) : (
+                    <SidebarLink
+                      key={item.href}
+                      href={item.href}
+                      icon={item.icon}
+                      label={item.label}
+                      active={isActive(pathname, item.match, item.exact)}
+                      rail={rail}
+                      onNavigate={onClose}
+                    />
+                  );
+                  if (!opens || !item.section) return link;
+                  return (
+                    <Fragment key={item.href}>
+                      {rail ? (
+                        <hr className="ton-chrome-divider mx-1 my-2" />
+                      ) : (
+                        <span className="ton-sidebar-section-label px-2.5 pt-3 pb-1">
+                          {COPY.shell.sections[item.section]}
+                        </span>
+                      )}
+                      {link}
+                    </Fragment>
+                  );
+                })}
           </nav>
 
           {canRead && isAdmin && (

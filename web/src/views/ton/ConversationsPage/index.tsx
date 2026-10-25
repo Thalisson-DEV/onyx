@@ -55,7 +55,7 @@ export default function ConversationsPage() {
   }
 
   return (
-    <PageContainer className="max-w-[880px]">
+    <PageContainer width="reading">
       <PageHeader
         title={COPY.conversations.title}
         description={COPY.conversations.description}

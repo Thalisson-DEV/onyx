@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   LineItemButton,
   Popover,
@@ -17,11 +17,14 @@ import {
   SvgHelpCircle,
   SvgLogOut,
   SvgMenu,
+  SvgMoon,
   SvgSearch,
   SvgServer,
   SvgSettings,
   SvgSidebar,
+  SvgSun,
 } from "@opal/icons";
+import { useTheme } from "next-themes";
 import { Content, toast } from "@opal/layouts";
 import { useUser } from "@/providers/UserProvider";
 import { getUserDisplayName, getUserEmail, logout } from "@/lib/users/svc";
@@ -38,6 +41,38 @@ import { SHOW_UPSTREAM_SCREENS } from "@/lib/ton/product-surface";
 import { summarizeSources } from "@/lib/ton/sources";
 import { readSeenAt, useTonActivity, writeSeenAt } from "@/lib/ton/activity";
 import TonCommandMenu from "@/views/ton/shell/TonCommandMenu";
+import { AskTonHeaderButton } from "@/views/ton/ask/AskTon";
+
+/** Light or dark workspace; the choice follows the user across visits. */
+function ThemeSwitch() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const dark = mounted && resolvedTheme === "dark";
+  return (
+    <div className="tn-theme" role="group" aria-label={COPY.kit.theme}>
+      {/* Brand chrome needs a two-state toggle that no Opal button provides. */}
+      <button
+        type="button"
+        className="ton-focusable"
+        aria-label={COPY.kit.themeLight}
+        aria-pressed={mounted && !dark}
+        onClick={() => setTheme("light")}
+      >
+        <SvgSun size={14} />
+      </button>
+      <button
+        type="button"
+        className="ton-focusable"
+        aria-label={COPY.kit.themeDark}
+        aria-pressed={dark}
+        onClick={() => setTheme("dark")}
+      >
+        <SvgMoon size={14} />
+      </button>
+    </div>
+  );
+}
 
 function initials(name: string): string {
   const parts = name.split(/[\s._-]+/).filter(Boolean);
@@ -491,6 +526,7 @@ export default function TonHeader({
       </Link>
       <div className="ms-auto flex items-center gap-1 sm:gap-1.5">
         {canRead && <SearchTrigger />}
+        <AskTonHeaderButton />
         {canRead && <DemoIndicator />}
         {canRead && <SourcesStatus />}
         {canRead && (
@@ -499,6 +535,9 @@ export default function TonHeader({
             className="ton-chrome-divider hidden md:block h-5 border-s mx-1"
           />
         )}
+        <span className="hidden sm:block">
+          <ThemeSwitch />
+        </span>
         {canRead && <Notifications />}
         <span className="hidden sm:block">
           <Help />

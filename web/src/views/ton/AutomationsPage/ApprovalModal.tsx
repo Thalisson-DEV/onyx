@@ -1,9 +1,15 @@
 "use client";
 
+import { SideModal } from "@/views/ton/components/kit";
 import { useState } from "react";
-import { Button, InputTextArea, Modal, Text } from "@opal/components";
+import { Button, InputTextArea, Text } from "@opal/components";
 import { SvgUserCheck } from "@opal/icons";
-import { AUTOMATIONS_API, COPY, send, type ApprovalView } from "@/lib/ton/automations";
+import {
+  AUTOMATIONS_API,
+  COPY,
+  send,
+  type ApprovalView,
+} from "@/lib/ton/automations";
 
 interface ApprovalModalProps {
   approval: ApprovalView | null;
@@ -11,7 +17,11 @@ interface ApprovalModalProps {
   onDecided: () => void;
 }
 
-export default function ApprovalModal({ approval, onClose, onDecided }: ApprovalModalProps) {
+export default function ApprovalModal({
+  approval,
+  onClose,
+  onDecided,
+}: ApprovalModalProps) {
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +30,10 @@ export default function ApprovalModal({ approval, onClose, onDecided }: Approval
     setBusy(true);
     setError(null);
     try {
-      await send(`${AUTOMATIONS_API}/approvals/${approval.id}/decide`, { outcome, comment: comment || null });
+      await send(`${AUTOMATIONS_API}/approvals/${approval.id}/decide`, {
+        outcome,
+        comment: comment || null,
+      });
       setComment("");
       onDecided();
       onClose();
@@ -31,10 +44,18 @@ export default function ApprovalModal({ approval, onClose, onDecided }: Approval
     }
   }
   return (
-    <Modal open={approval !== null} onOpenChange={(value) => !value && onClose()}>
-      <Modal.Content width="md">
-        <Modal.Header icon={SvgUserCheck} title={approval?.title ?? ""} description={approval?.automation_name} onClose={onClose} />
-        <Modal.Body>
+    <SideModal
+      open={approval !== null}
+      onOpenChange={(value) => !value && onClose()}
+    >
+      <SideModal.Content width="md">
+        <SideModal.Header
+          icon={SvgUserCheck}
+          title={approval?.title ?? ""}
+          description={approval?.automation_name}
+          onClose={onClose}
+        />
+        <SideModal.Body>
           <div className="w-full flex flex-col gap-3">
             {approval?.details && (
               <div className="ton-auto-approval-details">
@@ -43,22 +64,36 @@ export default function ApprovalModal({ approval, onClose, onDecided }: Approval
                 </Text>
               </div>
             )}
-            <InputTextArea rows={3} autoResize maxRows={8} aria-label={COPY.comment} placeholder={COPY.comment} value={comment} onChange={(event) => setComment(event.target.value)} />
+            <InputTextArea
+              rows={3}
+              autoResize
+              maxRows={8}
+              aria-label={COPY.comment}
+              placeholder={COPY.comment}
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+            />
             {error && (
               <Text font="secondary-body" color="text-05">
                 {error}
               </Text>
             )}
           </div>
-        </Modal.Body>
-        <Modal.Footer>
+        </SideModal.Body>
+        <SideModal.Footer>
           {(approval?.options ?? []).map((option, index) => (
-            <Button key={option} disabled={busy || !approval?.can_decide} prominence={index === 0 ? "primary" : "secondary"} variant={option === "Recusar" ? "danger" : "default"} onClick={() => void decide(option)}>
+            <Button
+              key={option}
+              disabled={busy || !approval?.can_decide}
+              prominence={index === 0 ? "primary" : "secondary"}
+              variant={option === "Recusar" ? "danger" : "default"}
+              onClick={() => void decide(option)}
+            >
               {option}
             </Button>
           ))}
-        </Modal.Footer>
-      </Modal.Content>
-    </Modal>
+        </SideModal.Footer>
+      </SideModal.Content>
+    </SideModal>
   );
 }

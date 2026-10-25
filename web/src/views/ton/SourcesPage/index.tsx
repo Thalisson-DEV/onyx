@@ -7,14 +7,8 @@ import {
   SvgAlertTriangle,
   SvgCheckCircle,
   SvgClipboard,
-  SvgChevronDown,
-  SvgChevronUp,
-  SvgFileText,
-  SvgLock,
-  SvgServer,
   SvgUploadCloud,
 } from "@opal/icons";
-import { cn } from "@opal/utils";
 import { useTonClosing, useTonDataSources } from "@/lib/ton/api";
 import {
   COPY,
@@ -29,20 +23,24 @@ import { ImportDetail, SourceUpload } from "@/views/ton/DataSourcesPage";
 import PasteTable, { PASTE_COLUMNS } from "@/views/ton/SourcesPage/PasteTable";
 import {
   ErrorState,
-  IconTile,
   LoadingBlock,
-  Metric,
-  PageContainer,
-  PageHeader,
   StatusDot,
-  StatusPill,
-  TonCard,
   sourceTone,
 } from "@/views/ton/components/ui";
+import {
+  Drawer,
+  DrawerSection,
+  PageFrame,
+  PageHead,
+  Tag,
+  TonMark,
+  type TagTone,
+} from "@/views/ton/components/kit";
 
 const NG_SOURCE = "financial_launches";
 
-function HealthSummary({
+/** One line that says whether the DRE can trust its sources today. */
+function HealthLine({
   sources,
   ngDirect,
 }: {
@@ -51,187 +49,113 @@ function HealthSummary({
 }) {
   const { required, imported, attention, latest, healthy } =
     summarizeSources(sources);
-  const empty = imported.length === 0;
   const missing = required.length - imported.length;
+  const headline = healthy
+    ? COPY.sources.health.healthy
+    : imported.length === 0
+      ? COPY.sources.health.empty
+      : missing > 0
+        ? COPY.sources.health.missing(missing)
+        : COPY.sources.health.attention(attention.length);
   return (
-    <TonCard className="flex flex-col gap-5 p-5 sm:p-6">
-      <div className="flex items-start gap-4">
-        <IconTile
-          icon={healthy ? SvgCheckCircle : SvgAlertTriangle}
-          tone={healthy ? "brand" : "warning"}
-          size="lg"
-        />
-        <div className="flex flex-col gap-1 min-w-0">
-          <Text as="h2" font="heading-h3" color="text-05">
-            {healthy
-              ? COPY.sources.health.healthy
-              : empty
-                ? COPY.sources.health.empty
-                : missing > 0
-                  ? COPY.sources.health.missing(missing)
-                  : COPY.sources.health.attention(attention.length)}
-          </Text>
-          <Text as="p" font="secondary-body" color="text-03">
-            {COPY.sources.health.body}
-          </Text>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Metric
-          label={COPY.sources.health.configured}
-          value={`${formatNumber(imported.length)}/${formatNumber(required.length)}`}
-          detail={
-            attention.length > 0
-              ? COPY.sources.health.withRejections(attention.length)
-              : COPY.sources.health.current
-          }
-          tone={imported.length === required.length ? "success" : "warning"}
-        />
-        <Metric
-          label={COPY.sources.lastUpdate}
-          value={latest ? formatRelativeDateTime(latest) : COPY.sources.never}
-        />
-        <Metric
-          label={COPY.sources.acquisition}
-          value={COPY.sources.health.manual}
-          detail={COPY.sources.health.manualDetail}
-        />
-        <Metric
-          label={COPY.sources.health.ngDirect}
-          value={ngDirect ?? COPY.sources.pendingAccess}
-          detail={COPY.sources.health.ngDirectDetail}
-          tone="neutral"
-        />
-      </div>
-      <ol
-        aria-label={COPY.sources.health.pathLabel}
-        className="grid grid-cols-1 md:grid-cols-2 gap-3"
-      >
-        <li className="flex items-start gap-3 rounded-12 bg-background-neutral-01 p-3">
-          <IconTile icon={SvgFileText} size="sm" />
-          <div className="flex flex-col gap-0.5">
-            <span className="flex items-center gap-2">
-              <Text font="secondary-action" color="text-05">
-                {COPY.sources.health.nowTitle}
-              </Text>
-              <StatusPill tone="success">
-                {COPY.sources.health.nowBadge}
-              </StatusPill>
-            </span>
-            <Text font="secondary-body" color="text-03">
-              {COPY.sources.health.nowBody}
-            </Text>
-          </div>
-        </li>
-        <li className="flex items-start gap-3 rounded-12 border border-dashed border-02 p-3">
-          <IconTile icon={SvgLock} size="sm" tone="neutral" />
-          <div className="flex flex-col gap-0.5">
-            <span className="flex items-center gap-2">
-              <Text font="secondary-action" color="text-05">
-                {COPY.sources.health.nextTitle}
-              </Text>
-              <StatusPill tone="neutral">
-                {COPY.sources.health.nextBadge}
-              </StatusPill>
-            </span>
-            <Text font="secondary-body" color="text-03">
-              {COPY.sources.directExplainNg}
-            </Text>
-          </div>
-        </li>
-      </ol>
-    </TonCard>
+    <div className="tn-statusline" data-tone={healthy ? "ok" : "warn"}>
+      {healthy ? <SvgCheckCircle size={16} /> : <SvgAlertTriangle size={16} />}
+      <span className="font-semibold">{headline}</span>
+      <span className="tn-statusline-meta">
+        {COPY.sources.statusMeta(
+          imported.length,
+          required.length,
+          latest ? formatRelativeDateTime(latest) : COPY.sources.never
+        )}
+      </span>
+      <span className="tn-spacer" />
+      <span className="tn-statusline-meta">{COPY.sources.health.nowTitle}</span>
+      <Tag tone="ok">{COPY.sources.health.nowBadge}</Tag>
+      <span className="tn-statusline-meta">
+        {COPY.sources.health.nextTitle}
+      </span>
+      <Tag>{ngDirect ?? COPY.sources.health.nextBadge}</Tag>
+    </div>
   );
 }
 
-interface SourceRowProps {
+function statusTone(status: string): TagTone {
+  const tone = sourceTone(status);
+  return tone === "success"
+    ? "ok"
+    : tone === "danger"
+      ? "danger"
+      : tone === "warning"
+        ? "warn"
+        : tone === "brand"
+          ? "info"
+          : "neutral";
+}
+
+interface SourceDrawerProps {
   source: ClientSource;
   directIntegration: string | undefined;
+  justImported: ClientImport | null;
   onUpload: (source: ClientSource) => void;
   onPaste: (source: ClientSource) => void;
-  justImported: ClientImport | null;
-  /** Opened from a link that asks for this source's latest import. */
-  focused: boolean;
+  onClose: () => void;
 }
 
-function SourceRow({
+/** Everything about one source: how it arrives, its imports, what failed. */
+function SourceDrawer({
   source,
   directIntegration,
+  justImported,
   onUpload,
   onPaste,
-  justImported,
-  focused,
-}: SourceRowProps) {
-  const [open, setOpen] = useState(focused);
-  const [selected, setSelected] = useState<ClientImport | null>(
-    focused ? source.latest : null
-  );
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (focused) ref.current?.scrollIntoView({ block: "start" });
-  }, [focused]);
+  onClose,
+}: SourceDrawerProps) {
   const latest = source.latest;
+  const [selected, setSelected] = useState<ClientImport | null>(
+    justImported ?? latest
+  );
   const isNg = source.key === NG_SOURCE;
-  const detail = justImported ?? selected;
-  // Rejected rows are what a person must look at; reader notes are not.
-  const issues = latest ? latest.rejected : 0;
   return (
-    <TonCard as="article" className="flex flex-col">
-      <div
-        ref={ref}
-        className="flex flex-wrap items-center gap-x-5 gap-y-3 p-4 sm:p-5 scroll-mt-20"
-      >
-        <div className="flex items-center gap-3 min-w-0 flex-1 basis-64">
-          <IconTile icon={SvgServer} />
-          <div className="flex flex-col min-w-0">
-            <Text as="h2" font="main-ui-action" color="text-05">
-              {source.name}
-            </Text>
-            <Text font="secondary-body" color="text-03" maxLines={1}>
-              {source.description}
-            </Text>
+    <Drawer
+      open
+      onClose={onClose}
+      storageKey="source"
+      defaultWidth={760}
+      eyebrow={COPY.sources.title}
+      title={source.name}
+      description={source.description}
+      summary={
+        <>
+          <div className="tn-stat">
+            <span className="tn-stat-label">{COPY.sources.lastUpdate}</span>
+            <span className="tn-figure-sm">
+              {source.last_success_at
+                ? formatRelativeDateTime(source.last_success_at)
+                : COPY.sources.never}
+            </span>
           </div>
-        </div>
-        <dl className="grid grid-cols-3 gap-x-5 gap-y-1 basis-80 grow sm:grow-0">
-          <div className="flex flex-col">
-            <dt className="ton-eyebrow">{COPY.sources.updatedShort}</dt>
-            <dd>
-              <Text font="secondary-action" color="text-05">
-                {source.last_success_at
-                  ? formatRelativeDateTime(source.last_success_at)
-                  : COPY.sources.never}
-              </Text>
-            </dd>
+          <div className="tn-stat">
+            <span className="tn-stat-label">{COPY.sources.records}</span>
+            <span className="tn-figure-sm">
+              {latest ? formatNumber(latest.imported) : "—"}
+            </span>
           </div>
-          <div className="flex flex-col">
-            <dt className="ton-eyebrow">{COPY.sources.records}</dt>
-            <dd>
-              <Text font="secondary-action" color="text-05">
-                {latest ? formatNumber(latest.imported) : "—"}
-              </Text>
-            </dd>
+          <div className="tn-stat">
+            <span className="tn-stat-label">{COPY.sources.rejectedShort}</span>
+            <span className="tn-figure-sm">
+              {latest ? formatNumber(latest.rejected) : "—"}
+            </span>
           </div>
-          <div className="flex flex-col">
-            <dt className="ton-eyebrow">{COPY.sources.rejectedShort}</dt>
-            <dd>
-              <span className={cn(issues > 0 && "text-status-warning-05")}>
-                <Text
-                  font="secondary-action"
-                  color={issues > 0 ? "inherit" : "text-05"}
-                >
-                  {latest ? formatNumber(issues) : "—"}
-                </Text>
-              </span>
-            </dd>
-          </div>
-        </dl>
-        <div className="flex items-center gap-2 ms-auto">
-          <StatusPill tone={sourceTone(source.status)}>
+          <Tag tone={statusTone(source.status)}>
             {getBusinessLabel(source.status)}
-          </StatusPill>
+          </Tag>
+        </>
+      }
+      footer={
+        <>
+          <span className="tn-spacer" />
           {source.can_import && PASTE_COLUMNS[source.key] && (
             <Button
-              size="md"
               prominence="secondary"
               icon={SvgClipboard}
               onClick={() => onPaste(source)}
@@ -240,113 +164,85 @@ function SourceRow({
             </Button>
           )}
           {source.can_import && (
-            <Button
-              size="md"
-              icon={SvgUploadCloud}
-              onClick={() => onUpload(source)}
-            >
+            <Button icon={SvgUploadCloud} onClick={() => onUpload(source)}>
               {COPY.sources.update}
             </Button>
           )}
-          <Button
-            size="md"
-            prominence="tertiary"
-            icon={open ? SvgChevronUp : SvgChevronDown}
-            aria-expanded={open}
-            aria-label={
-              open
-                ? COPY.sources.hideDetails(source.name)
-                : COPY.sources.showDetails(source.name)
-            }
-            onClick={() => setOpen((value) => !value)}
-          />
-        </div>
-      </div>
-
-      {(open || detail) && (
-        <div className="flex flex-col gap-4 border-t border-01 p-4 sm:p-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1 rounded-12 bg-background-neutral-01 p-3">
-              <span className="ton-eyebrow">{COPY.sources.acquisition}</span>
-              <Text font="secondary-action" color="text-05">
-                {COPY.sources.fileFormat(source.format)}
-              </Text>
-              {latest && latest.downstream.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <Text font="secondary-body" color="text-03">
-                    {COPY.sources.usedBy}
-                  </Text>
-                  {latest.downstream.map((item) => (
-                    <StatusPill key={item} tone="brand">
-                      {COPY.sources.downstream[item] ?? getBusinessLabel(item)}
-                    </StatusPill>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col gap-1 rounded-12 border border-dashed border-02 p-3">
-              <span className="flex flex-wrap items-center gap-2">
-                <span className="ton-eyebrow">{COPY.sources.directTitle}</span>
-                <StatusPill tone="neutral">
-                  {isNg
-                    ? (directIntegration ?? COPY.sources.pendingAccess)
-                    : (directIntegration ?? COPY.sources.directNotConfigured)}
-                </StatusPill>
-              </span>
-              <Text font="secondary-body" color="text-03">
-                {isNg
-                  ? COPY.sources.directExplainNg
-                  : COPY.sources.directExplainOther}
-              </Text>
-            </div>
+        </>
+      }
+    >
+      <DrawerSection title={COPY.sources.acquisition}>
+        <Text font="main-ui-body" color="text-05">
+          {COPY.sources.fileFormat(source.format)}
+        </Text>
+        {latest && latest.downstream.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Text font="secondary-body" color="text-03">
+              {COPY.sources.usedBy}
+            </Text>
+            {latest.downstream.map((item) => (
+              <Tag key={item} tone="brand">
+                {COPY.sources.downstream[item] ?? getBusinessLabel(item)}
+              </Tag>
+            ))}
           </div>
-
-          {source.history.length > 0 && (
-            <section className="flex flex-col gap-2">
-              <span className="ton-eyebrow">{`${COPY.sources.history} (${source.history.length})`}</span>
-              <ul className="flex flex-col divide-y divide-border-01 rounded-12 border border-01">
-                {source.history.map((item) => (
-                  <li key={item.id}>
-                    {/* History rows select an import; Opal has no list-row button. */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelected(selected?.id === item.id ? null : item)
-                      }
-                      aria-expanded={selected?.id === item.id}
-                      className="ton-row-link ton-focusable flex w-full flex-wrap items-center gap-3 px-3 py-2.5 text-start"
-                    >
-                      <StatusDot
-                        tone={
-                          item.status === "SUCCEEDED"
-                            ? "success"
-                            : item.status === "FAILED"
-                              ? "danger"
-                              : "warning"
-                        }
-                      />
-                      <span className="flex-1 min-w-0">
-                        <Text font="secondary-action" color="text-05">
-                          {item.filename}
-                        </Text>
-                      </span>
-                      <Text font="secondary-body" color="text-03">
-                        {`${COPY.sources.importedRows(item.imported, item.rejected)} · ${formatRelativeDateTime(item.finished_at ?? item.started_at)}`}
-                      </Text>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          {detail && (
-            <div className="rounded-12 border border-01 p-4">
-              <ImportDetail result={detail} sourceKey={source.key} />
-            </div>
-          )}
-        </div>
+        )}
+      </DrawerSection>
+      <DrawerSection title={COPY.sources.directTitle}>
+        <span className="flex flex-wrap items-center gap-2">
+          <Tag>
+            {isNg
+              ? (directIntegration ?? COPY.sources.pendingAccess)
+              : (directIntegration ?? COPY.sources.directNotConfigured)}
+          </Tag>
+        </span>
+        <Text font="secondary-body" color="text-03">
+          {isNg
+            ? COPY.sources.directExplainNg
+            : COPY.sources.directExplainOther}
+        </Text>
+      </DrawerSection>
+      {source.history.length > 0 && (
+        <DrawerSection
+          title={`${COPY.sources.history} (${source.history.length})`}
+        >
+          <div className="flex flex-col">
+            {source.history.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="tn-kv ton-focusable"
+                aria-pressed={selected?.id === item.id}
+                onClick={() =>
+                  setSelected(selected?.id === item.id ? null : item)
+                }
+              >
+                <StatusDot
+                  tone={
+                    item.status === "SUCCEEDED"
+                      ? "success"
+                      : item.status === "FAILED"
+                        ? "danger"
+                        : "warning"
+                  }
+                />
+                <span className="flex-1 min-w-0 text-start truncate">
+                  {item.filename}
+                </span>
+                <span className="tn-hint">
+                  {`${COPY.sources.importedRows(item.imported, item.rejected)} · ${formatRelativeDateTime(item.finished_at ?? item.started_at)}`}
+                </span>
+              </button>
+            ))}
+          </div>
+        </DrawerSection>
       )}
-    </TonCard>
+      {selected && (
+        <DrawerSection title={COPY.sources.importDetail}>
+          <ImportDetail result={selected} sourceKey={source.key} />
+        </DrawerSection>
+      )}
+    </Drawer>
   );
 }
 
@@ -363,6 +259,8 @@ export default function SourcesPage() {
   const requested = searchParams.get("importar");
   const until = searchParams.get("ate");
   const focusedKey = searchParams.get("detalhe");
+  // The source whose details are open; a link can ask for one directly.
+  const [openKey, setOpenKey] = useState<string | null>(focusedKey);
   const opened = useRef(false);
   // Workflows such as missing actuals link straight to the right upload.
   useEffect(() => {
@@ -385,46 +283,144 @@ export default function SourcesPage() {
   const directFor = (key: string) =>
     closing.data?.sources.find((item) => item.key === key)?.direct_integration;
 
+  const open = sources.data?.find((item) => item.key === openKey) ?? null;
+  const summary = sources.data ? summarizeSources(sources.data) : null;
+
   return (
-    <PageContainer>
-      <PageHeader
+    <PageFrame>
+      <PageHead
         title={COPY.sources.title}
         description={COPY.sources.description}
+        status={
+          summary ? (
+            <Tag tone={summary.healthy ? "ok" : "warn"}>
+              {summary.healthy
+                ? COPY.sources.health.current
+                : COPY.sources.health.withRejections(summary.attention.length)}
+            </Tag>
+          ) : undefined
+        }
       />
-      {sources.isLoading && (
-        <TonCard className="p-5">
-          <LoadingBlock label={COPY.common.loading} />
-        </TonCard>
-      )}
+      {sources.isLoading && <LoadingBlock label={COPY.common.loading} />}
       {sources.error && <ErrorState onRetry={() => sources.mutate()} />}
       {sources.data && (
         <>
-          <HealthSummary
-            sources={sources.data}
-            ngDirect={directFor(NG_SOURCE)}
-          />
-          <section
-            className="flex flex-col gap-3"
-            aria-labelledby="ton-sources-list"
-          >
-            <h2 id="ton-sources-list" className="ton-eyebrow">
-              {COPY.sources.listTitle}
-            </h2>
-            {sources.data.map((source) => (
-              <SourceRow
-                key={source.key}
-                source={source}
-                directIntegration={directFor(source.key)}
-                onUpload={setUploadSource}
-                onPaste={setPasteSource}
-                justImported={
-                  imported?.key === source.key ? imported.result : null
-                }
-                focused={focusedKey === source.key}
-              />
-            ))}
+          <HealthLine sources={sources.data} ngDirect={directFor(NG_SOURCE)} />
+          <section className="tn-card" aria-label={COPY.sources.listTitle}>
+            <div className="overflow-x-auto">
+              <table className="tp-table">
+                <thead>
+                  <tr>
+                    <th scope="col">{COPY.sources.table.source}</th>
+                    <th scope="col">{COPY.sources.table.status}</th>
+                    <th scope="col">{COPY.sources.updatedShort}</th>
+                    <th scope="col" className="tp-end">
+                      {COPY.sources.records}
+                    </th>
+                    <th scope="col" className="tp-end">
+                      {COPY.sources.rejectedShort}
+                    </th>
+                    <th scope="col">
+                      <span className="sr-only">
+                        {COPY.sources.table.actions}
+                      </span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sources.data.map((source) => {
+                    const latest = source.latest;
+                    const rejected = latest ? latest.rejected : 0;
+                    return (
+                      <tr
+                        key={source.key}
+                        className="tp-row"
+                        tabIndex={0}
+                        aria-label={COPY.sources.showDetails(source.name)}
+                        onClick={() => setOpenKey(source.key)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") setOpenKey(source.key);
+                        }}
+                      >
+                        <td className="tp-wrap">
+                          <span className="flex flex-col">
+                            <span className="tp-strong">{source.name}</span>
+                            <span className="tp-muted">
+                              {source.description}
+                            </span>
+                          </span>
+                        </td>
+                        <td>
+                          <Tag tone={statusTone(source.status)}>
+                            {getBusinessLabel(source.status)}
+                          </Tag>
+                        </td>
+                        <td className="tp-muted">
+                          {source.last_success_at
+                            ? formatRelativeDateTime(source.last_success_at)
+                            : COPY.sources.never}
+                        </td>
+                        <td className="tp-end tn-num">
+                          {latest ? formatNumber(latest.imported) : "—"}
+                        </td>
+                        <td className="tp-end tn-num">
+                          {rejected > 0 ? (
+                            <TonMark>{formatNumber(rejected)}</TonMark>
+                          ) : latest ? (
+                            "0"
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="tp-end">
+                          <span className="inline-flex gap-2">
+                            {source.can_import && PASTE_COLUMNS[source.key] && (
+                              <Button
+                                size="sm"
+                                prominence="tertiary"
+                                icon={SvgClipboard}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setPasteSource(source);
+                                }}
+                              >
+                                {COPY.sources.pasteOpen}
+                              </Button>
+                            )}
+                            {source.can_import && (
+                              <Button
+                                size="sm"
+                                prominence="secondary"
+                                icon={SvgUploadCloud}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setUploadSource(source);
+                                }}
+                              >
+                                {COPY.sources.update}
+                              </Button>
+                            )}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </section>
         </>
+      )}
+      {open && (
+        <SourceDrawer
+          key={`${open.key}-${imported?.key === open.key ? imported.result.id : ""}`}
+          source={open}
+          directIntegration={directFor(open.key)}
+          justImported={imported?.key === open.key ? imported.result : null}
+          onUpload={setUploadSource}
+          onPaste={setPasteSource}
+          onClose={() => setOpenKey(null)}
+        />
       )}
       {pasteSource && (
         <PasteTable
@@ -432,6 +428,7 @@ export default function SourcesPage() {
           onClose={() => setPasteSource(null)}
           onComplete={(result) => {
             setImported({ key: pasteSource.key, result });
+            setOpenKey(pasteSource.key);
             setPasteSource(null);
             void sources.mutate();
             void closing.mutate();
@@ -445,12 +442,13 @@ export default function SourcesPage() {
           onClose={() => setUploadSource(null)}
           onComplete={(result) => {
             setImported({ key: uploadSource.key, result });
+            setOpenKey(uploadSource.key);
             setUploadSource(null);
             void sources.mutate();
             void closing.mutate();
           }}
         />
       )}
-    </PageContainer>
+    </PageFrame>
   );
 }

@@ -2,13 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import {
-  Button,
-  InputSingleSelect,
-  InputTypeIn,
-  Tabs,
-  Text,
-} from "@opal/components";
+import { Button, InputTypeIn, Tabs, Text } from "@opal/components";
 import {
   SvgAlertTriangle,
   SvgCheckCircle,
@@ -38,6 +32,7 @@ import {
   PageHeader,
   TonCard,
 } from "@/views/ton/components/ui";
+import { Segmented } from "@/views/ton/components/kit";
 import AccountGrid from "./AccountGrid";
 import NaturesTab from "./NaturesTab";
 import UnitsTab from "./UnitsTab";
@@ -395,7 +390,7 @@ export default function ClassificationPage() {
   }
 
   return (
-    <PageContainer className="max-w-[1280px]">
+    <PageContainer>
       {fromPending ? (
         <BackLink href="/ton/pendencias" label={COPY.backToPending} />
       ) : (
@@ -445,28 +440,19 @@ export default function ClassificationPage() {
                     onChange={(event) => setQuery(event.target.value)}
                   />
                 </div>
-                <div className="w-full sm:w-56">
-                  <InputSingleSelect
-                    value={filter}
-                    onValueChange={(value) => setFilter(value as Filter)}
-                  >
-                    <InputSingleSelect.Trigger
-                      placeholder={COPY.filters.label}
-                      aria-label={COPY.filters.label}
-                    />
-                    <InputSingleSelect.Content>
-                      <InputSingleSelect.Item value="open">
-                        {COPY.filters.open(counts.open)}
-                      </InputSingleSelect.Item>
-                      <InputSingleSelect.Item value="confirmed">
-                        {COPY.filters.confirmed(counts.confirmed)}
-                      </InputSingleSelect.Item>
-                      <InputSingleSelect.Item value="all">
-                        {COPY.filters.all(counts.all)}
-                      </InputSingleSelect.Item>
-                    </InputSingleSelect.Content>
-                  </InputSingleSelect>
-                </div>
+                <Segmented
+                  label={COPY.filters.label}
+                  value={filter}
+                  onChange={setFilter}
+                  options={[
+                    { key: "open", label: COPY.filters.open(counts.open) },
+                    {
+                      key: "confirmed",
+                      label: COPY.filters.confirmed(counts.confirmed),
+                    },
+                    { key: "all", label: COPY.filters.all(counts.all) },
+                  ]}
+                />
                 <span className="ms-auto">
                   <Actions
                     table={table.data}

@@ -1,10 +1,11 @@
 "use client";
 
+import { SideModal } from "@/views/ton/components/kit";
 import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import useSWR from "swr";
 import { useDropzone } from "react-dropzone";
-import { BasicModalFooter, Button, Modal, Text } from "@opal/components";
+import { BasicModalFooter, Button, Text } from "@opal/components";
 import { SvgFiles, SvgSimpleLoader, SvgUploadCloud } from "@opal/icons";
 import { SettingsLayouts } from "@opal/layouts";
 import { cn } from "@opal/utils";
@@ -289,64 +290,64 @@ export function SourceUpload({
   }
 
   return (
-    <Modal open onOpenChange={(open) => !open && !busy && onClose()}>
-      <Modal.Content width="md">
-        <Modal.Header
+    <SideModal open onOpenChange={(open) => !open && !busy && onClose()}>
+      <SideModal.Content width="md">
+        <SideModal.Header
           icon={SvgUploadCloud}
           title={t("uploadTitle", { source: source.name })}
           description={t("uploadDescription", { format: source.format })}
           onClose={() => !busy && onClose()}
         />
-        <Modal.Body>
+        <SideModal.Body>
           <div className="flex w-full flex-col gap-4">
-          {guidance && (
-            <Text as="p" font="main-ui-body" color="text-04">
-              {guidance}
-            </Text>
-          )}
-          <div
-            {...getRootProps()}
-            className={cn(
-              "flex min-h-36 w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-5 text-center",
-              isDragActive
-                ? "border-action-selection-05 bg-background-tint-01"
-                : "border-border-02"
+            {guidance && (
+              <Text as="p" font="main-ui-body" color="text-04">
+                {guidance}
+              </Text>
             )}
-          >
-            <input
-              {...getInputProps({
-                accept: `.${extension}`,
-                "aria-label": t("chooseFile"),
-              })}
-            />
-            <Button prominence="secondary" onClick={open} disabled={busy}>
-              {t("chooseFile")}
-            </Button>
-            <Text font="secondary-body" color={file ? "text-05" : "text-03"}>
-              {file ? file.name : t("dropFile")}
-            </Text>
-          </div>
-          {preview && (
-            <PreviewSummary preview={preview} previous={source.latest} />
-          )}
-          {busy && (
-            <div role="status" className="flex items-center gap-2">
-              <SvgSimpleLoader />
-              <Text font="main-ui-body" color="text-03">
-                {t("processing")}
+            <div
+              {...getRootProps()}
+              className={cn(
+                "flex min-h-36 w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-5 text-center",
+                isDragActive
+                  ? "border-action-selection-05 bg-background-tint-01"
+                  : "border-border-02"
+              )}
+            >
+              <input
+                {...getInputProps({
+                  accept: `.${extension}`,
+                  "aria-label": t("chooseFile"),
+                })}
+              />
+              <Button prominence="secondary" onClick={open} disabled={busy}>
+                {t("chooseFile")}
+              </Button>
+              <Text font="secondary-body" color={file ? "text-05" : "text-03"}>
+                {file ? file.name : t("dropFile")}
               </Text>
             </div>
-          )}
-          {error && (
-            <div role="alert">
-              <Text font="main-ui-body" color="status-error-05">
-                {error}
-              </Text>
-            </div>
-          )}
+            {preview && (
+              <PreviewSummary preview={preview} previous={source.latest} />
+            )}
+            {busy && (
+              <div role="status" className="flex items-center gap-2">
+                <SvgSimpleLoader />
+                <Text font="main-ui-body" color="text-03">
+                  {t("processing")}
+                </Text>
+              </div>
+            )}
+            {error && (
+              <div role="alert">
+                <Text font="main-ui-body" color="status-error-05">
+                  {error}
+                </Text>
+              </div>
+            )}
           </div>
-        </Modal.Body>
-        <Modal.Footer>
+        </SideModal.Body>
+        <SideModal.Footer>
           <BasicModalFooter
             cancel={
               <Button prominence="secondary" onClick={onClose} disabled={busy}>
@@ -365,9 +366,9 @@ export function SourceUpload({
               </Button>
             }
           />
-        </Modal.Footer>
-      </Modal.Content>
-    </Modal>
+        </SideModal.Footer>
+      </SideModal.Content>
+    </SideModal>
   );
 }
 
@@ -502,7 +503,9 @@ export function ImportDetail({
                       {label}
                     </button>
                   ) : (
-                    <div className="flex items-center gap-4 px-3 py-2">{label}</div>
+                    <div className="flex items-center gap-4 px-3 py-2">
+                      {label}
+                    </div>
                   )}
                   {open && sourceKey && (
                     <div className="px-3 pb-3">
@@ -823,17 +826,17 @@ function DataSourcesPage() {
         />
       )}
       {selected && (
-        <Modal open onOpenChange={(open) => !open && setSelected(null)}>
-          <Modal.Content width="md">
-            <Modal.Header
+        <SideModal open onOpenChange={(open) => !open && setSelected(null)}>
+          <SideModal.Content width="md">
+            <SideModal.Header
               title={t("importDetails")}
               onClose={() => setSelected(null)}
             />
-            <Modal.Body>
+            <SideModal.Body>
               <ImportDetail result={selected} />
-            </Modal.Body>
-          </Modal.Content>
-        </Modal>
+            </SideModal.Body>
+          </SideModal.Content>
+        </SideModal>
       )}
     </SettingsLayouts.Root>
   );

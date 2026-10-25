@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
 
-export { default } from "@/views/ton/OccurrencesPage";
+export { default } from "@/views/ton/CorrectionPage";
 
-export const metadata: Metadata = { title: "Ocorrências" };
+export const metadata: Metadata = { title: "Plano de correção" };

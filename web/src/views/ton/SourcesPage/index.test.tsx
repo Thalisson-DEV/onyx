@@ -95,10 +95,8 @@ beforeEach(() => {
 it("shows NG as file-fed with direct integration still pending", async () => {
   const user = setupUser();
   const { container } = render(<SourcesPage />);
-  const card = screen.getByRole("article");
-  await user.click(
-    within(card).getByRole("button", { name: /Mostrar detalhes de/ })
-  );
+  await user.click(screen.getByRole("row", { name: /Mostrar detalhes de/ }));
+  const card = screen.getByRole("complementary");
   expect(within(card).getByText("Arquivo XLSX")).toBeInTheDocument();
   expect(
     within(card).getByText("Aguardando acesso e configuração")

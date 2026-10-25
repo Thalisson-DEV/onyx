@@ -288,24 +288,27 @@ it("renders the year side by side and month by month, with drill-down", async ()
 
   await user.click(
     screen.getByRole("button", {
-      name: "Ver lançamentos de Synthetic service em Janeiro",
+      name: "Abrir Synthetic service em Janeiro",
     })
   );
-  const drawer = screen.getByRole("dialog");
+  const drawer = screen.getByRole("complementary");
   // Entries read as a table; the source file is stated once in the header.
   expect(within(drawer).getByRole("table")).toBeInTheDocument();
   expect(drawer).toHaveTextContent("SYN-1");
   expect(drawer).toHaveTextContent("Jan · 4");
   expect(drawer).toHaveTextContent("Origem: Synthetic NG · synthetic.xlsx");
   await user.keyboard("{Escape}");
-  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  // The sheet slides out before it leaves the page.
+  await waitFor(() =>
+    expect(screen.queryByRole("complementary")).not.toBeInTheDocument()
+  );
 
   await user.click(
     screen.getByRole("button", { name: "Recolher Gross synthetic" })
   );
   expect(
     screen.queryByRole("button", {
-      name: "Ver lançamentos de Synthetic service em Janeiro",
+      name: "Abrir Synthetic service em Janeiro",
     })
   ).not.toBeInTheDocument();
 
@@ -339,7 +342,7 @@ it("opens a natureza line into its NG accounts, as in the BI", async () => {
   // An account's month opens only its entries, with the account's amount.
   await user.click(
     screen.getByRole("button", {
-      name: "Ver lançamentos de 9.8.0007 Synthetic overdue em Janeiro",
+      name: "Abrir 9.8.0007 Synthetic overdue em Janeiro",
     })
   );
   expect(mockUseSWR).toHaveBeenCalledWith(
@@ -348,7 +351,7 @@ it("opens a natureza line into its NG accounts, as in the BI", async () => {
     ),
     expect.anything()
   );
-  const drawer = screen.getByRole("dialog");
+  const drawer = screen.getByRole("complementary");
   expect(drawer).toHaveTextContent(
     "Somente a conta NG 9.8.0007 · Synthetic overdue"
   );
@@ -383,7 +386,7 @@ it("adds up a chosen set of units, without drill-down", async () => {
   // A set has no single result to open.
   expect(
     screen.queryByRole("button", {
-      name: "Ver lançamentos de Synthetic service em Janeiro",
+      name: "Abrir Synthetic service em Janeiro",
     })
   ).not.toBeInTheDocument();
 });

@@ -33,6 +33,8 @@ import {
   useWorkQueue,
 } from "@/lib/ton/workQueue";
 import ClosingFrame from "@/views/ton/components/ClosingFrame";
+import { Diamond } from "@/views/ton/components/kit";
+import { useAskTon } from "@/views/ton/ask/AskTon";
 import DecisionLogList from "@/views/ton/components/DecisionLogList";
 import R3Spotlight from "@/views/ton/components/R3Spotlight";
 import WorkQueue from "@/views/ton/components/WorkQueue";
@@ -48,15 +50,6 @@ import {
 
 const CONTROL = COPY.decisionLoop.control;
 
-function askHref(): Route {
-  const query = new URLSearchParams({
-    firstMessage: COPY.closing.askPrompt,
-    [SEARCH_PARAM_NAMES.SUBMIT_ON_LOAD]: "true",
-  });
-  // SAFETY: /ton/chat is a static route; only its query varies.
-  return `/ton/chat?${query.toString()}` as Route;
-}
-
 function StatusHeader({
   closing,
   change,
@@ -64,6 +57,7 @@ function StatusHeader({
   closing: ClosingOutput;
   change: PeriodChange | undefined;
 }) {
+  const { ask } = useAskTon();
   // Readiness codes from the base when available; closing labels otherwise.
   const total = change
     ? sumBlockers(change.blockers_after)
@@ -105,9 +99,34 @@ function StatusHeader({
             {COPY.closing.openDre}
           </Button>
         )}
-        <Button href={askHref()} prominence="secondary" icon={SvgBubbleText}>
+        <button
+          type="button"
+          className="tn-btn ton-focusable"
+          data-variant="gold"
+          onClick={() =>
+            ask({
+              screen: COPY.closing.eyebrow,
+              chips: [
+                COPY.closing.eyebrow,
+                formatPeriod(closing.period),
+                closing.scope,
+              ],
+              details: [
+                `Fechamento ${closing.period} · ${closing.scope} · DRE ${closing.dre_status}`,
+                ...Object.entries(closing.blockers).map(
+                  ([code, count]) => `Pendência ${code}: ${count}`
+                ),
+              ],
+              suggestions: [
+                COPY.closing.askPrompt,
+                "O que mudou desde a última análise?",
+              ],
+            })
+          }
+        >
+          <Diamond />
           {COPY.closing.askTon}
-        </Button>
+        </button>
       </div>
     </TonCard>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { SideModal } from "@/views/ton/components/kit";
 import { useState } from "react";
 import {
   BasicModalFooter,
@@ -7,7 +8,6 @@ import {
   InputSingleSelect,
   InputTextArea,
   InputTypeIn,
-  Modal,
   Text,
 } from "@opal/components";
 import {
@@ -80,21 +80,19 @@ export default function NewNatureDialog({
   }
 
   return (
-    <Modal
+    <SideModal
       open
       onOpenChange={(open) => {
         if (!open && !busy) onClose();
       }}
     >
-      <Modal.Content width="sm">
-        <Modal.Header
+      <SideModal.Content width="sm">
+        <SideModal.Header
           title={creatingGroup ? COPY.groupDialogTitle : COPY.dialogTitle}
-          description={
-            creatingGroup ? COPY.groupDialogIntro : COPY.dialogIntro
-          }
+          description={creatingGroup ? COPY.groupDialogIntro : COPY.dialogIntro}
           onClose={() => !busy && onClose()}
         />
-        <Modal.Body>
+        <SideModal.Body>
           <div className="flex w-full flex-col gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="ton-eyebrow">
@@ -186,8 +184,8 @@ export default function NewNatureDialog({
               </span>
             )}
           </div>
-        </Modal.Body>
-        <Modal.Footer>
+        </SideModal.Body>
+        <SideModal.Footer>
           <BasicModalFooter
             cancel={
               <Button prominence="secondary" disabled={busy} onClick={onClose}>
@@ -204,8 +202,8 @@ export default function NewNatureDialog({
               </Button>
             }
           />
-        </Modal.Footer>
-      </Modal.Content>
-    </Modal>
+        </SideModal.Footer>
+      </SideModal.Content>
+    </SideModal>
   );
 }

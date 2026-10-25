@@ -380,7 +380,7 @@ export default function TreatmentsPage() {
   }
 
   return (
-    <PageContainer className="max-w-[1280px]">
+    <PageContainer>
       <BackLink href="/ton/administracao" label={COPY.back} />
       <PageHeader
         eyebrow={COPY.eyebrow}

@@ -12,8 +12,15 @@ import {
 } from "@opal/icons";
 import type { IconFunctionComponent } from "@opal/types";
 import { cn } from "@opal/utils";
+import { PageHead } from "@/views/ton/components/kit";
 
-export type TonTone = "success" | "warning" | "danger" | "neutral" | "brand";
+export type TonTone =
+  | "success"
+  | "warning"
+  | "danger"
+  | "neutral"
+  | "brand"
+  | "info";
 
 interface TonCardProps {
   children: ReactNode;
@@ -174,20 +181,21 @@ export function sourceTone(status: string): TonTone {
   return "warning";
 }
 
+interface PageContainerProps {
+  children: ReactNode;
+  className?: string;
+  /** Long reading (conversation list, report) keeps a narrower column. */
+  width?: "full" | "reading";
+}
+
+/** The workspace frame: full width with one gutter, up to 1680px. */
 export function PageContainer({
   children,
   className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
+  width = "full",
+}: PageContainerProps) {
   return (
-    <div
-      className={cn(
-        "w-full max-w-[1200px] mx-auto self-start px-4 sm:px-6 lg:px-8 py-6 lg:py-8 flex flex-col gap-6",
-        className
-      )}
-    >
+    <div className={cn("tn-page", className)} data-width={width}>
       {children}
     </div>
   );
@@ -200,6 +208,7 @@ interface PageHeaderProps {
   actions?: ReactNode;
 }
 
+/** The page head of every TON screen; same shape as PageHead in the kit. */
 export function PageHeader({
   eyebrow,
   title,
@@ -207,22 +216,12 @@ export function PageHeader({
   actions,
 }: PageHeaderProps) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4">
-      <div className="flex flex-col gap-1.5 min-w-0">
-        {eyebrow && <span className="ton-eyebrow">{eyebrow}</span>}
-        <h1 className="ton-title">
-          <Text font="heading-h1" color="inherit">
-            {title}
-          </Text>
-        </h1>
-        {description && (
-          <Text as="p" font="main-ui-body" color="text-03">
-            {description}
-          </Text>
-        )}
-      </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
-    </header>
+    <PageHead
+      eyebrow={eyebrow}
+      title={title}
+      description={description}
+      actions={actions}
+    />
   );
 }
 

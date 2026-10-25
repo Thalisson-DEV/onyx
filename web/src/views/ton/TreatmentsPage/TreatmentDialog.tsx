@@ -1,12 +1,12 @@
 "use client";
 
+import { SideModal } from "@/views/ton/components/kit";
 import { useState, type ReactNode } from "react";
 import {
   Button,
   InputSingleSelect,
   InputTextArea,
   InputTypeIn,
-  Modal,
   Text,
 } from "@opal/components";
 import { postJson } from "@/lib/ton/classification";
@@ -150,19 +150,19 @@ export default function TreatmentDialog({
   }));
 
   return (
-    <Modal
+    <SideModal
       open
       onOpenChange={(open) => {
         if (!open && !busy) onClose();
       }}
     >
-      <Modal.Content width="md">
-        <Modal.Header
+      <SideModal.Content width="md">
+        <SideModal.Header
           title={base ? COPY.versionTitle(base.title) : COPY.createTitle}
           description={COPY.intro}
           onClose={() => !busy && onClose()}
         />
-        <Modal.Body>
+        <SideModal.Body>
           <div className="w-full flex flex-col gap-4">
             <Field label={COPY.title}>
               <InputTypeIn
@@ -300,8 +300,8 @@ export default function TreatmentDialog({
               </Button>
             </div>
           </div>
-        </Modal.Body>
-      </Modal.Content>
-    </Modal>
+        </SideModal.Body>
+      </SideModal.Content>
+    </SideModal>
   );
 }

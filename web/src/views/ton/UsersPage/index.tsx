@@ -1,7 +1,8 @@
 "use client";
 
+import { SideModal } from "@/views/ton/components/kit";
 import { useState, type ReactNode } from "react";
-import { Button, InputTypeIn, Modal, Text } from "@opal/components";
+import { Button, InputTypeIn, Text } from "@opal/components";
 import { SvgLock, SvgUserPlus } from "@opal/icons";
 import { cn } from "@opal/utils";
 import { useUser } from "@/providers/UserProvider";
@@ -110,14 +111,14 @@ function MemberDialog({
   }
 
   return (
-    <Modal
+    <SideModal
       open
       onOpenChange={(open) => {
         if (!open && !busy) onClose();
       }}
     >
-      <Modal.Content width="md">
-        <Modal.Header
+      <SideModal.Content width="md">
+        <SideModal.Header
           title={
             member
               ? T.dialog.editTitle(memberName(member))
@@ -126,7 +127,7 @@ function MemberDialog({
           description={member ? undefined : T.dialog.intro}
           onClose={() => !busy && onClose()}
         />
-        <Modal.Body>
+        <SideModal.Body>
           <div className="w-full flex flex-col gap-4">
             {!member && (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -204,7 +205,7 @@ function MemberDialog({
                       </button>
                     )}
                   </span>
-                  <ul className="ton-picker-list max-h-60 overflow-auto rounded-08 border border-01">
+                  <ul className="ton-picker-list ton-picker-list-full rounded-08 border border-01">
                     {units.map((unit) => {
                       const checked = unitIds.includes(unit.id);
                       return (
@@ -256,9 +257,9 @@ function MemberDialog({
               </Button>
             </div>
           </div>
-        </Modal.Body>
-      </Modal.Content>
-    </Modal>
+        </SideModal.Body>
+      </SideModal.Content>
+    </SideModal>
   );
 }
 
@@ -301,14 +302,14 @@ function LinkDialog({
     year: "numeric",
   });
   return (
-    <Modal open onOpenChange={(open) => !open && onClose()}>
-      <Modal.Content width="md">
-        <Modal.Header
+    <SideModal open onOpenChange={(open) => !open && onClose()}>
+      <SideModal.Content width="md">
+        <SideModal.Header
           title={T.linkDialog.title(who)}
           description={T.linkDialog.intro}
           onClose={onClose}
         />
-        <Modal.Body>
+        <SideModal.Body>
           <div className="w-full flex flex-col gap-3">
             <code className="ton-team-link">{link}</code>
             <Text font="secondary-body" color="text-03">
@@ -323,9 +324,9 @@ function LinkDialog({
               <Button onClick={onClose}>{T.linkDialog.close}</Button>
             </div>
           </div>
-        </Modal.Body>
-      </Modal.Content>
-    </Modal>
+        </SideModal.Body>
+      </SideModal.Content>
+    </SideModal>
   );
 }
 
@@ -341,10 +342,10 @@ function ConfirmDialog({
   onClose: () => void;
 }) {
   return (
-    <Modal open onOpenChange={(open) => !open && !busy && onClose()}>
-      <Modal.Content width="sm">
-        <Modal.Header title={T.actions.deactivate} onClose={onClose} />
-        <Modal.Body>
+    <SideModal open onOpenChange={(open) => !open && !busy && onClose()}>
+      <SideModal.Content width="sm">
+        <SideModal.Header title={T.actions.deactivate} onClose={onClose} />
+        <SideModal.Body>
           <div className="w-full flex flex-col gap-4">
             <Text as="p" font="main-ui-body" color="text-05">
               {text}
@@ -358,9 +359,9 @@ function ConfirmDialog({
               </Button>
             </div>
           </div>
-        </Modal.Body>
-      </Modal.Content>
-    </Modal>
+        </SideModal.Body>
+      </SideModal.Content>
+    </SideModal>
   );
 }
 

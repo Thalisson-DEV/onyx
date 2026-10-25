@@ -2,6 +2,7 @@
 
 import "@/views/ton/shell/ton.css";
 import "@/views/ton/shell/automations.css";
+import "@/views/ton/shell/ton-theme.css";
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import {
@@ -15,6 +16,7 @@ import { useTonAccess } from "@/lib/ton/api";
 import { COPY } from "@/lib/ton/copy";
 import TonHeader from "@/views/ton/shell/TonHeader";
 import TonSidebar from "@/views/ton/shell/TonSidebar";
+import { AskTonProvider } from "@/views/ton/ask/AskTon";
 
 const RAIL_STORAGE_KEY = "ton.sidebar.rail";
 /** Tailwind `lg`: the sidebar is a drawer below it and docked above it. */
@@ -127,29 +129,31 @@ export default function TonShell({ children }: TonShellProps) {
   const content = user && !canEnter ? <NoAccess /> : children;
 
   return (
-    <div className="ton-shell">
-      <TonHeader
-        docked={docked}
-        menuOpen={menuOpen}
-        rail={rail}
-        onToggleNavigation={toggleNavigation}
-      />
-      <div className="flex flex-1 min-h-0">
-        <TonSidebar
-          open={menuOpen}
-          rail={docked && rail}
-          onClose={() => setMenuOpen(false)}
+    <AskTonProvider>
+      <div className="ton-shell">
+        <TonHeader
+          docked={docked}
+          menuOpen={menuOpen}
+          rail={rail}
+          onToggleNavigation={toggleNavigation}
         />
-        <div className="ton-workspace flex flex-1 min-w-0 min-h-0">
-          {isChat ? (
-            <ChatFrame>{content}</ChatFrame>
-          ) : (
-            <main className="flex flex-1 min-w-0 min-h-0 overflow-y-auto">
-              {content}
-            </main>
-          )}
+        <div className="flex flex-1 min-h-0">
+          <TonSidebar
+            open={menuOpen}
+            rail={docked && rail}
+            onClose={() => setMenuOpen(false)}
+          />
+          <div className="ton-workspace flex flex-1 min-w-0 min-h-0">
+            {isChat ? (
+              <ChatFrame>{content}</ChatFrame>
+            ) : (
+              <main className="flex flex-1 min-w-0 min-h-0 overflow-y-auto">
+                {content}
+              </main>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </AskTonProvider>
   );
 }

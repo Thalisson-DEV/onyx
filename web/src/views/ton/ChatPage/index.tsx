@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
@@ -12,9 +12,12 @@ import {
   SvgFileText,
   SvgServer,
   SvgSparkle,
+  SvgWallet,
 } from "@opal/icons";
 import type { IconFunctionComponent } from "@opal/types";
 import { cn } from "@opal/utils";
+import { useUser } from "@/providers/UserProvider";
+import { getUserDisplayName } from "@/lib/users/svc";
 import AppPage, { type AppPagePresentation } from "@/views/AppPage";
 import { SearchFiltersProvider } from "@/lib/searchFilters/providers";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
@@ -28,29 +31,85 @@ import {
 } from "@/lib/ton/api";
 import { COPY, formatPeriod } from "@/lib/ton/copy";
 import { IconTile, LoadingBlock } from "@/views/ton/components/ui";
-import { HomeRail } from "@/views/ton/HomePage";
 
 const SUGGESTION_ICONS: Record<string, IconFunctionComponent> = {
   closing: SvgBarChart,
   pending: SvgAlertTriangle,
   summary: SvgFileText,
   sources: SvgServer,
+  payables: SvgWallet,
 };
 
+function greeting(hour: number): string {
+  if (hour < 12) return COPY.assistant.greetMorning;
+  if (hour < 18) return COPY.assistant.greetAfternoon;
+  return COPY.assistant.greetEvening;
+}
+
+/** The TON greets by name and says where the closing stands, in one line. */
 function Welcome() {
+  const { user } = useUser();
+  const closing = useTonClosing();
+  const [hour, setHour] = useState<number | null>(null);
+  useEffect(() => setHour(new Date().getHours()), []);
+  const name = getUserDisplayName(user).split(/[\s@.]/)[0] ?? "";
+  const pending = Object.values(closing.data?.blockers ?? {}).reduce(
+    (sum, count) => sum + count,
+    0
+  );
+  const status = closing.data
+    ? pending > 0
+      ? COPY.assistant.statusPending(formatPeriod(closing.data.period), pending)
+      : COPY.assistant.statusReady(formatPeriod(closing.data.period))
+    : COPY.assistant.heroBody;
   return (
-    <div className="flex flex-col items-center gap-2 w-full pb-2 text-center">
+    <div className="flex flex-col items-center gap-3 w-full pb-2 text-center">
+      <TonMarkLarge />
       <h1 className="ton-title">
         <Text font="heading-h1" color="inherit">
-          {COPY.assistant.heroTitle}
+          {hour === null
+            ? COPY.assistant.heroTitle
+            : COPY.assistant.greeting(greeting(hour), name)}
         </Text>
       </h1>
       <span className="max-w-xl">
         <Text as="p" font="main-content-body" color="text-03">
-          {COPY.assistant.heroBody}
+          {status}
         </Text>
       </span>
     </div>
+  );
+}
+
+function TonMarkLarge() {
+  return (
+    <svg width="44" height="44" viewBox="0 0 28 28" aria-hidden>
+      <rect
+        x="1"
+        y="1"
+        width="26"
+        height="26"
+        rx="7"
+        fill="#0C2A20"
+        stroke="#C29C50"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M8 9.5h12M14 9.5v10"
+        stroke="#F4F8F6"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <rect
+        x="18.2"
+        y="17.2"
+        width="3.6"
+        height="3.6"
+        rx=".6"
+        transform="rotate(45 20 19)"
+        fill="#C29C50"
+      />
+    </svg>
   );
 }
 
@@ -203,14 +262,6 @@ export default function TonChatPage() {
           />
         </SearchFiltersProvider>
       </div>
-      {!hasSession && (
-        <aside
-          aria-label={COPY.home.rail.sources}
-          className="ton-rail hidden xl:block w-[300px] shrink-0 overflow-y-auto p-5"
-        >
-          <HomeRail />
-        </aside>
-      )}
     </div>
   );
 }

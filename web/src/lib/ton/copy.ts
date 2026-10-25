@@ -150,6 +150,10 @@ export function formatShortMonth(period: string): string {
 
 export const COPY = {
   shell: {
+    sections: {
+      finance: "Financeiro",
+      operation: "Operação",
+    },
     tagline: "Inteligência Operacional e Controladoria com IA",
     navigationLabel: "Navegação do TON",
     openMenu: "Abrir menu",
@@ -204,7 +208,8 @@ export const COPY = {
     dreCash: "DRE Caixa",
     dreEconomic: "DRE Econômica",
     pending: "Pendências",
-    occurrences: "Ocorrências",
+    payables: "Contas a pagar",
+    occurrences: "Plano de correção",
     automations: "Automações",
     emailFlows: "Fluxos de e-mail",
     reports: "Relatórios",
@@ -257,6 +262,27 @@ export const COPY = {
     resolve: "Resolver",
   },
   home: {
+    title: "Visão Geral",
+    day: {
+      pending: (count: number) =>
+        `${count === 1 ? "1 pendência" : `${formatNumber(count)} pendências`} antes de publicar`,
+      noPending: "Nenhuma pendência no fechamento",
+      sources: (imported: number, required: number) =>
+        `${imported} de ${required} fontes da DRE em dia`,
+      nextRun: (name: string, when: string) =>
+        `Próxima automação: ${name}, ${when}`,
+      ready: "pronto para publicar",
+      notReady: "com pendências",
+    },
+    askOpener: (count: number) =>
+      count
+        ? `Separei ${count === 1 ? "1 coisa" : `${count} coisas`} para hoje, na ordem em que eu faria. Quer que eu comece pela primeira ou explique alguma?`
+        : "Hoje não há nada esperando por você. Quer que eu revise a DRE do mês ou confira as contas a pagar da semana?",
+    askSuggestions: [
+      "Por onde eu começo hoje?",
+      "O que mudou desde ontem?",
+      "Resume o fechamento em três linhas",
+    ],
     greeting: (name: string) => `Olá, ${name}`,
     greetingFallback: "Olá",
     subtitle: "Aqui está o que precisa da sua atenção hoje.",
@@ -293,6 +319,8 @@ export const COPY = {
       openAll: "Abrir pendências",
     },
     activity: {
+      repeated: (count: number, last: string) =>
+        `${count} vezes · última ${last}`,
       title: "Atividade do TON",
       reportPublished: (report: string) => `${report} publicado`,
       sourceImported: (source: string) => `Importação concluída — ${source}`,
@@ -478,8 +506,16 @@ export const COPY = {
         `Soma ${periods.map((period) => formatShortMonth(period).replace(".", "")).join(", ")}`,
       ytdUntil: (period: string) =>
         `Acumulado até ${formatShortMonth(period).replace(".", "")}`,
-      drillCell: (line: string, month: string) =>
-        `Ver lançamentos de ${line} em ${month}`,
+      drillCell: (line: string, month: string) => `Abrir ${line} em ${month}`,
+      drillTotal: (line: string) => `Abrir ${line} mês a mês`,
+      changeHeader: (last: string, previous: string) =>
+        `${formatShortMonth(last).replace(".", "")} × ${formatShortMonth(previous).replace(".", "")}`,
+      viewsLabel: "Visões da DRE",
+      viewAll: "DRE completa",
+      viewChanged: (percent: number) => `Mudou ${percent}% ou mais`,
+      viewExcluded: "Fora do resultado",
+      search: "Linha, natureza ou código…",
+      noMatch: "Nenhuma linha nesta visão.",
       monthsLabel: "Meses exibidos",
       allMonths: "Mostrar todos",
       notCalculated: "Mês pronto, ainda não calculado: use Calcular DRE do ano",
@@ -492,6 +528,16 @@ export const COPY = {
       loadFailed: "Não foi possível carregar os meses do ano.",
     },
     editStructure: "Editar estrutura",
+    lineDrawer: {
+      ask: "Perguntar ao TON sobre isso",
+      versus: (month: string) => `Contra ${month}`,
+      composition: "Como este valor é formado",
+      sourceHint:
+        "Os lançamentos que formam este número. Troque o mês nas abas ou pergunte ao TON o que explica a variação.",
+      totalHint:
+        "Este total soma outras linhas: clique em uma delas para abrir o que a forma.",
+      evolution: "Mês a mês",
+    },
     units: {
       title: "Escolher unidades",
       consolidated: "Consolidado — todas as unidades",
@@ -822,6 +868,32 @@ export const COPY = {
       Record<string, { title: string; help: string } | undefined> | undefined
     >,
     empty: "Nenhum item nesta categoria.",
+    ruleLabel: "Regra",
+    sortLabel: "Ordenar",
+    sortAmount: "Maior valor",
+    sortOrder: "Ordem do NG",
+    history: "Decisões e mudanças",
+    thisScreen: "Esta tela",
+    readyTag: (period: string) => `${period} pronto para publicar`,
+    notReadyTag: (period: string) => `${period} não pode ser publicado ainda`,
+    askOpener: (period: string, count: number, category: string) =>
+      count
+        ? `${period} ainda tem ${count === 1 ? "1 pendência" : `${formatNumber(count)} pendências`}. ${category ? `Você está em “${category}”. ` : ""}Comece pelo topo da lista: está ordenada pelo valor. Se quiser, explico qualquer caso ou digo o que eu decidiria.`
+        : `${period} não tem pendências: a DRE pode ser publicada.`,
+    askSuggestions: [
+      "Por onde eu começo?",
+      "Quais destas eu posso decidir em lote com segurança?",
+      "O que mais mexe no resultado?",
+    ],
+    askRowOpener: (title: string, suggestion: string | null) =>
+      suggestion
+        ? `Sobre “${title}”: a minha sugestão é ${suggestion}. Quer que eu explique por quê, ou prefere ver a evidência no painel de decisão?`
+        : `Sobre “${title}”: ainda não tenho uma sugestão segura. Posso explicar o que a evidência mostra e o que eu conferiria antes de decidir.`,
+    askRowSuggestions: [
+      "Por que isso virou pendência?",
+      "O que você decidiria e por quê?",
+      "Tem outros casos iguais a este?",
+    ],
     noBase: "Ainda não há base normalizada ou estrutura de DRE para analisar.",
     loadError:
       "Não foi possível carregar as pendências. Tente novamente em instantes.",
@@ -839,9 +911,10 @@ export const COPY = {
     decideSelected: "Decidir selecionados",
     clearSelection: "Limpar seleção",
     columns: {
-      item: "Item",
+      item: "O que aconteceu",
       period: "Mês",
-      amount: "Valor",
+      amount: "Valor em jogo",
+      suggestion: "Sugestão do TON",
     },
     steps: {
       label: "Etapas da decisão",
@@ -1075,6 +1148,7 @@ export const COPY = {
       "Nada aguarda uma pessoa agora. O TON avisa quando algo novo precisar de decisão.",
     impact: {
       blocks: "Bloqueia a DRE",
+      urgent: "Urgente",
       follow: "Acompanhar",
     },
     origins: {
@@ -1082,7 +1156,21 @@ export const COPY = {
       sources: "Fontes",
       reports: "Relatórios",
       actions: "Ações atribuídas",
+      payables: "Contas a pagar",
     },
+    columns: {
+      what: "O que fazer",
+      impact: "Impacto",
+      where: "Onde",
+      when: "Prazo",
+      action: "Ação",
+    },
+    payablesLate: (count: number, total: string) =>
+      `${count === 1 ? "1 título vencido" : `${count} títulos vencidos`} · ${total}`,
+    payablesToday: (count: number, total: string) =>
+      `${count === 1 ? "1 título vence hoje" : `${count} títulos vencem hoje`} · ${total}`,
+    payablesBlocked: (count: number, total: string) =>
+      `${count === 1 ? "1 título travado" : `${count} títulos travados`} pelo que o TON apontou · ${total}`,
     owner: (owner: string) => `Responsável: ${owner}`,
     deadline: (date: string) => `Prazo: ${date}`,
     sourceFailed: (name: string) => `Importação falhou — ${name}`,
@@ -1505,6 +1593,14 @@ export const COPY = {
     never: "Nunca importado",
     update: "Atualizar dados",
     pasteOpen: "Colar planilha",
+    statusMeta: (imported: number, required: number, latest: string) =>
+      `${imported} de ${required} fontes da DRE importadas · última atualização ${latest}`,
+    importDetail: "Importação selecionada",
+    table: {
+      source: "Fonte",
+      status: "Situação",
+      actions: "Ações",
+    },
     paste: {
       title: "Colar planilha",
       description:
@@ -1672,6 +1768,11 @@ export const COPY = {
     lastRun: (date: string) => `Última atuação: ${date}`,
     neverRan: "Ainda não atuou",
     ask: "Conversar",
+    columns: {
+      name: "Especialista",
+      status: "Situação",
+      lastRun: "Última atuação",
+    },
     policy: "Consultar e recomendar. Decisões e aprovações exigem uma pessoa.",
   },
   chatFile: {
@@ -1917,6 +2018,15 @@ export const COPY = {
   },
   assistant: {
     heroTitle: "O que você quer analisar?",
+    greetMorning: "Bom dia",
+    greetAfternoon: "Boa tarde",
+    greetEvening: "Boa noite",
+    greeting: (salutation: string, name: string) =>
+      name ? `${salutation}, ${name}.` : `${salutation}.`,
+    statusPending: (period: string, count: number) =>
+      `${period} ainda tem ${count === 1 ? "1 pendência" : `${formatNumber(count)} pendências`} antes de publicar. Posso começar por elas, explicar um número da DRE ou cuidar das contas a pagar.`,
+    statusReady: (period: string) =>
+      `${period} está pronto para publicar. Quer que eu explique o resultado, compare com o mês anterior ou confira as contas a pagar da semana?`,
     heroPrefix: "Olá, sou o",
     heroName: "TON.",
     heroBody:
@@ -1936,27 +2046,27 @@ export const COPY = {
     suggestions: [
       {
         key: "closing",
-        label: "Analisar fechamento",
+        label: "O que explica o resultado do mês?",
         prompt:
-          "Analise o fechamento financeiro atual e me diga o que precisa da minha atenção.",
+          "Explique o resultado do último mês fechado: o que mais pesou, o que mudou contra o mês anterior e o que merece atenção.",
       },
       {
         key: "pending",
-        label: "Ver pendências da DRE",
+        label: "O que falta para publicar a DRE?",
         prompt:
-          "Quais pendências impedem a publicação da DRE e qual evidência sustenta cada uma?",
+          "O que ainda impede publicar a DRE do mês? Ordene pelo impacto no resultado e diga o que você decidiria em cada caso.",
+      },
+      {
+        key: "payables",
+        label: "O que vence esta semana e o que está travado?",
+        prompt:
+          "Na agenda de contas a pagar, o que vence nos próximos 7 dias, o que já venceu e o que está travado? Diga quem precisa agir.",
       },
       {
         key: "summary",
-        label: "Gerar resumo executivo",
+        label: "Resumo do mês para a diretoria",
         prompt:
-          "Gere um resumo executivo do fechamento atual com achados, pendências e próximos passos.",
-      },
-      {
-        key: "sources",
-        label: "Consultar fontes",
-        prompt:
-          "Quais fontes estão disponíveis, quando foram atualizadas e o que ainda falta integrar?",
+          "Escreva um resumo executivo do mês para a diretoria: resultado, principais variações, riscos e próximos passos, em linguagem simples.",
       },
     ],
   },
@@ -2148,6 +2258,49 @@ export const COPY = {
     forgotPassword: "Esqueceu a senha?",
     forgotPasswordHelp:
       "Fale com o administrador do TON para redefinir o acesso.",
+  },
+  kit: {
+    filters: "Filtros",
+    clearFilters: "Limpar",
+    collapse: "Recolher",
+    removeFilter: (label: string) => `Remover filtro ${label}`,
+    filtersHint: "Os filtros valem para todas as visões.",
+    close: "Fechar",
+    widen: "Alargar painel",
+    narrow: "Estreitar painel",
+    resize: "Arrastar para mudar a largura do painel",
+    theme: "Tema",
+    themeLight: "Tema claro",
+    themeDark: "Tema escuro",
+  },
+  ask: {
+    button: "Perguntar ao TON",
+    rowButton: (item: string) => `Perguntar ao TON sobre ${item}`,
+    eyebrow: "Perguntar ao TON",
+    seeing: "O que o TON está vendo",
+    placeholder: "Pergunte sobre o que está na tela…",
+    send: "Enviar",
+    continueInAssistant: "Continuar no Assistente",
+    newQuestion: "Nova pergunta",
+    thinking: "Pensando",
+    thoughtFor: (seconds: string, steps: number) =>
+      `Pensou e conferiu em ${seconds} · ${steps === 1 ? "1 etapa" : `${steps} etapas`}`,
+    stepReasoning: "Pensando no que fazer",
+    stepAnswer: "Escrevendo a resposta",
+    stepTool: (label: string) => `Consultando ${label}`,
+    stepToolDone: (label: string) => `Consultou ${label}`,
+    failed:
+      "Não consegui responder agora. Tente de novo em instantes ou abra o Assistente.",
+    noPersona:
+      "O assistente do TON ainda não está configurado. Fale com o administrador.",
+    greeting: (screen: string) =>
+      `Estou vendo ${screen}. Pergunte o que quiser sobre o que está na tela, ou me peça para resolver algo. Eu confiro nas fontes antes de responder e só mudo dados com o seu ok.`,
+    promise:
+      "O TON confere nas fontes antes de responder e só altera dados com o seu ok.",
+    contextIntro:
+      "Contexto da tela em que o usuário fez a pergunta no TON (use para entender a que ele se refere; confira os números nas ferramentas antes de afirmar). Pense e responda em português do Brasil, de forma direta, como um controller experiente que dá a sua opinião:",
+    moreReasoning: "ver raciocínio",
+    lessReasoning: "esconder raciocínio",
   },
   notFound: {
     eyebrow: "Página não encontrada",

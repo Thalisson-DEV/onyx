@@ -8,6 +8,7 @@ import {
   SvgChevronRight,
   SvgColumn,
   SvgMenu,
+  SvgSearch,
 } from "@opal/icons";
 import { cn } from "@opal/utils";
 import { COPY, formatAmount, formatMonthName } from "@/lib/ton/copy";
@@ -22,6 +23,7 @@ import type {
   DreWorkspace,
   YearMonthView,
 } from "@/views/ton/DrePage/useDreWorkspace";
+import { ViewTabs } from "@/views/ton/components/kit";
 
 const T = COPY.dre.year;
 
@@ -170,7 +172,7 @@ function LineLabel({
       ) : (
         (accountsToggle ?? <span className="w-5 shrink-0" aria-hidden />)
       )}
-      {onDrill && definition.line_type === "SOURCE_SUM" ? (
+      {onDrill ? (
         <button
           type="button"
           className="ton-focusable ton-statement-drill text-start rounded-04 truncate"
@@ -210,7 +212,7 @@ function DrillCell({
     dre.selectedLine?.code === definition.code &&
     dre.drillRun?.scope.period === period;
   // A set of units has no single result to open: drill needs one unit.
-  if (definition.line_type !== "SOURCE_SUM" || !line || !month.runId) {
+  if (!line || !month.runId) {
     return (
       <td>
         <Amount value={line?.realizado} definition={definition} />
@@ -365,6 +367,20 @@ function AccountCell({
   );
 }
 
+/** A change of 10% or more against the month before deserves a look. */
+const CHANGE_THRESHOLD = 10;
+
+function ChangeCell({ value }: { value: number | null }) {
+  const big = value != null && Math.abs(value) >= CHANGE_THRESHOLD;
+  return (
+    <td className="ton-statement-ytd">
+      <span className={cn("ton-change", big && "ton-change-big")}>
+        {formatChange(value)}
+      </span>
+    </td>
+  );
+}
+
 function sumOf(account: DreLineAccount, periods: string[]): string | null {
   let total = 0;
   let any = false;
@@ -381,8 +397,31 @@ function byCode(month: YearMonthView | undefined) {
   return new Map((month?.lines ?? []).map((line) => [line.code, line]));
 }
 
+/** Change of the last shown month against the one before, in percent. */
+function changeOf(last: string | undefined, previous: string | undefined) {
+  if (last == null || previous == null) return null;
+  const before = Number(previous);
+  if (!before) return null;
+  // By size: a cost that fell reads as a fall, whatever its sign.
+  return ((Math.abs(Number(last)) - Math.abs(before)) / Math.abs(before)) * 100;
+}
+
+function formatChange(value: number | null): string {
+  if (value == null) return "—";
+  const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+  return `${sign}${Math.abs(value).toLocaleString("pt-BR", { maximumFractionDigits: 1, minimumFractionDigits: 1 })}%`;
+}
+
+export type StatementFilter = "all" | "changed" | "excluded";
+
+interface ColumnsViewProps {
+  dre: DreWorkspace;
+  filter: StatementFilter;
+  query: string;
+}
+
 /** Lines from top to bottom, one column per selected month, then the year. */
-function ColumnsView({ dre }: { dre: DreWorkspace }) {
+function ColumnsView({ dre, filter, query }: ColumnsViewProps) {
   const { collapsed, toggle } = useCollapsed();
   const accounts = useOpenAccounts();
   const definitions = dre.definitions;
@@ -403,6 +442,42 @@ function ColumnsView({ dre }: { dre: DreWorkspace }) {
     }
     return any ? total.toFixed(2) : null;
   };
+  const lastLines = monthLines.at(-1);
+  const previousLines = monthLines.at(-2);
+  const showChange = months.length > 1;
+  const needle = query.trim().toLowerCase();
+  const filtering = filter !== "all" || !!needle;
+  const matches = (definition: DreDefinition) => {
+    if (
+      needle &&
+      !`${definition.code} ${getBusinessLabel(definition.label)}`
+        .toLowerCase()
+        .includes(needle)
+    )
+      return false;
+    if (filter === "excluded") return !!definition.excluded;
+    if (filter === "changed") {
+      const change = changeOf(
+        lastLines?.get(definition.code)?.realizado,
+        previousLines?.get(definition.code)?.realizado
+      );
+      return change != null && Math.abs(change) >= CHANGE_THRESHOLD;
+    }
+    return true;
+  };
+  const shown = filtering
+    ? definitions.filter(matches)
+    : definitions.filter(
+        (definition) => !hiddenBy(definition, definitions, collapsed)
+      );
+  if (filtering && shown.length === 0)
+    return (
+      <div className="py-6 text-center">
+        <Text font="secondary-body" color="text-03">
+          {T.noMatch}
+        </Text>
+      </div>
+    );
   return (
     <div className="ton-statement-scroll">
       <table className="ton-statement ton-matrix w-full border-collapse">
@@ -423,11 +498,18 @@ function ColumnsView({ dre }: { dre: DreWorkspace }) {
                   : T.shownTotal(months.map((month) => month.period))}
               </th>
             )}
+            {showChange && (
+              <th scope="col" className="ton-statement-ytd">
+                {T.changeHeader(
+                  months.at(-1)?.period ?? "",
+                  months.at(-2)?.period ?? ""
+                )}
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
-          {definitions.map((definition) => {
-            if (hiddenBy(definition, definitions, collapsed)) return null;
+          {shown.map((definition) => {
             const canOpen =
               !dre.multi &&
               isNatureLine(definition) &&
@@ -467,11 +549,37 @@ function ColumnsView({ dre }: { dre: DreWorkspace }) {
                   ))}
                   {months.length > 1 && (
                     <td className="ton-statement-ytd">
-                      <Amount
-                        value={totalOf(definition.code)}
-                        definition={definition}
-                      />
+                      {latestShown && !dre.multi ? (
+                        <button
+                          type="button"
+                          className="ton-focusable ton-cell-drill"
+                          aria-label={T.drillTotal(
+                            getBusinessLabel(definition.label)
+                          )}
+                          onClick={() =>
+                            dre.select.line(definition.code, latestShown)
+                          }
+                        >
+                          <Amount
+                            value={totalOf(definition.code)}
+                            definition={definition}
+                          />
+                        </button>
+                      ) : (
+                        <Amount
+                          value={totalOf(definition.code)}
+                          definition={definition}
+                        />
+                      )}
                     </td>
+                  )}
+                  {showChange && (
+                    <ChangeCell
+                      value={changeOf(
+                        lastLines?.get(definition.code)?.realizado,
+                        previousLines?.get(definition.code)?.realizado
+                      )}
+                    />
                   )}
                 </tr>
                 {open && (
@@ -481,7 +589,7 @@ function ColumnsView({ dre }: { dre: DreWorkspace }) {
                     runIds={months.flatMap((month) =>
                       month.runId ? [month.runId] : []
                     )}
-                    span={months.length + (months.length > 1 ? 1 : 0)}
+                    span={months.length + (months.length > 1 ? 2 : 0)}
                     cells={(account) => (
                       <>
                         {months.map((month) => (
@@ -500,6 +608,14 @@ function ColumnsView({ dre }: { dre: DreWorkspace }) {
                               definition={definition}
                             />
                           </td>
+                        )}
+                        {showChange && (
+                          <ChangeCell
+                            value={changeOf(
+                              account.months[months.at(-1)?.period ?? ""],
+                              account.months[months.at(-2)?.period ?? ""]
+                            )}
+                          />
                         )}
                       </>
                     )}
@@ -810,12 +926,76 @@ function MonthControls({ dre }: { dre: DreWorkspace }) {
   );
 }
 
+/** How many lines each view would show, for the counts on the tabs. */
+function useFilterCounts(dre: DreWorkspace) {
+  const months = dre.shownMonths;
+  const last = byCode(months.at(-1));
+  const previous = byCode(months.at(-2));
+  let changed = 0;
+  let excluded = 0;
+  for (const definition of dre.definitions) {
+    if (definition.excluded) excluded += 1;
+    const change = changeOf(
+      last.get(definition.code)?.realizado,
+      previous.get(definition.code)?.realizado
+    );
+    if (change != null && Math.abs(change) >= CHANGE_THRESHOLD) changed += 1;
+  }
+  return { all: dre.definitions.length, changed, excluded };
+}
+
 export default function YearStatement({ dre }: { dre: DreWorkspace }) {
+  const [filter, setFilter] = useState<StatementFilter>("all");
+  const [query, setQuery] = useState("");
+  const counts = useFilterCounts(dre);
+  const canCompare = dre.shownMonths.length > 1;
   return (
     <Fragment>
-      <MonthControls dre={dre} />
-      {dre.view === "columns" ? (
-        <ColumnsView dre={dre} />
+      <ViewTabs
+        label={T.viewsLabel}
+        value={filter}
+        onChange={setFilter}
+        views={[
+          { key: "all", label: T.viewAll, count: counts.all },
+          ...(canCompare
+            ? [
+                {
+                  key: "changed" as const,
+                  label: T.viewChanged(CHANGE_THRESHOLD),
+                  count: counts.changed,
+                  tone: "info" as const,
+                },
+              ]
+            : []),
+          ...(counts.excluded
+            ? [
+                {
+                  key: "excluded" as const,
+                  label: T.viewExcluded,
+                  count: counts.excluded,
+                  tone: "neutral" as const,
+                },
+              ]
+            : []),
+        ]}
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="tn-search">
+          <SvgSearch size={14} />
+          <input
+            type="search"
+            aria-label={T.search}
+            placeholder={T.search}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        <div className="flex-1 min-w-0">
+          <MonthControls dre={dre} />
+        </div>
+      </div>
+      {dre.view === "columns" || filter !== "all" || query.trim() ? (
+        <ColumnsView dre={dre} filter={filter} query={query} />
       ) : (
         <StackedView dre={dre} />
       )}

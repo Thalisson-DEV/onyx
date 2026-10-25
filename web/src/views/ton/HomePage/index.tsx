@@ -1,50 +1,43 @@
 "use client";
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import { Button, InputTypeIn, Text } from "@opal/components";
+import { Text } from "@opal/components";
 import {
   SvgAlertTriangle,
-  SvgArrowUp,
-  SvgCalendar,
   SvgCheckCircle,
   SvgChevronRight,
-  SvgClipboard,
   SvgFileText,
-  SvgServer,
   SvgRefreshCw,
   SvgShield,
-  SvgSparkle,
   SvgUploadCloud,
   SvgUsers,
   SvgWorkflow,
 } from "@opal/icons";
 import type { IconFunctionComponent } from "@opal/types";
 import { useUser } from "@/providers/UserProvider";
-import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
+
 import {
   useTonClosing,
   useTonDataSources,
   useTonReportGroups,
   useTonRoutines,
-  useTonSpecialists,
 } from "@/lib/ton/api";
-import { groupBlockers, totalBlockers } from "@/lib/ton/blockers";
+import { totalBlockers } from "@/lib/ton/blockers";
 import {
   COPY,
   formatPeriod,
   formatRelativeDateTime,
   formatShortDateTime,
-  formatNumber,
-  plural,
 } from "@/lib/ton/copy";
 import { getBusinessLabel } from "@/lib/ton/labels";
 import { useTonActivity, type ActivityKind } from "@/lib/ton/activity";
 import type { ClosingOutput } from "@/lib/ton/types";
-import R3Spotlight from "@/views/ton/components/R3Spotlight";
 import WorkQueue from "@/views/ton/components/WorkQueue";
+import { PageFrame, PageHead, Tag } from "@/views/ton/components/kit";
+import { useAskTonPage } from "@/views/ton/ask/AskTon";
 import { useWorkQueue } from "@/lib/ton/workQueue";
 import { summarizeSources } from "@/lib/ton/sources";
 import {
@@ -52,13 +45,8 @@ import {
   ErrorState,
   IconTile,
   LoadingBlock,
-  StatusDot,
   StatusPill,
   TonCard,
-  routineTone,
-  sourceTone,
-  specialistTone,
-  type TonTone,
   runTone,
 } from "@/views/ton/components/ui";
 
@@ -77,195 +65,6 @@ export function pendingHref(output: ClosingOutput, category?: string): Route {
   return `/ton/pendencias?${query.toString()}` as Route;
 }
 
-function AskTon() {
-  const router = useRouter();
-  const [question, setQuestion] = useState("");
-
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    const message = question.trim();
-    if (!message) return;
-    const query = new URLSearchParams({
-      firstMessage: message,
-      [SEARCH_PARAM_NAMES.SUBMIT_ON_LOAD]: "true",
-    });
-    router.push(`/ton/chat?${query.toString()}` as Route);
-  }
-
-  return (
-    <form onSubmit={submit} className="flex flex-col sm:flex-row gap-2 w-full">
-      <div className="w-full sm:flex-1 min-w-0">
-        <InputTypeIn
-          aria-label={COPY.home.ask}
-          placeholder={COPY.home.askPlaceholder}
-          value={question}
-          onChange={(event) => setQuestion(event.target.value)}
-        />
-      </div>
-      <Button type="submit" icon={SvgArrowUp} disabled={!question.trim()}>
-        {COPY.home.ask}
-      </Button>
-    </form>
-  );
-}
-
-function Hero({ closing }: { closing: ClosingOutput | undefined }) {
-  const { user } = useUser();
-  const name = firstName(user?.personalization?.name);
-  return (
-    <TonCard className="flex flex-col gap-5 p-5 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1.5">
-          <h1 className="ton-title">
-            <Text font="heading-h1" color="inherit">
-              {name ? COPY.home.greeting(name) : COPY.home.greetingFallback}
-            </Text>
-          </h1>
-          <Text as="p" font="main-content-body" color="text-03">
-            {COPY.home.subtitle}
-          </Text>
-        </div>
-        {closing && (
-          <span
-            className="ton-pill flex items-center gap-1.5"
-            data-tone="brand"
-          >
-            <SvgCalendar size={12} />
-            {`${formatPeriod(closing.period)} · ${closing.scope}`}
-          </span>
-        )}
-      </div>
-      <AskTon />
-    </TonCard>
-  );
-}
-
-interface StatTileProps {
-  href: Route;
-  icon: IconFunctionComponent;
-  label: string;
-  value: string;
-  detail: string;
-  tone: TonTone;
-}
-
-function StatTile({
-  href,
-  icon: Icon,
-  label,
-  value,
-  detail,
-  tone,
-}: StatTileProps) {
-  return (
-    <Link
-      href={href}
-      className="ton-card ton-card-interactive ton-focusable flex flex-col gap-3 p-4 min-w-0"
-    >
-      <span className="flex items-center gap-1.5 text-text-03">
-        <Icon size={14} />
-        <span className="ton-eyebrow">{label}</span>
-      </span>
-      <div className="flex flex-col gap-1 min-w-0">
-        <span className="ton-metric">
-          <Text font="heading-h2" color="inherit">
-            {value}
-          </Text>
-        </span>
-        <span className="flex items-center gap-1.5 min-w-0">
-          <StatusDot tone={tone} />
-          <Text font="secondary-body" color="text-03" maxLines={2}>
-            {detail}
-          </Text>
-        </span>
-      </div>
-    </Link>
-  );
-}
-
-function ExecutiveStrip({ closing }: { closing: ClosingOutput }) {
-  const sources = useTonDataSources();
-  const routines = useTonRoutines();
-  const total = totalBlockers(closing.blockers);
-  const groups = groupBlockers(closing.blockers);
-  const summary = summarizeSources(sources.data ?? []);
-  const current = summary.imported.length;
-  const configured = summary.required.length;
-  const next = routines.data
-    ?.filter((routine) => routine.next_run)
-    .sort((a, b) => (a.next_run ?? "").localeCompare(b.next_run ?? ""))[0];
-  const dreBlocked = total > 0;
-
-  return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <StatTile
-        href="/ton/fechamento"
-        icon={SvgClipboard}
-        label={COPY.home.strip.dre}
-        value={
-          dreBlocked
-            ? COPY.home.strip.dreBlocked
-            : getBusinessLabel(closing.dre_status)
-        }
-        detail={
-          dreBlocked
-            ? COPY.home.strip.dreDetail(total)
-            : getBusinessLabel(closing.dre_status)
-        }
-        tone={dreBlocked ? "warning" : "success"}
-      />
-      <StatTile
-        href={pendingHref(closing)}
-        icon={SvgShield}
-        label={COPY.home.strip.pending}
-        value={formatNumber(total)}
-        detail={COPY.home.strip.pendingDetail(groups.length)}
-        tone={total > 0 ? "warning" : "success"}
-      />
-      <StatTile
-        href="/ton/fontes"
-        icon={SvgServer}
-        label={COPY.home.strip.sources}
-        value={
-          sources.data
-            ? `${formatNumber(current)}/${formatNumber(configured)}`
-            : "—"
-        }
-        detail={COPY.home.strip.sourcesDetail(current)}
-        tone={current === configured && configured > 0 ? "success" : "warning"}
-      />
-      <StatTile
-        href="/ton/automacoes"
-        icon={SvgCalendar}
-        label={COPY.home.strip.nextAutomation}
-        value={next?.next_run ? formatShortDateTime(next.next_run) : "—"}
-        detail={next ? next.name : COPY.home.strip.nextAutomationNone}
-        tone={next ? "brand" : "neutral"}
-      />
-    </div>
-  );
-}
-
-function TodayQueue({ closing }: { closing: ClosingOutput }) {
-  const queue = useWorkQueue();
-  return (
-    <WorkQueue
-      id="ton-attention"
-      title={COPY.workQueue.title}
-      description={COPY.workQueue.subtitle(
-        formatPeriod(closing.period).toLowerCase()
-      )}
-      items={queue.items}
-      isLoading={queue.isLoading}
-      limit={5}
-      action={{
-        href: pendingHref(closing),
-        label: COPY.home.attention.openAll,
-      }}
-    />
-  );
-}
-
 const ACTIVITY_ICONS: Record<ActivityKind, IconFunctionComponent> = {
   report: SvgFileText,
   import: SvgUploadCloud,
@@ -278,6 +77,13 @@ const ACTIVITY_ICONS: Record<ActivityKind, IconFunctionComponent> = {
 
 function ActivityFeed() {
   const { events, isLoading, error } = useTonActivity();
+  // The same action repeated in a row reads as one line with its count.
+  const grouped: { event: (typeof events)[number]; count: number }[] = [];
+  for (const event of events) {
+    const last = grouped[grouped.length - 1];
+    if (last && last.event.title === event.title) last.count += 1;
+    else grouped.push({ event, count: 1 });
+  }
   return (
     <TonCard className="flex flex-col gap-4 p-5" labelledBy="ton-activity">
       <CardHeader id="ton-activity" title={COPY.home.activity.title} />
@@ -289,7 +95,7 @@ function ActivityFeed() {
         </Text>
       )}
       <ol className="flex flex-col">
-        {events.slice(0, 6).map((event, index, list) => (
+        {grouped.slice(0, 6).map(({ event, count }, index, list) => (
           <li key={event.key} className="flex gap-3">
             <div className="flex flex-col items-center">
               <IconTile
@@ -317,108 +123,17 @@ function ActivityFeed() {
                 </Text>
               )}
               <Text font="secondary-body" color="text-03" maxLines={1}>
-                {`${event.detail} · ${formatRelativeDateTime(event.at)}`}
+                {count > 1
+                  ? COPY.home.activity.repeated(
+                      count,
+                      formatRelativeDateTime(event.at)
+                    )
+                  : `${event.detail} · ${formatRelativeDateTime(event.at)}`}
               </Text>
             </div>
           </li>
         ))}
       </ol>
-    </TonCard>
-  );
-}
-
-function SourceHealth({ closing }: { closing: ClosingOutput | undefined }) {
-  const sources = useTonDataSources();
-  const configured = sources.data?.filter((source) => source.source_id) ?? [];
-  const direct = closing?.sources.find(
-    (source) => source.key === "financial_launches"
-  );
-  return (
-    <TonCard className="flex flex-col gap-3 p-5" labelledBy="ton-source-health">
-      <CardHeader
-        id="ton-source-health"
-        title={COPY.home.sourceHealth.title}
-        action={{ href: "/ton/fontes", label: COPY.home.rail.allSources }}
-      />
-      {sources.isLoading && <LoadingBlock label={COPY.common.loading} />}
-      {sources.error && <ErrorState compact onRetry={() => sources.mutate()} />}
-      <ul className="flex flex-col divide-y divide-border-01">
-        {configured.map((source) => (
-          <li key={source.key} className="flex items-center gap-3 py-2">
-            <StatusDot tone={sourceTone(source.status)} />
-            <span className="flex-1 min-w-0">
-              <Text font="secondary-action" color="text-05" maxLines={1}>
-                {source.name}
-              </Text>
-            </span>
-            <Text font="secondary-body" color="text-03">
-              {source.last_success_at
-                ? formatRelativeDateTime(source.last_success_at)
-                : getBusinessLabel(source.status)}
-            </Text>
-          </li>
-        ))}
-        {direct && (
-          <li className="flex items-center gap-3 py-2">
-            <StatusDot tone="neutral" />
-            <span className="flex-1 min-w-0">
-              <Text font="secondary-action" color="text-05" maxLines={1}>
-                {`${COPY.home.rail.directIntegration} NG/Keevo`}
-              </Text>
-            </span>
-            <Text font="secondary-body" color="text-03">
-              {direct.direct_integration}
-            </Text>
-          </li>
-        )}
-      </ul>
-    </TonCard>
-  );
-}
-
-/** Only the specialists the latest closing analysis actually involved. */
-function InvolvedSpecialists({
-  closing,
-}: {
-  closing: ClosingOutput | undefined;
-}) {
-  const involved = (closing?.specialists ?? []).filter(
-    (item) => specialistTone(item.status) !== "neutral"
-  );
-  const waiting = (closing?.specialists ?? []).length - involved.length;
-  return (
-    <TonCard className="flex flex-col gap-3 p-5" labelledBy="ton-involved">
-      <CardHeader
-        id="ton-involved"
-        title={COPY.home.involved.title}
-        action={{
-          href: "/ton/especialistas",
-          label: COPY.home.rail.allSpecialists,
-        }}
-      />
-      {!closing && <LoadingBlock label={COPY.common.loading} />}
-      <ul className="flex flex-col divide-y divide-border-01">
-        {involved.map((item) => (
-          <li key={item.key} className="flex items-start gap-3 py-2">
-            <span className="flex flex-col min-w-0 flex-1">
-              <Text font="secondary-action" color="text-05">
-                {item.name}
-              </Text>
-              <Text font="secondary-body" color="text-03" maxLines={2}>
-                {item.reason}
-              </Text>
-            </span>
-            <StatusPill tone={specialistTone(item.status)}>
-              {item.status}
-            </StatusPill>
-          </li>
-        ))}
-      </ul>
-      {waiting > 0 && (
-        <Text as="p" font="secondary-body" color="text-03">
-          {COPY.home.involved.waiting(waiting)}
-        </Text>
-      )}
     </TonCard>
   );
 }
@@ -469,198 +184,6 @@ function LatestReports() {
   );
 }
 
-function RailSection({
-  title,
-  action,
-  children,
-}: {
-  title: string;
-  action: { href: Route; label: string };
-  children: ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-2">
-      <span className="ton-eyebrow px-1">{title}</span>
-      <div className="ton-card flex flex-col p-2">
-        {children}
-        <div className="border-t border-01 mt-1 pt-1">
-          <Link
-            href={action.href}
-            className="ton-row-link ton-focusable ton-brand-text flex items-center justify-between px-2 py-2"
-          >
-            <Text font="secondary-action" color="inherit">
-              {action.label}
-            </Text>
-            <SvgChevronRight size={14} />
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function RailRow({
-  icon: Icon,
-  title,
-  detail,
-  status,
-  tone,
-}: {
-  icon: IconFunctionComponent;
-  title: string;
-  detail?: string;
-  status?: string;
-  tone: TonTone;
-}) {
-  return (
-    <div className="flex items-start gap-2.5 px-2 py-2 min-w-0">
-      <span className="shrink-0 pt-0.5 text-text-03">
-        <Icon size={14} />
-      </span>
-      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-        <span className="flex items-start justify-between gap-2">
-          <span className="min-w-0 flex-1">
-            <Text font="secondary-action" color="text-05" maxLines={2}>
-              {title}
-            </Text>
-          </span>
-          {!status && (
-            <span className="shrink-0 pt-1.5">
-              <StatusDot tone={tone} />
-            </span>
-          )}
-        </span>
-        {detail && (
-          <Text font="secondary-body" color="text-03" maxLines={2}>
-            {detail}
-          </Text>
-        )}
-        {status && (
-          <span className="pt-0.5">
-            <StatusPill tone={tone}>{status}</StatusPill>
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export function HomeRail() {
-  const sources = useTonDataSources();
-  const closing = useTonClosing();
-  const routines = useTonRoutines();
-  const specialists = useTonSpecialists();
-  const direct = closing.data?.sources.find(
-    (source) => source.key === "financial_launches"
-  );
-  const routineList = routines.data ?? [];
-  const r3 = routineList.find((routine) => routine.key === "R3");
-  const waiting = routineList.filter((routine) => routine.key !== "R3");
-  const active = (specialists.data ?? []).filter(
-    (item) => specialistTone(item.status) !== "neutral"
-  );
-  const awaiting = (specialists.data ?? []).filter(
-    (item) => specialistTone(item.status) === "neutral"
-  );
-
-  return (
-    <div className="flex flex-col gap-5">
-      <RailSection
-        title={COPY.home.rail.sources}
-        action={{ href: "/ton/fontes", label: COPY.home.rail.allSources }}
-      >
-        {sources.isLoading && <LoadingBlock label={COPY.common.loading} />}
-        {sources.data
-          ?.filter((source) => source.source_id)
-          .map((source) => (
-            <RailRow
-              key={source.key}
-              icon={SvgServer}
-              title={source.name}
-              detail={
-                source.last_success_at
-                  ? `${COPY.home.rail.manualImport} · ${formatRelativeDateTime(source.last_success_at)}`
-                  : getBusinessLabel(source.status)
-              }
-              tone={sourceTone(source.status)}
-            />
-          ))}
-        {direct && (
-          <RailRow
-            icon={SvgShield}
-            title={`${COPY.home.rail.directIntegration} NG/Keevo`}
-            detail={direct.direct_integration}
-            tone="neutral"
-          />
-        )}
-      </RailSection>
-
-      <RailSection
-        title={COPY.home.rail.automations}
-        action={{
-          href: "/ton/automacoes",
-          label: COPY.home.rail.allAutomations,
-        }}
-      >
-        {routines.isLoading && <LoadingBlock label={COPY.common.loading} />}
-        {r3 && (
-          <RailRow
-            icon={SvgCalendar}
-            title={r3.name}
-            detail={
-              r3.next_run
-                ? `${COPY.home.automation.nextRun}: ${formatRelativeDateTime(r3.next_run)}`
-                : r3.schedule
-            }
-            status={r3.status}
-            tone={routineTone(r3.status)}
-          />
-        )}
-        {waiting.slice(0, 2).map((routine) => (
-          <RailRow
-            key={routine.key}
-            icon={SvgCalendar}
-            title={routine.name}
-            detail={routine.reason}
-            status={routine.status}
-            tone={routineTone(routine.status)}
-          />
-        ))}
-      </RailSection>
-
-      <RailSection
-        title={COPY.home.rail.specialists}
-        action={{
-          href: "/ton/especialistas",
-          label: COPY.home.rail.allSpecialists,
-        }}
-      >
-        {specialists.isLoading && <LoadingBlock label={COPY.common.loading} />}
-        {active.map((item) => (
-          <RailRow
-            key={item.key}
-            icon={SvgSparkle}
-            title={item.name}
-            detail={item.reason}
-            status={item.status}
-            tone={specialistTone(item.status)}
-          />
-        ))}
-        {awaiting.length > 0 && (
-          <RailRow
-            icon={SvgUsers}
-            title={`${plural(awaiting.length, "especialista", "especialistas")} · ${awaiting[0]?.status ?? ""}`}
-            detail={awaiting
-              .map((item) => item.name.replace(/^TON /, ""))
-              .join(", ")}
-            tone="neutral"
-          />
-        )}
-      </RailSection>
-    </div>
-  );
-}
-
 /** A unit manager has only the DRE of their units: home is that DRE. */
 function ManagerRedirect() {
   const router = useRouter();
@@ -675,39 +198,121 @@ export default function HomePage() {
   return isAdmin ? <AdminHome /> : <ManagerRedirect />;
 }
 
+function greetingWord(hour: number): string {
+  if (hour < 12) return COPY.assistant.greetMorning;
+  if (hour < 18) return COPY.assistant.greetAfternoon;
+  return COPY.assistant.greetEvening;
+}
+
+/** The state of the closing, the sources and the next run in one line. */
+function DayStatus({ closing }: { closing: ClosingOutput }) {
+  const sources = useTonDataSources();
+  const routines = useTonRoutines();
+  const total = totalBlockers(closing.blockers);
+  const summary = summarizeSources(sources.data ?? []);
+  const next = routines.data
+    ?.filter((routine) => routine.next_run)
+    .sort((a, b) => (a.next_run ?? "").localeCompare(b.next_run ?? ""))[0];
+  return (
+    <div className="tn-statusline" data-tone={total > 0 ? "warn" : "ok"}>
+      {total > 0 ? (
+        <SvgAlertTriangle size={16} />
+      ) : (
+        <SvgCheckCircle size={16} />
+      )}
+      <Link href={pendingHref(closing)} className="tn-link ton-focusable">
+        {total > 0 ? COPY.home.day.pending(total) : COPY.home.day.noPending}
+      </Link>
+      <span className="tn-statusline-meta">·</span>
+      <Link href="/ton/fontes" className="tn-link ton-focusable">
+        {COPY.home.day.sources(
+          summary.imported.length,
+          summary.required.length
+        )}
+      </Link>
+      {next?.next_run && (
+        <>
+          <span className="tn-statusline-meta">·</span>
+          <Link href="/ton/automacoes" className="tn-link ton-focusable">
+            {COPY.home.day.nextRun(
+              next.name,
+              formatShortDateTime(next.next_run)
+            )}
+          </Link>
+        </>
+      )}
+    </div>
+  );
+}
+
 function AdminHome() {
   const closing = useTonClosing();
+  const queue = useWorkQueue();
+  const { user } = useUser();
+  const [hour, setHour] = useState<number | null>(null);
+  useEffect(() => setHour(new Date().getHours()), []);
+  const name = firstName(user?.personalization?.name);
+  const data = closing.data;
+  const total = data ? totalBlockers(data.blockers) : 0;
+
+  useAskTonPage(
+    data
+      ? {
+          screen: COPY.home.title,
+          chips: [COPY.nav.overview, formatPeriod(data.period), data.scope],
+          details: [
+            `Fechamento ${data.period} · ${data.scope} · DRE ${data.dre_status} · ${total} pendências`,
+            ...queue.items.map(
+              (item) =>
+                `A fazer: ${item.title}${item.detail ? ` (${item.detail})` : ""}`
+            ),
+          ],
+          opener: COPY.home.askOpener(queue.items.length),
+          suggestions: COPY.home.askSuggestions,
+        }
+      : null
+  );
 
   return (
-    <div className="flex flex-1 min-w-0">
-      <div className="flex-1 min-w-0">
-        <div className="w-full max-w-[1120px] mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 flex flex-col gap-5">
-          <Hero closing={closing.data} />
-          {closing.isLoading && (
-            <TonCard className="p-5">
-              <LoadingBlock label={COPY.common.loading} />
-            </TonCard>
+    <PageFrame>
+      <PageHead
+        title={
+          hour === null
+            ? COPY.home.title
+            : COPY.assistant.greeting(greetingWord(hour), name ?? "")
+        }
+        description={COPY.home.subtitle}
+        status={
+          data ? (
+            <Tag tone={total > 0 ? "warn" : "ok"}>
+              {`${formatPeriod(data.period)} · ${total > 0 ? COPY.home.day.notReady : COPY.home.day.ready}`}
+            </Tag>
+          ) : undefined
+        }
+      />
+      {closing.isLoading && <LoadingBlock label={COPY.common.loading} />}
+      {closing.error && <ErrorState onRetry={() => closing.mutate()} />}
+      {data && <DayStatus closing={data} />}
+      {data && (
+        <WorkQueue
+          id="ton-today"
+          title={COPY.workQueue.title}
+          description={COPY.workQueue.subtitle(
+            formatPeriod(data.period).toLowerCase()
           )}
-          {closing.error && <ErrorState onRetry={() => closing.mutate()} />}
-          {closing.data && (
-            <>
-              <ExecutiveStrip closing={closing.data} />
-              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-5 items-start">
-                <TodayQueue closing={closing.data} />
-                <R3Spotlight />
-              </div>
-            </>
-          )}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-            <ActivityFeed />
-            <LatestReports />
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-            <SourceHealth closing={closing.data} />
-            <InvolvedSpecialists closing={closing.data} />
-          </div>
-        </div>
+          items={queue.items}
+          isLoading={queue.isLoading}
+          limit={8}
+          action={{
+            href: pendingHref(data),
+            label: COPY.home.attention.openAll,
+          }}
+        />
+      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <ActivityFeed />
+        <LatestReports />
       </div>
-    </div>
+    </PageFrame>
   );
 }

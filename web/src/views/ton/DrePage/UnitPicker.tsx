@@ -65,7 +65,7 @@ export default function UnitPicker({ dre }: { dre: DreWorkspace }) {
 
   return (
     <div className="relative flex flex-col gap-1 min-w-56" ref={panel}>
-      <span className="ton-eyebrow">{COPY.dre.scope}</span>
+      <span className="tn-field-label">{COPY.dre.scope}</span>
       <span className="flex items-center gap-1">
         <button
           type="button"
@@ -113,7 +113,7 @@ export default function UnitPicker({ dre }: { dre: DreWorkspace }) {
             </button>
           )}
           <div className="flex items-center justify-between gap-2 px-2 pt-2">
-            <span className="ton-eyebrow">{T.pick}</span>
+            <span className="tn-field-label">{T.pick}</span>
             <span className="flex gap-1">
               {operational.length > 1 && (
                 <button

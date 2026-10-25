@@ -1,12 +1,19 @@
 "use client";
 
+import { SideModal } from "@/views/ton/components/kit";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { EditorContent, Node, mergeAttributes, useEditor, type Editor } from "@tiptap/react";
+import {
+  EditorContent,
+  Node,
+  mergeAttributes,
+  useEditor,
+  type Editor,
+} from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Color, TextStyle } from "@tiptap/extension-text-style";
 import TextAlign from "@tiptap/extension-text-align";
 import Image from "@tiptap/extension-image";
-import { Button, InputSingleSelect, Modal, Popover, Text } from "@opal/components";
+import { Button, InputSingleSelect, Popover, Text } from "@opal/components";
 import { SvgBlocks, SvgLink, SvgMail, SvgRefreshCw, SvgZap } from "@opal/icons";
 import {
   AUTOMATIONS_API,
@@ -19,10 +26,24 @@ import {
 } from "@/lib/ton/automations";
 import { assetUrl, uploadAsset } from "@/lib/ton/emailFlows";
 import { asText } from "@/lib/ton/automationTree";
-import { describeExpression, dynamicGroups } from "@/views/ton/AutomationsPage/designer/dynamic";
-import { DynamicPicker, ExpressionInput, type DynamicContext } from "@/views/ton/AutomationsPage/designer/fields";
+import {
+  describeExpression,
+  dynamicGroups,
+} from "@/views/ton/AutomationsPage/designer/dynamic";
+import {
+  DynamicPicker,
+  ExpressionInput,
+  type DynamicContext,
+} from "@/views/ton/AutomationsPage/designer/fields";
 
-const COLORS = ["#1f2937", "#1f6f43", "#b45309", "#b91c1c", "#1d4ed8", "#6b7280"];
+const COLORS = [
+  "#1f2937",
+  "#1f6f43",
+  "#b45309",
+  "#b91c1c",
+  "#1d4ed8",
+  "#6b7280",
+];
 const C = {
   bold: "Negrito",
   italic: "Itálico",
@@ -60,8 +81,11 @@ function chipExtension(context: DynamicContext) {
       return {
         expr: {
           default: "",
-          parseHTML: (element: HTMLElement) => element.getAttribute("data-expr") ?? "",
-          renderHTML: (attributes: { expr: string }) => ({ "data-expr": attributes.expr }),
+          parseHTML: (element: HTMLElement) =>
+            element.getAttribute("data-expr") ?? "",
+          renderHTML: (attributes: { expr: string }) => ({
+            "data-expr": attributes.expr,
+          }),
         },
       };
     },
@@ -69,7 +93,11 @@ function chipExtension(context: DynamicContext) {
       return [{ tag: "span[data-expr]" }];
     },
     renderHTML({ node, HTMLAttributes }) {
-      return ["span", mergeAttributes(HTMLAttributes, { class: "ton-var-chip" }), `⚡ ${describeExpression(String(node.attrs.expr), context.definition, context.catalog)}`];
+      return [
+        "span",
+        mergeAttributes(HTMLAttributes, { class: "ton-var-chip" }),
+        `⚡ ${describeExpression(String(node.attrs.expr), context.definition, context.catalog)}`,
+      ];
     },
   });
 }
@@ -85,8 +113,11 @@ const LegacyVariable = Node.create({
     return {
       name: {
         default: "",
-        parseHTML: (element: HTMLElement) => element.getAttribute("data-variable") ?? "",
-        renderHTML: (attributes: { name: string }) => ({ "data-variable": attributes.name }),
+        parseHTML: (element: HTMLElement) =>
+          element.getAttribute("data-variable") ?? "",
+        renderHTML: (attributes: { name: string }) => ({
+          "data-variable": attributes.name,
+        }),
       },
     };
   },
@@ -94,11 +125,18 @@ const LegacyVariable = Node.create({
     return [{ tag: "span[data-variable]" }];
   },
   renderHTML({ node, HTMLAttributes }) {
-    return ["span", mergeAttributes(HTMLAttributes, { class: "ton-var-chip" }), `{${node.attrs.name}}`];
+    return [
+      "span",
+      mergeAttributes(HTMLAttributes, { class: "ton-var-chip" }),
+      `{${node.attrs.name}}`,
+    ];
   },
 });
 
-function blockExtension(labels: Record<string, string>, context: DynamicContext) {
+function blockExtension(
+  labels: Record<string, string>,
+  context: DynamicContext
+) {
   return Node.create({
     name: "dataBlock",
     group: "block",
@@ -109,13 +147,18 @@ function blockExtension(labels: Record<string, string>, context: DynamicContext)
       return {
         block: {
           default: "summary",
-          parseHTML: (element: HTMLElement) => element.getAttribute("data-block") ?? "summary",
-          renderHTML: (attributes: { block: string }) => ({ "data-block": attributes.block }),
+          parseHTML: (element: HTMLElement) =>
+            element.getAttribute("data-block") ?? "summary",
+          renderHTML: (attributes: { block: string }) => ({
+            "data-block": attributes.block,
+          }),
         },
         source: {
           default: null,
-          parseHTML: (element: HTMLElement) => element.getAttribute("data-source"),
-          renderHTML: (attributes: { source: string | null }) => (attributes.source ? { "data-source": attributes.source } : {}),
+          parseHTML: (element: HTMLElement) =>
+            element.getAttribute("data-source"),
+          renderHTML: (attributes: { source: string | null }) =>
+            attributes.source ? { "data-source": attributes.source } : {},
         },
       };
     },
@@ -123,9 +166,16 @@ function blockExtension(labels: Record<string, string>, context: DynamicContext)
       return [{ tag: "div[data-block]" }];
     },
     renderHTML({ node, HTMLAttributes }) {
-      const label = labels[String(node.attrs.block)] ?? String(node.attrs.block);
-      const source = node.attrs.source ? ` · ${describeExpression(String(node.attrs.source), context.definition, context.catalog)}` : "";
-      return ["div", mergeAttributes(HTMLAttributes, { class: "ton-block-chip" }), C.blockOf(`${label}${source}`)];
+      const label =
+        labels[String(node.attrs.block)] ?? String(node.attrs.block);
+      const source = node.attrs.source
+        ? ` · ${describeExpression(String(node.attrs.source), context.definition, context.catalog)}`
+        : "";
+      return [
+        "div",
+        mergeAttributes(HTMLAttributes, { class: "ton-block-chip" }),
+        C.blockOf(`${label}${source}`),
+      ];
     },
   });
 }
@@ -136,8 +186,10 @@ const AssetImage = Image.extend({
       ...this.parent?.(),
       assetId: {
         default: null,
-        parseHTML: (element: HTMLElement) => element.getAttribute("data-asset-id"),
-        renderHTML: (attributes: { assetId: string | null }) => (attributes.assetId ? { "data-asset-id": attributes.assetId } : {}),
+        parseHTML: (element: HTMLElement) =>
+          element.getAttribute("data-asset-id"),
+        renderHTML: (attributes: { assetId: string | null }) =>
+          attributes.assetId ? { "data-asset-id": attributes.assetId } : {},
       },
       src: {
         default: null,
@@ -149,21 +201,46 @@ const AssetImage = Image.extend({
       width: {
         default: null,
         parseHTML: (element: HTMLElement) => element.getAttribute("width"),
-        renderHTML: (attributes: { width: string | null }) => (attributes.width ? { width: attributes.width } : {}),
+        renderHTML: (attributes: { width: string | null }) =>
+          attributes.width ? { width: attributes.width } : {},
       },
     };
   },
 });
 
-function Tool({ label, glyph, active, onClick }: { label: string; glyph: string; active?: boolean; onClick: () => void }) {
+function Tool({
+  label,
+  glyph,
+  active,
+  onClick,
+}: {
+  label: string;
+  glyph: string;
+  active?: boolean;
+  onClick: () => void;
+}) {
   return (
-    <Button size="sm" prominence={active ? "secondary" : "tertiary"} aria-label={label} tooltip={label} onClick={onClick}>
+    <Button
+      size="sm"
+      prominence={active ? "secondary" : "tertiary"}
+      aria-label={label}
+      tooltip={label}
+      onClick={onClick}
+    >
       {glyph}
     </Button>
   );
 }
 
-function Toolbar({ editor, catalog, context }: { editor: Editor; catalog: CatalogView; context: DynamicContext }) {
+function Toolbar({
+  editor,
+  catalog,
+  context,
+}: {
+  editor: Editor;
+  catalog: CatalogView;
+  context: DynamicContext;
+}) {
   const [dynamicOpen, setDynamicOpen] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockSource, setBlockSource] = useState("");
@@ -172,29 +249,96 @@ function Toolbar({ editor, catalog, context }: { editor: Editor; catalog: Catalo
   const chain = () => editor.chain().focus();
   const lists = useMemo(
     () =>
-      dynamicGroups(context.definition, context.nodeId, context.catalog)
-        .flatMap((group) => group.items.filter((item) => item.type === "array").map((item): [string, string] => [item.expression, `${group.title} › ${item.label}`])),
+      dynamicGroups(
+        context.definition,
+        context.nodeId,
+        context.catalog
+      ).flatMap((group) =>
+        group.items
+          .filter((item) => item.type === "array")
+          .map((item): [string, string] => [
+            item.expression,
+            `${group.title} › ${item.label}`,
+          ])
+      ),
     [context]
   );
 
   return (
     <div className="ton-email-composer-toolbar">
-      <Tool label={C.bold} glyph="B" active={editor.isActive("bold")} onClick={() => chain().toggleBold().run()} />
-      <Tool label={C.italic} glyph="I" active={editor.isActive("italic")} onClick={() => chain().toggleItalic().run()} />
-      <Tool label={C.underline} glyph="U" active={editor.isActive("underline")} onClick={() => chain().toggleUnderline().run()} />
+      <Tool
+        label={C.bold}
+        glyph="B"
+        active={editor.isActive("bold")}
+        onClick={() => chain().toggleBold().run()}
+      />
+      <Tool
+        label={C.italic}
+        glyph="I"
+        active={editor.isActive("italic")}
+        onClick={() => chain().toggleItalic().run()}
+      />
+      <Tool
+        label={C.underline}
+        glyph="U"
+        active={editor.isActive("underline")}
+        onClick={() => chain().toggleUnderline().run()}
+      />
       <span className="ton-email-composer-sep" />
-      <Tool label={C.h2} glyph="T1" active={editor.isActive("heading", { level: 2 })} onClick={() => chain().toggleHeading({ level: 2 }).run()} />
-      <Tool label={C.h3} glyph="T2" active={editor.isActive("heading", { level: 3 })} onClick={() => chain().toggleHeading({ level: 3 }).run()} />
-      <Tool label={C.bullet} glyph="•" active={editor.isActive("bulletList")} onClick={() => chain().toggleBulletList().run()} />
-      <Tool label={C.ordered} glyph="1." active={editor.isActive("orderedList")} onClick={() => chain().toggleOrderedList().run()} />
+      <Tool
+        label={C.h2}
+        glyph="T1"
+        active={editor.isActive("heading", { level: 2 })}
+        onClick={() => chain().toggleHeading({ level: 2 }).run()}
+      />
+      <Tool
+        label={C.h3}
+        glyph="T2"
+        active={editor.isActive("heading", { level: 3 })}
+        onClick={() => chain().toggleHeading({ level: 3 }).run()}
+      />
+      <Tool
+        label={C.bullet}
+        glyph="•"
+        active={editor.isActive("bulletList")}
+        onClick={() => chain().toggleBulletList().run()}
+      />
+      <Tool
+        label={C.ordered}
+        glyph="1."
+        active={editor.isActive("orderedList")}
+        onClick={() => chain().toggleOrderedList().run()}
+      />
       <span className="ton-email-composer-sep" />
-      <Tool label={C.left} glyph="⇤" active={editor.isActive({ textAlign: "left" })} onClick={() => chain().setTextAlign("left").run()} />
-      <Tool label={C.center} glyph="↔" active={editor.isActive({ textAlign: "center" })} onClick={() => chain().setTextAlign("center").run()} />
-      <Tool label={C.right} glyph="⇥" active={editor.isActive({ textAlign: "right" })} onClick={() => chain().setTextAlign("right").run()} />
+      <Tool
+        label={C.left}
+        glyph="⇤"
+        active={editor.isActive({ textAlign: "left" })}
+        onClick={() => chain().setTextAlign("left").run()}
+      />
+      <Tool
+        label={C.center}
+        glyph="↔"
+        active={editor.isActive({ textAlign: "center" })}
+        onClick={() => chain().setTextAlign("center").run()}
+      />
+      <Tool
+        label={C.right}
+        glyph="⇥"
+        active={editor.isActive({ textAlign: "right" })}
+        onClick={() => chain().setTextAlign("right").run()}
+      />
       <span className="ton-email-composer-sep" />
       <span className="ton-email-composer-colors" aria-label={C.color}>
         {COLORS.map((color) => (
-          <button key={color} type="button" className="ton-email-composer-swatch ton-focusable" style={{ background: color }} aria-label={`${C.color} ${color}`} onClick={() => chain().setColor(color).run()} />
+          <button
+            key={color}
+            type="button"
+            className="ton-email-composer-swatch ton-focusable"
+            style={{ background: color }}
+            aria-label={`${C.color} ${color}`}
+            onClick={() => chain().setColor(color).run()}
+          />
         ))}
       </span>
       <Button
@@ -204,7 +348,10 @@ function Toolbar({ editor, catalog, context }: { editor: Editor; catalog: Catalo
         aria-label={C.link}
         tooltip={C.link}
         onClick={() => {
-          const href = window.prompt(C.linkPrompt, editor.getAttributes("link").href ?? "https://");
+          const href = window.prompt(
+            C.linkPrompt,
+            editor.getAttributes("link").href ?? "https://"
+          );
           if (href === null) return;
           if (href === "") chain().unsetLink().run();
           else chain().setLink({ href }).run();
@@ -221,7 +368,13 @@ function Toolbar({ editor, catalog, context }: { editor: Editor; catalog: Catalo
           <DynamicPicker
             context={context}
             onPick={(expression) => {
-              chain().insertContent({ type: "dynamicChip", attrs: { expr: expression } }).insertContent(" ").run();
+              chain()
+                .insertContent({
+                  type: "dynamicChip",
+                  attrs: { expr: expression },
+                })
+                .insertContent(" ")
+                .run();
               setDynamicOpen(false);
             }}
           />
@@ -238,10 +391,17 @@ function Toolbar({ editor, catalog, context }: { editor: Editor; catalog: Catalo
             <Text font="secondary-action" color="text-04">
               {C.blockSource}
             </Text>
-            <InputSingleSelect value={blockSource || "__default"} onValueChange={(value) => setBlockSource(value === "__default" ? "" : value)}>
+            <InputSingleSelect
+              value={blockSource || "__default"}
+              onValueChange={(value) =>
+                setBlockSource(value === "__default" ? "" : value)
+              }
+            >
               <InputSingleSelect.Trigger aria-label={C.blockSource} />
               <InputSingleSelect.Content>
-                <InputSingleSelect.Item value="__default">{C.defaultSource}</InputSingleSelect.Item>
+                <InputSingleSelect.Item value="__default">
+                  {C.defaultSource}
+                </InputSingleSelect.Item>
                 {lists.map(([expression, label]) => (
                   <InputSingleSelect.Item key={expression} value={expression}>
                     {label}
@@ -256,7 +416,12 @@ function Toolbar({ editor, catalog, context }: { editor: Editor; catalog: Catalo
                   type="button"
                   className="ton-auto-dyn-item ton-focusable"
                   onClick={() => {
-                    chain().insertContent({ type: "dataBlock", attrs: { block, source: blockSource || null } }).run();
+                    chain()
+                      .insertContent({
+                        type: "dataBlock",
+                        attrs: { block, source: blockSource || null },
+                      })
+                      .run();
                     setBlockOpen(false);
                   }}
                 >
@@ -276,17 +441,28 @@ function Toolbar({ editor, catalog, context }: { editor: Editor; catalog: Catalo
               return;
             }
             const asset = assets.find((item) => item.id === value);
-            if (asset) chain().insertContent({ type: "image", attrs: { src: assetUrl(asset.id), assetId: asset.id } }).run();
+            if (asset)
+              chain()
+                .insertContent({
+                  type: "image",
+                  attrs: { src: assetUrl(asset.id), assetId: asset.id },
+                })
+                .run();
           }}
         >
-          <InputSingleSelect.Trigger aria-label={C.image} placeholder={C.image} />
+          <InputSingleSelect.Trigger
+            aria-label={C.image}
+            placeholder={C.image}
+          />
           <InputSingleSelect.Content>
             {assets.map((asset) => (
               <InputSingleSelect.Item key={asset.id} value={asset.id}>
                 {asset.name}
               </InputSingleSelect.Item>
             ))}
-            <InputSingleSelect.Item value="__upload">{C.upload}</InputSingleSelect.Item>
+            <InputSingleSelect.Item value="__upload">
+              {C.upload}
+            </InputSingleSelect.Item>
           </InputSingleSelect.Content>
         </InputSingleSelect>
       </div>
@@ -300,8 +476,16 @@ function Toolbar({ editor, catalog, context }: { editor: Editor; catalog: Catalo
           event.target.value = "";
           if (!file) return;
           const asset = await uploadAsset(file);
-          setAssets((current) => [...current, { id: asset.id, name: asset.name }]);
-          chain().insertContent({ type: "image", attrs: { src: assetUrl(asset.id), assetId: asset.id } }).run();
+          setAssets((current) => [
+            ...current,
+            { id: asset.id, name: asset.name },
+          ]);
+          chain()
+            .insertContent({
+              type: "image",
+              attrs: { src: assetUrl(asset.id), assetId: asset.id },
+            })
+            .run();
         }}
       />
     </div>
@@ -319,10 +503,22 @@ interface EmailBodyEditorProps {
   onClose: () => void;
 }
 
-export default function EmailBodyEditor({ open, node, definition, catalog, automationId, automationName, onChange, onClose }: EmailBodyEditorProps) {
+export default function EmailBodyEditor({
+  open,
+  node,
+  definition,
+  catalog,
+  automationId,
+  automationName,
+  onChange,
+  onClose,
+}: EmailBodyEditorProps) {
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const context: DynamicContext = useMemo(() => ({ definition, catalog, nodeId: node.id }), [definition, catalog, node.id]);
+  const context: DynamicContext = useMemo(
+    () => ({ definition, catalog, nodeId: node.id }),
+    [definition, catalog, node.id]
+  );
   const contextRef = useRef(context);
   const onChangeRef = useRef(onChange);
   useEffect(() => {
@@ -345,7 +541,8 @@ export default function EmailBodyEditor({ open, node, definition, catalog, autom
       ],
       content: asText(node.params.body),
       editorProps: { attributes: { class: "ton-email-composer-content" } },
-      onUpdate: ({ editor: current }) => onChangeRef.current({ body: current.getHTML() }),
+      onUpdate: ({ editor: current }) =>
+        onChangeRef.current({ body: current.getHTML() }),
     },
     [node.id, open]
   );
@@ -361,7 +558,11 @@ export default function EmailBodyEditor({ open, node, definition, catalog, autom
       });
       setPreview(result);
     } catch (failure) {
-      setPreview({ subject: null, html: null, reason: failure instanceof Error ? failure.message : String(failure) });
+      setPreview({
+        subject: null,
+        html: null,
+        reason: failure instanceof Error ? failure.message : String(failure),
+      });
     } finally {
       setLoading(false);
     }
@@ -372,10 +573,15 @@ export default function EmailBodyEditor({ open, node, definition, catalog, autom
   }, [open, node.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <Modal open={open} onOpenChange={(value) => !value && onClose()}>
-      <Modal.Content width="full" height="full">
-        <Modal.Header icon={SvgMail} title={C.title} description={asText(node.params.subject) || undefined} onClose={onClose} />
-        <Modal.Body twoTone={false}>
+    <SideModal open={open} onOpenChange={(value) => !value && onClose()}>
+      <SideModal.Content width="full" height="full">
+        <SideModal.Header
+          icon={SvgMail}
+          title={C.title}
+          description={asText(node.params.subject) || undefined}
+          onClose={onClose}
+        />
+        <SideModal.Body twoTone={false}>
           <div className="w-full ton-email-composer">
             <div className="ton-email-composer-main">
               <ExpressionInput
@@ -385,7 +591,9 @@ export default function EmailBodyEditor({ open, node, definition, catalog, autom
                 label={C.subject}
                 placeholder={C.subject}
               />
-              {editor && <Toolbar editor={editor} catalog={catalog} context={context} />}
+              {editor && (
+                <Toolbar editor={editor} catalog={catalog} context={context} />
+              )}
               <div className="ton-email-composer-editor">
                 <EditorContent editor={editor} />
               </div>
@@ -395,7 +603,13 @@ export default function EmailBodyEditor({ open, node, definition, catalog, autom
                 <Text font="secondary-body" color="text-03">
                   {preview?.reason ?? ""}
                 </Text>
-                <Button size="sm" prominence="tertiary" icon={SvgRefreshCw} disabled={loading} onClick={refresh}>
+                <Button
+                  size="sm"
+                  prominence="tertiary"
+                  icon={SvgRefreshCw}
+                  disabled={loading}
+                  onClick={refresh}
+                >
                   {C.refresh}
                 </Button>
               </div>
@@ -404,14 +618,21 @@ export default function EmailBodyEditor({ open, node, definition, catalog, autom
                   {preview.subject}
                 </Text>
               )}
-              {preview?.html && <iframe title={D.previewTitle} srcDoc={preview.html} sandbox="allow-same-origin" className="ton-email-composer-frame" />}
+              {preview?.html && (
+                <iframe
+                  title={D.previewTitle}
+                  srcDoc={preview.html}
+                  sandbox="allow-same-origin"
+                  className="ton-email-composer-frame"
+                />
+              )}
             </div>
           </div>
-        </Modal.Body>
-        <Modal.Footer>
+        </SideModal.Body>
+        <SideModal.Footer>
           <Button onClick={onClose}>{C.done}</Button>
-        </Modal.Footer>
-      </Modal.Content>
-    </Modal>
+        </SideModal.Footer>
+      </SideModal.Content>
+    </SideModal>
   );
 }

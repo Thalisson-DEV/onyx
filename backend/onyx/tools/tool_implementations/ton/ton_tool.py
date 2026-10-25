@@ -50,6 +50,7 @@ TON_TOOL_DISPLAY_NAMES = {
     "ton_list_sources": "Fontes financeiras",
     "ton_get_source_status": "Estado da fonte",
     "ton_list_findings": "Pendências financeiras",
+    "ton_list_payables": "Agenda de pagamentos",
     "ton_get_finding": "Evidência da pendência",
     "ton_get_financial_review_summary": "Resumo da revisão financeira",
     "ton_get_dre_readiness": "Prontidão da DRE",
@@ -1181,6 +1182,100 @@ class TonListAutomationsTool(TonFunctionTool):
         table = automation_service.table(session, user)
         return {"kind": "automations", **table.model_dump(mode="json")}
 
+
+_OPEN_TITLE_STATUSES = {
+    "WAITING_ATTACHMENT",
+    "WAITING_SUPPLIER",
+    "RECEIVED",
+    "RETURNED",
+    "CONFERRED",
+    "RELEASED",
+}
+_TITLE_VIEWS = ("abertos", "vencidos", "vencem_7_dias", "impedimento", "prontos", "todos")
+
+
+class TonPayablesTool(TonFunctionTool):
+    NAME = "ton_list_payables"
+    DESCRIPTION = (
+        "Agenda de contas a pagar das unidades: títulos com fornecedor, unidade, natureza, valor, vencimento, "
+        "situação e o que o TON apontou (impedimentos). Use para 'o que vence esta semana', 'o que dá para pagar "
+        "hoje', 'o que está travado', 'títulos do fornecedor X'. Com title_number devolve o detalhe de um título "
+        "(CP-000004 ou 4), incluindo as conferências."
+    )
+    PARAMETERS = {
+        "view": {
+            "type": "string",
+            "enum": list(_TITLE_VIEWS),
+            "description": "abertos (padrão), vencidos, vencem_7_dias, impedimento, prontos (liberados) ou todos.",
+        },
+        "supplier": {"type": "string", "description": "Nome, CNPJ ou parte do nome do fornecedor."},
+        "unit": UNIT,
+        "title_number": {"type": "string", "description": "Número do título (CP-000004 ou 4) para o detalhe."},
+    }
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        from onyx.db.ton import payables as payables_service
+
+        today = datetime.date.today()
+        rows = payables_service.list_titles(
+            session, user, None, None, kwargs.get("supplier") or None, None, None, 2000
+        )
+        number = str(kwargs.get("title_number") or "").upper().replace("CP-", "").strip()
+        if number:
+            match = next((row for row in rows if str(row.number) == number.lstrip("0")), None)
+            if match is None:
+                raise ValueError(f"Título {kwargs.get('title_number')} não encontrado")
+            detail = payables_service.get_title(session, user, match.id)
+            return {"kind": "payable_title", "today": today.isoformat(), "titulo": detail.model_dump(mode="json")}
+        unit = str(kwargs.get("unit") or "").strip().lower()
+        if unit:
+            rows = [row for row in rows if unit in row.unit_name.lower()]
+        open_rows = [row for row in rows if row.kind == "REAL" and row.status in _OPEN_TITLE_STATUSES]
+        views = {
+            "abertos": [row for row in rows if row.status in _OPEN_TITLE_STATUSES or row.status == "ESTIMATE_OPEN"],
+            "vencidos": [row for row in open_rows if row.due_date < today],
+            "vencem_7_dias": [row for row in open_rows if 0 <= (row.due_date - today).days <= 7],
+            "impedimento": [row for row in open_rows if row.blocking > 0],
+            "prontos": [row for row in rows if row.status == "RELEASED"],
+            "todos": rows,
+        }
+        view = kwargs.get("view") or "abertos"
+        if view not in views:
+            raise ValueError("Visão desconhecida")
+        chosen = sorted(views[view], key=lambda row: (row.due_date, row.number))
+
+        def total(items: list[Any]) -> str:
+            return str(sum((row.amount for row in items), Decimal("0")))
+
+        return {
+            "kind": "payables",
+            "today": today.isoformat(),
+            "view": view,
+            "resumo": {name: {"titulos": len(items), "valor": total(items)} for name, items in views.items()},
+            "titulos": [
+                {
+                    "numero": f"CP-{row.number:06d}",
+                    "fornecedor": row.supplier_name,
+                    "cnpj": row.supplier_tax_id,
+                    "unidade": row.unit_name,
+                    "natureza": f"{row.account_code} {row.account_label}",
+                    "documento": f"{row.document_type or ''} {row.document_number or ''}".strip(),
+                    "placas": row.vehicle_plates,
+                    "valor": str(row.amount),
+                    "vencimento": row.due_date.isoformat(),
+                    "dias_para_vencer": (row.due_date - today).days,
+                    "situacao": row.status,
+                    "pagar_por": row.payment_method,
+                    "anexos": row.attachment_count,
+                    "impedimentos": row.blocking,
+                    "atencoes": row.attention,
+                    "ton_apontou": row.top_issue,
+                }
+                for row in chosen[:60]
+            ],
+            "mais": max(0, len(chosen) - 60),
+        }
+
 TON_TOOL_CLASSES = (
     TonListSourcesTool,
     TonGetSourceStatusTool,
@@ -1230,4 +1325,5 @@ TON_TOOL_CLASSES = (
     TonProposeOccurrenceAssignTool,
     TonProposeR1Tool,
     TonR1StatusTool,
+    TonPayablesTool,
 )

@@ -172,10 +172,12 @@ from onyx.server.ton.agent import router as ton_agent_router
 from onyx.server.ton.automations import router as ton_automations_router
 from onyx.server.ton.client_import import router as ton_client_import_router
 from onyx.server.ton.closing_treatments import router as ton_closing_treatments_router
+from onyx.server.ton.correction import router as ton_correction_router
 from onyx.server.ton.dre import router as ton_dre_router
 from onyx.server.ton.email_flows import router as ton_email_flows_router
 from onyx.server.ton.financial_domain import router as ton_financial_domain_router
 from onyx.server.ton.financial_review import router as ton_financial_review_router
+from onyx.server.ton.payables import router as ton_payables_router
 from onyx.server.ton.sources import router as ton_sources_router
 from onyx.server.ton.team import router as ton_team_router
 from onyx.server.utils import BasicAuthenticationError
@@ -628,6 +630,8 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(application, ton_email_flows_router)
     include_router_with_global_prefix_prepended(application, ton_automations_router)
     include_router_with_global_prefix_prepended(application, ton_team_router)
+    include_router_with_global_prefix_prepended(application, ton_payables_router)
+    include_router_with_global_prefix_prepended(application, ton_correction_router)
     include_router_with_global_prefix_prepended(
         application, ton_financial_review_router
     )

@@ -5020,3 +5020,341 @@ class ControllerRule(Base):
     __table_args__ = (
         UniqueConstraint("rule_key", "version", name="uq_ton_controller_rule_version"),
     )
+
+
+class PayableSupplier(Base):
+    """A supplier or payee of the unit payables, keyed by CPF or CNPJ.
+
+    Payment data belongs to the payee itself: there is no holder field, so a
+    PIX key in someone else's name shows up as a mismatch instead of being
+    stored as normal. A supplier proposed by a unit waits for approval.
+    """
+
+    __tablename__ = "ton_payable_supplier"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    # Digits only: 11 (CPF) or 14 (CNPJ).
+    tax_id: Mapped[str] = mapped_column(String(14), nullable=False, unique=True)
+    legal_name: Mapped[str] = mapped_column(String(300), nullable=False)
+    trade_name: Mapped[str | None] = mapped_column(String(300))
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    default_account_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+    )
+    pix_key_type: Mapped[str | None] = mapped_column(String(16))
+    pix_key: Mapped[str | None] = mapped_column(String(140))
+    bank_code: Mapped[str | None] = mapped_column(String(8))
+    bank_agency: Mapped[str | None] = mapped_column(String(16))
+    bank_account: Mapped[str | None] = mapped_column(String(32))
+    review_note: Mapped[str | None] = mapped_column(String(500))
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    approved_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    approved_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('COMPANY', 'PERSON', 'EMPLOYEE', 'PUBLIC_BODY')",
+            name="ck_ton_payable_supplier_kind",
+        ),
+        CheckConstraint(
+            "status IN ('ACTIVE', 'PENDING', 'REJECTED', 'INACTIVE')",
+            name="ck_ton_payable_supplier_status",
+        ),
+        CheckConstraint(
+            "length(tax_id) IN (11, 14)", name="ck_ton_payable_supplier_tax_id"
+        ),
+    )
+
+
+class PayableTitle(Base):
+    """One payable title sent by a unit: one document installment.
+
+    An estimate (``kind = ESTIMATE``) never counts as a real payable; the real
+    title that arrives for it points back through ``replaces_estimate_id``.
+    """
+
+    __tablename__ = "ton_payable_title"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    # Short reference shown on screen ("CP-000123").
+    number: Mapped[int] = mapped_column(
+        Integer,
+        Sequence("ton_payable_title_number_seq"),
+        nullable=False,
+        unique=True,
+    )
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    unit_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_business_unit.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    supplier_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_payable_supplier.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    account_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_financial_account.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    document_type: Mapped[str | None] = mapped_column(String(16))
+    document_number: Mapped[str | None] = mapped_column(String(60))
+    # Upper case, no spaces or leading zeros: the duplicate check compares it.
+    document_key: Mapped[str | None] = mapped_column(String(60))
+    issue_date: Mapped[datetime.date | None] = mapped_column(Date)
+    # First day of the month of the consumption or service.
+    competence: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    due_date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    installment_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    installment_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    purchase_total: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
+    destination_kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    # Normalized plates (``ABC1D23``) when the destination is the fleet.
+    vehicle_plates: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    destination_note: Mapped[str | None] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(String(1000), nullable=False)
+    zeev_request: Mapped[str | None] = mapped_column(String(40))
+    # Estimate only: the last day the estimate covers.
+    estimate_until: Mapped[datetime.date | None] = mapped_column(Date)
+    replaces_estimate_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_payable_title.id", ondelete="RESTRICT"),
+    )
+    ng_reference: Mapped[str | None] = mapped_column(String(80))
+    submitted_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('REAL', 'ESTIMATE')", name="ck_ton_payable_title_kind"
+        ),
+        CheckConstraint(
+            "status IN ('WAITING_ATTACHMENT', 'WAITING_SUPPLIER', 'RECEIVED', "
+            "'RETURNED', 'CONFERRED', 'RELEASED', 'BOOKED', 'PAID', "
+            "'ESTIMATE_OPEN', 'ESTIMATE_REPLACED', 'CANCELLED')",
+            name="ck_ton_payable_title_status",
+        ),
+        CheckConstraint(
+            "destination_kind IN ('VEHICLE', 'SITE', 'STOCK', 'ADMINISTRATION')",
+            name="ck_ton_payable_title_destination",
+        ),
+        CheckConstraint(
+            "installment_number >= 1 AND installment_number <= installment_count",
+            name="ck_ton_payable_title_installment",
+        ),
+        CheckConstraint("amount > 0", name="ck_ton_payable_title_amount"),
+        Index("ix_ton_payable_title_unit_due", "unit_id", "due_date"),
+        Index("ix_ton_payable_title_status", "status"),
+        Index("ix_ton_payable_title_document", "supplier_id", "document_key"),
+    )
+
+
+class PayableAttachment(Base):
+    """A supporting document of a title, kept in the database (10 MB at most).
+
+    ``read_*`` hold what the TON read from the file itself (NF-e XML or a
+    boleto line); all null means the file needs a human look.
+    """
+
+    __tablename__ = "ton_payable_attachment"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    title_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_payable_title.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    original_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    stored_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(120), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    read_kind: Mapped[str | None] = mapped_column(String(16))
+    read_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    read_tax_id: Mapped[str | None] = mapped_column(String(14))
+    read_document_number: Mapped[str | None] = mapped_column(String(60))
+    read_due_date: Mapped[datetime.date | None] = mapped_column(Date)
+    created_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('INVOICE', 'BOLETO', 'RECEIPT', 'OTHER')",
+            name="ck_ton_payable_attachment_role",
+        ),
+        CheckConstraint(
+            "size_bytes <= 10485760", name="ck_ton_payable_attachment_size"
+        ),
+        Index("ix_ton_payable_attachment_title", "title_id"),
+    )
+
+
+class PayableEvent(Base):
+    """Append-only history of a title: who did what, when and why."""
+
+    __tablename__ = "ton_payable_event"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    title_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_payable_title.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    from_status: Mapped[str | None] = mapped_column(String(32))
+    to_status: Mapped[str | None] = mapped_column(String(32))
+    reason: Mapped[str | None] = mapped_column(String(1000))
+    actor_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (Index("ix_ton_payable_event_title", "title_id", "created_at"),)
+
+
+class PayableCheckDecision(Base):
+    """A human decision that a blocking check does not apply to a title.
+
+    Keyed by the check and its subject (for a duplicate, the other title), so
+    a new finding of the same kind is not silenced by an old decision.
+    """
+
+    __tablename__ = "ton_payable_check_decision"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    title_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_payable_title.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    check_code: Mapped[str] = mapped_column(String(40), nullable=False)
+    subject: Mapped[str] = mapped_column(String(120), nullable=False)
+    reason: Mapped[str] = mapped_column(String(1000), nullable=False)
+    decided_by: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        UniqueConstraint(
+            "title_id", "check_code", "subject", name="uq_ton_payable_check_decision"
+        ),
+    )
+
+
+class CorrectionCase(Base):
+    """One case of the correction plan: a rule's findings in one source and unit.
+
+    The occurrences stay the evidence; the case carries what people decide
+    about fixing the source (owner, deadline, action, accepted risk). Whether
+    it is fixed is never typed: it comes from the occurrences' verification
+    at the next import.
+    """
+
+    __tablename__ = "ton_correction_case"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    number: Mapped[int] = mapped_column(
+        Integer,
+        Sequence("ton_correction_case_number_seq"),
+        nullable=False,
+        unique=True,
+    )
+    # "<rule id>:<source id or ->:<unit id or ->"
+    case_key: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
+    rule_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("ton_rule.id", ondelete="RESTRICT"), nullable=False
+    )
+    owner_area: Mapped[str | None] = mapped_column(String(60))
+    owner_name: Mapped[str | None] = mapped_column(String(120))
+    due_date: Mapped[datetime.date | None] = mapped_column(Date)
+    action_text: Mapped[str | None] = mapped_column(String(1000))
+    # RISK_ACCEPTED: the Controladoria decided not to fix it at the source.
+    decision: Mapped[str | None] = mapped_column(String(20))
+    decision_reason: Mapped[str | None] = mapped_column(String(1000))
+    in_board_summary: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+    __table_args__ = (
+        CheckConstraint(
+            "decision IS NULL OR decision = 'RISK_ACCEPTED'",
+            name="ck_ton_correction_case_decision",
+        ),
+    )
+
+
+class CorrectionCaseEvent(Base):
+    """What people did on a case; detections and verifications come from the ledger."""
+
+    __tablename__ = "ton_correction_case_event"
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    case_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("ton_correction_case.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    detail: Mapped[str | None] = mapped_column(String(1000))
+    actor_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    __table_args__ = (
+        Index("ix_ton_correction_case_event_case", "case_id", "created_at"),
+    )

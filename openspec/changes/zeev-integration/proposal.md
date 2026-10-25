@@ -61,3 +61,40 @@ escolhidos para dentro do pipeline do TON e usá-los nas regras.
 ## Estado de dado
 
 Real (tenant da Vale Norte), com mascaramento de dados pessoais.
+
+## Atualização da reunião de 2026-10-23
+
+Ata: `plans/ton/ATA_REUNIAO_LUYLA_2026-10-23.md`. A Luyla mostrou o Zeev ao vivo.
+
+- **Prioridade:** NG primeiro; o Zeev vem depois.
+- **Para que a Controladoria usa o Zeev hoje:**
+  - conferir parcelamentos: quantas parcelas e o valor de cada uma, quando o NG só tem o valor total
+    (às vezes os valores não batem 100% com o NG);
+  - consultar NF, boleto e **data de pagamento** (o financeiro não alimenta 100%). Pode ser fonte de
+    data de pagamento para a DRE de caixa, junto com o extrato bancário.
+- **Indicadores que a Eloía hoje leva do Zeev ao Power BI:** solicitações com vencimento em menos de 5
+  dias úteis (monitoramento e notificação), volume de solicitações por pessoa, tarefas pendentes e
+  atrasadas por colaborador (cores: verde no prazo, amarelo vence hoje, vermelho vencido). A Luyla
+  quer notificar automaticamente o solicitante com as regras financeiras quando o prazo não for
+  cumprido. Indicadores a receber da Eloía.
+- **Estrutura do Zeev:** apps (BPM) criados pela Luyla, Luciana e Eloía, por empresa do grupo (MC3,
+  Vale Norte, NVC, Núcleo, CCP); "executar tarefas", "acompanhar solicitações" (a Controladoria vê as
+  de todos), chamados de TI (com triagem e autorização do gestor), regras de negócio e integrações
+  (a lista de unidades é atualizada à mão em cada app quando entra uma unidade nova).
+- **Chave com o NG:** a ata de 20/10 pede ao financeiro para colocar o número da solicitação do Zeev
+  no histórico do lançamento do NG (ex.: "Det. #2318"). Isso vira chave de ligação NG × Zeev.
+- **API:** o Thalisson já mapeou os endpoints a partir da documentação do Zeev (a Eloía mandou); a
+  documentação é boa. O adaptador e o catálogo já existem no código.
+- **Futuro (Luyla):** levar o BPM do Zeev para dentro do TON e deixar de pagar o Zeev; chamados também
+  entram no TON. Fica em `platform-ces-foundation`; esta change continua sendo leitura.
+- Contas a pagar das unidades: parte já vai pelo Zeev (solicitação de pagamento, reembolso), parte por
+  planilha. **Decidido em 2026-10-24:** o TON lê a solicitação de pagamento do Zeev e concilia com o
+  título de `unit-payables-intake`. Isso exige uma integração robusta: sincronização confiável e
+  frequente desses fluxos, frescor visível, re-leitura de instâncias ativas e alerta de falha.
+- O Zeev da Vale Norte é o tenant **"Núcleo Controller"** (`nucleo.zeev.it`); o Thalisson tem acesso
+  desde 2026-10-23.
+
+## Dependências (acrescentadas em 2026-10-23)
+
+- Indicadores e regras de notificação que a Eloía usa no Power BI.
+- Adoção pelo financeiro do número do Zeev no histórico do NG (ata 20/10).

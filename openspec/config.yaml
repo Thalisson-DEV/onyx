@@ -42,7 +42,10 @@ context: |
   - Imutabilidade: snapshots, revisões, decisões, versões de DRE e relatórios são append-only.
   - Decisão humana para: mapeamentos, autoridade, conciliação ambígua, correções, comunicação
     externa, interpretação jurídica, encerramento de ocorrência crítica.
-  - TON nunca escreve em NG/Keevo, ERP, faturamento ou documento fiscal.
+  - TON não escreve em NG/Keevo, ERP, faturamento ou documento fiscal enquanto não houver rota
+    comprovada e autorização escrita da Vale Norte (change `ng-write-back`). Mesmo então: só por
+    proposta com aprovação humana, auditoria antes × depois, conferência após a escrita e chave
+    para desligar a escrita sem afetar a leitura. Nunca por automação de tela frágil sem aceite.
   - Ausência de dado é achado com responsável, não lacuna preenchida por estimativa.
   - Registrar capability ≠ capability operacional. Sintético sempre rotulado; nunca vira claim.
   - Arquivos reais da Vale Norte nunca entram no Git, fixtures, logs, migrations ou docs
@@ -52,6 +55,26 @@ context: |
   DIREÇÃO DO CLIENTE (2026-10-02): DRE entregue em Excel com memória de cálculo (não Power BI);
   TI externa (Celso) está liberando VPN + usuário read-only no banco do NG; até lá, importação
   manual de arquivo. Em produção quem precisa de rota ao NG é o host do TON.
+
+  DIREÇÃO DO CLIENTE (2026-10-23, ata plans/ton/ATA_REUNIAO_LUYLA_2026-10-23.md):
+  - O NG (Keevo) continua o sistema oficial do financeiro: é integrado à contabilidade, ao fiscal e
+    à folha. O TON trabalha em volta do NG (lê, confere e organiza o que chega antes do lançamento);
+    não o substitui.
+  - A Keevo cobrou R$ 7.500 só para iniciar uma integração oficial; a Luyla acha que não aprovam.
+    Rota preferida: a do Eric (contador), que diz integrar com o NG sem custo e escrever nele.
+    Existe usuário de consulta no NG e na Keevo para o Thalisson (criado pelo Eric).
+  - Prioridade de integração: NG, depois Zeev (o BPM se chama Zeev, não "Ziv").
+  - Frota, combustível, locações e contas a pagar das unidades entram direto no TON (não no Zeev),
+    com padrão único de dados (documento "TON — Padrão de informações das unidades").
+  - As planilhas atuais das unidades NÃO são fonte definitiva nem modelo de processo: cada unidade
+    faz de um jeito; servem para carga inicial e para entender o processo de hoje.
+  - Direção de produto (Thalisson): o TON evolui para uma plataforma modular parecida com o CES
+    da Sipel (frota, almoxarifado, solicitações financeiras, chamados, comunicados, histórico de
+    alterações, app no celular, assistente como analista). Uso do código do CES autorizado pela
+    Sipel só como base; limpar do fork o que o TON não usa do Onyx (change `platform-ces-foundation`).
+    Stack decidida em 2026-10-24: fork Onyx limpo (Python/Next.js), sem migrar para a stack do CES.
+  - Zeev = "Núcleo Controller" (tenant nucleo.zeev.it). Contas a pagar das unidades no TON concilia
+    com a solicitação de pagamento do Zeev e lê dela: exige integração Zeev robusta.
 
   AMBIENTE: Windows + Docker em WSL com 6 GB — construir imagens com a stack parada e subir
   contêineres um a um (plans/ton/local-runtime.md). Nunca `docker compose pull` de

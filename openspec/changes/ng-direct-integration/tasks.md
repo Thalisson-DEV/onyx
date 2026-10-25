@@ -2,6 +2,10 @@
 
 - [ ] 1.1 Receber da TI: usuário VPN, endereço, SGBD, usuário read-only, dicionário/views
 - [ ] 1.2 Testar conectividade do host de desenvolvimento e documentar requisitos de rede de produção
+- [x] 1.3 Acesso Keevo do usuário de consulta testado (2026-10-23)
+- [ ] 1.4 Entrar no NG com o usuário de consulta (aguarda orientação de instalação) e documentar relatórios/exportações disponíveis, sem automação
+- [ ] 1.5 Reunião com o Eric e o desenvolvedor dele; registrar a rota de leitura que usam
+- [ ] 1.6 Decidir a rota (Eric × Keevo oficial R$ 7.500 × extrator no servidor) com a Luyla e registrar em `design.md`
 
 ## 2. Conector
 

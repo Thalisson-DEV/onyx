@@ -38,6 +38,14 @@ sazonalidade e dá base para o modo previsão.
 
 Real, quando fornecido.
 
+## Atualização da reunião de 2026-10-23
+
+A Luyla disse que, por enquanto, só 2026 importa. Ela pensou em trazer 2025 para comparar o mesmo mês,
+mas faltam dois meses para fechar o ano e em 2027 a base de comparação será 2026. Uma referência muito
+antiga confunde: preços, indicadores e contratos mudam (mais frota, mais colaboradores, segundo
+contrato numa unidade). **Prioridade rebaixada:** esta change fica para depois e, quando voltar, a
+comparação preferida é o mesmo mês do ano anterior mais recente, com ressalva de mudança de contrato.
+
 ## Atualização da reunião de 2026-10-03
 
 Ata: `plans/ton/ATA_REUNIAO_LUYLA_2026-10-03.md`.

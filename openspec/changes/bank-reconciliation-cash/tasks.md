@@ -2,6 +2,10 @@
 
 - [ ] 1.1 Obter extratos detalhados por conta e formato disponível (OFX/CNAB/CSV)
 - [ ] 1.2 Perfis de extrato e de contas a pagar/receber
+- [ ] 1.3 Perfil do "Extrato Bancário Analítico" do NG (PDF, já lido localmente em 19/10) como fonte do pipeline, além do extrato do banco
+- [ ] 1.4 Conferência extrato do NG × extrato do banco (saldo e lançamentos)
+- [ ] 1.5 Data de pagamento conciliada como origem da DRE de caixa (só pago)
+- [ ] 1.6 Juros, encargos e antecipação a partir dos extratos de cartão (ata 20/10)
 
 ## 2. Conciliação
 

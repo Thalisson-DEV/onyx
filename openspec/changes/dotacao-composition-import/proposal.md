@@ -43,3 +43,11 @@ dotação) nem T28 (reserva técnica).
 ## Estado de dado
 
 Real (três workbooks em `plans/ton/DRE Jun-26/`, fora do Git).
+
+## Atualização da reunião de 2026-10-23
+
+Pasta nova "Dotações - João Hebert (set-26)" com uma subpasta por unidade (Itabirito, Juazeiro BA,
+Juazeiro do Norte, Mossoró, Sento Sé, Toledo, Curitiba) e serviços (ex.: Itabirito: capina/roçada/
+varrição/pintura de meio-fio; aterro); Mossoró tem `DOTACAO (MOSSORO - RN) 14082026 14h.xlsx`. A Luyla
+avisou que essas dotações são as da licitação e não necessariamente a referência; a Controladoria vai
+mudar o formato para aplicar na DRE. Não importar como referência até o formato novo chegar.

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CompNfse xmlns="http://www.abrasf.org.br/nfse.xsd"><Nfse><InfNfse>
+<Numero>211</Numero>
+<ValoresNfse><ValorLiquidoNfse>2600.00</ValorLiquidoNfse></ValoresNfse>
+<PrestadorServico><IdentificacaoPrestador><CpfCnpj><Cnpj>01651656000137</Cnpj></CpfCnpj></IdentificacaoPrestador></PrestadorServico>
+</InfNfse></Nfse></CompNfse>

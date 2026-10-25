@@ -41,6 +41,15 @@ e a mesma informação usada para atribuir unidade aos lançamentos sem unidade 
   (`ng-direct-integration`). Tabela atividade → natureza aprovada pela Controladoria. Fonte oficial
   de CNAE (consulta pública de CNPJ) a aprovar.
 
+## Atualização de 2026-10-23 (ata da Controladoria de 16/10)
+
+- Fornecedores citados: **Posto Buca, Zona Norte, Qualiservice e Conqservice** geram crédito de
+  PIS/COFINS, mas o que foi comprado pode não ser o da natureza usada (combustível, fardamento, saco de
+  cal). Revisar fornecedores × natureza nessas categorias.
+- O cadastro de fornecedores compartilhado (`procurement-domain`, `unit-payables-intake`) passa a
+  guardar a natureza padrão do fornecedor; divergência entre natureza lançada e natureza padrão vira
+  sugestão de revisão, nunca troca automática.
+
 ## Estado de dado
 
 Real, após a integração com o NG.

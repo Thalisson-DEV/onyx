@@ -37,3 +37,20 @@ está "aguardando fonte".
 ## Estado de dado
 
 Real, quando fornecido.
+
+## Atualização de 2026-10-23
+
+Ata: `plans/ton/ATA_REUNIAO_LUYLA_2026-10-23.md`.
+
+- **Locações** passam a nascer dos contratos de locação do `fleet-fuel-domain` (cadastro, eventos,
+  confirmação mensal, rateio por dias). Aqui fica só a consolidação para compras e a busca de
+  duplicidade.
+- **Cadastro de fornecedores** passa a ser compartilhado com `unit-payables-intake` e
+  `fleet-fuel-domain`: CPF/CNPJ como chave, nome do dia a dia, tipo (empresa, pessoa física,
+  funcionário, órgão público), dados de pagamento sempre no nome do próprio favorecido.
+- Exemplo real (Itabirito, contas a pagar de setembro): "ITA CHAVES SERVICOS E COMERCIO LTDA" com CNPJ
+  e "ITA FERRAMENTAS" sem CNPJ na mesma planilha; não dá para saber se é a mesma empresa.
+- A fonte de compras com fornecedor passa a ser, em parte, o próprio contas a pagar das unidades
+  (descrição do item, destino e placa por título), além do NG.
+- Almoxarifado/estoque (a Luyla citou as empresas de construção civil do grupo) fica como módulo
+  candidato em `platform-ces-foundation`; T30 ganha precisão quando houver item e quantidade por compra.

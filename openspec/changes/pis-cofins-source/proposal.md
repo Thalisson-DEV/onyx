@@ -49,3 +49,21 @@ Ata: `plans/ton/ATA_REUNIAO_LUYLA_2026-10-03.md`.
 - O contador demora (julho chegou no fim de setembro); a DRE de jul/ago depende desse percentual.
 - Pedido futuro: o TON calcular o PIS/COFINS automaticamente a partir do NG e da planilha de regras.
   Fica como fase posterior desta change, depois de a importação estar validada.
+
+## Atualização de 2026-10-16 a 2026-10-23
+
+Atas da Controladoria de 16/10 e 20/10 (Drive) e `plans/ton/ATA_REUNIAO_LUYLA_2026-10-23.md`.
+
+- A planilha chegou: `Cópia de PIS COFINS - Apuracao.xlsx` na pasta compartilhada (21/10). Ler o
+  layout e criar o perfil a partir dela.
+- Em 23/10 a Luyla repetiu que a apuração é **crucial para fechar a DRE**. O sistema que o Eric
+  desenvolve também faz essa apuração: conferir na reunião com ele se ele pode ser a fonte.
+- Regras da Controladoria (atas de 16/10 e 20/10):
+  - apresentar **PIS e COFINS efetivos** e seus créditos/diferenças conforme cada relatório;
+  - na DRE econômica, apresentar os tributos **sem deduzir as retenções** do faturamento;
+  - usar a **alíquota efetiva do mês anterior** nos cálculos tributários;
+  - os fornecedores Posto Buca, Zona Norte, Qualiservice e Conqservice geram crédito de PIS/COFINS,
+    mas o que se comprou pode não corresponder à natureza usada (combustível, fardamento, saco de
+    cal): revisar (liga com `supplier-nature-consistency`).
+- O assistente hoje sugere PIS 1% e COFINS 4,6% fixos sobre o bruto (macro da NF); com a apuração
+  importada, o percentual efetivo do mês substitui o fixo.

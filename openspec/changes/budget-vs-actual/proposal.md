@@ -47,3 +47,18 @@ Ata: `plans/ton/ATA_REUNIAO_LUYLA_2026-10-03.md`.
 A própria Controladoria ainda não fez a compatibilização dotação → natureza (também não está no
 Power BI), e só Mossoró, Juazeiro-BA e Itabirito têm dotação 2026; a licitação está atualizando as
 demais. **Esta change fica para depois** de a Controladoria definir a compatibilização.
+
+## Atualização da reunião de 2026-10-23
+
+- **Custos fixos como referência mensal:** a Luyla terminou a planilha de custos fixos da Administração
+  Central (`Custos Fixos - Administracao Central.xlsm` e o diagnóstico na pasta compartilhada). Ela é
+  o valor de referência do que se deve gastar por mês (energia, folha etc.), a "meta". Em 2027 a
+  Controladoria compara essa referência com a DRE da matriz. Isso pode vir antes das dotações: um
+  orçado da matriz por conta/natureza, mês a mês, versionado.
+- **Dotações:** as que estão na pasta (pasta "Dotações - João Hebert (set-26)", por unidade) são as que
+  participam da licitação e não necessariamente a referência de comparação. A Controladoria ainda vai
+  mudar o formato para aplicar na DRE e ver se o realizado está na média projetada ("futuro não muito
+  distante"). Esperar o novo formato.
+- **Metas de faturamento por contrato** até o fim do ano e avaliação de se a taxa de administração de
+  2% de cada contrato basta para a administração central (ata da Controladoria de 16/10): entram aqui
+  como orçado por contrato quando a Controladoria definir as metas.

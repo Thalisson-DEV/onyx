@@ -66,6 +66,7 @@ motores).
 
 ## Dependências
 
+- E-mail da Controladoria confirmado na ata da Controladoria de 2026-10-20: `central@nucleocontroller.com.br` (domínio `nucleocontroller.com.br`; "Núcleo Controller" é também o nome do tenant Zeev da Vale Norte). Falta verificar o domínio no Resend (DNS) ou obter o SMTP do provedor.
 - Provedor de e-mail (Resend com domínio verificado por DNS, ou SMTP); e-mails do Financeiro e da Controladoria (Luyla, reunião de 2026-10-06). A
   verificação ganha precisão real com a extração automática do NG (`ng-direct-integration`); com
   importação manual, verifica a cada upload.

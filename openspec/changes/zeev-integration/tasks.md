@@ -25,6 +25,9 @@
 - [ ] 4.3 Indicadores de SLA/tempo de ciclo da Controladoria (sem regra financeira)
 - [ ] 4.4 Fontes UI: escopo, última sincronização, falhas, validação
 - [ ] 4.5 Ferramenta de leitura de processos para o assistente (sem dado pessoal sem permissão)
+- [ ] 4.6 Ligação NG × Zeev pelo número da solicitação no histórico do NG ("Det. #nnnn"), com relatório de lançamentos sem número
+- [ ] 4.7 Data de pagamento e detalhe de parcelas do Zeev como fonte candidata (DRE de caixa, parcelamentos), sempre conferida com NG e extrato
+- [ ] 4.8 Indicadores da Eloía (vencimento < 5 dias úteis, volume por pessoa, tarefas atrasadas por colaborador) e notificação ao solicitante via `automation-engine`
 
 ## 5. Validação
 

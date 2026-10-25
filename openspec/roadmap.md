@@ -1,8 +1,15 @@
 # TON — Roadmap completo de desenvolvimento
 
-Atualizado em 2026-10-03 (após a reunião com a Luyla; ata em `plans/ton/ATA_REUNIAO_LUYLA_2026-10-03.md`). Fonte de intenção: `plans/ton/masterprompt.md` (Prompt Mestre v2.0).
+Atualizado em 2026-10-23 (reunião com a Luyla e a Luciana, WhatsApp da tarde e análise da pasta
+compartilhada; ata em `plans/ton/ATA_REUNIAO_LUYLA_2026-10-23.md`). Versão anterior: 2026-10-03.
+Fonte de intenção: `plans/ton/masterprompt.md` (Prompt Mestre v2.0).
 Contexto: `plans/ton/context/`. Linha de base verificada no código: `openspec/specs/`.
-Trabalho pendente: `openspec/changes/` (41 changes, cada uma com proposta, specs e tarefas).
+Trabalho pendente: `openspec/changes/` (49 changes, cada uma com proposta, specs e tarefas).
+
+> Atenção: a tabela de estado do §1 ainda é a de 2026-10-02. Desde então foram entregues, entre
+> outros, DRE Caixa/Econômica derivadas, editor de estrutura com histórico, tratamentos de fechamento,
+> parcelamentos pagos por planilha, motor de automações, chat agêntico com propostas e ledger,
+> usuários e acessos, homolog no Railway. Revisar o §1 no próximo ciclo a partir do código.
 
 ---
 
@@ -41,7 +48,7 @@ fração do Prompt Mestre:
 | §15 Subagentes | ⚠️ 3 de 9 atuando (CFO, AUDITOR, CEO), só financeiro |
 | §16 Regulação | ❌ |
 | §17 Previsão e simulação de licitação | ❌ |
-| Integração direta NG/Keevo | ❌ (VPN em liberação pela TI) |
+| Integração direta NG/Keevo | ❌ (2026-10-23: usuário de consulta criado; rota a decidir com o Eric; Keevo cobra R$ 7.500 para iniciar) |
 | Integração Zeev (processos, liberações financeiras, SLA) | ⚠️ adaptador somente leitura + catálogo de 35 fluxos prontos (BE-004A/B); sem sincronização |
 | Produção para a equipe da Luyla | ❌ (ambiente de validação local) |
 
@@ -59,6 +66,39 @@ fração do Prompt Mestre:
 - **Natureza × CNPJ do fornecedor** para não perder crédito de PIS/COFINS (change nova
   `supplier-nature-consistency`, depende do NG por VPN).
 - Frota lançada direto no TON; PIS/COFINS pela planilha Excel dela; 2025 pela VPN.
+
+## 1.2 Decisões e sinais de 2026-10-23
+
+Ata: `plans/ton/ATA_REUNIAO_LUYLA_2026-10-23.md`. Padrão enviado à Controladoria: documento
+"TON — Padrão de informações das unidades".
+
+- **NG continua o sistema oficial do financeiro** (contabilidade, fiscal e folha integrados). O TON
+  trabalha em volta dele.
+- **Integração NG:** existe usuário de consulta no NG e na Keevo (criado pelo Eric). A Keevo cobrou
+  R$ 7.500 só para iniciar a integração oficial, e a Luyla acha que não aprovam. Rota preferida: a do
+  Eric (reunião a marcar). NG antes do Zeev.
+- **Escrita no NG:** desejada pela Luyla ("corrigir no TON e refletir no NG"), e o Thalisson confirmou
+  a autorização. Fica numa change própria (`ng-write-back`), bloqueada até haver rota comprovada e
+  autorização escrita. `ng-direct-integration` continua só leitura.
+- **Frota, combustível e locações** no TON (não no Zeev), com fluxo oficial de aviso e regras
+  (`fleet-fuel-domain` ampliada; locações saem de `procurement-domain`).
+- **Contas a pagar das unidades** é prioridade da Luyla (change nova `unit-payables-intake`).
+- **Padrão único de dados:** as planilhas das unidades não são fonte definitiva nem modelo de
+  processo.
+- **Faturamento:** a planilha do financeiro segue oficial. O extrato de notas da prefeitura (mais
+  confiável) entra como fonte de conferência (change nova `billing-source-crosscheck`).
+- **DRE de caixa = só o que foi pago**; contas a pagar entra na econômica por competência.
+- **2026 é o foco;** histórico 2025 rebaixado.
+- **Custos fixos** são a referência mensal da matriz (comparação em 2027); as dotações da pasta são as
+  da licitação, e o formato novo ainda virá.
+- **Direção de produto:** o TON evolui para uma plataforma modular parecida com o CES (change nova
+  `platform-ces-foundation`). A stack ainda será decidida; o fork será limpo das partes não usadas do
+  Onyx.
+- **Comercial (fora do OpenSpec):** a Luyla prefere cobrança por projeto; o gestor decide. Ela vai
+  levantar os sistemas pagos (frota, rastreamento, ponto, BPM, almoxarifado) para medir a economia.
+- **Atas da Controladoria de 16/10 e 20/10** (Drive) trazem regras de DRE e folha, registradas como
+  tratamentos candidatos em `controller-validated-treatments`. Uma delas manda excluir a contingência
+  de 1%, que hoje é o padrão do assistente (`agentic-assistant` 5.2).
 
 ## 2. Princípios de ordenação
 
@@ -108,12 +148,14 @@ Ordem dentro da fase, conforme a reunião: (1) `ng-direct-integration`, (2) `ema
 | `unit-classification-and-consolidation` | Operacional × não operacional; resultado operacional; ressalva no consolidado | P | C3 da Luyla |
 | `pis-cofins-source` | Apuração da Contabilidade na linha de impostos | M | Arquivo estruturado, R3 da Luyla |
 | `budget-vs-actual` | Orçado × realizado das dotações aprovadas | M | O1–O3 da Luyla, carry-over |
-| `history-2025-baseline` | Histórico 2025 e comparação anual | M | NG 2025 autorizado |
-| `ng-direct-integration` | Conector somente leitura via VPN, modo sombra → primário | G | TI (Celso): VPN, SGBD, usuário read-only |
+| `history-2025-baseline` | Histórico 2025 e comparação anual — **rebaixada em 2026-10-23** (foco em 2026) | M | NG 2025 autorizado |
+| `ng-direct-integration` | Conector somente leitura, modo sombra → primário; rota a decidir após a reunião com o Eric (Keevo oficial custa R$ 7.500 só para iniciar) | G | Rota do Eric ou usuário read-only da Keevo; extrator no servidor da Vale Norte |
 | `email-flows` | Fluxos de e-mail cadastráveis pela Controladoria (gatilho → condição → sim/não), sugeridos pelo TON com aprovação humana; primeiro fluxo: e-mail semanal ao Financeiro com as inconsistências abertas e verificação de correção a cada extração (pedido da Luyla) | G | Provedor de e-mail (Resend/SMTP, domínio verificado), e-mails do Financeiro |
 | `automation-engine` | ✅ 2026-10-08: motor de automações e workflows visuais (padrão Power Automate): definição v3 com catálogo de nós, expressões entre passos, execução durável por etapa (fila Celery, lease, retry, run after, escopos, paralelos, para cada, esperar, aprovação), dados e IA no meio do fluxo, designer em canvas, execução no canvas, rascunho pelo chat. Fluxos de e-mail viraram automações do tipo E-mail. É a base de R1–R9 (`routine-framework`) | G | Provedor de e-mail e LLM configurados |
 | `account-classification-admin` | Tabela de classificação editável no TON, conta nova acusada, regras de pré-classificação, 29 códigos a confirmar. **Em andamento (2026-10-04):** tela `/ton/classificacao`, 29 aguardando confirmação, pré-classificação pelo assistente, confirmação/mudança versionada, Excel; faltam importação do Excel, regras da Controladoria e item no relatório semanal | M | Regras da Controladoria |
-| `zeev-integration` | BE-004C: sincronizar os fluxos Zeev escolhidos (liberações financeiras, aprovações, contratos, certidões, desligamentos) como snapshots; fatos de aprovação e SLA | G | 8 perguntas do catálogo Zeev à Luyla |
+| `zeev-integration` | BE-004C: sincronizar os fluxos Zeev escolhidos (liberações financeiras, aprovações, contratos, certidões, desligamentos) como snapshots; fatos de aprovação e SLA; ligação NG × Zeev pelo nº no histórico; indicadores da Eloía (2026-10-23) | G | 8 perguntas do catálogo Zeev à Luyla; depois do NG |
+| `billing-source-crosscheck` | Nova (2026-10-23): notas da prefeitura (NFS-e) como fonte; conferência planilha × prefeitura × NG; fonte oficial do faturamento como decisão versionada | M | Layout do export da prefeitura (amostra de 19/10) |
+| `ng-write-back` | Nova (2026-10-23): escrita controlada no NG a partir de propostas aprovadas, com auditoria, leitura de volta e chave de desligamento; começa só com descoberta | G | Reunião com o Eric; autorização escrita; usuário com escrita |
 
 **Marco:** a Luyla fecha um mês usando o Excel do TON lado a lado com o BI, com diferenças explicadas;
 o NG chega sem upload manual (quando o acesso existir); os fluxos Zeev vigentes sincronizam sozinhos.
@@ -155,9 +197,14 @@ montada com lacunas explícitas, e as calibrações do §6.2 do backlog encontra
 
 ### Fase 4 — Domínios operacionais (ordem a definir pela Luyla)
 
+Sinal de 2026-10-23: a Luyla pôs **contas a pagar das unidades** e **frota/combustível/locações**
+na frente. Ordem sugerida: `unit-payables-intake` e `fleet-fuel-domain` (em paralelo, compartilhando o
+cadastro de fornecedores de `procurement-domain`), depois os demais.
+
 | Change | O quê | Tam. | Fonte necessária |
 |---|---|---|---|
-| `fleet-fuel-domain` | Cadastro de frota no TON (substitui a planilha), T21–T24, R2, TON FROTA | G | Planilha de frota (Igor), abastecimento, manutenção |
+| `unit-payables-intake` | Nova (2026-10-23): contas a pagar enviado pelas unidades no TON, anexos obrigatórios, estimativas separadas, fluxo do financeiro, conferências, confronto com o NG, DRE por competência e por pagamento | G | Validação do documento de padrão; usuários das unidades; relação com o Zeev |
+| `fleet-fuel-domain` | Cadastro de frota no TON (substitui a planilha), T21–T24, R2, TON FROTA; ampliada em 2026-10-23 com contratos de locação, eventos de frota com aviso, confirmação mensal, rateio por dias, registro de abastecimento padrão, cartão único | G | Gerenciamento de Frota, extratos Alelo, contratos de locação, empresa do cartão único |
 | `production-domain` | S9, T25, T26, habilita T13; TON COO | M | Produção/apontamento |
 | `hr-payroll-domain` | T12, T27–T29, LGPD; TON RH | G | Folha, DP-01/02, ponto |
 | `procurement-domain` | T30, T8, locações; TON PROCUREMENT | M | Compras com fornecedor |
@@ -185,6 +232,7 @@ Dinheiro Escondido mostra identificado × realizado verificado.
 | Change | O quê | Tam. | Depende de |
 |---|---|---|---|
 | `production-deployment` | Host, VPN a partir do host, backups testados, papéis, retenção, pipeline | G | Hospedagem e usuários (Vale Norte) |
+| `platform-ces-foundation` | Nova (2026-10-23): decisão de stack, limpeza do fork Onyx, base modular parecida com o CES (histórico de alterações, solicitações com aprovação, comunicados, chamados, PWA, assistente por tela), módulos candidatos (almoxarifado, BPM no lugar do Zeev, DP, segurança do trabalho) | G | Decisão de stack; autorização da Sipel por escrito; prioridade dos módulos; modelo comercial |
 
 Começar assim que a Fase 1 for aceita. Sem produção não existe uso diário.
 
@@ -235,6 +283,17 @@ production/fleet/hr/procurement ─> specialist-subagents, contract-health-index
 | Extratos bancários detalhados | Financeiro | bank-reconciliation |
 | Responsáveis nominais por tipo de pendência; destinatários das rotinas | Luyla | ledger, routines |
 | Hospedagem, usuários e papéis, política de retenção | Vale Norte | production-deployment |
+| Reunião com o Eric e o desenvolvedor dele (rota de leitura e escrita no NG) | Luyla marca | ng-direct, ng-write-back, pis-cofins |
+| Autorização escrita para escrever no NG; usuário com escrita; contrato com a Keevo | Vale Norte | ng-write-back |
+| Orientação para entrar no NG com o usuário de consulta | Luyla / Eric / TI | ng-direct |
+| Validação do documento de padrão e respostas às perguntas dele | Controladoria | unit-payables, fleet |
+| Nome da empresa do cartão único de combustível | Luyla | fleet |
+| Explicação dos abastecimentos de 29/06 no extrato Alelo; extratos Alelo jan–set | Luyla / Cláudia | fleet |
+| Indicadores e notificações da Eloía (Zeev → Power BI) | Eloía | zeev-integration |
+| Levantamento dos sistemas pagos | Luyla | platform-ces-foundation (e proposta comercial) |
+| Retorno do gestor sobre orçamento e modelo por projeto | Luyla | proposta comercial |
+| Formato novo das dotações para a DRE | Controladoria | budget-vs-actual, dotacao |
+| Esclarecer "estrutura igual à de Ferrari" e se Franquias/NC3 entram no TON | Luyla | controller-validated-treatments |
 
 ## 6. Decisões em aberto que atravessam fases
 
@@ -242,7 +301,12 @@ production/fleet/hr/procurement ─> specialist-subagents, contract-health-index
 - Runtime dos especialistas: papéis internos × sub-agente do Onyx (contexto 05 §3).
 - Fonte oficial de folha na DRE: NG × relatório de folha.
 - Receita da DRE: NG líquida de retenções × faturamento bruto.
-- Prioridade da Fase 4 (opções G, F, H da apresentação).
+- Prioridade da Fase 4 (opções G, F, H da apresentação) — sinal de 2026-10-23: contas a pagar das unidades e frota primeiro.
+- ~~Stack da plataforma~~ — decidido em 2026-10-24: fork Onyx limpo, sem mudar a stack.
+- Rota do NG: Eric × Keevo oficial × extrator no servidor; e se/como o TON escreve no NG.
+- ~~Contas a pagar × Zeev~~ — decidido em 2026-10-24: o TON lê e concilia (integração Zeev robusta); piloto em Toledo e Mossoró.
+- Solicitação de abastecimento com aprovação (modelo CES) × só registro do abastecimento.
+- Fonte oficial do faturamento: planilha do financeiro (hoje) × extrato da prefeitura.
 
 ## 7. Rastreabilidade Prompt Mestre → change
 
@@ -283,6 +347,12 @@ production/fleet/hr/procurement ─> specialist-subagents, contract-health-index
 | Pedido do cliente: natureza × CNPJ / crédito PIS-COFINS; T8 | `supplier-nature-consistency` |
 | Zeev (processos, aprovações, SLA; `NGF-XS-APPROVAL-MISSING`; ponto cego "processo sem rastreabilidade") | `zeev-integration` |
 | Processo da Luyla: PIS/COFINS, orçado, banco | `pis-cofins-source`, `budget-vs-actual`, `bank-reconciliation-cash` |
+| Pedido do cliente (2026-10-23): contas a pagar das unidades | `unit-payables-intake` |
+| Pedido do cliente (2026-10-23): frota, combustível, locações com fluxo oficial | `fleet-fuel-domain` |
+| Pedido do cliente (2026-10-23): corrigir no TON e refletir no NG | `ng-write-back` |
+| Pedido do cliente (2026-10-23): faturamento × extrato da prefeitura | `billing-source-crosscheck` |
+| Pedido do cliente (2026-10-23): excluir linha da DRE; especialista de calendário anual | `agentic-assistant` (onda 5) |
+| Direção de produto (2026-10-23): plataforma parecida com o CES; limpar o fork | `platform-ces-foundation` |
 
 ---
 

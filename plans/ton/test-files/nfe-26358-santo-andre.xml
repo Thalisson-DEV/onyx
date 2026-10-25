@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe"><NFe><infNFe Id="NFe41261001651656000137550010000263581000263580">
+<ide><nNF>26358</nNF><serie>1</serie><dhEmi>2026-10-06T09:12:00-03:00</dhEmi></ide>
+<emit><CNPJ>01651656000137</CNPJ><xNome>SANTO ANDRE PNEUS LTDA</xNome></emit>
+<dest><CNPJ>82603929000170</CNPJ><xNome>VALE NORTE CONSTRUTORA LTDA</xNome></dest>
+<det nItem="1"><prod><xProd>RECAPAGEM PNEU 275/80 R22.5</xProd><vProd>4986.00</vProd></prod></det>
+<det nItem="2"><prod><xProd>CONSERTO E VULCANIZACAO</xProd><vProd>2493.00</vProd></prod></det>
+<total><ICMSTot><vNF>7479.00</vNF></ICMSTot></total>
+<cobr><dup><nDup>001</nDup><dVenc>2026-10-27</dVenc><vDup>2493.00</vDup></dup><dup><nDup>002</nDup><dVenc>2026-11-26</dVenc><vDup>2493.00</vDup></dup><dup><nDup>003</nDup><dVenc>2026-12-26</dVenc><vDup>2493.00</vDup></dup></cobr>
+</infNFe></NFe></nfeProc>

@@ -37,6 +37,14 @@ demonstrada; fallback manual.
 Fase 1 em paralelo ao upload manual (sombra); fase 2 vira fonte primária após aceite da Luyla.
 Rollback: desativar o agendamento.
 
+## Topologia conhecida (2026-10-06 e 2026-10-23)
+
+- NG na nuvem da Keevo; acesso dos usuários por TS Plus; Radmin VPN num servidor da Vale Norte.
+- Sem porta de entrada na rede da Vale Norte: o extrator, se existir, só **envia** dados ao TON.
+- Rotas candidatas: (1) a do Eric (a descobrir); (2) integração oficial da Keevo (R$ 7.500 para
+  iniciar, provavelmente não aprovada); (3) banco read-only via extrator no servidor. Automação de
+  tela não é rota de produção sem aceite explícito (frágil, quebra a cada atualização).
+
 ## Open Questions
 
 - SGBD, schema e views disponíveis; existe view "lançamentos financeiros" equivalente ao export?

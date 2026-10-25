@@ -1,6 +1,8 @@
 ## 1. Fonte
 
-- [ ] 1.1 Pedir à Contabilidade a apuração em XLSX/CSV; documentar o layout recebido
+- [ ] 1.1 Pedir à Contabilidade a apuração em XLSX/CSV; documentar o layout recebido — planilha recebida em 21/10 (`Cópia de PIS COFINS - Apuracao.xlsx`), falta ler o layout
+- [ ] 1.4 Perguntar ao Eric se o sistema dele pode ser a fonte da apuração
+- [ ] 1.5 PIS/COFINS efetivos com créditos/diferenças; alíquota efetiva do mês anterior; econômico sem deduzir retenções (atas 16/10 e 20/10)
 - [ ] 1.2 Criar a fonte e o perfil determinístico (competência, receita base, PIS, COFINS, créditos se houver)
 - [ ] 1.3 Validação de totais e diagnósticos
 

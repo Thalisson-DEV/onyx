@@ -8,7 +8,8 @@
 - [ ] 2.1 Achado de identidade de fornecedor ausente
 - [ ] 2.2 T30 (mediana 12 meses; emergencial recorrente)
 - [ ] 2.3 T8 com regra de compatibilidade aprovada
-- [ ] 2.4 Consolidação de locações e candidatos a duplicidade
+- [ ] 2.4 Consolidação de locações (a partir dos contratos do `fleet-fuel-domain`) e candidatos a duplicidade
+- [ ] 2.5 Cadastro de fornecedores compartilhado (com `unit-payables-intake`): chave CPF/CNPJ, aprovação de novo, alerta de nome parecido e de conta bancária repetida
 
 ## 3. Operação e validação
 

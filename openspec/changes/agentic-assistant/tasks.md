@@ -44,3 +44,13 @@ Mapa completo: `capability-map.md`.
 - [x] 4.8 Base da criticidade: unidade operacional com receita no mês mede na própria receita; não operacional ou em implantação mede no consolidado
 - [ ] 4.4 Período e unidade fixados na conversa (seletor no campo de mensagem)
 - [ ] 4.5 Sugestões de próximo passo depois de cada resposta
+
+## Onda 5 — Pedidos de 2026-10-23
+
+Ata: `plans/ton/ATA_REUNIAO_LUYLA_2026-10-23.md`; atas da Controladoria de 16/10 e 20/10.
+
+- [ ] 5.1 Excluir linha da estrutura da DRE (pela tela e pela proposta do chat), com motivo, histórico e voltar versão; a Luyla tentou pelo chat e não conseguiu (hoje só ocultar e tirar do resultado)
+- [ ] 5.2 Tirar a contingência de 1% do padrão de "percentual sobre o faturamento" (prompt do TON e descrição da ferramenta); manter taxa de administração, PIS e COFINS até a apuração efetiva substituir os percentuais fixos
+- [ ] 5.3 Especialista de calendário anual por unidade (pedido da Luyla): eventos locais (festas, romarias, padroeira) que mudam combustível, gasto, horas extras e necessidade de caixa; aviso antecipado ao gestor (ex.: temporário mais barato que hora extra). Depende de `hr-payroll-domain` (horas extras) e de um calendário mantido pela Controladoria
+- [ ] 5.4 Assistente com contexto do gráfico ou registro clicado ("perguntar sobre este indicador"), como no CES (ver `platform-ces-foundation`)
+- [ ] 5.5 Chat continua sendo o foco principal: novas necessidades da Luyla chegam pelo grupo e entram como tarefas aqui

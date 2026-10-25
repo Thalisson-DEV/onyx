@@ -62,3 +62,63 @@ Ata: `plans/ton/ATA_REUNIAO_LUYLA_2026-10-03.md`.
 - **19 sem unidade:** a Controladoria atribui pela cidade do CNPJ do fornecedor; regra candidata em
   `supplier-nature-consistency`. Até lá, ficam em "Sem unidade no NG".
 - **Receita (R1), folha (F3), mútuos e fundo fixo:** adiados para a reunião de segunda (2026-10-05).
+
+## Atualização de 2026-10-23 (atas da Controladoria de 16/10 e 20/10 lidas no Drive + reunião de 23/10)
+
+As atas de 16/10 e 20/10 são documentos da própria Controladoria (reunião com a Miriam), lidos na
+pasta compartilhada em 23/10. Cada item abaixo vira **tratamento candidato** ou ajuste de estrutura,
+confirmado por escrito antes de aplicar.
+
+**Estrutura e ordem da DRE (ata 16/10):** Faturamento → Retenções → Subtotal líquido → Pagamentos →
+Subtotal líquido → Taxas → Provisões → Tributos não pagos → Ajustes do IR → Resultado líquido;
+provisões no fim da estrutura.
+
+**Itens da ata de 20/10 (Vale Norte):**
+- excluir a **taxa de contingência de 1%** (fica só a taxa de administração; avaliar se os 2% de cada
+  contrato bastam para a administração central). Hoje o assistente propõe a contingência de 1% como
+  padrão: corrigir em `agentic-assistant`;
+- ratear o **termo de apostilamento** no faturamento da DRE e mostrar o apostilamento separado;
+- "revisar a estrutura igual à de Ferrari" (a esclarecer com a Luyla);
+- separar os custos do **terreno do aterro de Mossoró**: sair de despesa com terreno e entrar em
+  despesa de aterro, com rubrica própria (ata de 16/10);
+- suprimir a conta **"Estorno de Despesa"** no faturamento (devoluções de colaboradores); definir o
+  tratamento do estorno de **férias pagas em duplicidade** em setembro (DP: será descontado a partir da
+  próxima folha);
+- **FGTS rescisório** classificado como rescisório mesmo que de competências anteriores, para não
+  duplicar com o provisionado/folha;
+- falta a provisão de **FGTS 40% da folha**;
+- todo valor descontado do funcionário e repassado a terceiros/fisco identificado e classificado
+  (INSS base, INSS férias, IRRF, consignado, vale-transporte, adicional noturno; reflexos como DSR);
+- **rescisões deduzidas das provisões** correspondentes (hoje a fórmula duplica) — e, não urgente, um
+  especialista de folha para a dedução provisão × efetivo (ver `hr-payroll-domain`);
+- formalizar a planilha de **custos fixos** (Adm Central);
+- item **"Despesas extraordinárias"** para o acordo extrajudicial de R$ 288 mil parcelado em 8x;
+- reclassificar **Fan Card** para combustível; criar centro de custo de **Consultoria**; confirmar
+  custos de cartório (protestos e baixas) (ata 16/10);
+- no econômico, considerar as férias do mês e retirar o provisionamento de férias para não duplicar
+  com a folha; provisionar multas rescisórias de FGTS pelo relatório analítico do DP (ata 16/10).
+
+**Franquias/NC3 (ata 20/10, Eric):** indicadores e notas explicativas; rateio "Administração Local
+(NC3)" e "Administração Central (1%)"; tirar da DRE NFs de implantação (Julimar, ~R$ 53 mil da Bauducco
+em janeiro) e manter custos de implantação fora da DRE operacional; royalties por competência; juros e
+antecipação pelos extratos de cartão; capital de giro no fluxo de caixa; estimativa de CMV; detalhar
+provisões trabalhistas e de aluguel. **Fora do escopo atual do TON (outra empresa do grupo) até a
+Luyla confirmar.**
+
+**Parcelamentos (reunião de 23/10):**
+- A Luciana preenche o modelo "Parcelamentos pagos" do TON. Junho ficou sem pagamento de nenhum
+  parcelamento. Combinado: as parcelas não pagas são marcadas na coluna em branco (I) com o status
+  "não paga", e o TON considera pagas as demais. O modelo e o perfil ganham a coluna de status
+  (oferecida pelo Thalisson).
+- Outros parcelamentos podem surgir (procuradoria; pedidos de outras pessoas que a Controladoria ainda
+  não acompanha). O modelo deve aceitar novos credores sem mudar o layout.
+- Consórcios Bradesco (5 veículos): parcelas pagas e restantes, falta o valor da parcela (ata 20/10;
+  planilha na pasta Custos Fixos).
+
+**Custos fixos (23/10):** a planilha de custos fixos é a **referência mensal** (meta: o que se deve
+gastar por mês, ex.: energia, folha). Em 2027 a Controladoria compara na DRE da matriz. Liga com
+`budget-vs-actual`.
+
+**Apagar linha da DRE (23/10):** a Luyla pediu para excluir uma linha (ex.: "imposto sem faturamento",
+que já está dentro de um grupo). Hoje só dá para ocultar ou tirar do resultado; o chat não exclui. O
+Thalisson disse que consegue incluir. Ver `agentic-assistant`.

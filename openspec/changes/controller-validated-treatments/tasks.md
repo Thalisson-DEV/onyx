@@ -26,3 +26,15 @@ composição, e o Excel passa na conferência com o cálculo persistido.
 
 - [ ] 4.1 Recalcular jan–jun/2026 e comparar com o Banco de Dados/BI linha a linha; registrar diferenças remanescentes com causa
 - [ ] 4.2 Validação no Chrome e atualização de `openspec/roadmap.md`
+
+## 5. Acrescentado em 2026-10-23
+
+- [ ] 5.1 Converter os itens das atas da Controladoria de 16/10 e 20/10 (Vale Norte) em tratamentos candidatos e confirmar cada um por escrito
+- [ ] 5.2 Ordem de grupos da DRE da ata de 16/10 nas estruturas Caixa e Econômica
+- [ ] 5.3 Excluir a contingência de 1% (estrutura e padrão do assistente)
+- [ ] 5.4 Apostilamento rateado no faturamento e exibido separado
+- [ ] 5.5 Rubrica "aterro" de Mossoró; "Despesas extraordinárias" (acordo de R$ 288 mil em 8x); Fan Card → combustível; centro de custo Consultoria
+- [ ] 5.6 Folha: FGTS rescisório, provisão FGTS 40%, rescisões deduzidas das provisões, descontos de funcionários classificados, férias do mês sem duplicar provisão
+- [ ] 5.7 Estorno de despesa fora do faturamento; regra para estorno de férias em duplicidade
+- [ ] 5.8 Coluna de status "não paga" no modelo e no perfil de parcelamentos pagos; novos credores sem mudar o layout
+- [ ] 5.9 Esclarecer com a Luyla: "estrutura igual à de Ferrari" e se Franquias/NC3 entram no TON

@@ -2,15 +2,17 @@
 
 import datetime
 import json
+import re
 from decimal import Decimal
 from typing import Any, ClassVar
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ValidationError
+from sqlalchemy import select
 
 from onyx.chat.emitter import Emitter
 from onyx.db.engine.sql_engine import get_session_with_tenant
-from onyx.db.models import User
+from onyx.db.models import ToolCall, User
 from onyx.error_handling.exceptions import OnyxError
 from onyx.server.query_and_chat.placement import Placement
 from onyx.server.query_and_chat.streaming_models import (
@@ -96,6 +98,7 @@ TON_TOOL_DISPLAY_NAMES = {
     "ton_propose_occurrence_assignment": "Proposta de responsável",
     "ton_propose_daily_sweep": "Proposta de varredura diária",
     "ton_get_daily_sweep": "Varredura diária",
+    "ton_create_artifact": "Artefato",
 }
 
 
@@ -1276,6 +1279,248 @@ class TonPayablesTool(TonFunctionTool):
             "mais": max(0, len(chosen) - 60),
         }
 
+_ARTIFACT_KINDS = ("painel", "apresentacao", "relatorio")
+_BLOCK_TYPES = ("kpis", "barras", "linha", "tabela", "texto")
+_ARTIFACT_ID = re.compile(r"^[a-z0-9-]{6,40}$")
+_ITEM = {
+    "type": "object",
+    "properties": {
+        "label": {"type": "string"},
+        "value": {"type": "number", "description": "Número para o gráfico (reais sem formatação, percentual como 10.4)."},
+        "display": {"type": "string", "description": "Como mostrar o valor (R$ 10,76 mi, 10,4%)."},
+        "note": {"type": "string", "description": "Uma linha de contexto (−2,0% contra agosto)."},
+        "tone": {"type": "string", "enum": ["neutral", "good", "bad"]},
+    },
+}
+_BLOCK = {
+    "type": "object",
+    "properties": {
+        "type": {"type": "string", "enum": list(_BLOCK_TYPES)},
+        "title": {"type": "string"},
+        "items": {"type": "array", "items": _ITEM, "description": "kpis (até 4) e barras (até 20)."},
+        "format": {
+            "type": "string",
+            "enum": ["brl", "percent", "number"],
+            "description": "Formato dos valores de barras e linha.",
+        },
+        "series": {
+            "type": "array",
+            "description": "linha: até 4 séries com os mesmos rótulos.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "points": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {"label": {"type": "string"}, "value": {"type": "number"}},
+                        },
+                    },
+                },
+            },
+        },
+        "columns": {"type": "array", "items": {"type": "string"}, "description": "tabela: cabeçalhos."},
+        "rows": {
+            "type": "array",
+            "items": {"type": "array", "items": {"type": "string"}},
+            "description": "tabela: até 60 linhas; valores já formatados em pt-BR.",
+        },
+        "body": {"type": "string", "description": "texto: Markdown curto."},
+    },
+}
+
+
+def _text(value: Any, limit: int) -> str:
+    return str(value or "").strip()[:limit]
+
+
+def _number(value: Any) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value)
+
+
+def _clean_item(item: Any) -> dict[str, Any] | None:
+    if not isinstance(item, dict) or not _text(item.get("label"), 80):
+        return None
+    tone = item.get("tone")
+    return {
+        "label": _text(item.get("label"), 80),
+        "value": _number(item.get("value")),
+        "display": _text(item.get("display"), 40) or None,
+        "note": _text(item.get("note"), 120) or None,
+        "tone": tone if tone in ("neutral", "good", "bad") else "neutral",
+    }
+
+
+def _clean_block(block: Any) -> dict[str, Any]:
+    if not isinstance(block, dict) or block.get("type") not in _BLOCK_TYPES:
+        raise ValueError(f"Bloco inválido; use type {', '.join(_BLOCK_TYPES)}")
+    kind = block["type"]
+    clean: dict[str, Any] = {"type": kind, "title": _text(block.get("title"), 120) or None}
+    if kind in ("kpis", "barras"):
+        items = [item for item in map(_clean_item, block.get("items") or []) if item]
+        if not items:
+            raise ValueError(f"Bloco {kind} sem itens")
+        clean["items"] = items[: 4 if kind == "kpis" else 20]
+    if kind in ("barras", "linha"):
+        fmt = block.get("format")
+        clean["format"] = fmt if fmt in ("brl", "percent", "number") else "brl"
+    if kind == "linha":
+        series = []
+        for serie in (block.get("series") or [])[:4]:
+            if not isinstance(serie, dict):
+                continue
+            points = [
+                {"label": _text(point.get("label"), 40), "value": _number(point.get("value"))}
+                for point in (serie.get("points") or [])[:36]
+                if isinstance(point, dict) and _number(point.get("value")) is not None
+            ]
+            if points:
+                series.append({"name": _text(serie.get("name"), 60), "points": points})
+        if not series:
+            raise ValueError("Bloco linha sem séries")
+        clean["series"] = series
+    if kind == "tabela":
+        columns = [_text(column, 60) for column in (block.get("columns") or [])][:10]
+        rows = [
+            [cell if _number(cell) is not None else _text(cell, 120) for cell in row[: len(columns)]]
+            for row in (block.get("rows") or [])[:60]
+            if isinstance(row, list)
+        ]
+        if not columns or not rows:
+            raise ValueError("Tabela sem colunas ou linhas")
+        clean["columns"] = columns
+        clean["rows"] = rows
+    if kind == "texto":
+        body = _text(block.get("body"), 4000)
+        if not body:
+            raise ValueError("Bloco texto vazio")
+        clean["body"] = body
+    return clean
+
+
+def _clean_slide(slide: Any) -> dict[str, Any] | None:
+    if not isinstance(slide, dict) or not _text(slide.get("title"), 160):
+        return None
+    metric = slide.get("metric") if isinstance(slide.get("metric"), dict) else None
+    return {
+        "kicker": _text(slide.get("kicker"), 60) or None,
+        "title": _text(slide.get("title"), 160),
+        "body": _text(slide.get("body"), 1200) or None,
+        "metric": (
+            {"value": _text(metric.get("value"), 30), "label": _text(metric.get("label"), 80)}
+            if metric and _text(metric.get("value"), 30)
+            else None
+        ),
+        "block": _clean_block(slide["block"]) if isinstance(slide.get("block"), dict) else None,
+    }
+
+
+def _previous_artifact_id(session: Any, chat_session_id: UUID | None, kind: str, title: str) -> str | None:
+    """The id of this conversation's latest artifact with the same kind and title.
+
+    Earlier turns reach the model without the tool results, so a redo often
+    comes without artifact_id; matching the title keeps it a new version.
+    """
+    if session is None or chat_session_id is None:
+        return None
+    responses = session.scalars(
+        select(ToolCall.tool_call_response)
+        .where(
+            ToolCall.chat_session_id == chat_session_id,
+            ToolCall.tool_call_response.contains('"ton_artifact"'),
+        )
+        .order_by(ToolCall.id.desc())
+    )
+    for response in responses:
+        try:
+            data = json.loads(response)
+        except (TypeError, ValueError):
+            continue
+        # Stored as the call summary: {"tool_name", "tool_result": {...}}.
+        if isinstance(data, dict) and isinstance(data.get("tool_result"), dict):
+            data = data["tool_result"]
+        if (
+            isinstance(data, dict)
+            and data.get("kind") == "ton_artifact"
+            and data.get("artifact_kind") == kind
+            and str(data.get("title", "")).casefold() == title.casefold()
+            and _ARTIFACT_ID.match(str(data.get("artifact_id", "")))
+        ):
+            return str(data["artifact_id"])
+    return None
+
+
+class TonCreateArtifactTool(TonFunctionTool):
+    NAME = "ton_create_artifact"
+    DESCRIPTION = (
+        "Cria um artefato que fica na conversa e abre ao lado: painel (indicadores, gráficos e tabela), "
+        "apresentacao (slides para a diretoria) ou relatorio (documento A4 que vira PDF). Use só números já "
+        "retornados pelas ferramentas TON nesta conversa. Para ajustar um artefato desta conversa, chame de novo "
+        "com o mesmo artifact_id: vira uma versão nova."
+    )
+    PARAMETERS = {
+        "artifact_kind": {"type": "string", "enum": list(_ARTIFACT_KINDS)},
+        "title": {"type": "string", "description": "Título curto (Receita por unidade · set/2026)."},
+        "subtitle": {"type": "string", "description": "Período, escopo e base dos números."},
+        "artifact_id": {"type": "string", "description": "Só para nova versão de um artefato desta conversa."},
+        "blocks": {"type": "array", "items": _BLOCK, "description": "painel e relatorio: blocos em ordem (até 12)."},
+        "slides": {
+            "type": "array",
+            "description": "apresentacao: 3 a 10 slides.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "kicker": {"type": "string", "description": "Rótulo pequeno acima do título."},
+                    "title": {"type": "string", "description": "A mensagem do slide numa frase."},
+                    "body": {"type": "string", "description": "Até 4 tópicos em Markdown."},
+                    "metric": {
+                        "type": "object",
+                        "properties": {"value": {"type": "string"}, "label": {"type": "string"}},
+                    },
+                    "block": _BLOCK,
+                },
+            },
+        },
+        "sources": {"type": "array", "items": {"type": "string"}, "description": "De onde vieram os números."},
+    }
+
+    def compute(self, session: Any, user: User, kwargs: dict[str, Any]) -> dict[str, Any]:
+        del user
+        kind = kwargs.get("artifact_kind")
+        if kind not in _ARTIFACT_KINDS:
+            raise ValueError(f"artifact_kind deve ser {', '.join(_ARTIFACT_KINDS)}")
+        title = _text(kwargs.get("title"), 120)
+        if not title:
+            raise ValueError("Informe o título")
+        artifact_id = _text(kwargs.get("artifact_id"), 40).lower()
+        if artifact_id and not _ARTIFACT_ID.match(artifact_id):
+            raise ValueError("artifact_id inválido; use o recebido nesta conversa")
+        blocks = [_clean_block(block) for block in (kwargs.get("blocks") or [])[:12]]
+        slides = [slide for slide in map(_clean_slide, (kwargs.get("slides") or [])[:10]) if slide]
+        if kind == "apresentacao" and not slides:
+            raise ValueError("Apresentação precisa de slides")
+        if kind != "apresentacao" and not blocks:
+            raise ValueError("Painel e relatório precisam de blocos")
+        if not artifact_id:
+            artifact_id = (
+                _previous_artifact_id(session, getattr(self, "_chat_session_id", None), kind, title) or ""
+            )
+        return {
+            "kind": "ton_artifact",
+            "artifact_id": artifact_id or uuid4().hex[:12],
+            "artifact_kind": kind,
+            "title": title,
+            "subtitle": _text(kwargs.get("subtitle"), 160) or None,
+            "blocks": blocks,
+            "slides": slides,
+            "sources": [_text(source, 120) for source in (kwargs.get("sources") or [])[:8] if _text(source, 120)],
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        }
+
+
 TON_TOOL_CLASSES = (
     TonListSourcesTool,
     TonGetSourceStatusTool,
@@ -1326,4 +1571,5 @@ TON_TOOL_CLASSES = (
     TonProposeR1Tool,
     TonR1StatusTool,
     TonPayablesTool,
+    TonCreateArtifactTool,
 )

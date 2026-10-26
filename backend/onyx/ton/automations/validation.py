@@ -319,8 +319,10 @@ def kind_problems(definition: AutomationDefinition, kind: AutomationKind) -> lis
 
 
 def activation_problems(definition: AutomationDefinition, kind: AutomationKind) -> list[str]:
+    # People read these: name the step by its label, never by its id.
+    labels = {node.id: node.label for node in iter_nodes(definition.steps)}
     errors = [
-        (f"{issue.node_id}: " if issue.node_id and issue.node_id != "trigger" else "") + issue.message
+        (f"{labels[issue.node_id]}: " if labels.get(issue.node_id or "") else "") + issue.message
         for issue in validate(definition)
         if issue.severity == "error"
     ]

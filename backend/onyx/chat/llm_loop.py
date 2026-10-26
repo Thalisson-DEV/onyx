@@ -310,6 +310,7 @@ def _try_fallback_tool_extraction(
 # Cycle 6: No more tools available, forced to answer
 # Override via the MAX_LLM_CYCLES env var when running with tool-heavy MCPs
 # that legitimately need more turns. Imported from chat_configs.
+TON_MAX_LLM_CYCLES = 10
 
 
 def _build_context_file_citation_mapping(
@@ -878,10 +879,18 @@ def run_llm_loop(
             else None
         )
 
+        # The TON agent queries, proposes and builds artifacts in one turn, so
+        # it gets more cycles than a search chat.
+        from onyx.tools.tool_implementations.ton.ton_tool import TonDomainTool
+
+        max_cycles = MAX_LLM_CYCLES
+        if any(isinstance(tool, TonDomainTool) for tool in tools):
+            max_cycles = max(MAX_LLM_CYCLES, TON_MAX_LLM_CYCLES)
+
         reasoning_cycles = 0
-        for llm_cycle_count in range(MAX_LLM_CYCLES):
+        for llm_cycle_count in range(max_cycles):
             # Handling tool calls based on cycle count and past cycle conditions
-            out_of_cycles = llm_cycle_count == MAX_LLM_CYCLES - 1
+            out_of_cycles = llm_cycle_count == max_cycles - 1
             if forced_tool_id:
                 # Needs to be just the single one because the "required" currently doesn't have a specified tool, just a binary
                 final_tools = [tool for tool in tools if tool.id == forced_tool_id]

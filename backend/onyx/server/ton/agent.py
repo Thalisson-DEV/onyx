@@ -18,6 +18,7 @@ from onyx.db.ton.agent import (
     specialist_agent_id,
 )
 from onyx.db.ton.agent_occurrences import query_occurrences
+from onyx.db.ton.chat_artifacts import ChatArtifactView, list_chat_artifacts
 from onyx.db.ton.occurrence_ledger import (
     LedgerDetail,
     LedgerFilter,
@@ -245,6 +246,16 @@ def report_groups(
     session: Session = Depends(get_session),
 ) -> list[ReportGroup]:
     return list_report_groups(session, user, limit)
+
+
+@router.get("/artifacts")
+def chat_artifacts(
+    limit: int = Query(default=100, ge=1, le=300),
+    user: User = Depends(require_permission(Permission.READ_TON_SOURCES)),
+    session: Session = Depends(get_session),
+) -> list[ChatArtifactView]:
+    """Dashboards, decks and reports the TON built in the person's conversations."""
+    return list_chat_artifacts(session, user, limit)
 
 
 @router.get("/reports/{revision_id}/history")

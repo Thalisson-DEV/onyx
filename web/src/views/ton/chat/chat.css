@@ -18,41 +18,25 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: 0.5rem;
-  background: var(--ton-chrome);
-  color: var(--ton-on-chrome);
-  box-shadow: inset 0 0 0 1px var(--ton-chrome-line);
+  border-radius: 999px;
+  background: #f4f8f6;
+  box-shadow:
+    inset 0 0 0 1px rgb(12 42 32 / 0.08),
+    0 1px 2px rgb(12 42 32 / 0.08);
 }
-.ton-mark svg {
-  width: 62%;
-  height: 62%;
+.ton-mark img {
+  display: block;
+  user-select: none;
 }
-.ton-mark-spark {
-  fill: var(--ton-gold);
-  transform-origin: 12px 4px;
+/* The Vale Norte arrows already read as motion: while TON thinks they turn,
+   easing in and out like a breath rather than a loading spinner. */
+.ton-mark[data-working] img {
+  animation: ton-mark-turn 1.6s cubic-bezier(0.45, 0.05, 0.35, 1) infinite;
 }
-.ton-mark[data-working] .ton-mark-spark {
-  animation: ton-spark 1.4s var(--ton-ease-out) infinite;
-}
-/* A thin gold ring orbits the mark while TON works. */
-.ton-mark[data-working]::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 0.6875rem;
-  padding: 1.5px;
-  background: conic-gradient(
-    from var(--ton-orbit, 0deg),
-    transparent 0deg,
-    var(--ton-gold) 70deg,
-    transparent 140deg
-  );
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: ton-orbit 1.6s linear infinite;
+@keyframes ton-mark-turn {
+  to {
+    transform: rotate(360deg);
+  }
 }
 @property --ton-orbit {
   syntax: "<angle>";
@@ -684,8 +668,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ton-mark[data-working]::after,
-  .ton-mark[data-working] .ton-mark-spark,
+  .ton-mark[data-working] img,
   .ton-work-progress::after,
   .ton-status-dot[data-status="running"] {
     animation-duration: 0s;

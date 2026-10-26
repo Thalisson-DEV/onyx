@@ -1537,7 +1537,40 @@ export const COPY = {
   reports: {
     title: "Relatórios",
     description:
-      "Versão atual de cada relatório publicado pelo TON. Versões anteriores ficam preservadas para auditoria.",
+      "Painéis, apresentações e relatórios que o TON montou nas suas conversas. Abra para ver, apresentar, baixar ou pedir um ajuste.",
+    create: "Criar com o TON",
+    createHint: "Escolha o resultado e descreva no chat o que você quer",
+    search: "Buscar por título ou conversa",
+    views: {
+      all: "Todos",
+      painel: "Painéis",
+      apresentacao: "Apresentações",
+      relatorio: "Relatórios",
+      official: "Fechamento oficial",
+    },
+    columns: {
+      title: "Artefato",
+      kind: "Tipo",
+      conversation: "Conversa",
+      versions: "Versões",
+      updated: "Criado",
+    },
+    meta: {
+      slides: (count: number) => plural(count, "slide", "slides"),
+      blocks: (count: number) => plural(count, "bloco", "blocos"),
+    },
+    openChat: "Abrir",
+    emptyArtifacts:
+      "Nada criado ainda. Use “Criar com o TON” ou peça no chat um painel, uma apresentação ou um relatório.",
+    noMatch: "Nada encontrado com essa busca.",
+    officialHint:
+      "Relatórios formais do fechamento publicados pela rotina, preservados para auditoria.",
+    officialColumns: {
+      report: "Relatório",
+      period: "Período",
+      origin: "Origem",
+      status: "Situação",
+    },
     current: "Versão atual",
     previousVersions: "Ver versões anteriores",
     hideVersions: "Ocultar versões anteriores",
@@ -2069,6 +2102,154 @@ export const COPY = {
           "Escreva um resumo executivo do mês para a diretoria: resultado, principais variações, riscos e próximos passos, em linguagem simples.",
       },
     ],
+  },
+  artifacts: {
+    region: "Artefato",
+    kinds: {
+      painel: "Painel",
+      apresentacao: "Apresentação",
+      relatorio: "Relatório",
+    },
+    slides: (count: number) => plural(count, "slide", "slides"),
+    charts: (count: number) => plural(count, "gráfico", "gráficos"),
+    tables: (count: number) => plural(count, "tabela", "tabelas"),
+    open: "Abrir",
+    opened: "Aberto ao lado",
+    close: "Fechar artefato",
+    expand: "Tela cheia",
+    collapse: "Sair da tela cheia",
+    print: "Baixar PDF",
+    csv: "Baixar dados para Excel",
+    present: "Apresentar",
+    tabs: {
+      view: "Visualizar",
+      data: "Dados e fontes",
+      versions: (count: number) => `Versões · ${formatNumber(count)}`,
+    },
+    sources: "Fontes",
+    noSources: "O TON não informou as fontes deste artefato.",
+    noData: "Este artefato não tem tabela de dados.",
+    current: "atual",
+    showVersion: "Ver",
+    versionsHint:
+      "Peça um ajuste na conversa (“tire uma unidade”, “compare com agosto”) e o TON cria a versão seguinte sem apagar a anterior.",
+    footer: "Feito pelo TON com números conferidos nas fontes",
+    adjust: "Pedir ajuste",
+    adjustPrompt: (title: string) => `Ajuste o artefato “${title}”: `,
+    presenter: {
+      prev: "Slide anterior",
+      next: "Próximo slide",
+      exit: "Sair",
+      hint: "← e → mudam o slide · Esc sai",
+    },
+  },
+  chat: {
+    history: {
+      title: "Conversas",
+      newConversation: "Nova",
+      search: "Buscar nas conversas",
+      empty: "Nenhuma conversa ainda.",
+      noMatch: "Nenhuma conversa com esse nome.",
+      toggle: "Mostrar ou esconder as conversas",
+      more: "Ver todas",
+    },
+    header: {
+      period: "Período",
+      scope: "Escopo",
+      specialist: "Especialista",
+      coordinator: "Coordenador",
+      newConversation: "Nova conversa",
+      untitled: "Nova conversa",
+    },
+    panels: {
+      start: "Comece por aqui",
+      resume: "Retomar",
+      create: "Criar com o TON",
+      noRecent: "Suas conversas aparecem aqui.",
+    },
+    create: [
+      {
+        key: "painel",
+        label: "Painel ou análise",
+        description: "Indicadores, gráfico e tabela com os números do mês",
+        chip: "Painel",
+        placeholder:
+          "Que painel você quer? Ex.: receita e custo das unidades do Paraná no trimestre",
+      },
+      {
+        key: "apresentacao",
+        label: "Apresentação para a diretoria",
+        description: "Slides no padrão Vale Norte, prontos para revisar",
+        chip: "Apresentação",
+        placeholder:
+          "Sobre o que é a apresentação? Ex.: fechamento de setembro para a diretoria",
+      },
+      {
+        key: "relatorio",
+        label: "Relatório em PDF",
+        description: "Documento A4 para enviar ou imprimir",
+        chip: "Relatório",
+        placeholder:
+          "O que o relatório deve contar? Ex.: por que o resultado caiu em agosto",
+      },
+    ],
+    composer: {
+      create: "Criar",
+      clearCreate: "Tirar a marcação e voltar a conversar",
+      commands: "Comandos",
+      createMenu: "O TON cria e deixa na conversa",
+      promise:
+        "O TON confere nas fontes antes de responder, mostra o caminho e só muda dados com o seu ok.",
+    },
+    commands: [
+      {
+        prompt: "dre",
+        content:
+          "Explique a DRE do último mês fechado: o que mais pesou no resultado e o que mudou contra o mês anterior.",
+      },
+      {
+        prompt: "pagar",
+        content:
+          "Na agenda de contas a pagar, o que vence nos próximos 7 dias, o que já venceu e o que está travado?",
+      },
+      {
+        prompt: "pendencias",
+        content:
+          "O que ainda impede publicar a DRE do mês? Ordene pelo impacto no resultado.",
+      },
+      {
+        prompt: "comparar",
+        content: "Compare o último mês fechado com o anterior, por unidade: ",
+      },
+      {
+        prompt: "fornecedor",
+        content: "Quanto pagamos ao fornecedor ",
+      },
+      {
+        prompt: "varredura",
+        content:
+          "Faça a varredura do último mês: rode os testes financeiros e me diga o que tem de estranho.",
+      },
+      {
+        prompt: "painel",
+        content: "Monte um painel sobre ",
+      },
+      {
+        prompt: "apresentacao",
+        content: "Prepare uma apresentação sobre ",
+      },
+      {
+        prompt: "relatorio",
+        content: "Gere um relatório em PDF sobre ",
+      },
+    ],
+    createMark: (kind: string) => `Criar · ${kind}`,
+    nextSteps: "Próximos passos",
+    table: {
+      copy: "Copiar tabela",
+      copied: "Tabela copiada",
+      excel: "Baixar para Excel",
+    },
   },
   activity: {
     importFailed: (source: string) => `Importação falhou — ${source}`,

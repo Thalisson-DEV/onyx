@@ -21,6 +21,8 @@ import {
   type ReactNode,
 } from "react";
 import { CompactMarkdown, Text } from "@opal/components";
+import "@/views/ton/chat/chat.css";
+import TonMark from "@/views/ton/chat/TonMark";
 import { SvgArrowUp, SvgCheck, SvgChevronDown, SvgX } from "@opal/icons";
 import { createChatSession, sendMessage } from "@/app/app/services/lib";
 import { SEARCH_PARAM_NAMES } from "@/app/app/services/searchParams";
@@ -66,44 +68,6 @@ export function useAskTonPage(context: AskTonContext | null) {
     return () => setPageContext(null);
     // The serialized value keeps the effect from re-running every render.
   }, [serialized, setPageContext]);
-}
-
-function TonAvatar({ size = 28 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 28 28"
-      aria-hidden
-      className="shrink-0"
-    >
-      <rect
-        x="1"
-        y="1"
-        width="26"
-        height="26"
-        rx="7"
-        fill="#0C2A20"
-        stroke="#C29C50"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M8 9.5h12M14 9.5v10"
-        stroke="#F4F8F6"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <rect
-        x="18.2"
-        y="17.2"
-        width="3.6"
-        height="3.6"
-        rx=".6"
-        transform="rotate(45 20 19)"
-        fill="#C29C50"
-      />
-    </svg>
-  );
 }
 
 function StepIcon({ state }: { state: AskStep["state"] }) {
@@ -363,7 +327,7 @@ function AskPanel({ context, onClose }: AskPanelProps) {
       defaultWidth={460}
       eyebrow={COPY.ask.eyebrow}
       title={context.screen}
-      leading={<TonAvatar size={36} />}
+      leading={<TonMark size={36} working={busy} />}
       summary={
         <div className="flex flex-col gap-1.5 w-full">
           <span className="tn-stat-label flex items-center gap-1.5">
@@ -430,7 +394,7 @@ function AskPanel({ context, onClose }: AskPanelProps) {
       }
     >
       <div className="tn-msg-ton">
-        <TonAvatar size={22} />
+        <TonMark size={24} />
         <div className="tn-msg-ton-body">
           <span>{context.opener ?? COPY.ask.greeting(context.screen)}</span>
         </div>

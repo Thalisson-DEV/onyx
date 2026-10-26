@@ -1,0 +1,1100 @@
+/*
+  TON Assistente: page layout (history, header, conversation, artifact),
+  welcome panels, next steps, table actions and artifacts. Colors come from
+  the Opal tokens retuned in ton-theme.css, so light and dark both work.
+*/
+
+/* ── Page layout ──────────────────────────────────────────────────────── */
+
+.tn-chat {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--background-neutral-01);
+}
+
+.tn-chat-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.tn-chat-runtime {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tn-chat-promise {
+  margin: 0.375rem auto 0.5rem;
+  padding: 0 1rem;
+  max-width: 48rem;
+  text-align: center;
+  font-size: 0.71875rem;
+  line-height: 1rem;
+  color: var(--text-03);
+}
+.tn-chat-runtime[data-new] .tn-chat-promise {
+  display: none;
+}
+
+/* ── History ──────────────────────────────────────────────────────────── */
+
+.tn-chat-history {
+  display: flex;
+  flex-direction: column;
+  width: 17rem;
+  flex-shrink: 0;
+  min-height: 0;
+  border-inline-end: 1px solid var(--border-01);
+  background: var(--background-neutral-00);
+  animation: tn-chat-slide-in 200ms var(--ton-ease-out, ease-out);
+}
+.tn-chat-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.875rem 0.75rem 0.625rem 1rem;
+}
+.tn-chat-history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 0.5rem 0.75rem;
+}
+.tn-chat-history-group {
+  padding: 0.875rem 0.5rem 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-03);
+}
+.tn-chat-history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+  padding: 0.4375rem 0.5rem;
+  border-radius: 0.5rem;
+  color: var(--text-04);
+  transition: background-color 120ms ease;
+}
+.tn-chat-history-item:hover {
+  background: var(--background-tint-01);
+}
+.tn-chat-history-item[aria-current="page"] {
+  background: var(--ton-brand-soft);
+  color: var(--text-05);
+}
+.tn-chat-history-title {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tn-chat-history-meta {
+  font-size: 0.71875rem;
+  line-height: 1rem;
+  color: var(--text-03);
+}
+.tn-chat-history-empty {
+  padding: 1rem 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-03);
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+
+.tn-chat-head {
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 0.625rem;
+  min-height: 3.25rem;
+  padding: 0.5rem 1rem 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-01);
+  background: var(--background-neutral-00);
+}
+.tn-chat-title {
+  overflow: hidden;
+  min-width: 0;
+  max-width: min(28rem, 40vw);
+  font-size: 0.9375rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.25rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-05);
+}
+.tn-chat-chips {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0.375rem;
+}
+/* Beside an open artifact the header keeps one line: period and scope go
+   first (the TON says them in the answer), the title shrinks last. */
+@container (max-width: 56rem) {
+  .tn-chat-chips {
+    display: none;
+  }
+}
+.tn-chat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 1.625rem;
+  padding: 0 0.5625rem;
+  border: 1px solid var(--border-01);
+  border-radius: 0.375rem;
+  background: var(--background-neutral-01);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  color: var(--text-03);
+}
+.tn-chat-chip b {
+  font-weight: 600;
+  color: var(--text-05);
+}
+button.tn-chat-chip:hover {
+  border-color: var(--border-02);
+  background: var(--background-tint-01);
+}
+
+/* ── Welcome ──────────────────────────────────────────────────────────── */
+
+.tn-chat-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding-bottom: 0.25rem;
+  text-align: center;
+}
+.tn-chat-welcome-title {
+  margin-top: 0.5rem;
+  font-size: 1.625rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 2rem;
+  color: var(--text-05);
+}
+.tn-chat-welcome-body {
+  max-width: 38rem;
+  font-size: 0.90625rem;
+  line-height: 1.4375rem;
+  color: var(--text-03);
+  text-wrap: pretty;
+}
+
+/* Wider than the composer when the screen has room, centered on it. */
+.tn-chat-panels {
+  --tn-panels-w: min(60rem, max(100%, 100vw - 40rem));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  width: var(--tn-panels-w);
+  margin-inline-start: calc((100% - var(--tn-panels-w)) / 2);
+  padding: 1rem 0 2rem;
+}
+@container (max-width: 52rem) {
+  .tn-chat-panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .tn-chat-panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.tn-chat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.625rem;
+  border: 1px solid var(--border-01);
+  border-radius: 0.75rem;
+  background: var(--background-neutral-00);
+  animation: ton-rise 260ms var(--ton-ease-out, ease-out) both;
+}
+.tn-chat-panel:nth-child(2) {
+  animation-delay: 40ms;
+}
+.tn-chat-panel:nth-child(3) {
+  animation-delay: 80ms;
+}
+.tn-chat-panel h2 {
+  padding: 0.125rem 0.375rem 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-03);
+}
+.tn-chat-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  text-align: start;
+  color: var(--text-05);
+  transition: background-color 120ms ease;
+}
+.tn-chat-task:hover {
+  background: var(--background-tint-01);
+}
+.tn-chat-task-icon {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  border: 1px solid var(--border-01);
+  border-radius: 0.5rem;
+  background: var(--background-neutral-01);
+  color: var(--ton-brand);
+}
+.tn-chat-task-icon[data-tone="muted"] {
+  color: var(--text-03);
+}
+.tn-chat-task-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.125rem;
+}
+.tn-chat-task-detail {
+  font-size: 0.75rem;
+  line-height: 1.0625rem;
+  color: var(--text-03);
+}
+
+/* ── Conversation ─────────────────────────────────────────────────────── */
+
+/* The work panel reads as the TON's turn: mark, what it did, the path. */
+.tn-chat .ton-work-header {
+  gap: 0.625rem;
+}
+
+/* Next steps: the requests the TON suggests, one click away. */
+.tn-next {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+  animation: ton-rise 220ms var(--ton-ease-out, ease-out) both;
+}
+.tn-next-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-03);
+}
+.tn-next-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+.tn-next-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3125rem 0.75rem;
+  border: 1px solid var(--border-02);
+  border-radius: 999px;
+  background: var(--background-neutral-00);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  color: var(--text-04);
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background-color 120ms ease;
+}
+.tn-next-chip svg {
+  opacity: 0;
+  transform: translateX(-2px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+.tn-next-chip:hover {
+  border-color: var(--ton-brand);
+  background: var(--ton-brand-soft);
+  color: var(--ton-brand);
+}
+.tn-next-chip:hover svg {
+  opacity: 1;
+  transform: none;
+}
+
+/* Table actions sit under the answer's table: quiet, brighter on hover. */
+.tn-table-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.125rem;
+  margin-top: 0.125rem;
+  opacity: 0.55;
+  transition: opacity 120ms ease;
+}
+.markdown-table-card:hover .tn-table-actions,
+.tn-table-actions:focus-within {
+  opacity: 1;
+}
+.markdown-table-card th.tn-num,
+.markdown-table-card td.tn-num {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Artifact card ────────────────────────────────────────────────────── */
+
+.tn-art-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.625rem 0.625rem 0.625rem;
+  border: 1px solid var(--border-02);
+  border-radius: 0.75rem;
+  background: var(--background-neutral-00);
+  animation: ton-rise 220ms var(--ton-ease-out, ease-out) both;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.tn-art-card[data-open] {
+  border-color: var(--ton-brand);
+  box-shadow: 0 0 0 3px var(--ton-brand-soft);
+}
+.tn-art-card-icon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: 0.625rem;
+  background: var(--ton-brand-soft);
+  color: var(--ton-brand);
+}
+.tn-art-card-icon[data-size="sm"] {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+}
+.tn-art-kind {
+  font-size: 0.65625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 0.875rem;
+  text-transform: uppercase;
+  color: var(--ton-brand);
+}
+
+/* ── Artifact panel ───────────────────────────────────────────────────── */
+
+.tn-art-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(50%, 46rem);
+  min-width: 22rem;
+  flex-shrink: 0;
+  min-height: 0;
+  border-inline-start: 1px solid var(--border-01);
+  background: var(--background-neutral-00);
+  animation: tn-chat-panel-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tn-art-panel-expanded {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  width: auto;
+  border: 0;
+}
+.tn-chat {
+  position: relative;
+}
+.tn-art-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  border-bottom: 1px solid var(--border-01);
+  min-height: 3.25rem;
+}
+.tn-art-panel-title {
+  overflow: hidden;
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.1875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-05);
+}
+.tn-art-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+.tn-art-tabs {
+  display: flex;
+  gap: 0.125rem;
+  padding: 0 0.75rem;
+  border-bottom: 1px solid var(--border-01);
+}
+.tn-art-tabs button {
+  height: 2.25rem;
+  margin-bottom: -1px;
+  padding: 0 0.625rem;
+  border-bottom: 2px solid transparent;
+  font-size: 0.8125rem;
+  color: var(--text-03);
+}
+.tn-art-tabs button:hover {
+  color: var(--text-05);
+}
+.tn-art-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--ton-brand);
+  font-weight: 600;
+  color: var(--text-05);
+}
+.tn-art-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  background: var(--background-neutral-01);
+}
+.tn-art-panel-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem 0.375rem 1rem;
+  border-top: 1px solid var(--border-01);
+  font-size: 0.75rem;
+  color: var(--text-03);
+}
+/* "Criar · Painel" on the person's message: the result they asked for. */
+.tn-create-mark {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: fit-content;
+  margin-bottom: 0.25rem;
+  font-size: 0.71875rem;
+  font-weight: 600;
+  color: var(--ton-brand);
+}
+.tn-create {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.tn-art-source {
+  display: inline-flex;
+  align-items: center;
+  height: 1.5rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-01);
+  border-radius: 0.25rem;
+  background: var(--background-neutral-00);
+  font-size: 0.71875rem;
+  color: var(--text-04);
+}
+.tn-art-versions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.tn-art-versions li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--border-01);
+  border-radius: 0.5rem;
+  background: var(--background-neutral-00);
+}
+.tn-art-versions li[data-current] {
+  border-color: var(--ton-brand);
+}
+
+/* ── Artifact content ─────────────────────────────────────────────────── */
+
+.tn-art-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border-01);
+  border-radius: 0.75rem;
+  background: var(--background-neutral-00);
+}
+.tn-art-sheet-head h3 {
+  font-size: 1.0625rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.375rem;
+  color: var(--text-05);
+}
+.tn-art-sheet-head p {
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: var(--text-03);
+}
+.tn-art-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-width: 0;
+}
+.tn-art-block-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-04);
+}
+.tn-art-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.75rem;
+}
+.tn-art-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-01);
+  border-radius: 0.625rem;
+}
+.tn-art-kpi-label {
+  font-size: 0.71875rem;
+  color: var(--text-03);
+}
+.tn-art-kpi-value {
+  font-size: 1.3125rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.75rem;
+  color: var(--text-05);
+}
+.tn-art-kpi-note {
+  font-size: 0.75rem;
+  color: var(--text-04);
+}
+.tn-art-kpi-note[data-tone="bad"] {
+  color: var(--status-text-error-05);
+}
+.tn-art-kpi-note[data-tone="good"] {
+  color: var(--status-text-success-05);
+}
+.tn-art-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.tn-art-bar {
+  display: grid;
+  grid-template-columns: minmax(6rem, 14rem) minmax(4rem, 1fr) auto;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--text-05);
+}
+.tn-art-bar-label {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.125rem;
+}
+.tn-art-bar-track {
+  height: 1rem;
+  overflow: hidden;
+  border-radius: 0.1875rem;
+  background: var(--background-neutral-02);
+}
+.tn-art-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 0 0.1875rem 0.1875rem 0;
+  background: var(--ton-brand);
+  transform-origin: left;
+  animation: ton-fill 420ms var(--ton-ease-out, ease-out) both;
+}
+.tn-art-bar-fill[data-tone="bad"] {
+  background: var(--status-error-05);
+}
+.tn-art-bar-fill[data-tone="good"] {
+  background: var(--status-success-05);
+}
+.tn-art-bar-value {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+.tn-art-bar-note {
+  grid-column: 2 / 4;
+  font-size: 0.71875rem;
+  color: var(--text-03);
+}
+.tn-art-line svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.tn-art-grid {
+  stroke: var(--border-01);
+  stroke-width: 1;
+}
+.tn-art-axis {
+  fill: var(--text-03);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.tn-art-series {
+  stroke: var(--ton-brand);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.tn-art-dot {
+  fill: var(--background-neutral-00);
+  stroke: var(--ton-brand);
+  stroke-width: 2;
+}
+[data-series="1"] .tn-art-series,
+[data-series="1"] .tn-art-dot {
+  stroke: var(--tn-gold-mark, #b48a3c);
+}
+[data-series="2"] .tn-art-series,
+[data-series="2"] .tn-art-dot {
+  stroke: var(--status-info-05);
+}
+[data-series="3"] .tn-art-series,
+[data-series="3"] .tn-art-dot {
+  stroke: var(--text-03);
+}
+.tn-art-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--text-04);
+}
+.tn-art-legend span::before {
+  content: "";
+  display: inline-block;
+  width: 0.625rem;
+  height: 2px;
+  margin-inline-end: 0.375rem;
+  vertical-align: middle;
+  background: var(--ton-brand);
+}
+.tn-art-legend span[data-series="1"]::before {
+  background: var(--tn-gold-mark, #b48a3c);
+}
+.tn-art-legend span[data-series="2"]::before {
+  background: var(--status-info-05);
+}
+.tn-art-legend span[data-series="3"]::before {
+  background: var(--text-03);
+}
+.tn-art-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-01);
+  border-radius: 0.5rem;
+}
+.tn-art-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.tn-art-table th {
+  padding: 0.4375rem 0.75rem;
+  border-bottom: 1px solid var(--border-01);
+  background: var(--background-neutral-01);
+  font-size: 0.71875rem;
+  font-weight: 600;
+  text-align: start;
+  white-space: nowrap;
+  color: var(--text-03);
+}
+.tn-art-table td {
+  padding: 0.4375rem 0.75rem;
+  border-bottom: 1px solid var(--border-01);
+  color: var(--text-05);
+}
+.tn-art-table tr:last-child td {
+  border-bottom: 0;
+}
+.tn-art-table .tn-num {
+  text-align: end;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.tn-art-text {
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+  color: var(--text-05);
+}
+
+/* Deck: a 16:9 slide on the Vale Norte green, thumbnails below. */
+.tn-art-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+/* The frame takes the width it gets; the slide inside is always 1280×720,
+   scaled by --tn-slide-scale (set from the frame width). */
+.tn-art-slide-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 0.625rem;
+  background: #0c2a20;
+}
+.tn-art-slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  gap: 1rem;
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  padding: 64px 84px 96px;
+  background: #0c2a20;
+  color: #f4f8f6;
+  container-type: inline-size;
+  transform: scale(var(--tn-slide-scale, 0.5));
+  transform-origin: 0 0;
+}
+.tn-art-slide[data-has-block] {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: center;
+}
+.tn-art-slide-mark {
+  position: absolute;
+  bottom: 28px;
+  left: 84px;
+  width: 36px;
+  opacity: 0.95;
+}
+.tn-art-slide-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2.4cqw;
+  min-width: 0;
+}
+.tn-art-slide-kicker {
+  font-size: max(0.625rem, 1.7cqw);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #d9b66f;
+}
+.tn-art-slide-title {
+  font-size: max(1rem, 4.2cqw);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.tn-art-slide-body {
+  font-size: max(0.75rem, 2.1cqw);
+  line-height: 1.45;
+  color: rgb(225 239 232 / 0.86);
+}
+.tn-art-slide-body * {
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+.tn-art-slide-body li + li {
+  margin-top: 0.35em;
+}
+.tn-art-slide-body ul {
+  padding-inline-start: 1.1em;
+  list-style: disc;
+}
+.tn-art-slide-metric {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 0.5em;
+  font-size: max(1.5rem, 6.5cqw);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.tn-art-slide-metric small {
+  font-size: max(0.75rem, 1.9cqw);
+  font-weight: 500;
+  color: rgb(225 239 232 / 0.72);
+}
+/* Charts and tables keep their app sizes, enlarged for a 1280px slide. */
+.tn-art-slide-block {
+  min-width: 0;
+  max-height: 560px;
+  overflow: hidden;
+  padding: 14px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0e1b16;
+  font-size: 0.875rem;
+  zoom: 1.45;
+}
+.tn-art-slide-page {
+  position: absolute;
+  right: 4%;
+  bottom: 4%;
+  font-size: max(0.625rem, 1.4cqw);
+  color: rgb(225 239 232 / 0.6);
+}
+.tn-art-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.5rem;
+}
+.tn-art-thumb {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  text-align: start;
+}
+.tn-art-thumb-frame {
+  display: flex;
+  align-items: flex-end;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  padding: 0.375rem;
+  border: 1px solid var(--border-01);
+  border-radius: 0.375rem;
+  background: #0c2a20;
+  font-size: 0.5625rem;
+  line-height: 0.75rem;
+  color: rgb(244 248 246 / 0.8);
+  opacity: 0.72;
+  transition:
+    opacity 120ms ease,
+    box-shadow 120ms ease;
+}
+.tn-art-thumb-frame span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.tn-art-thumb:hover .tn-art-thumb-frame {
+  opacity: 1;
+}
+.tn-art-thumb[aria-current="true"] .tn-art-thumb-frame {
+  opacity: 1;
+  box-shadow: 0 0 0 2px var(--ton-brand);
+}
+.tn-art-thumb-label {
+  overflow: hidden;
+  font-size: 0.6875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-03);
+}
+.tn-art-print-only {
+  display: none;
+}
+
+/* Report: an A4 sheet, always light like paper. */
+.tn-art-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2.5rem 2.75rem;
+  border-radius: 0.25rem;
+  background: #ffffff;
+  color: #0e1b16;
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.12),
+    0 8px 24px -12px rgb(0 0 0 / 0.25);
+}
+/* Paper surfaces (report page, white block on a slide) stay light in dark mode. */
+.tn-art-page,
+.tn-art-slide-block {
+  --text-05: #0e1b16;
+  --text-04: #2b3a33;
+  --text-03: #5f6e67;
+  --border-01: #e1e7e4;
+  --background-neutral-00: #ffffff;
+  --background-neutral-01: #f5f7f6;
+  --background-neutral-02: #e8ecea;
+  --ton-brand: #145c42;
+  --status-text-error-05: #b42318;
+  --status-text-success-05: #146c43;
+  --status-error-05: #d64545;
+  --status-success-05: #1f8a5b;
+  --status-info-05: #2f6fd6;
+  color: var(--text-05);
+}
+.tn-art-page-head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 2px solid #145c42;
+  font-size: 0.6875rem;
+  color: #5f6e67;
+}
+.tn-art-page-title {
+  font-size: 1.25rem;
+  font-weight: 650;
+  line-height: 1.625rem;
+}
+.tn-art-page-sub {
+  margin-top: -0.625rem;
+  font-size: 0.75rem;
+  color: #5f6e67;
+}
+.tn-art-page-foot {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e1e7e4;
+  font-size: 0.6875rem;
+  color: #5f6e67;
+}
+
+/* Presenter: one slide on black, keyboard to move. */
+.tn-art-presenter {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: #050a08;
+  outline: none;
+}
+.tn-art-presenter-stage {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  padding: 2rem;
+}
+.tn-art-presenter-stage .tn-art-slide-frame {
+  width: min(100%, calc((100vh - 7rem) * 16 / 9));
+}
+.tn-art-presenter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: rgb(244 248 246 / 0.8);
+}
+.tn-art-presenter-hint {
+  margin-inline: 1rem;
+  color: rgb(244 248 246 / 0.5);
+}
+
+/* ── Print: only the open artifact ────────────────────────────────────── */
+
+@media print {
+  html.tn-printing-artifact body * {
+    visibility: hidden !important;
+  }
+  html.tn-printing-artifact .tn-art-print,
+  html.tn-printing-artifact .tn-art-print * {
+    visibility: visible !important;
+  }
+  html.tn-printing-artifact .tn-art-print {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+  }
+  html.tn-printing-artifact .tn-art-thumbs,
+  html.tn-printing-artifact .tn-art-deck > .tn-art-slide-frame {
+    display: none !important;
+  }
+  html.tn-printing-artifact .tn-art-print-only {
+    display: block;
+  }
+  /* A4 landscape with 10mm margins: 277mm ≈ 1047px, so 1047 / 1280. */
+  html.tn-printing-artifact .tn-art-print-only .tn-art-slide-frame {
+    --tn-slide-scale: 0.818 !important;
+    width: 1047px;
+    break-after: page;
+    border-radius: 0;
+  }
+  html.tn-printing-artifact .tn-art-print-only .tn-art-slide-frame,
+  html.tn-printing-artifact .tn-art-print-only .tn-art-slide {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  html.tn-printing-artifact .tn-art-page,
+  html.tn-printing-artifact .tn-art-sheet {
+    max-width: none;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+  html.tn-printing-artifact .tn-art-bar-fill,
+  html.tn-printing-artifact .tn-art-table th {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* ── Motion ───────────────────────────────────────────────────────────── */
+
+@keyframes tn-chat-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}
+@keyframes tn-chat-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .tn-chat-history {
+    display: none;
+  }
+  .tn-art-panel {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    width: auto;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tn-chat-history,
+  .tn-chat-panel,
+  .tn-next,
+  .tn-art-card,
+  .tn-art-panel,
+  .tn-art-bar-fill {
+    animation: none;
+  }
+}

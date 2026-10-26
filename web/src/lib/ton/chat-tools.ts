@@ -372,6 +372,13 @@ export const TON_TOOLS: Record<string, TonToolDescriptor> = {
     icon: SvgFileText,
     kind: "report",
   },
+  ton_create_artifact: {
+    doing: "Montando o artefato",
+    label: "Artefato",
+    href: "/ton/chat",
+    icon: SvgBarChart,
+    kind: "report",
+  },
   ton_generate_executive_brief: {
     doing: "Publicando o resumo executivo",
     label: "Resumo executivo",

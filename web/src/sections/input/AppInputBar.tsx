@@ -75,6 +75,8 @@ import { handleInputNavKeys } from "@/sections/input/inputBarKeys";
 export interface AppInputBarHandle {
   reset: () => void;
   focus: () => void;
+  /** Replaces the draft with ``text`` and puts the cursor at its end. */
+  setText: (text: string) => void;
 }
 
 export interface AppInputBarProps {
@@ -112,6 +114,13 @@ export interface AppInputBarProps {
    * the agent is configured with; picking them is a technical concern there.
    */
   hideToolPicker?: boolean;
+  /**
+   * The "/" shortcuts this surface offers instead of the person's saved
+   * prompts (TON ships its own commands); no "create prompt" entry then.
+   */
+  promptShortcuts?: InputPrompt[];
+  /** Extra controls beside the attach button (TON's "Criar" menu). */
+  extraControls?: React.ReactNode;
 }
 
 const AppInputBar = React.memo(
@@ -138,6 +147,8 @@ const AppInputBar = React.memo(
     currentTabUrl,
     onToggleTabReading,
     modelSelector,
+    promptShortcuts,
+    extraControls,
   }: AppInputBarProps) => {
     const t = useTranslations("chat.input");
     const { incognitoEnabled } = useIncognito();
@@ -320,6 +331,13 @@ const AppInputBar = React.memo(
         inputRef.current?.focus();
         setCursorToEnd();
       },
+      setText: (text: string) => {
+        setMessage(text);
+        requestAnimationFrame(() => {
+          inputRef.current?.focus();
+          setCursorToEnd();
+        });
+      },
     }));
 
     // Sync non-empty prop changes to internal state (e.g. NRFPage reads URL params
@@ -459,7 +477,14 @@ const AppInputBar = React.memo(
       [setCurrentMessageFiles]
     );
 
-    const { activePromptShortcuts } = usePromptShortcuts();
+    const { activePromptShortcuts: savedPromptShortcuts } =
+      usePromptShortcuts();
+    const activePromptShortcuts = promptShortcuts ?? savedPromptShortcuts;
+    // A surface's own commands are always on; saved prompts follow the setting.
+    const shortcutsEnabled =
+      !!promptShortcuts || !!user?.preferences?.shortcut_enabled;
+    // The "create a prompt" entry only makes sense for saved prompts.
+    const offersCreateEntry = !promptShortcuts;
     // The list itself belongs to ToolsPopover, which reads it directly; only
     // the loading flag is wanted here, to hold the controls back.
     const { isLoading: sourcesLoading } = useAvailableSources();
@@ -575,11 +600,19 @@ const AppInputBar = React.memo(
     function handleKeyDownForPromptShortcuts(
       e: React.KeyboardEvent<HTMLDivElement>
     ) {
-      if (!user?.preferences?.shortcut_enabled || !showPrompts) return;
+      if (!shortcutsEnabled || !showPrompts) return;
+      // Nothing matches the surface's commands: the text is a message.
+      if (!offersCreateEntry && sortedFilteredPrompts.length === 0) return;
+      const lastIndex = offersCreateEntry
+        ? sortedFilteredPrompts.length
+        : sortedFilteredPrompts.length - 1;
 
       if (e.key === "Enter") {
         e.preventDefault();
-        if (tabbingIconIndex === sortedFilteredPrompts.length) {
+        if (
+          offersCreateEntry &&
+          tabbingIconIndex === sortedFilteredPrompts.length
+        ) {
           // "Create a new prompt" is selected
           window.open("/app/settings/chat-preferences", "_self");
         } else {
@@ -595,14 +628,10 @@ const AppInputBar = React.memo(
       } else if (e.key === "Tab") {
         // Tab: cycle forward
         e.preventDefault();
-        setTabbingIconIndex((prev) =>
-          Math.min(prev + 1, sortedFilteredPrompts.length)
-        );
+        setTabbingIconIndex((prev) => Math.min(prev + 1, lastIndex));
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
-        setTabbingIconIndex((prev) =>
-          Math.min(prev + 1, sortedFilteredPrompts.length)
-        );
+        setTabbingIconIndex((prev) => Math.min(prev + 1, lastIndex));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setTabbingIconIndex((prev) => Math.max(prev - 1, 0));
@@ -686,6 +715,7 @@ const AppInputBar = React.memo(
               controlsLoading && "invisible"
             )}
           >
+            {extraControls}
             {activeAgent &&
               !hideToolPicker && (
                 // Keyed, so switching agents starts clean rather than carrying
@@ -902,7 +932,11 @@ const AppInputBar = React.memo(
 
             <div className="flex flex-row items-center w-full">
               <Popover
-                open={user?.preferences?.shortcut_enabled && showPrompts}
+                open={
+                  shortcutsEnabled &&
+                  showPrompts &&
+                  (offersCreateEntry || sortedFilteredPrompts.length > 0)
+                }
                 onOpenChange={setShowPrompts}
               >
                 <Popover.Anchor asChild>
@@ -998,7 +1032,7 @@ const AppInputBar = React.memo(
                   side="top"
                   align="start"
                   onOpenAutoFocus={(e) => e.preventDefault()}
-                  width="xl"
+                  width={promptShortcuts ? "2xl" : "xl"}
                 >
                   <Popover.Menu>
                     {[
@@ -1020,25 +1054,29 @@ const AppInputBar = React.memo(
                           title={prompt.prompt}
                         />
                       )),
-                      sortedFilteredPrompts.length > 0 ? null : undefined,
-                      <LineItemButton
-                        sizePreset="main-ui"
-                        rounding={2}
-                        key="create-new"
-                        href="/app/settings/chat-preferences"
-                        icon={SvgPlus}
-                        state={
-                          tabbingIconIndex === sortedFilteredPrompts.length
-                            ? "selected"
-                            : "empty"
-                        }
-                        selectVariant={
-                          tabbingIconIndex === sortedFilteredPrompts.length
-                            ? "select-heavy"
-                            : "select-light"
-                        }
-                        title={t("appInputBar.createPromptItem.title")}
-                      />,
+                      sortedFilteredPrompts.length > 0 && offersCreateEntry
+                        ? null
+                        : undefined,
+                      offersCreateEntry && (
+                        <LineItemButton
+                          sizePreset="main-ui"
+                          rounding={2}
+                          key="create-new"
+                          href="/app/settings/chat-preferences"
+                          icon={SvgPlus}
+                          state={
+                            tabbingIconIndex === sortedFilteredPrompts.length
+                              ? "selected"
+                              : "empty"
+                          }
+                          selectVariant={
+                            tabbingIconIndex === sortedFilteredPrompts.length
+                              ? "select-heavy"
+                              : "select-light"
+                          }
+                          title={t("appInputBar.createPromptItem.title")}
+                        />
+                      ),
                     ]}
                   </Popover.Menu>
                 </Popover.Content>

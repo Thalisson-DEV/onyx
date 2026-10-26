@@ -53,6 +53,9 @@ const INVESTIGATION_TOOLS = [
   "ton_get_dre_line_entries",
 ];
 
+/** Artifacts the TON built; every call is a version with its own card. */
+const ARTIFACT_TOOLS = ["ton_create_artifact"];
+
 type Area = "sources" | "dre" | "evidence" | "report";
 
 const AREAS: Record<Area, string[]> = {
@@ -89,6 +92,7 @@ const CARD_TOOLS = [
   "ton_generate_executive_brief",
   ...ACTION_TOOLS,
   ...INVESTIGATION_TOOLS,
+  ...ARTIFACT_TOOLS,
 ];
 
 /** Readiness-style tools share one card per period and scope. */
@@ -149,9 +153,11 @@ export function TonExecutionSummary({
       continue;
     const kind = DRE_CARD_TOOLS.has(query.key) ? "dre" : query.key;
     const subject =
-      ACTION_TOOLS.includes(query.key) || INVESTIGATION_TOOLS.includes(query.key)
-      ? String(cardsById.size)
-      : (query.subject ?? "");
+      ACTION_TOOLS.includes(query.key) ||
+      INVESTIGATION_TOOLS.includes(query.key) ||
+      ARTIFACT_TOOLS.includes(query.key)
+        ? String(cardsById.size)
+        : (query.subject ?? "");
     cardsById.set(`${kind}|${subject}`, query);
   }
   const cards = [...cardsById.entries()].map(([id, query]) => ({

@@ -18,10 +18,16 @@ import { COPY, formatPeriod } from "@/lib/ton/copy";
 import { totalBlockers } from "@/lib/ton/blockers";
 import { isDraftResult } from "@/lib/ton/emailFlows";
 import FlowDraftCard from "@/views/ton/EmailFlowsPage/FlowDraftCard";
-import AutomationDraftCard, { isAutomationDraft } from "@/views/ton/AutomationsPage/AutomationDraftCard";
+import AutomationDraftCard, {
+  isAutomationDraft,
+} from "@/views/ton/AutomationsPage/AutomationDraftCard";
 import ActionCard from "@/views/ton/chat/ActionCard";
-import InvestigationCard, { investigationData } from "@/views/ton/chat/InvestigationCard";
+import InvestigationCard, {
+  investigationData,
+} from "@/views/ton/chat/InvestigationCard";
 import { isAgentAction } from "@/lib/ton/agent-actions";
+import { isTonArtifact } from "@/lib/ton/artifacts";
+import ArtifactCard from "@/views/ton/chat/artifacts/ArtifactCard";
 import {
   blockerCode,
   blockerLabel,
@@ -468,11 +474,16 @@ export function TonToolCard({ toolName, data, subtitle }: TonToolCardProps) {
       : null;
   if (record(payload) && isAgentAction(payload))
     return <ActionCard action={payload} />;
+  if (isTonArtifact(payload)) return <ArtifactCard artifact={payload} />;
   const investigation = investigationData(payload);
   if (investigation) return <InvestigationCard data={investigation} />;
   if (record(payload) && isAutomationDraft(payload))
     return <AutomationDraftCard draft={payload} />;
-  if (record(payload) && payload.kind === "flow_draft" && isDraftResult(payload))
+  if (
+    record(payload) &&
+    payload.kind === "flow_draft" &&
+    isDraftResult(payload)
+  )
     return <FlowDraftCard draft={payload} />;
   if (publication)
     return (
@@ -537,6 +548,7 @@ export function cardNeedsAttention(data: Json | undefined): boolean {
   if (!record(payload)) return false;
   if (
     payload.kind === "flow_draft" ||
+    payload.kind === "ton_artifact" ||
     isAutomationDraft(payload) ||
     isAgentAction(payload)
   )

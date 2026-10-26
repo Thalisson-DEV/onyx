@@ -36,6 +36,8 @@ import { FederatedConnectorDetail, ValidSources } from "@/lib/types";
 import DocumentsSidebar from "@/sections/document-sidebar/DocumentsSidebar";
 import useChatController from "@/hooks/useChatController";
 import { TON_SEND_MESSAGE_EVENT } from "@/lib/ton/agent-actions";
+import { TON_COMPOSE_EVENT } from "@/lib/ton/artifacts";
+import type { InputPrompt } from "@/app/app/interfaces";
 import useMultiModelChat from "@/hooks/useMultiModelChat";
 import MultiModelSelector from "@/sections/model-selector/MultiModelSelector";
 import { useActiveAgent } from "@/lib/agents/hooks";
@@ -173,6 +175,12 @@ export interface AppPagePresentation {
   /** Hides the composer's tool picker; the agent's configured tools still run. */
   hideToolPicker?: boolean;
   placeholder?: string;
+  /** "/" commands offered in place of the person's saved prompts. */
+  promptShortcuts?: InputPrompt[];
+  /** Extra composer controls beside the attach button. */
+  composerControls?: ReactNode;
+  /** Shapes what the composer sends (the TON stamps the chosen "Criar"). */
+  prepareMessage?: (message: string) => string;
 }
 
 export interface ChatPageProps {
@@ -528,6 +536,20 @@ export default function AppPage({ firstMessage, presentation }: ChatPageProps) {
     window.addEventListener(TON_SEND_MESSAGE_EVENT, handle);
     return () => window.removeEventListener(TON_SEND_MESSAGE_EVENT, handle);
   }, [onSubmit]);
+
+  // TON asks the composer to hold a draft (adjust an artifact, a command).
+  useEffect(() => {
+    function handle(event: Event) {
+      if (!(event instanceof CustomEvent)) return;
+      const detail: unknown = event.detail;
+      if (typeof detail !== "object" || detail === null) return;
+      if ("text" in detail && typeof detail.text === "string")
+        chatInputBarRef.current?.setText(detail.text);
+      else if ("focus" in detail) chatInputBarRef.current?.focus();
+    }
+    window.addEventListener(TON_COMPOSE_EVENT, handle);
+    return () => window.removeEventListener(TON_COMPOSE_EVENT, handle);
+  }, []);
 
   // A link can arrive carrying both a prompt and a search scope. Declared here
   // because it submits, so it needs `onSubmit` above it.
@@ -1074,6 +1096,8 @@ export default function AppPage({ firstMessage, presentation }: ChatPageProps) {
                         }
                         toolConfiguration={toolConfiguration}
                         hideToolPicker={presentation?.hideToolPicker}
+                        promptShortcuts={presentation?.promptShortcuts}
+                        extraControls={presentation?.composerControls}
                         ref={chatInputBarRef}
                         deepResearchEnabled={
                           deepResearchEnabledForCurrentWorkflow
@@ -1086,7 +1110,11 @@ export default function AppPage({ firstMessage, presentation }: ChatPageProps) {
                           ""
                         }
                         stopGenerating={stopGenerating}
-                        onSubmit={handleAppInputBarSubmit}
+                        onSubmit={(message) =>
+                          handleAppInputBarSubmit(
+                            presentation?.prepareMessage?.(message) ?? message
+                          )
+                        }
                         chatState={currentChatState}
                         currentSessionFileTokenCount={
                           currentChatSessionId

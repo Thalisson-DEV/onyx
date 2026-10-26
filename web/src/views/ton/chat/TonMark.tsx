@@ -4,18 +4,18 @@ import { cn } from "@opal/utils";
 
 export interface TonMarkProps {
   size?: number;
-  /** TON is working on the answer: a gold ring orbits the mark. */
+  /** TON is working on the answer: the Vale Norte arrows turn. */
   working?: boolean;
   className?: string;
 }
 
 /**
- * The TON identity in the conversation: the brand-green chrome as a rounded
- * square, a "T" glyph and the gold spark from the Vale Norte palette.
+ * The TON identity in the conversation: the Vale Norte arrows on a round
+ * coin. The arrows already suggest motion, so while TON thinks they turn.
  * Decorative; the surrounding text names the state.
  */
 export default function TonMark({
-  size = 28,
+  size = 32,
   working = false,
   className,
 }: TonMarkProps) {
@@ -26,18 +26,13 @@ export default function TonMark({
       data-working={working || undefined}
       style={{ width: size, height: size }}
     >
-      <svg viewBox="0 0 16 16" fill="none">
-        <path
-          d="M3.75 5.25H10.25M7 5.25V12.25"
-          stroke="currentColor"
-          strokeWidth={1.75}
-          strokeLinecap="round"
-        />
-        <path
-          className="ton-mark-spark"
-          d="M12 1.75L12.7 3.3L14.25 4L12.7 4.7L12 6.25L11.3 4.7L9.75 4L11.3 3.3L12 1.75Z"
-        />
-      </svg>
+      <img
+        src="/ton/vale-norte-mark.png"
+        alt=""
+        width={Math.round(size * 0.7)}
+        height={Math.round(size * 0.7)}
+        draggable={false}
+      />
     </span>
   );
 }

@@ -34,6 +34,8 @@ import { rehypeDirection } from "@/lib/rehypeDirection";
 import { cn } from "@opal/utils";
 import { useSmoothStreaming } from "@/hooks/useSmoothStreaming";
 import { useChatSessionStore } from "@/app/app/stores/useChatSessionStore";
+import { usePathname } from "next/navigation";
+import { splitNextSteps } from "@/lib/ton/nextSteps";
 
 /** Maps a visible-char count to a markdown index (skips formatting chars,
  *  extends to word boundary). Used by the voice-sync reveal path only. */
@@ -358,9 +360,14 @@ export const MessageTextRenderer: MessageRenderer<
     setIsStreamDraining(sessionIdAtMountRef.current, isDraining);
   }, [isDraining, setIsStreamDraining]);
 
+  // The TON draws its closing "Próximos passos" list as buttons instead.
+  const isTon = usePathname()?.startsWith("/ton") ?? false;
   const processedContent = useMemo(
-    () => processContent(displayedContent),
-    [displayedContent]
+    () =>
+      processContent(
+        isTon ? splitNextSteps(displayedContent).body : displayedContent
+      ),
+    [displayedContent, isTon]
   );
 
   // Stable-identity components for ReactMarkdown. Dynamic data (`state`,

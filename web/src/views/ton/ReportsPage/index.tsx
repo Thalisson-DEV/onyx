@@ -1,30 +1,31 @@
 "use client";
 
+import "@/views/ton/chat/assistant.css";
+
 import { useState } from "react";
-import Link from "next/link";
 import type { Route } from "next";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Button, Text } from "@opal/components";
-import {
-  SvgArrowRight,
-  SvgChevronDown,
-  SvgDownload,
-  SvgFileText,
-} from "@opal/icons";
+import { Button, LineItemButton, Popover, Text } from "@opal/components";
+import { SvgDownload, SvgSquarePlus } from "@opal/icons";
 import { errorHandlingFetcher } from "@/lib/fetcher";
 import { useTonReportGroups } from "@/lib/ton/api";
 import { COPY, formatPeriod, formatRelativeDateTime } from "@/lib/ton/copy";
 import { getBusinessLabel } from "@/lib/ton/labels";
-import type { Publication, ReportGroup } from "@/lib/ton/types";
+import type { ArtifactKind } from "@/lib/ton/artifacts";
+import type { Publication } from "@/lib/ton/types";
+import { ErrorState, LoadingBlock } from "@/views/ton/components/ui";
 import {
-  IconTile,
-  LoadingBlock,
-  PageContainer,
-  PageHeader,
-  StatusPill,
-  TonCard,
-  runTone,
-} from "@/views/ton/components/ui";
+  FilterBar,
+  PageFrame,
+  PageHead,
+  Tag,
+  ViewTabs,
+} from "@/views/ton/components/kit";
+import { ARTIFACT_ICONS } from "@/views/ton/chat/artifacts/ArtifactCard";
+import { CREATE_ITEMS } from "@/views/ton/ChatPage/CreateMenu";
+
+const R = COPY.reports;
 
 export function reportTitle(publication: Publication): string {
   return getBusinessLabel(publication.report_type ?? "MONTHLY_CLOSE");
@@ -36,129 +37,289 @@ function origin(publication: Publication): string {
     : COPY.reports.byAssistant;
 }
 
-function History({ revisionId }: { revisionId: string }) {
-  const history = useSWR<Publication[]>(
-    `/api/ton/agent/reports/${encodeURIComponent(revisionId)}/history?limit=25`,
+interface ChatArtifact {
+  artifact_id: string;
+  artifact_kind: ArtifactKind;
+  title: string;
+  subtitle: string | null;
+  created_at: string;
+  versions: number;
+  slides: number;
+  blocks: number;
+  chat_session_id: string;
+  chat_name: string | null;
+  chat_updated: string;
+}
+
+type View = "all" | ArtifactKind | "official";
+
+function artifactHref(item: ChatArtifact): Route {
+  const query = new URLSearchParams({
+    chatId: item.chat_session_id,
+    artefato: item.artifact_id,
+  });
+  // SAFETY: /ton/chat is a static route; only its query varies.
+  return `/ton/chat?${query.toString()}` as Route;
+}
+
+/** "Criar com o TON": the chat opens with the chosen result already marked. */
+function CreateButton() {
+  const router = useRouter();
+  return (
+    <Popover>
+      <Popover.Trigger asChild>
+        <Button icon={SvgSquarePlus}>{R.create}</Button>
+      </Popover.Trigger>
+      <Popover.Content side="bottom" align="end" width="xl">
+        <Popover.Menu>
+          {CREATE_ITEMS.map((item) => (
+            <LineItemButton
+              key={item.key}
+              sizePreset="main-ui"
+              rounding={2}
+              icon={ARTIFACT_ICONS[item.key]}
+              title={item.label}
+              description={item.description}
+              onClick={() =>
+                // SAFETY: /ton/chat is a static route; only its query varies.
+                router.push(`/ton/chat?criar=${item.key}` as Route)
+              }
+            />
+          ))}
+        </Popover.Menu>
+      </Popover.Content>
+    </Popover>
+  );
+}
+
+function ArtifactRows({ rows }: { rows: ChatArtifact[] }) {
+  const router = useRouter();
+  return (
+    <table className="tp-table">
+      <thead>
+        <tr>
+          <th scope="col">{R.columns.title}</th>
+          <th scope="col">{R.columns.kind}</th>
+          <th scope="col">{R.columns.conversation}</th>
+          <th scope="col" className="tp-end">
+            {R.columns.versions}
+          </th>
+          <th scope="col">{R.columns.updated}</th>
+          <th scope="col">
+            <span className="sr-only">{R.openChat}</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((item) => {
+          const Icon = ARTIFACT_ICONS[item.artifact_kind];
+          const href = artifactHref(item);
+          return (
+            <tr
+              key={item.artifact_id}
+              className="tp-row"
+              tabIndex={0}
+              aria-label={item.title}
+              onClick={() => router.push(href)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") router.push(href);
+              }}
+            >
+              <td className="tp-wrap">
+                <span className="tp-strong block">{item.title}</span>
+                <span className="tp-muted block">
+                  {item.subtitle ??
+                    (item.artifact_kind === "apresentacao"
+                      ? R.meta.slides(item.slides)
+                      : R.meta.blocks(item.blocks))}
+                </span>
+              </td>
+              <td>
+                <span className="inline-flex items-center gap-2">
+                  <Icon size={14} aria-hidden />
+                  {COPY.artifacts.kinds[item.artifact_kind]}
+                </span>
+              </td>
+              <td className="tp-muted tp-wrap">
+                {item.chat_name || COPY.chat.header.untitled}
+              </td>
+              <td className="tp-end">{item.versions}</td>
+              <td className="tp-muted">
+                {item.created_at ? formatRelativeDateTime(item.created_at) : ""}
+              </td>
+              <td className="tp-end">
+                <Button href={href} size="sm" prominence="secondary">
+                  {R.openChat}
+                </Button>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function OfficialRows() {
+  const reports = useTonReportGroups();
+  if (reports.isLoading) return <LoadingBlock label={COPY.common.loading} />;
+  if (reports.error) return <ErrorState onRetry={() => reports.mutate()} />;
+  const groups = reports.data ?? [];
+  return (
+    <>
+      <div className="px-4 pt-3 pb-2">
+        <Text font="secondary-body" color="text-03">
+          {groups.length ? R.officialHint : R.empty}
+        </Text>
+      </div>
+      {groups.length > 0 && (
+        <div className="overflow-x-auto border-t border-01">
+          <table className="tp-table">
+            <thead>
+              <tr>
+                <th scope="col">{R.officialColumns.report}</th>
+                <th scope="col">{R.officialColumns.period}</th>
+                <th scope="col">{R.officialColumns.origin}</th>
+                <th scope="col">{R.officialColumns.status}</th>
+                <th scope="col">
+                  <span className="sr-only">{R.open}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {groups.map(({ latest }) => (
+                <tr key={latest.revision_id}>
+                  <td className="tp-wrap">
+                    <span className="tp-strong block">
+                      {reportTitle(latest)}
+                    </span>
+                    <span className="tp-muted block">
+                      {R.generatedAt(
+                        formatRelativeDateTime(latest.output.generated_at)
+                      )}
+                    </span>
+                  </td>
+                  <td className="tp-muted">
+                    {`${formatPeriod(latest.output.period)} · ${latest.output.scope}`}
+                  </td>
+                  <td className="tp-muted">{origin(latest)}</td>
+                  <td>
+                    <Tag>{getBusinessLabel(latest.status)}</Tag>
+                  </td>
+                  <td className="tp-end">
+                    <span className="inline-flex gap-1">
+                      <Button
+                        href={latest.download_url}
+                        size="sm"
+                        prominence="tertiary"
+                        icon={SvgDownload}
+                        tooltip={R.download}
+                        aria-label={R.download}
+                      />
+                      <Button
+                        href={latest.report_url}
+                        size="sm"
+                        prominence="secondary"
+                      >
+                        {R.open}
+                      </Button>
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * What the TON built in conversations: dashboards, decks and reports, one
+ * row each at its latest version. The formal closing reports stay a view.
+ */
+export default function ReportsPage() {
+  const artifacts = useSWR<ChatArtifact[]>(
+    "/api/ton/agent/artifacts",
     errorHandlingFetcher
   );
-  if (history.isLoading) return <LoadingBlock label={COPY.common.loading} />;
-  const previous = (history.data ?? []).filter(
-    (item) => item.revision_id !== revisionId
+  const [view, setView] = useState<View>("all");
+  const [search, setSearch] = useState("");
+  const list = artifacts.data ?? [];
+  const count = (kind: ArtifactKind) =>
+    list.filter((item) => item.artifact_kind === kind).length;
+  const needle = search.trim().toLocaleLowerCase("pt-BR");
+  const rows = list.filter(
+    (item) =>
+      (view === "all" || item.artifact_kind === view) &&
+      (!needle ||
+        `${item.title} ${item.subtitle ?? ""} ${item.chat_name ?? ""}`
+          .toLocaleLowerCase("pt-BR")
+          .includes(needle))
   );
   return (
-    <ul className="flex flex-col divide-y divide-border-01 rounded-12 border border-01">
-      {previous.map((item) => (
-        <li key={item.revision_id}>
-          <Link
-            href={item.report_url as Route}
-            className="ton-row-link ton-focusable flex flex-wrap items-center gap-3 px-3 py-2.5"
-          >
-            <span className="flex-1 min-w-0">
-              <Text font="secondary-action" color="text-05">
-                {formatRelativeDateTime(item.output.generated_at)}
-              </Text>
-            </span>
-            <Text font="secondary-body" color="text-03">
-              {origin(item)}
-            </Text>
-            <StatusPill tone="neutral">
-              {getBusinessLabel(item.status)}
-            </StatusPill>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function ReportCard({ group }: { group: ReportGroup }) {
-  const [open, setOpen] = useState(false);
-  const { latest, previous_count } = group;
-  return (
-    <TonCard as="article" className="flex flex-col gap-4 p-5">
-      <div className="flex flex-wrap items-start gap-4">
-        <IconTile icon={SvgFileText} tone="gold" size="lg" />
-        <div className="flex flex-col gap-1 min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Text as="h2" font="heading-h3" color="text-05">
-              {reportTitle(latest)}
-            </Text>
-            <StatusPill tone="brand">{COPY.reports.current}</StatusPill>
-          </div>
-          <Text font="main-ui-body" color="text-04">
-            {`${formatPeriod(latest.output.period)} · ${latest.output.scope}`}
-          </Text>
-          <Text font="secondary-body" color="text-03">
-            {`${COPY.reports.generatedAt(formatRelativeDateTime(latest.output.generated_at))} · ${origin(latest)}`}
-          </Text>
-        </div>
-        <StatusPill tone={runTone(latest.status)}>
-          {getBusinessLabel(latest.status)}
-        </StatusPill>
-      </div>
-      <Text as="p" font="main-ui-body" color="text-04">
-        {latest.output.executive_brief.RESULTADO ?? latest.output.data_context}
-      </Text>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button href={latest.report_url} rightIcon={SvgArrowRight}>
-          {COPY.reports.open}
-        </Button>
-        <Button
-          href={latest.download_url}
-          prominence="secondary"
-          icon={SvgDownload}
-        >
-          {COPY.reports.download}
-        </Button>
-        {previous_count > 0 && (
-          <Button
-            prominence="tertiary"
-            rightIcon={SvgChevronDown}
-            onClick={() => setOpen((value) => !value)}
-          >
-            {open
-              ? COPY.reports.hideVersions
-              : `${COPY.reports.previousVersions} (${previous_count})`}
-          </Button>
-        )}
-      </div>
-      {open && <History revisionId={latest.revision_id} />}
-    </TonCard>
-  );
-}
-
-export default function ReportsPage() {
-  const reports = useTonReportGroups();
-  return (
-    <PageContainer>
-      <PageHeader
-        title={COPY.reports.title}
-        description={COPY.reports.description}
+    <PageFrame>
+      <PageHead
+        title={R.title}
+        description={R.description}
+        actions={<CreateButton />}
       />
-      {reports.isLoading && (
-        <TonCard className="p-5">
-          <LoadingBlock label={COPY.common.loading} />
-        </TonCard>
-      )}
-      {reports.error && (
-        <TonCard className="p-5">
-          <Text font="main-ui-body" color="text-03">
-            {COPY.common.error}
-          </Text>
-        </TonCard>
-      )}
-      {reports.data?.length === 0 && (
-        <TonCard className="p-5">
-          <Text font="main-ui-body" color="text-03">
-            {COPY.reports.empty}
-          </Text>
-        </TonCard>
-      )}
-      <div className="flex flex-col gap-4">
-        {reports.data?.map((group) => (
-          <ReportCard key={group.latest.revision_id} group={group} />
-        ))}
-      </div>
-    </PageContainer>
+      <ViewTabs
+        label={R.title}
+        value={view}
+        onChange={setView}
+        views={[
+          { key: "all", label: R.views.all, count: list.length },
+          { key: "painel", label: R.views.painel, count: count("painel") },
+          {
+            key: "apresentacao",
+            label: R.views.apresentacao,
+            count: count("apresentacao"),
+          },
+          {
+            key: "relatorio",
+            label: R.views.relatorio,
+            count: count("relatorio"),
+          },
+          { key: "official", label: R.views.official, tone: "neutral" },
+        ]}
+      />
+      <section className="tn-card" aria-label={R.title}>
+        {view === "official" ? (
+          <OfficialRows />
+        ) : (
+          <>
+            <div className="px-4 pt-3 pb-3">
+              <FilterBar
+                search={{
+                  value: search,
+                  onChange: setSearch,
+                  placeholder: R.search,
+                }}
+              />
+            </div>
+            {artifacts.isLoading && (
+              <LoadingBlock label={COPY.common.loading} />
+            )}
+            {artifacts.error && (
+              <ErrorState onRetry={() => artifacts.mutate()} />
+            )}
+            {artifacts.data && rows.length === 0 && (
+              <div className="px-4 pb-4">
+                <Text font="secondary-body" color="text-03">
+                  {list.length ? R.noMatch : R.emptyArtifacts}
+                </Text>
+              </div>
+            )}
+            {rows.length > 0 && (
+              <div className="overflow-x-auto border-t border-01">
+                <ArtifactRows rows={rows} />
+              </div>
+            )}
+          </>
+        )}
+      </section>
+    </PageFrame>
   );
 }

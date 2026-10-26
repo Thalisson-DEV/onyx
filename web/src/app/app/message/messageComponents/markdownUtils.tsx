@@ -28,6 +28,8 @@ import { rehypeDirection } from "@/lib/rehypeDirection";
 import { cn } from "@opal/utils";
 import { InMessageImage } from "@/app/app/components/files/images/InMessageImage";
 import { extractChatImageFileId } from "@/app/app/components/files/images/utils";
+import { usePathname } from "next/navigation";
+import TonTableActions from "@/views/ton/chat/TonTableActions";
 
 /** Table wrapper that detects horizontal overflow and shows a fade + scrollbar. */
 interface ScrollableTableProps extends React.TableHTMLAttributes<HTMLTableElement> {
@@ -77,6 +79,9 @@ export function ScrollableTable({
     };
   }, []);
 
+  // The TON lets a table leave the conversation: copy it or take it to Excel.
+  const isTon = usePathname()?.startsWith("/ton") ?? false;
+
   return (
     // The stamped table dir lifts onto the scroller so scrollLeft semantics
     // and the initial scroll edge follow the table's own direction.
@@ -93,6 +98,7 @@ export function ScrollableTable({
           {children}
         </table>
       </div>
+      {isTon && <TonTableActions tableRef={tableRef} />}
     </div>
   );
 }

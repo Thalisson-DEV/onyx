@@ -24,6 +24,8 @@ import Text from "@/refresh-components/texts/Text";
 import { AgentTimeline } from "@/app/app/message/messageComponents/timeline/AgentTimeline";
 import { TonExecutionSummary } from "@/app/app/message/messageComponents/renderers/TonExecutionSummary";
 import TonWorkPanel from "@/views/ton/chat/TonWorkPanel";
+import NextSteps from "@/views/ton/chat/NextSteps";
+import { splitNextSteps } from "@/lib/ton/nextSteps";
 import { usePathname } from "next/navigation";
 import { useVoiceMode } from "@/providers/VoiceModeProvider";
 import { getTextContent } from "@/app/app/services/packetUtils";
@@ -195,6 +197,16 @@ const AgentMessage = React.memo(function AgentMessage({
   );
 
   const authErrors = useAuthErrors(rawPackets);
+  const nextSteps = useMemo(
+    () => {
+      if (!isTon || !isComplete) return [];
+      const text = removeThinkingTokens(getTextContent(rawPackets));
+      return typeof text === "string" ? splitNextSteps(text).steps : [];
+    },
+    // rawPackets is mutated in place; packetCount marks new packets.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isTon, isComplete, packetCount]
+  );
 
   // Message switching logic
   const {
@@ -390,6 +402,12 @@ const AgentMessage = React.memo(function AgentMessage({
         stopped={stopPacketSeen && isComplete}
         stopReason={stopReason}
       />
+
+      {isTon && isComplete && stopReason !== StopReason.USER_CANCELLED && (
+        <div className={cn(!fullWidthChat && "px-3")}>
+          <NextSteps steps={nextSteps} />
+        </div>
+      )}
 
       {/* Feedback buttons - only show when streaming and rendering complete */}
       {isComplete && !hideFooter && (

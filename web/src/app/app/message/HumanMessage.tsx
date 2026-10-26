@@ -13,6 +13,9 @@ import { SvgEdit } from "@opal/icons";
 import { Hoverable } from "@opal/core";
 import FileDisplay from "./FileDisplay";
 import { useTranslations } from "next-intl";
+import { markCreate, splitCreateMark } from "@/lib/ton/artifacts";
+import { COPY } from "@/lib/ton/copy";
+import { ARTIFACT_ICONS } from "@/views/ton/chat/artifacts/ArtifactCard";
 
 interface MessageEditingProps {
   content: string;
@@ -141,7 +144,10 @@ const HumanMessage = React.memo(function HumanMessage({
   //
   // This is some duplicated state that is patching a memoization issue with `HumanMessage`.
   // Fix this later.
-  const [content, setContent] = useState(initialContent);
+  const [stored, setContent] = useState(initialContent);
+  // A TON "Criar" request carries its result as a mark; it reads as a chip.
+  const { kind: createKind, text: content } = splitCreateMark(stored);
+  const CreateIcon = createKind ? ARTIFACT_ICONS[createKind] : null;
 
   const [isEditing, setIsEditing] = useState(false);
   const { isMobile } = useScreenSize();
@@ -220,8 +226,11 @@ const HumanMessage = React.memo(function HumanMessage({
                 setIsEditing(false);
                 return;
               }
-              onEdit?.(editedContent, messageId);
-              setContent(editedContent);
+              const edited = createKind
+                ? markCreate(createKind, editedContent)
+                : editedContent;
+              onEdit?.(edited, messageId);
+              setContent(edited);
               setIsEditing(false);
             }}
             onCancelEdit={() => setIsEditing(false)}
@@ -247,6 +256,12 @@ const HumanMessage = React.memo(function HumanMessage({
                   }
                 }}
               >
+                {createKind && CreateIcon && (
+                  <span className="tn-create-mark">
+                    <CreateIcon size={12} aria-hidden />
+                    {COPY.chat.createMark(COPY.artifacts.kinds[createKind])}
+                  </span>
+                )}
                 <Text
                   as="p"
                   dir="auto"

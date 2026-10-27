@@ -38,7 +38,7 @@ import {
   finishTurn,
 } from "@/lib/ton/ask";
 import { COPY } from "@/lib/ton/copy";
-import { Diamond, Drawer } from "@/views/ton/components/kit";
+import { AskIcon, Drawer } from "@/views/ton/components/kit";
 
 interface AskTonApi {
   /** Opens the panel; without a context it uses the current screen's. */
@@ -330,8 +330,7 @@ function AskPanel({ context, onClose }: AskPanelProps) {
       leading={<TonMark size={36} working={busy} />}
       summary={
         <div className="flex flex-col gap-1.5 w-full">
-          <span className="tn-stat-label flex items-center gap-1.5">
-            <Diamond />
+          <span className="tn-stat-label">
             {COPY.ask.seeing}
           </span>
           <div className="flex flex-wrap gap-1.5">
@@ -489,7 +488,7 @@ export function AskTonHeaderButton() {
       className="tn-ask-top ton-focusable"
       onClick={() => ask()}
     >
-      <Diamond />
+      <AskIcon />
       <span className="hidden md:inline">{COPY.ask.button}</span>
     </button>
   );
@@ -513,7 +512,7 @@ export function AskTonRowButton({ label, context }: AskTonRowButtonProps) {
         ask(context);
       }}
     >
-      <Diamond />
+      <AskIcon />
     </button>
   );
 }

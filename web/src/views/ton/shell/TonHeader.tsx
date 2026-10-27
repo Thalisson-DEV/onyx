@@ -27,6 +27,7 @@ import {
 import { useTheme } from "next-themes";
 import { Content, toast } from "@opal/layouts";
 import { useUser } from "@/providers/UserProvider";
+import { ThemePreference } from "@/lib/types";
 import { getUserDisplayName, getUserEmail, logout } from "@/lib/users/svc";
 import {
   isSyntheticContext,
@@ -46,9 +47,15 @@ import { AskTonHeaderButton } from "@/views/ton/ask/AskTon";
 /** Light or dark workspace; the choice follows the user across visits. */
 function ThemeSwitch() {
   const { resolvedTheme, setTheme } = useTheme();
+  const { updateUserThemePreference } = useUser();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const dark = mounted && resolvedTheme === "dark";
+  // The saved preference wins on every load, so the switch saves it too.
+  const choose = (theme: ThemePreference) => {
+    setTheme(theme);
+    void updateUserThemePreference(theme);
+  };
   return (
     <div className="tn-theme" role="group" aria-label={COPY.kit.theme}>
       {/* Brand chrome needs a two-state toggle that no Opal button provides. */}
@@ -57,7 +64,7 @@ function ThemeSwitch() {
         className="ton-focusable"
         aria-label={COPY.kit.themeLight}
         aria-pressed={mounted && !dark}
-        onClick={() => setTheme("light")}
+        onClick={() => choose(ThemePreference.LIGHT)}
       >
         <SvgSun size={14} />
       </button>
@@ -66,7 +73,7 @@ function ThemeSwitch() {
         className="ton-focusable"
         aria-label={COPY.kit.themeDark}
         aria-pressed={dark}
-        onClick={() => setTheme("dark")}
+        onClick={() => choose(ThemePreference.DARK)}
       >
         <SvgMoon size={14} />
       </button>

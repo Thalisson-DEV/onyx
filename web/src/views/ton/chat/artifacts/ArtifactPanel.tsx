@@ -23,7 +23,6 @@ import {
   useArtifactStore,
   type TonArtifact,
 } from "@/lib/ton/artifacts";
-import { Diamond } from "@/views/ton/components/kit";
 import {
   ArtifactBody,
   BlockView,
@@ -338,7 +337,6 @@ export default function ArtifactPanel() {
         )}
       </div>
       <footer className="tn-art-panel-foot">
-        <Diamond />
         <span className="flex-1 min-w-0">{ART.footer}</span>
         <Button
           size="sm"

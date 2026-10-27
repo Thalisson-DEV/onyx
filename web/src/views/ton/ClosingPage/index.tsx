@@ -33,7 +33,7 @@ import {
   useWorkQueue,
 } from "@/lib/ton/workQueue";
 import ClosingFrame from "@/views/ton/components/ClosingFrame";
-import { Diamond } from "@/views/ton/components/kit";
+import { AskIcon } from "@/views/ton/components/kit";
 import { useAskTon } from "@/views/ton/ask/AskTon";
 import DecisionLogList from "@/views/ton/components/DecisionLogList";
 import R3Spotlight from "@/views/ton/components/R3Spotlight";
@@ -124,7 +124,7 @@ function StatusHeader({
             })
           }
         >
-          <Diamond />
+          <AskIcon />
           {COPY.closing.askTon}
         </button>
       </div>

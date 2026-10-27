@@ -365,7 +365,7 @@ export default function SourcesPage() {
                         </td>
                         <td className="tp-end tn-num">
                           {rejected > 0 ? (
-                            <TonMark>{formatNumber(rejected)}</TonMark>
+                            <TonMark tone="warn">{formatNumber(rejected)}</TonMark>
                           ) : latest ? (
                             "0"
                           ) : (

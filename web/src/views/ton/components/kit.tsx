@@ -51,21 +51,38 @@ export function Tag({ tone = "neutral", children }: TagProps) {
 }
 
 interface TonMarkProps {
+  /** voice: what the TON suggests; warn and danger: how much it weighs. */
+  tone?: "voice" | "warn" | "danger";
   children: ReactNode;
 }
 
-/** What the TON pointed out or proposed: gold diamond and text. */
-export function TonMark({ children }: TonMarkProps) {
+/** What the TON pointed out or proposed: colored text, no icon. */
+export function TonMark({ tone = "voice", children }: TonMarkProps) {
   return (
-    <span className="tn-mark">
-      <span aria-hidden className="tn-diamond" />
+    <span className="tn-mark" data-tone={tone}>
       {children}
     </span>
   );
 }
 
-export function Diamond() {
-  return <span aria-hidden className="tn-diamond" />;
+/** "Perguntar ao TON": a question in a speech bubble, in the text color. */
+export function AskIcon() {
+  return (
+    <svg
+      aria-hidden
+      className="tn-ask-icon"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2.5 7.25C2.5 4.62 4.62 2.5 7.25 2.5h1.5c2.63 0 4.75 2.12 4.75 4.75S11.38 12 8.75 12H5.75L2.5 14V7.25Z" />
+      <path d="M6.65 6.05a1.4 1.4 0 0 1 2.72.47c0 .93-1.37 1.15-1.37 2.03" />
+      <path d="M8 10.1h.01" />
+    </svg>
+  );
 }
 
 interface PageFrameProps {

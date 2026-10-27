@@ -1022,6 +1022,14 @@ button.tn-chat-chip:hover {
   html.tn-printing-artifact .tn-art-print * {
     visibility: visible !important;
   }
+  /* The side panel is positioned and scrolls; unpin its ancestors so the
+     artifact starts at the page corner and flows across pages. */
+  html.tn-printing-artifact body,
+  html.tn-printing-artifact body *:has(.tn-art-print) {
+    position: static !important;
+    overflow: visible !important;
+    transform: none !important;
+  }
   html.tn-printing-artifact .tn-art-print {
     position: absolute;
     inset: 0 auto auto 0;

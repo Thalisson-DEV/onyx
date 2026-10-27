@@ -61,51 +61,53 @@ html:has(.ton-shell) {
 }
 
 html.dark:has(.ton-shell) {
-  --background-neutral-00: #111c18;
-  --background-neutral-01: #0c1512;
-  --background-neutral-02: #1a2823;
-  --background-neutral-03: #22332c;
-  --background-neutral-04: #2c3f37;
-  --background-tint-00: #111c18;
-  --background-tint-01: #14221d;
-  --background-tint-02: #1a2823;
-  --background-tint-03: #22332c;
-  --background-tint-04: #2c3f37;
-  --text-05: #e3ece8;
-  --text-04: #c9d5d0;
-  --text-03: #98a9a1;
-  --text-02: #7a8b83;
-  --text-01: #3a4b44;
-  --border-01: #1f2f29;
-  --border-02: #2b3f37;
-  --border-03: #3d544a;
-  --border-04: #587066;
-  --border-05: #e3ece8;
-  --status-success-05: #72cf9f;
-  --status-success-02: #2a5040;
-  --status-success-01: #1b3127;
-  --status-success-00: #15241e;
-  --status-info-05: #8db6e2;
-  --status-info-02: #2f4558;
-  --status-info-01: #1d2c31;
-  --status-info-00: #16221f;
-  --status-warning-05: #e5aa55;
-  --status-warning-02: #4f4126;
-  --status-warning-01: #2a2c1f;
-  --status-warning-00: #1d231b;
-  --status-error-05: #f28b80;
-  --status-error-02: #563530;
-  --status-error-01: #2c2724;
-  --status-error-00: #1f201d;
-  --status-text-success-05: #72cf9f;
-  --status-text-info-05: #8db6e2;
-  --status-text-warning-05: #e5aa55;
-  --status-text-error-05: #f28b80;
+  /* Neutral graphite surfaces; green stays the accent, not the canvas.
+     Elevation reads by lightness: chrome < workspace < card < raised. */
+  --background-neutral-00: #1f2023;
+  --background-neutral-01: #131415;
+  --background-neutral-02: #28292d;
+  --background-neutral-03: #323438;
+  --background-neutral-04: #3e4045;
+  --background-tint-00: #1f2023;
+  --background-tint-01: #242529;
+  --background-tint-02: #2b2c30;
+  --background-tint-03: #34363a;
+  --background-tint-04: #3f4146;
+  --text-05: #f3f4f5;
+  --text-04: #dadcdf;
+  --text-03: #b2b6bb;
+  --text-02: #91969c;
+  --text-01: #60656b;
+  --border-01: #35373b;
+  --border-02: #45484d;
+  --border-03: #5a5e64;
+  --border-04: #71767c;
+  --border-05: #f3f4f5;
+  --status-success-05: #7ed8aa;
+  --status-success-02: #2f5545;
+  --status-success-01: #1c3229;
+  --status-success-00: #192620;
+  --status-info-05: #9cc2ec;
+  --status-info-02: #33475c;
+  --status-info-01: #1e2a37;
+  --status-info-00: #1b222b;
+  --status-warning-05: #f0b866;
+  --status-warning-02: #5a4725;
+  --status-warning-01: #352d1c;
+  --status-warning-00: #29251c;
+  --status-error-05: #f59a8f;
+  --status-error-02: #623a33;
+  --status-error-01: #3a2523;
+  --status-error-00: #2c2120;
+  --status-text-success-05: #7ed8aa;
+  --status-text-info-05: #9cc2ec;
+  --status-text-warning-05: #f0b866;
+  --status-text-error-05: #f59a8f;
 
-  --tn-gold: #d9b66f;
-  --tn-gold-mark: #c29c50;
-  --tn-gold-soft: #2a2719;
-  --tn-gold-line: #5a4a2a;
+  --tn-gold: #e6c47e;
+  --tn-gold-mark: #cfa75a;
+  --tn-gold-soft: #302b20;
+  --tn-gold-line: #66553a;
   --tn-scrim: rgba(0, 0, 0, 0.45);
   --tn-shadow:
     0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px -12px rgba(0, 0, 0, 0.6);
@@ -120,9 +122,9 @@ html.dark:has(.ton-shell) {
   --text-inverted-04: #1b2a24;
   --ton-brand: #6fbf9a;
   --ton-brand-soft: rgba(111, 191, 154, 0.13);
-  --ton-chrome: #07110d;
-  --ton-chrome-deep: #050c09;
-  --ton-chrome-raised: #0d1c16;
+  --ton-chrome: #0d0e0f;
+  --ton-chrome-deep: #08090a;
+  --ton-chrome-raised: #1a1b1d;
 }
 
 /* Numbers align in columns everywhere in the TON, in the text face. */
@@ -234,7 +236,7 @@ html.dark:has(.ton-shell) {
   color: var(--ton-brand);
 }
 
-/* The TON's voice: a gold diamond and text, never a box. */
+/* The TON's voice: colored text, never a box or an icon. */
 .tn-mark {
   display: inline-flex;
   align-items: center;
@@ -244,14 +246,24 @@ html.dark:has(.ton-shell) {
   font-weight: 500;
   white-space: nowrap;
 }
-.tn-diamond {
-  width: 0.4375rem;
-  height: 0.4375rem;
-  background: var(--tn-gold-mark);
-  border-radius: 1px;
-  transform: rotate(45deg);
+.tn-mark[data-tone="warn"] {
+  color: var(--status-text-warning-05);
+}
+.tn-mark[data-tone="danger"] {
+  color: var(--status-text-error-05);
+}
+.tn-bullet {
+  width: 0.3125rem;
+  height: 0.3125rem;
+  border-radius: 999px;
+  background: var(--text-02);
   flex: none;
   display: inline-block;
+}
+.tn-ask-icon {
+  width: 0.9375rem;
+  height: 0.9375rem;
+  flex: none;
 }
 
 /* ---------- View tabs: saved questions with count and total ---------- */
@@ -818,9 +830,6 @@ html.dark:has(.ton-shell) .tn-btn[data-variant="primary"] {
 }
 .tn-ask-top:hover {
   background: color-mix(in srgb, var(--vale-norte-gold-40) 22%, transparent);
-}
-.tn-ask-top .tn-diamond {
-  background: var(--vale-norte-gold-40);
 }
 .tn-theme {
   display: inline-flex;

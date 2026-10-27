@@ -1,6 +1,6 @@
 "use client";
 
-import { Diamond, SideModal } from "@/views/ton/components/kit";
+import { AskIcon, SideModal } from "@/views/ton/components/kit";
 import { useAskTon } from "@/views/ton/ask/AskTon";
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
@@ -573,7 +573,7 @@ function Sheet({ id }: { id: string }) {
           data-variant="gold"
           onClick={askAbout}
         >
-          <Diamond />
+          <AskIcon />
           Perguntar ao TON
         </button>
         {item.situation === "ACCEPTED" && (

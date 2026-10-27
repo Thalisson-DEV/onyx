@@ -38,7 +38,7 @@ function Items({ items }: { items: string[] }) {
     <ul className="flex flex-col gap-1.5 m-0 p-0 list-none">
       {items.map((item) => (
         <li key={item} className="flex gap-2">
-          <span aria-hidden className="tn-diamond mt-1.5" />
+          <span aria-hidden className="tn-bullet mt-2" />
           <Text font="main-ui-body" color="text-04">
             {item}
           </Text>

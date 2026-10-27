@@ -17,7 +17,7 @@ import {
   StatusPill,
 } from "@/views/ton/components/ui";
 import {
-  Diamond,
+  AskIcon,
   Drawer,
   DrawerSection,
   Tag,
@@ -254,7 +254,7 @@ export default function LineDrawer({ dre }: { dre: DreWorkspace }) {
             data-variant="gold"
             onClick={askAbout}
           >
-            <Diamond />
+            <AskIcon />
             {COPY.dre.lineDrawer.ask}
           </button>
           <span className="tn-spacer" />

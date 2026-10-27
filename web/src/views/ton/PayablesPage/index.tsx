@@ -864,7 +864,9 @@ function Agenda({ context }: { context: PayablesContext }) {
                             </td>
                             <td>
                               {row.top_issue && (
-                                <TonMark>
+                                <TonMark
+                                  tone={row.blocking > 0 ? "danger" : "warn"}
+                                >
                                   {row.blocking + row.attention > 1
                                     ? `${row.top_issue} +${row.blocking + row.attention - 1}`
                                     : row.top_issue}

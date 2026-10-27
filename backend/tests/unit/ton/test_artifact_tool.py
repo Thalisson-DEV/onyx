@@ -74,6 +74,22 @@ def test_redo_without_id_continues_the_same_artifact() -> None:
     assert result["artifact_id"] == "abc123def456"
 
 
+def test_renamed_adjustment_continues_the_latest_of_the_same_kind() -> None:
+    tool = TonCreateArtifactTool.__new__(TonCreateArtifactTool)
+    tool._chat_session_id = uuid4()
+    session = Mock()
+    session.scalars.return_value = [
+        json.dumps({"kind": "ton_artifact", "artifact_id": "deck12345678", "artifact_kind": "apresentacao", "title": "Set"}),
+        json.dumps({"kind": "ton_artifact", "artifact_id": "abc123def456", "artifact_kind": "painel", "title": "Custos · set/2026"}),
+    ]
+    spec = {"artifact_kind": "painel", "title": "Custos · ago × set 2026", "blocks": [{"type": "texto", "body": "a"}]}
+    result = tool.compute(session, User(id=uuid4(), is_active=True), spec)
+    assert result["artifact_id"] == "abc123def456"
+
+    fresh = tool.compute(session, User(id=uuid4(), is_active=True), {**spec, "novo": True})
+    assert fresh["artifact_id"] not in ("abc123def456", "deck12345678")
+
+
 @pytest.mark.parametrize(
     "kwargs",
     [

@@ -1419,10 +1419,11 @@ def _clean_slide(slide: Any) -> dict[str, Any] | None:
 
 
 def _previous_artifact_id(session: Any, chat_session_id: UUID | None, kind: str, title: str) -> str | None:
-    """The id of this conversation's latest artifact with the same kind and title.
+    """The id of the conversation's artifact this call most likely adjusts.
 
     Earlier turns reach the model without the tool results, so a redo often
-    comes without artifact_id; matching the title keeps it a new version.
+    comes without artifact_id, and an adjustment ("compare com agosto") also
+    renames it. The same title wins; otherwise the latest of the same kind.
     """
     if session is None or chat_session_id is None:
         return None
@@ -1434,6 +1435,7 @@ def _previous_artifact_id(session: Any, chat_session_id: UUID | None, kind: str,
         )
         .order_by(ToolCall.id.desc())
     )
+    latest: str | None = None
     for response in responses:
         try:
             data = json.loads(response)
@@ -1442,15 +1444,17 @@ def _previous_artifact_id(session: Any, chat_session_id: UUID | None, kind: str,
         # Stored as the call summary: {"tool_name", "tool_result": {...}}.
         if isinstance(data, dict) and isinstance(data.get("tool_result"), dict):
             data = data["tool_result"]
-        if (
+        if not (
             isinstance(data, dict)
             and data.get("kind") == "ton_artifact"
             and data.get("artifact_kind") == kind
-            and str(data.get("title", "")).casefold() == title.casefold()
             and _ARTIFACT_ID.match(str(data.get("artifact_id", "")))
         ):
+            continue
+        if str(data.get("title", "")).casefold() == title.casefold():
             return str(data["artifact_id"])
-    return None
+        latest = latest or str(data["artifact_id"])
+    return latest
 
 
 class TonCreateArtifactTool(TonFunctionTool):
@@ -1459,13 +1463,15 @@ class TonCreateArtifactTool(TonFunctionTool):
         "Cria um artefato que fica na conversa e abre ao lado: painel (indicadores, gráficos e tabela), "
         "apresentacao (slides para a diretoria) ou relatorio (documento A4 que vira PDF). Use só números já "
         "retornados pelas ferramentas TON nesta conversa. Para ajustar um artefato desta conversa, chame de novo "
-        "com o mesmo artifact_id: vira uma versão nova."
+        "com o mesmo artifact_id: vira uma versão nova. Sem artifact_id, o ajuste continua o último artefato do "
+        "mesmo tipo desta conversa; para um artefato diferente, passe novo=true."
     )
     PARAMETERS = {
         "artifact_kind": {"type": "string", "enum": list(_ARTIFACT_KINDS)},
         "title": {"type": "string", "description": "Título curto (Receita por unidade · set/2026)."},
         "subtitle": {"type": "string", "description": "Período, escopo e base dos números."},
         "artifact_id": {"type": "string", "description": "Só para nova versão de um artefato desta conversa."},
+        "novo": {"type": "boolean", "description": "true quando é outro artefato, não um ajuste do último do mesmo tipo."},
         "blocks": {"type": "array", "items": _BLOCK, "description": "painel e relatorio: blocos em ordem (até 12)."},
         "slides": {
             "type": "array",
@@ -1504,7 +1510,7 @@ class TonCreateArtifactTool(TonFunctionTool):
             raise ValueError("Apresentação precisa de slides")
         if kind != "apresentacao" and not blocks:
             raise ValueError("Painel e relatório precisam de blocos")
-        if not artifact_id:
+        if not artifact_id and kwargs.get("novo") is not True:
             artifact_id = (
                 _previous_artifact_id(session, getattr(self, "_chat_session_id", None), kind, title) or ""
             )

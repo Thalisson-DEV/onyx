@@ -2483,11 +2483,23 @@ html:has(.ton-shell) body {
 .tp-field-note[data-tone="error"] {
   color: var(--status-error-05);
 }
+.tp-field-note[data-tone="ai"] {
+  color: var(--status-text-warning-05);
+}
 .tp-field[data-filled="true"] .opal-input[data-variant="primary"] {
   background: var(--status-success-01);
   border-color: color-mix(
     in srgb,
     var(--status-success-05) 35%,
+    var(--border-01)
+  );
+}
+/* Read by AI: amber until the person confirms or changes it. */
+.tp-field[data-filled="ai"] .opal-input[data-variant="primary"] {
+  background: var(--status-warning-01);
+  border-color: color-mix(
+    in srgb,
+    var(--status-warning-05) 40%,
     var(--border-01)
   );
 }

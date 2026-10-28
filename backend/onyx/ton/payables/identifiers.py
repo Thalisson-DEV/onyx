@@ -59,6 +59,27 @@ def format_tax_id(number: str) -> str:
     return number
 
 
+def access_key(value: str) -> str | None:
+    """The 44-digit NF-e/NFC-e access key, when its check digit, model and
+    issuer CNPJ/CPF are valid. Layout: cUF(2) AAMM(4) CNPJ(14) mod(2)
+    série(3) número(9) tpEmis(1) código(8) DV(1)."""
+    number = digits(value)
+    if len(number) != 44 or number[20:22] not in ("55", "65"):
+        return None
+    total = sum(
+        int(char) * (2 + index % 8) for index, char in enumerate(reversed(number[:43]))
+    )
+    rest = total % 11
+    check = 0 if rest < 2 else 11 - rest
+    if check != int(number[43]):
+        return None
+    issuer = number[6:20]
+    # A person issuer (CPF) is written with three leading zeros.
+    if tax_id(issuer) is None and tax_id(issuer[3:]) is None:
+        return None
+    return number
+
+
 def plate(value: str) -> str | None:
     """A Brazilian plate (old or Mercosul) without hyphen or space."""
     candidate = _NON_ALNUM.sub("", value.upper())

@@ -64,3 +64,19 @@ The economic DRE SHALL take unit titles by competência and the cash DRE SHALL t
 #### Scenario: Title also in NG
 - **WHEN** a unit title and an NG entry share supplier, document and installment
 - **THEN** the DRE counts the amount once and shows both origins in the line composition
+
+### Requirement: Reading notes that are not XML
+The system SHALL read a DANFE PDF from its access key without a model, and SHALL send an NFS-e PDF, a scanned PDF or a photo to a model only for transcription, validating every value it returns and marking the reading as AI so a person confirms it.
+
+#### Scenario: DANFE in PDF
+- **WHEN** a unit attaches a DANFE whose text has a valid 44-digit access key
+- **THEN** issuer, model and number come from the key and the reading counts as read from the file, like the XML
+
+#### Scenario: Photo of a note
+- **WHEN** a unit attaches a photo of an NFS-e
+- **THEN** the form fills supplier, number, issue date, amount and due date marked "Lido pela IA · confira"
+- **AND** a mismatch between that reading and the title is an attention point, not a block
+
+#### Scenario: No model or unreadable answer
+- **WHEN** no model reads images, the call fails or the answer has no valid field
+- **THEN** the attachment is kept with no reading and the title is marked for a manual look

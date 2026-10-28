@@ -13,6 +13,7 @@
 - [ ] 2.2 Carga inicial dos fornecedores a partir do NG e das planilhas atuais, com revisão humana dos duplicados
 - [x] 2.3 Título a pagar com os campos do padrão, parcela "x de y", natureza sugerida pelo fornecedor
 - [x] 2.4 Anexos obrigatórios com nome padronizado; leitura de XML/PDF de NF quando possível — XML de NF-e/NFS-e (emitente, número, total) e linha digitável do boleto no PDF (valor e vencimento); o resto vai para conferência manual
+  - [x] 2.4.1 Nota que não é XML (2026-10-28): DANFE em PDF pela chave de acesso (DV, modelo e CNPJ validados; total e emissão só quando impressos ao lado do rótulo), sem IA. NFS-e em PDF, PDF escaneado e foto: a IA transcreve e o código valida cada campo (CNPJ, chave, linha do boleto, datas, valores); o resultado fica marcado como lido pela IA (`read_source`), a tela pede confirmação e divergência vira atenção, nunca bloqueio. Amostras em `plans/ton/test-files/teste-leitura-*`; testes em `backend/tests/unit/ton/test_payables_reading.py`
 - [x] 2.5 Estimativa como tipo próprio, substituição pela nota
 
 ## 3. Fluxo do financeiro

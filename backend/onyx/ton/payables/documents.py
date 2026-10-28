@@ -1,24 +1,28 @@
-"""Deterministic reading of payable attachments.
+"""Reading of payable attachments.
 
-Two kinds of file are read without any model:
+Three kinds of file are read without any model:
 
 * an NF-e or NFS-e XML: issuer tax ID, number and total;
-* a boleto, from the typed line printed on the PDF: amount and due date.
+* a boleto, from the typed line printed on the PDF: amount and due date;
+* a DANFE PDF, from its 44-digit access key: issuer, model and number.
 
-Anything else returns an empty reading, and the title is marked for a human
-look instead of guessing.
+What is left (an NFS-e PDF in each city hall's layout, a scanned PDF, a
+photo) goes to an optional ``AttachmentReader``, which marks its result as
+read by AI. Without one, or when it reads nothing, the reading is empty and
+the title is marked for a human look instead of guessing.
 """
 
 import datetime
 import io
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
+from typing import Literal, Protocol
 from xml.etree.ElementTree import Element
 
 from defusedxml import ElementTree
 
-from onyx.ton.payables.identifiers import digits, tax_id
+from onyx.ton.payables.identifiers import access_key, digits, tax_id
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -49,6 +53,20 @@ _AMOUNT_TAGS = ("vNF", "ValorLiquidoNfse", "vLiq", "ValorServicos", "vServ")
 _ISSUE_TAGS = ("dhEmi", "dEmi", "DataEmissao", "dhProc")
 _ISSUER_NAME_PARENTS = ("emit", "Prestador", "PrestadorServico", "prest")
 _ISSUER_NAME_TAGS = ("xNome", "RazaoSocial", "xFant", "NomeFantasia")
+# The key is printed in groups of four, sometimes with dots.
+_KEY_RUN = re.compile(r"\d[\d .]{42,80}\d")
+# A value on the same line as its label; on the next line it may belong to
+# another column of the DANFE grid, so it is not trusted.
+_DANFE_TOTAL = re.compile(
+    r"VALOR\s+TOTAL\s+DA\s+NOTA[^\d\n]{0,40}?(\d{1,3}(?:\.\d{3})*,\d{2})", re.IGNORECASE
+)
+_DANFE_ISSUE = re.compile(
+    r"DATA\s+(?:DA\s+|DE\s+)?EMISS[AÃ]O[^\d\n]{0,40}?(\d{2}/\d{2}/\d{4})", re.IGNORECASE
+)
+# Below this many characters a PDF page has no usable text (a scan).
+_MIN_TEXT = 80
+# Who stated the values: the file itself, or a model that read it.
+ReadSource = Literal["FILE", "AI"]
 
 
 @dataclass(frozen=True)
@@ -60,20 +78,31 @@ class Installment:
 
 @dataclass(frozen=True)
 class DocumentReading:
+    # XML, NOTA (a note read from a PDF or photo), BOLETO or PDF (only the
+    # supplier's tax ID found in the text).
     kind: str | None = None
     amount: Decimal | None = None
     tax_id: str | None = None
     document_number: str | None = None
     due_date: datetime.date | None = None
-    # XML only: what the unit would otherwise type by hand.
+    # Notes only: what the unit would otherwise type by hand.
     document_type: str | None = None
     issue_date: datetime.date | None = None
     issuer_name: str | None = None
     installments: tuple[Installment, ...] = ()
+    source: ReadSource = "FILE"
 
     @property
     def is_read(self) -> bool:
         return self.kind is not None
+
+
+class AttachmentReader(Protocol):
+    """Reads what the deterministic readers could not; see ``ai_reading``."""
+
+    def read_text(self, text: str) -> DocumentReading: ...
+
+    def read_images(self, images: list[bytes]) -> DocumentReading: ...
 
 
 def _local(tag: str) -> str:
@@ -219,6 +248,93 @@ def read_bank_line(text: str) -> DocumentReading:
     return DocumentReading()
 
 
+def brl_amount(value: str | None) -> Decimal | None:
+    """A positive amount written "7.479,00", "7479,00" or "7479.00"."""
+    if not value:
+        return None
+    text = re.sub(r"[^\d.,]", "", value)
+    if "," in text:
+        text = text.replace(".", "").replace(",", ".")
+    elif text.count(".") > 1:
+        text = text.replace(".", "")
+    try:
+        amount = Decimal(text).quantize(Decimal("0.01"))
+    except InvalidOperation:
+        return None
+    return amount if Decimal(0) < amount < Decimal(1000000000) else None
+
+
+def find_access_key(text: str) -> str | None:
+    for run in _KEY_RUN.finditer(text):
+        number = digits(run.group())
+        for start in range(len(number) - 43):
+            key = access_key(number[start : start + 44])
+            if key:
+                return key
+    return None
+
+
+def reading_from_key(key: str) -> DocumentReading:
+    """What the access key states on its own: issuer, model and number."""
+    issuer = tax_id(key[6:20]) or tax_id(key[9:20])
+    return DocumentReading(
+        kind="NOTA",
+        tax_id=issuer,
+        document_type="NF",
+        document_number=str(int(key[25:34])),
+    )
+
+
+def read_danfe_text(text: str) -> DocumentReading:
+    """A DANFE: the key, plus the total and issue date when each is printed
+    beside its label. A date outside the key's month is dropped."""
+    key = find_access_key(text)
+    if key is None:
+        return DocumentReading()
+    reading = reading_from_key(key)
+    total = _DANFE_TOTAL.search(text)
+    issued = _DANFE_ISSUE.search(text)
+    issue_date = None
+    if issued:
+        try:
+            issue_date = datetime.datetime.strptime(issued.group(1), "%d/%m/%Y").date()
+        except ValueError:
+            issue_date = None
+        if issue_date and issue_date.strftime("%y%m") != key[2:6]:
+            issue_date = None
+    return replace(
+        reading,
+        amount=brl_amount(total.group(1)) if total else None,
+        issue_date=issue_date,
+    )
+
+
+def _merge(base: DocumentReading, extra: DocumentReading) -> DocumentReading:
+    """``base`` completed with what ``extra`` adds; any field taken from an AI
+    reading makes the whole reading AI."""
+    if not extra.is_read:
+        return base
+    filled = {
+        name: getattr(extra, name)
+        for name in (
+            "amount",
+            "tax_id",
+            "document_number",
+            "due_date",
+            "document_type",
+            "issue_date",
+            "issuer_name",
+        )
+        if getattr(base, name) is None and getattr(extra, name) is not None
+    }
+    if not base.installments and extra.installments:
+        filled["installments"] = extra.installments
+    if not filled:
+        return base
+    source: ReadSource = "AI" if extra.source == "AI" else base.source
+    return replace(base, **filled, source=source)
+
+
 def _pdf_text(data: bytes) -> str:
     from pypdf import PdfReader
 
@@ -230,30 +346,77 @@ def _pdf_text(data: bytes) -> str:
         return ""
 
 
+def _pdf_images(data: bytes, pages: int = 2) -> list[bytes]:
+    """The largest picture of each of the first pages of a scanned PDF."""
+    from pypdf import PdfReader
+
+    found: list[bytes] = []
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        for page in reader.pages[:pages]:
+            images = sorted(
+                page.images, key=lambda image: len(image.data), reverse=True
+            )
+            if images:
+                found.append(images[0].data)
+    except Exception:  # noqa: BLE001 — a damaged PDF is left for a person
+        logger.info("TON payables: PDF images could not be read")
+    return found
+
+
+def _is_image(lowered: str, content_type: str) -> bool:
+    return lowered.endswith((".jpg", ".jpeg", ".png")) or content_type in (
+        "image/jpeg",
+        "image/png",
+    )
+
+
 def read_attachment(
-    data: bytes, content_type: str, filename: str, supplier_tax_id: str | None
+    data: bytes,
+    content_type: str,
+    filename: str,
+    supplier_tax_id: str | None,
+    reader: AttachmentReader | None = None,
 ) -> DocumentReading:
-    """What the TON can state about the file without a person."""
+    """What the TON can state about the file without a person.
+
+    The file's own content always wins; the reader only fills what is left.
+    """
     lowered = filename.lower()
     if lowered.endswith(".xml") or "xml" in content_type:
         return read_invoice_xml(data)
+    if _is_image(lowered, content_type):
+        return reader.read_images([data]) if reader else DocumentReading()
     if not (lowered.endswith(".pdf") or content_type == "application/pdf"):
         return DocumentReading()
     text = _pdf_text(data)
-    reading = read_bank_line(text)
     found_supplier = (
         supplier_tax_id
         if supplier_tax_id
         and any(digits(raw) == supplier_tax_id for raw in _TAX_ID_TEXT.findall(text))
         else None
     )
-    if reading.is_read:
+    boleto = read_bank_line(text)
+    if boleto.is_read:
         return DocumentReading(
-            kind=reading.kind,
-            amount=reading.amount,
-            due_date=reading.due_date,
+            kind=boleto.kind,
+            amount=boleto.amount,
+            due_date=boleto.due_date,
             tax_id=found_supplier,
         )
+    danfe = read_danfe_text(text)
+    if danfe.is_read:
+        if reader and danfe.amount is None:
+            return _merge(danfe, reader.read_text(text))
+        return danfe
+    if reader:
+        if len(text.strip()) >= _MIN_TEXT:
+            reading = reader.read_text(text)
+        else:
+            images = _pdf_images(data)
+            reading = reader.read_images(images) if images else DocumentReading()
+        if reading.is_read:
+            return reading
     if found_supplier:
         return DocumentReading(kind="PDF", tax_id=found_supplier)
     return DocumentReading()

@@ -143,6 +143,8 @@ export interface AttachmentView {
   read_tax_id: string | null;
   read_document_number: string | null;
   read_due_date: string | null;
+  /** FILE: stated by the file itself; AI: read by a model, to confirm. */
+  read_source: ReadSource | null;
   created_at: string;
 }
 
@@ -197,8 +199,12 @@ export interface Confirmation {
   state: "OK" | "ATTENTION" | "MISMATCH" | "UNKNOWN";
 }
 
+export type ReadSource = "FILE" | "AI";
+
 export interface DocumentRead {
-  kind: "XML" | "BOLETO" | "PDF" | null;
+  /** NOTA: a note read from a PDF or photo (DANFE key or AI). */
+  kind: "XML" | "NOTA" | "BOLETO" | "PDF" | null;
+  source: ReadSource | null;
   amount: string | null;
   tax_id: string | null;
   tax_id_display: string | null;

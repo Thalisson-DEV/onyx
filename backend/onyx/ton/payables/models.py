@@ -141,6 +141,8 @@ class AttachmentView(BaseModel):
     read_tax_id: str | None
     read_document_number: str | None
     read_due_date: datetime.date | None
+    # FILE: stated by the file itself; AI: transcribed by a model, to confirm.
+    read_source: Literal["FILE", "AI"] | None
     created_at: datetime.datetime
 
 
@@ -237,6 +239,7 @@ class DocumentReadView(BaseModel):
     """What the TON read from a file before the title exists."""
 
     kind: str | None
+    source: Literal["FILE", "AI"] | None
     amount: Decimal | None
     tax_id: str | None
     tax_id_display: str | None

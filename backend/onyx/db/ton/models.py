@@ -5185,8 +5185,9 @@ class PayableTitle(Base):
 class PayableAttachment(Base):
     """A supporting document of a title, kept in the database (10 MB at most).
 
-    ``read_*`` hold what the TON read from the file itself (NF-e XML or a
-    boleto line); all null means the file needs a human look.
+    ``read_*`` hold what the TON read from the file (NF-e XML, boleto line,
+    DANFE key, or a model's transcription when ``read_source`` is ``AI``);
+    all null means the file needs a human look.
     """
 
     __tablename__ = "ton_payable_attachment"
@@ -5209,6 +5210,7 @@ class PayableAttachment(Base):
     read_tax_id: Mapped[str | None] = mapped_column(String(14))
     read_document_number: Mapped[str | None] = mapped_column(String(60))
     read_due_date: Mapped[datetime.date | None] = mapped_column(Date)
+    read_source: Mapped[str | None] = mapped_column(String(8))
     created_by: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("user.id", ondelete="SET NULL")
     )
@@ -5219,6 +5221,10 @@ class PayableAttachment(Base):
         CheckConstraint(
             "role IN ('INVOICE', 'BOLETO', 'RECEIPT', 'OTHER')",
             name="ck_ton_payable_attachment_role",
+        ),
+        CheckConstraint(
+            "read_source IS NULL OR read_source IN ('FILE', 'AI')",
+            name="ck_ton_payable_attachment_read_source",
         ),
         CheckConstraint(
             "size_bytes <= 10485760", name="ck_ton_payable_attachment_size"

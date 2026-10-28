@@ -39,6 +39,7 @@ from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.ton.payables import checks as rules
 from onyx.ton.payables import payment_batch
+from onyx.ton.payables.ai_reading import AiDocumentReader
 from onyx.ton.payables.documents import read_attachment
 from onyx.ton.payables.identifiers import (
     digits,
@@ -715,7 +716,9 @@ def add_attachment(
         raise _invalid("Arquivo maior que 10 MB.")
     supplier = session.get(PayableSupplier, title.supplier_id)
     assert supplier is not None
-    reading = read_attachment(data, content_type, filename, supplier.tax_id)
+    reading = read_attachment(
+        data, content_type, filename, supplier.tax_id, AiDocumentReader()
+    )
     attachment = PayableAttachment(
         title_id=title.id,
         role=role,
@@ -729,6 +732,7 @@ def add_attachment(
         read_tax_id=reading.tax_id,
         read_document_number=reading.document_number,
         read_due_date=reading.due_date,
+        read_source=reading.source if reading.is_read else None,
         created_by=user.id,
     )
     session.add(attachment)
@@ -894,6 +898,7 @@ def _facts(
             PayableAttachment.read_amount,
             PayableAttachment.read_tax_id,
             PayableAttachment.read_due_date,
+            PayableAttachment.read_source,
         ).where(PayableAttachment.title_id.in_(ids))
     ):
         attachments[row.title_id].append(
@@ -905,6 +910,7 @@ def _facts(
                 read_amount=row.read_amount,
                 read_tax_id=row.read_tax_id,
                 read_due_date=row.read_due_date,
+                read_source=row.read_source,
             )
         )
     pairs = {
@@ -1278,6 +1284,7 @@ def get_title(session: Session, user: User, title_id: UUID) -> TitleDetail:
                 read_tax_id=attachment.read_tax_id,
                 read_document_number=attachment.read_document_number,
                 read_due_date=attachment.read_due_date,
+                read_source=attachment.read_source,
                 created_at=attachment.created_at,
             )
             for attachment in attachments
@@ -1341,7 +1348,7 @@ def read_document(
         raise _invalid("Envie PDF, XML ou foto (JPG ou PNG).")
     if len(data) > MAX_ATTACHMENT_BYTES:
         raise _invalid("Arquivo maior que 10 MB.")
-    reading = read_attachment(data, content_type, filename, None)
+    reading = read_attachment(data, content_type, filename, None, AiDocumentReader())
     supplier = (
         session.scalar(
             sa.select(PayableSupplier).where(PayableSupplier.tax_id == reading.tax_id)
@@ -1360,6 +1367,7 @@ def read_document(
     )
     return DocumentReadView(
         kind=reading.kind,
+        source=reading.source if reading.is_read else None,
         amount=reading.amount,
         tax_id=reading.tax_id,
         tax_id_display=format_tax_id(reading.tax_id) if reading.tax_id else None,

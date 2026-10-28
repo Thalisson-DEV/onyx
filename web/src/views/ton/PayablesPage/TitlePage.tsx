@@ -112,9 +112,10 @@ function SectionTitle({ children }: { children: string }) {
 }
 
 function readingText(attachment: AttachmentView): string {
+  const byAi = attachment.read_source === "AI";
   if (attachment.read_kind === "BOLETO")
     return [
-      "Boleto lido",
+      byAi ? "Boleto lido pela IA, confira" : "Boleto lido",
       attachment.read_amount ? brl(attachment.read_amount) : null,
       attachment.read_due_date
         ? `vence ${brDate(attachment.read_due_date)}`
@@ -122,9 +123,9 @@ function readingText(attachment: AttachmentView): string {
     ]
       .filter(Boolean)
       .join(" · ");
-  if (attachment.read_kind === "XML")
+  if (attachment.read_kind === "XML" || attachment.read_kind === "NOTA")
     return [
-      "Nota lida",
+      byAi ? "Nota lida pela IA, confira" : "Nota lida",
       attachment.read_document_number
         ? `nº ${attachment.read_document_number}`
         : null,

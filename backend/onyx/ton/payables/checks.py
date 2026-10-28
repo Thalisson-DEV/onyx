@@ -48,6 +48,16 @@ class AttachmentFacts:
     read_amount: Decimal | None
     read_tax_id: str | None
     read_due_date: datetime.date | None
+    # FILE: stated by the file itself; AI: transcribed by a model.
+    read_source: str | None = None
+
+    @property
+    def by_ai(self) -> bool:
+        return self.read_source == "AI"
+
+
+# Kinds that carry the note's issuer and total.
+NOTE_KINDS = frozenset({"XML", "NOTA"})
 
 
 @dataclass(frozen=True)
@@ -180,13 +190,16 @@ def _attachments(facts: TitleFacts) -> list[CheckResult]:
     results: list[CheckResult] = []
     supplier = facts.supplier.tax_id
     for attachment in facts.attachments:
+        # What a model transcribed may be misread: it informs, never blocks.
+        mismatch = ATTENTION if attachment.by_ai else BLOCK
+        suffix = " (lido pela IA)" if attachment.by_ai else ""
         if attachment.read_kind == "BOLETO" and attachment.read_amount is not None:
             if abs(attachment.read_amount - facts.amount) > Decimal("0.01"):
                 results.append(
                     CheckResult(
                         code="ATTACHMENT_AMOUNT",
-                        severity=BLOCK,
-                        title="Valor do boleto diferente",
+                        severity=mismatch,
+                        title="Valor do boleto diferente" + suffix,
                         detail=(
                             f"Boleto de {brl(attachment.read_amount)}; "
                             f"título de {brl(facts.amount)}."
@@ -210,15 +223,15 @@ def _attachments(facts: TitleFacts) -> list[CheckResult]:
                         subject=str(attachment.id),
                     )
                 )
-        if attachment.read_kind == "XML":
+        if attachment.read_kind in NOTE_KINDS:
             if attachment.read_amount is not None and abs(
                 attachment.read_amount - facts.purchase_total
             ) > Decimal("0.01"):
                 results.append(
                     CheckResult(
                         code="ATTACHMENT_AMOUNT",
-                        severity=BLOCK,
-                        title="Valor da nota diferente",
+                        severity=mismatch,
+                        title="Valor da nota diferente" + suffix,
                         detail=(
                             f"Nota de {brl(attachment.read_amount)}; compra "
                             f"informada de {brl(facts.purchase_total)}."
@@ -230,8 +243,8 @@ def _attachments(facts: TitleFacts) -> list[CheckResult]:
                 results.append(
                     CheckResult(
                         code="ATTACHMENT_TAX_ID",
-                        severity=BLOCK,
-                        title="Nota de outro emitente",
+                        severity=mismatch,
+                        title="Nota de outro emitente" + suffix,
                         detail=(
                             f"A nota foi emitida por {format_tax_id(attachment.read_tax_id)};"
                             f" o fornecedor do título é {format_tax_id(supplier)}."
@@ -239,6 +252,20 @@ def _attachments(facts: TitleFacts) -> list[CheckResult]:
                         subject=str(attachment.id),
                     )
                 )
+    ai_read = [attachment for attachment in facts.attachments if attachment.by_ai]
+    if ai_read:
+        results.append(
+            CheckResult(
+                code="READ_BY_AI",
+                severity=INFO,
+                title="Lido pela IA: confira",
+                detail=(
+                    "O TON leu "
+                    + ", ".join(attachment.name for attachment in ai_read)
+                    + " com IA. Confira valor, CNPJ e vencimento olhando o arquivo."
+                ),
+            )
+        )
     if not any(attachment.read_kind for attachment in facts.attachments):
         results.append(
             CheckResult(
@@ -441,7 +468,9 @@ def confirmations(facts: TitleFacts) -> list[Confirmation]:
                 state="UNKNOWN",
             )
         )
-    invoices = [a for a in facts.attachments if a.read_kind == "XML" and a.read_amount]
+    invoices = [
+        a for a in facts.attachments if a.read_kind in NOTE_KINDS and a.read_amount
+    ]
     if invoices:
         amount = invoices[0].read_amount
         assert amount is not None

@@ -111,7 +111,8 @@ interface FieldProps {
   /** Grid columns out of 12. */
   span?: 3 | 4 | 6 | 8 | 12;
   note?: string | null;
-  noteTone?: "filled" | "error";
+  /** "ai": filled from what a model read, so the person confirms it. */
+  noteTone?: "filled" | "ai" | "error";
   /** Filled by the TON from a document: tinted until the person changes it. */
   filled?: boolean;
   htmlFor?: string;
@@ -131,7 +132,7 @@ export function PatternField({
     <div
       className="tp-field"
       data-span={span === 12 ? undefined : String(span)}
-      data-filled={filled ? "true" : undefined}
+      data-filled={filled ? (noteTone === "ai" ? "ai" : "true") : undefined}
     >
       <label className="tp-field-label" htmlFor={htmlFor}>
         {label}

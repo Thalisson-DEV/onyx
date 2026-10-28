@@ -108,9 +108,10 @@ function supplierLabel(supplier: Supplier): string {
 
 function readingText(reading: DocumentRead | null, failed: boolean): string {
   if (failed) return "Não foi possível ler este arquivo agora.";
-  if (!reading) return "Lendo…";
-  if (reading.kind === "XML")
-    return `Lido: ${[
+  if (!reading) return "Lendo… foto e PDF escaneado levam alguns segundos.";
+  const read = reading.source === "AI" ? "Lido pela IA, confira" : "Lido";
+  if (reading.kind === "XML" || reading.kind === "NOTA")
+    return `${read}: ${[
       reading.tax_id_display,
       reading.document_number ? `nº ${reading.document_number}` : null,
       reading.issue_date ? `emissão ${brDate(reading.issue_date)}` : null,
@@ -122,7 +123,7 @@ function readingText(reading: DocumentRead | null, failed: boolean): string {
       .filter(Boolean)
       .join(", ")}`;
   if (reading.kind === "BOLETO")
-    return `Lido: ${[
+    return `${read}: ${[
       reading.amount ? brl(reading.amount) : null,
       reading.due_date ? `vence ${brDate(reading.due_date)}` : null,
     ]
@@ -191,6 +192,8 @@ function Editor({
   const [parcels, setParcels] = useState<DocumentRead["installments"]>([]);
   const [sendAll, setSendAll] = useState(true);
   const [filled, setFilled] = useState<Set<FieldKey>>(new Set());
+  // Fields filled from an AI reading: shown amber until confirmed.
+  const [aiFilled, setAiFilled] = useState<Set<FieldKey>>(new Set());
   const [touched, setTouched] = useState<Set<FieldKey>>(
     new Set(
       editing ? ["supplier", "account", "competence", "amount", "dueDate"] : []
@@ -231,19 +234,27 @@ function Editor({
   const unitName = context.units.find((unit) => unit.id === unitId)?.name;
 
   /** A value the TON read; it never overwrites what the person typed. */
-  function offer(key: FieldKey, apply: () => void) {
+  function offerField(key: FieldKey, apply: () => void, byAi = false) {
     if (touched.has(key)) return;
     apply();
     setFilled((current) => new Set(current).add(key));
+    setAiFilled((current) => {
+      const next = new Set(current);
+      if (byAi) next.add(key);
+      else next.delete(key);
+      return next;
+    });
   }
 
   function touch(key: FieldKey) {
     setTouched((current) => new Set(current).add(key));
-    setFilled((current) => {
-      const next = new Set(current);
-      next.delete(key);
-      return next;
-    });
+    for (const setter of [setFilled, setAiFilled]) {
+      setter((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
+    }
   }
 
   function chooseSupplier(id: string, list: Supplier[] = supplierList) {
@@ -258,12 +269,15 @@ function Editor({
   }
 
   function applyReading(reading: DocumentRead) {
+    const fromAi = reading.source === "AI";
+    const offer = (key: FieldKey, apply: () => void) =>
+      offerField(key, apply, fromAi);
     if (reading.supplier) {
       offer("supplier", () => chooseSupplier(reading.supplier?.id ?? ""));
     } else if (reading.tax_id && !supplierId) {
       setUnknownSupplier(reading);
     }
-    if (reading.kind === "XML") {
+    if (reading.kind === "XML" || reading.kind === "NOTA") {
       if (reading.document_type)
         offer("documentType", () =>
           setDocumentType(reading.document_type ?? "")
@@ -300,8 +314,8 @@ function Editor({
       } else {
         if (reading.amount)
           offer("amount", () => setAmount(moneyInput(Number(reading.amount))));
-        if (parcels[0])
-          offer("dueDate", () => setDueDate(parcels[0]?.due_date ?? ""));
+        const due = parcels[0]?.due_date ?? reading.due_date;
+        if (due) offer("dueDate", () => setDueDate(due));
       }
     }
     if (reading.kind === "BOLETO") {
@@ -345,7 +359,7 @@ function Editor({
       try {
         const reading = await readDocument(item.file);
         const role: AttachmentRole =
-          reading.kind === "XML"
+          reading.kind === "XML" || reading.kind === "NOTA"
             ? "INVOICE"
             : reading.kind === "BOLETO"
               ? "BOLETO"
@@ -442,9 +456,11 @@ function Editor({
   function note(
     key: FieldKey,
     fallback?: string
-  ): { text: string | null; tone?: "filled" | "error" } {
+  ): { text: string | null; tone?: "filled" | "ai" | "error" } {
     const message = error(key);
     if (message) return { text: message, tone: "error" };
+    if (filled.has(key) && aiFilled.has(key))
+      return { text: "Lido pela IA · confira", tone: "ai" };
     if (filled.has(key))
       return {
         text:
